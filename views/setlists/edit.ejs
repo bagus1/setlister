@@ -1,0 +1,252 @@
+<div class="setlist-editor" data-setlist-id="<%= setlist.id %>">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Edit Setlist: <%= setlist.title %>
+                    </h1>
+                    <div class="d-flex align-items-center gap-3">
+                        <span id="save-status" class="badge bg-secondary">Auto-saving...</span>
+                        <small class="text-muted">Drag songs from the left to the sets on the right</small>
+                    </div>
+                </div>
+                <div>
+                    <button id="save-setlist" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Now
+                    </button>
+                    <a href="/setlists/<%= setlist.id %>/finalize" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Finalize Setlist
+                    </a>
+                    <a href="/bands/<%= setlist.bandId %>" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Band
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Band Songs Panel -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-music-note-list"></i> Band Songs
+                    </h5>
+                </div>
+                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                    <% if (bandSongs && bandSongs.length> 0) { %>
+                        <% bandSongs.forEach(song=> { %>
+                            <div class="song-card band-song" data-song-id="<%= song.id %>"
+                                data-song-time="<%= song.time || 0 %>">
+                                <div class="song-title">
+                                    <%= song.title %>
+                                </div>
+                                <% if (song.Artists && song.Artists.length> 0) { %>
+                                    <div class="song-artist">by <%= song.Artists[0].name %>
+                                    </div>
+                                    <% } %>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <div>
+                                                <% if (song.Vocalist) { %>
+                                                    <span class="song-vocalist">
+                                                        <%= song.Vocalist.name %>
+                                                    </span>
+                                                    <% } %>
+                                                        <% if (song.key) { %>
+                                                            <span class="song-key">
+                                                                <%= song.key %>
+                                                            </span>
+                                                            <% } %>
+                                            </div>
+                                            <% if (song.time) { %>
+                                                <span class="song-time">
+                                                    <%= Math.floor(song.time / 60) %>:<%= (song.time %
+                                                            60).toString().padStart(2, '0' ) %>
+                                                </span>
+                                                <% } %>
+                                        </div>
+                            </div>
+                            <% }) %>
+                                <% } else { %>
+                                    <p class="text-muted">No songs assigned to this band yet.
+                                        <a href="/bands/<%= setlist.bandId %>/songs">Add some songs</a> first.
+                                    </p>
+                                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Setlist Sets Panel -->
+        <div class="col-md-8">
+            <div class="row">
+                <% ['Set 1', 'Set 2' , 'Set 3' , 'Set 4' ].forEach((setName, index)=> { %>
+                    <div class="col-md-6 mb-4">
+                        <div class="set-header">
+                            <%= setName %>
+                                <span class="set-time float-end" data-set="<%= setName %>">0:00</span>
+                        </div>
+                        <div class="drop-zone <%= setlist.SetlistSets.find(s => s.name === setName && s.SetlistSongs.length > 0) ? 'has-songs' : '' %>"
+                            data-set-name="<%= setName %>">
+                            <% const currentSet=setlist.SetlistSets.find(s=> s.name === setName); %>
+                                <% if (currentSet && currentSet.SetlistSongs) { %>
+                                    <% currentSet.SetlistSongs.forEach(setlistSong=> { %>
+                                        <div class="song-card setlist-song" data-song-id="<%= setlistSong.Song.id %>"
+                                            data-song-time="<%= setlistSong.Song.time || 0 %>">
+                                            <div class="song-title">
+                                                <%= setlistSong.Song.title %>
+                                            </div>
+                                            <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) { %>
+                                                <div class="song-artist">by <%= setlistSong.Song.Artists[0].name %>
+                                                </div>
+                                                <% } %>
+                                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                                        <div>
+                                                            <% if (setlistSong.Song.Vocalist) { %>
+                                                                <span class="song-vocalist">
+                                                                    <%= setlistSong.Song.Vocalist.name %>
+                                                                </span>
+                                                                <% } %>
+                                                                    <% if (setlistSong.Song.key) { %>
+                                                                        <span class="song-key">
+                                                                            <%= setlistSong.Song.key %>
+                                                                        </span>
+                                                                        <% } %>
+                                                        </div>
+                                                        <% if (setlistSong.Song.time) { %>
+                                                            <span class="song-time">
+                                                                <%= Math.floor(setlistSong.Song.time / 60) %>:<%=
+                                                                        (setlistSong.Song.time %
+                                                                        60).toString().padStart(2, '0' ) %>
+                                                            </span>
+                                                            <% } %>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-danger ms-2"
+                                                        onclick="removeSongFromSet(this, '<%= setName %>')">
+                                                        <i class="bi bi-x"></i>
+                                                    </button>
+                                        </div>
+                                        <% }) %>
+                                            <% } %>
+                        </div>
+                    </div>
+                    <% }) %>
+
+                        <!-- Maybe List -->
+                        <div class="col-12">
+                            <div class="set-header maybe-header">
+                                Maybe List
+                                <span class="song-count float-end" data-set="Maybe">(0 songs)</span>
+                            </div>
+                            <div class="drop-zone <%= setlist.SetlistSets.find(s => s.name === 'Maybe' && s.SetlistSongs.length > 0) ? 'has-songs' : '' %>"
+                                data-set-name="Maybe" style="min-height: 150px;">
+                                <% const maybeSet=setlist.SetlistSets.find(s=> s.name === 'Maybe'); %>
+                                    <% if (maybeSet && maybeSet.SetlistSongs) { %>
+                                        <% maybeSet.SetlistSongs.forEach(setlistSong=> { %>
+                                            <div class="song-card setlist-song"
+                                                data-song-id="<%= setlistSong.Song.id %>"
+                                                data-song-time="<%= setlistSong.Song.time || 0 %>">
+                                                <div class="song-title">
+                                                    <%= setlistSong.Song.title %>
+                                                </div>
+                                                <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) {
+                                                    %>
+                                                    <div class="song-artist">by <%= setlistSong.Song.Artists[0].name %>
+                                                    </div>
+                                                    <% } %>
+                                                        <div
+                                                            class="d-flex justify-content-between align-items-center mt-2">
+                                                            <div>
+                                                                <% if (setlistSong.Song.Vocalist) { %>
+                                                                    <span class="song-vocalist">
+                                                                        <%= setlistSong.Song.Vocalist.name %>
+                                                                    </span>
+                                                                    <% } %>
+                                                                        <% if (setlistSong.Song.key) { %>
+                                                                            <span class="song-key">
+                                                                                <%= setlistSong.Song.key %>
+                                                                            </span>
+                                                                            <% } %>
+                                                            </div>
+                                                            <% if (setlistSong.Song.time) { %>
+                                                                <span class="song-time">
+                                                                    <%= Math.floor(setlistSong.Song.time / 60) %>:<%=
+                                                                            (setlistSong.Song.time %
+                                                                            60).toString().padStart(2, '0' ) %>
+                                                                </span>
+                                                                <% } %>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-outline-danger ms-2"
+                                                            onclick="removeSongFromSet(this, 'Maybe')">
+                                                            <i class="bi bi-x"></i>
+                                                        </button>
+                                            </div>
+                                            <% }) %>
+                                                <% } %>
+                            </div>
+                        </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="/js/setlist-editor.js"></script>
+
+<script>
+    // Helper function for remove buttons
+    function removeSongFromSet(button, setName) {
+        const songElement = button.closest('.setlist-song');
+        const songId = songElement.dataset.songId;
+        const dropZone = songElement.parentElement;
+
+        if (setName === 'Maybe') {
+            songElement.remove();
+        } else {
+            const maybeZone = document.querySelector('.drop-zone[data-set-name="Maybe"]');
+            if (maybeZone) {
+                maybeZone.appendChild(songElement);
+                maybeZone.classList.add('has-songs');
+            }
+        }
+
+        if (dropZone.children.length === 0) {
+            dropZone.classList.remove('has-songs');
+        }
+
+        // Trigger auto-save
+        if (window.setlistEditor) {
+            window.setlistEditor.autoSave();
+        }
+    }
+
+    // Initialize set times on load
+    document.addEventListener('DOMContentLoaded', () => {
+        ['Set 1', 'Set 2', 'Set 3', 'Set 4'].forEach(setName => {
+            const dropZone = document.querySelector(`.drop-zone[data-set-name="${setName}"]`);
+            const songs = dropZone.querySelectorAll('.setlist-song');
+            let totalTime = 0;
+
+            songs.forEach(song => {
+                const time = parseInt(song.dataset.songTime) || 0;
+                totalTime += time;
+            });
+
+            const timeDisplay = document.querySelector(`.set-time[data-set="${setName}"]`);
+            if (timeDisplay) {
+                const minutes = Math.floor(totalTime / 60);
+                const seconds = totalTime % 60;
+                timeDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        });
+
+        // Update Maybe count
+        const maybeZone = document.querySelector('.drop-zone[data-set-name="Maybe"]');
+        const maybeCount = maybeZone.querySelectorAll('.setlist-song').length;
+        const countDisplay = document.querySelector('.song-count[data-set="Maybe"]');
+        if (countDisplay) {
+            countDisplay.textContent = `(${maybeCount} songs)`;
+        }
+    });
+</script>

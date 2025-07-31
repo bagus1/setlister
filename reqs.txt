@@ -1,0 +1,70 @@
+Dashboard..  logged in:
+
+It shows a card with a list of bands the user is a part of and a button to create bands.
+
+the Dashboard also shows a card with of most recent songs and a button to add songs. 
+
+The Dashboard also shows a card with the most recent medleys and a button to add medleys. 
+
+The dashboard also shows a card with "artists" listed.
+
+the dashboard also shows a card with username/signout
+
+logged out:
+ a list of bands (unlinked, no create button), a list of songs.. linked, no create, a list of artists, linked.
+
+-- bands --
+
+If they click on a band they go to /bands/x and see a card with a list of setlists created for that band (with edit links) and a buttons to create a songlist or a new setlist. They also see 'invite new member' which has an inline email field and submit button. 
+
+-- songs -- 
+
+there's a /songs index that lists all songs in the system. for now no pagination. 
+
+if they click on a song they go to song/x get to see the song information and a link to edit it and a link to add a new song.
+
+I'd like the song form to have an artist element that autofills from artists in the system already as they type but if they type a new artist thats how artists get added.  (songs with the same title but different artists are different songs. )
+
+The same goes with the vocalist field in terms of auto-fill and new vocalist records, but its not a new song just because it has a different vocalist (that song already exists! Would you like to edit it?)
+
+oh, add one detail (field) to songs not in the .md. Add a time element and with that we'll be able to calculate set length in time. 
+
+in general for song display we want clear color coding for title, vocalist, and key. 
+
+let's not support all the lyrics, chords, tabs and videos stuff right now. leave it out. 
+
+-- artists -- 
+list of all artists at /artists
+Clicking on an artist goes to a list of songs by that artist at /artist/x
+A link to create a song is there to go to /songs/new
+
+-- medleys -- 
+medleys are a list of a few songs combined into one song record. so the new medley form should let the user name the medley and then add multiple songs to it. In the songs list these medleys show up as one song. contatenate the first two words of songs to make up the name of the medley. add the word medley at the end. 
+
+-- band songs --
+/band/x/songs
+a list of all songs with "checkboxes" or as cards with a way to click on a song to add it to or remove it from the band's songs. the band member can check all the songs their band plays and those will be available for use on setlists. 
+
+-- setlists -- 
+
+the setlists should 
+
+
+band/x/setlists
+a list of setlists previously made with edit and finalize buttons, and a new setlist button.
+When a new setlist button is clicked it should automatically create it in the db and take the user to an edit page at /band/x/setlists/y/edit. This should be powered by Socket.io so at this point the one band member can share the link to another band member and they can collaborate. 
+
+The main ux for setlist creation. it should list all band_songs. Let all setlists have 4 sets (setlist_sets) and a "maybe" list. the left side should have all the band songs and the right side has 5 areas where songs can be dragged (one for each set and the 'maybe' area.). There should be a save button at the bottom. When edit is clicked it should rebuild that page.  This shouuld also have a 'finalize setlists' button above the draggable areas on the right. That can save a new setlist as well as take them to:
+
+/band/x/setlists/x/finalize: also powered by socket.io. 
+The finalize setlist button saves the setlist if it hadn't been saved and redisplays it as such: This takes all the songs in the five boxes and puts them onto a page by itself at /band/x/setlists/x/finalized in rows of two sets each. there are only songs in the first set don't print out any other areas. etc.  On this ux, let the user drag and drop songs between sets and reorder them. If they delete a song from a set, first put it in the maybe list (so always show a maybe list). If they delete it from maybe, then remove it completely. 
+the finalize screen should have a save button and a cancel button. Calculations of setlist length should be shown for each set and all sets combined (without maybes)
+
+/band/x/setlists/x/print:
+buttons should lead to this page where there are controls to select different aspects of the song and setlist. By default just the song title should be selected. options for adding artist, vocalist, length, and key to the one-song-per-line text export. 
+
+
+
+
+
+

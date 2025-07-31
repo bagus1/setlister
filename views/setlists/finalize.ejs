@@ -1,0 +1,190 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Finalize Setlist</h1>
+                <h2 class="h4 text-muted">
+                    <%= setlist.title %> - <%= setlist.Band.name %>
+                </h2>
+            </div>
+            <div>
+                <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Editor
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-check-circle"></i> Setlist Review
+                </h5>
+            </div>
+            <div class="card-body">
+                <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
+                    <% setlist.SetlistSets.sort((a, b)=> a.order - b.order).forEach(set => { %>
+                        <% if (set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+                            <div class="set-section mb-4">
+                                <h6 class="text-primary">
+                                    <i class="bi bi-music-note-list"></i>
+                                    <%= set.name %>
+                                        <span class="badge bg-secondary ms-2">
+                                            <%= set.SetlistSongs.length %> songs
+                                        </span>
+                                </h6>
+
+                                <div class="list-group list-group-flush">
+                                    <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) =>
+                                        { %>
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-light text-dark me-2">
+                                                    <%= index + 1 %>
+                                                </span>
+                                                <strong>
+                                                    <%= setlistSong.Song.title %>
+                                                </strong>
+                                                <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) {
+                                                    %>
+                                                    <span class="text-muted">by <%= setlistSong.Song.Artists[0].name %>
+                                                            </span>
+                                                    <% } %>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <% if (setlistSong.Song.Vocalist) { %>
+                                                    <span class="badge bg-info">
+                                                        <%= setlistSong.Song.Vocalist.name %>
+                                                    </span>
+                                                    <% } %>
+                                                        <% if (setlistSong.Song.key) { %>
+                                                            <span class="badge bg-warning text-dark">
+                                                                <%= setlistSong.Song.key %>
+                                                            </span>
+                                                            <% } %>
+                                                                <% if (setlistSong.Song.time) { %>
+                                                                    <span class="text-muted small">
+                                                                        <%= Math.floor(setlistSong.Song.time / 60) %>:
+                                                                            <%= (setlistSong.Song.time %
+                                                                                60).toString().padStart(2, '0' ) %>
+                                                                    </span>
+                                                                    <% } %>
+                                            </div>
+                                        </div>
+                                        <% }) %>
+                                </div>
+                            </div>
+                            <% } %>
+                                <% }) %>
+                                    <% } else { %>
+                                        <div class="text-center py-5">
+                                            <i class="bi bi-music-note text-muted" style="font-size: 3rem;"></i>
+                                            <h4 class="text-muted mt-3">No songs in setlist yet</h4>
+                                            <p class="text-muted">Add some songs to the setlist before finalizing.</p>
+                                            <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
+                                                <i class="bi bi-plus"></i> Add Songs to Setlist
+                                            </a>
+                                        </div>
+                                        <% } %>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-gear"></i> Finalize Options
+                </h6>
+            </div>
+            <div class="card-body">
+                <% if (!setlist.isFinalized) { %>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Not finalized yet</strong><br>
+                        This setlist can still be edited by band members.
+                    </div>
+
+                    <form action="/setlists/<%= setlist.id %>/finalize" method="POST"
+                        onsubmit="return confirm('Are you sure you want to finalize this setlist? Once finalized, it cannot be edited.')">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-lock"></i> Finalize Setlist
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr>
+                    <% } else { %>
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i>
+                            <strong>Finalized!</strong><br>
+                            This setlist is locked and ready for performance.
+                        </div>
+                        <% } %>
+
+                            <div class="d-grid gap-2">
+                                <a href="/setlists/<%= setlist.id %>/print" class="btn btn-outline-primary">
+                                    <i class="bi bi-printer"></i> Print View
+                                </a>
+
+                                <a href="/setlists/<%= setlist.id %>/export" class="btn btn-outline-secondary">
+                                    <i class="bi bi-download"></i> Export as Text
+                                </a>
+
+                                <hr>
+
+                                <a href="/bands/<%= setlist.Band.id %>" class="btn btn-outline-info">
+                                    <i class="bi bi-people"></i> Back to Band
+                                </a>
+                            </div>
+            </div>
+        </div>
+
+        <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-clock"></i> Set Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <% let totalTime=0; let totalSongs=0; setlist.SetlistSets.forEach(set=> {
+                        if (set.SetlistSongs && set.name !== 'Maybe') {
+                        totalSongs += set.SetlistSongs.length;
+                        set.SetlistSongs.forEach(setlistSong => {
+                        if (setlistSong.Song && setlistSong.Song.time) {
+                        totalTime += setlistSong.Song.time;
+                        }
+                        });
+                        }
+                        });
+                        %>
+
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="h4 text-primary">
+                                    <%= totalSongs %>
+                                </div>
+                                <small class="text-muted">Total Songs</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="h4 text-primary">
+                                    <% if (totalTime> 0) { %>
+                                        <%= Math.floor(totalTime / 60) %>:<%= (totalTime %
+                                                60).toString().padStart(2, '0' ) %>
+                                                <% } else { %>
+                                                    --:--
+                                                    <% } %>
+                                </div>
+                                <small class="text-muted">Est. Duration</small>
+                            </div>
+                        </div>
+                </div>
+            </div>
+            <% } %>
+    </div>
+</div>

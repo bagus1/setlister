@@ -1,0 +1,282 @@
+<div class="row">
+    <div class="col-12">
+        <% if (loggedIn) { %>
+            <h1>Welcome back, <%= user.username %>!</h1>
+            <p class="text-muted">Manage your bands, songs, and setlists</p>
+            <% } else { %>
+                <h1>Welcome to Setlist Manager</h1>
+                <p class="text-muted">Collaborative setlist management for bands</p>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Get started:</strong>
+                    <a href="/auth/register" class="alert-link">Create an account</a> to manage your bands and create
+                    setlists!
+                </div>
+                <% } %>
+    </div>
+</div>
+
+<div class="row">
+    <% if (loggedIn) { %>
+        <!-- Bands Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people"></i> My Bands
+                    </h5>
+                    <a href="/bands/new" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus"></i> Create Band
+                    </a>
+                </div>
+                <div class="card-body">
+                    <% if (userBands && userBands.length> 0) { %>
+                        <% userBands.forEach(band=> { %>
+                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                <div>
+                                    <a href="/bands/<%= band.id %>" class="text-decoration-none">
+                                        <strong>
+                                            <%= band.name %>
+                                        </strong>
+                                    </a>
+                                    <% if (band.description) { %>
+                                        <br><small class="text-muted">
+                                            <%= band.description %>
+                                        </small>
+                                        <% } %>
+                                </div>
+                                <small class="text-muted">
+                                    <%= new Date(band.updatedAt).toLocaleDateString() %>
+                                </small>
+                            </div>
+                            <% }) %>
+                                <% } else { %>
+                                    <p class="text-muted">No bands yet. Create your first band to get started!</p>
+                                    <% } %>
+                                        <div class="mt-3">
+                                            <a href="/bands" class="btn btn-outline-primary btn-sm">View All Bands</a>
+                                        </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Songs Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-music-note"></i> Recent Songs
+                    </h5>
+                    <a href="/songs/new" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus"></i> Add Song
+                    </a>
+                </div>
+                <div class="card-body">
+                    <% if (recentSongs && recentSongs.length> 0) { %>
+                        <% recentSongs.forEach(song=> { %>
+                            <div class="song-card">
+                                <div class="song-title">
+                                    <%= song.title %>
+                                </div>
+                                <% if (song.Artists && song.Artists.length> 0) { %>
+                                    <div class="song-artist">by <%= song.Artists[0].name %>
+                                    </div>
+                                    <% } %>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <div>
+                                                <% if (song.Vocalist) { %>
+                                                    <span class="song-vocalist">
+                                                        <%= song.Vocalist.name %>
+                                                    </span>
+                                                    <% } %>
+                                                        <% if (song.key) { %>
+                                                            <span class="song-key">
+                                                                <%= song.key %>
+                                                            </span>
+                                                            <% } %>
+                                            </div>
+                                            <% if (song.time) { %>
+                                                <span class="song-time">
+                                                    <script>document.write(formatTime(<%= song.time %>))</script>
+                                                </span>
+                                                <% } %>
+                                        </div>
+                            </div>
+                            <% }) %>
+                                <% } else { %>
+                                    <p class="text-muted">No songs yet. Add some songs to get started!</p>
+                                    <% } %>
+                                        <div class="mt-3">
+                                            <a href="/songs" class="btn btn-outline-primary btn-sm">View All Songs</a>
+                                        </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Medleys Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-collection"></i> Recent Medleys
+                    </h5>
+                    <a href="/medleys/new" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus"></i> Add Medley
+                    </a>
+                </div>
+                <div class="card-body">
+                    <% if (recentMedleys && recentMedleys.length> 0) { %>
+                        <% recentMedleys.forEach(medley=> { %>
+                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                <div>
+                                    <a href="/medleys/<%= medley.id %>" class="text-decoration-none">
+                                        <strong>
+                                            <%= medley.name %>
+                                        </strong>
+                                    </a>
+                                    <% if (medley.Vocalist) { %>
+                                        <br><small class="song-vocalist">
+                                            <%= medley.Vocalist.name %>
+                                        </small>
+                                        <% } %>
+                                            <% if (medley.key) { %>
+                                                <span class="song-key">
+                                                    <%= medley.key %>
+                                                </span>
+                                                <% } %>
+                                </div>
+                                <small class="text-muted">
+                                    <%= new Date(medley.updatedAt).toLocaleDateString() %>
+                                </small>
+                            </div>
+                            <% }) %>
+                                <% } else { %>
+                                    <p class="text-muted">No medleys yet. Combine songs into medleys!</p>
+                                    <% } %>
+                                        <div class="mt-3">
+                                            <a href="/medleys" class="btn btn-outline-primary btn-sm">View All
+                                                Medleys</a>
+                                        </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Artists Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-circle"></i> Artists
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <% if (artists && artists.length> 0) { %>
+                        <% artists.forEach(artist=> { %>
+                            <div class="py-1">
+                                <a href="/artists/<%= artist.id %>" class="text-decoration-none">
+                                    <%= artist.name %>
+                                </a>
+                            </div>
+                            <% }) %>
+                                <% } else { %>
+                                    <p class="text-muted">No artists yet. Artists are created when you add songs!</p>
+                                    <% } %>
+                                        <div class="mt-3">
+                                            <a href="/artists" class="btn btn-outline-primary btn-sm">View All
+                                                Artists</a>
+                                        </div>
+                </div>
+            </div>
+        </div>
+
+        <% } else { %>
+            <!-- Logged out view -->
+
+            <!-- Bands List (unlinked) -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-people"></i> Bands
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <% if (bands && bands.length> 0) { %>
+                            <% bands.forEach(band=> { %>
+                                <div class="py-1">
+                                    <%= band.name %>
+                                        <% if (band.description) { %>
+                                            <br><small class="text-muted">
+                                                <%= band.description %>
+                                            </small>
+                                            <% } %>
+                                </div>
+                                <% }) %>
+                                    <% } else { %>
+                                        <p class="text-muted">No bands yet.</p>
+                                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Songs List (linked) -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-music-note"></i> Songs
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <% if (songs && songs.length> 0) { %>
+                            <% songs.forEach(song=> { %>
+                                <div class="py-1">
+                                    <a href="/songs/<%= song.id %>" class="text-decoration-none">
+                                        <%= song.title %>
+                                    </a>
+                                    <% if (song.Artists && song.Artists.length> 0) { %>
+                                        <small class="text-muted">by <%= song.Artists[0].name %></small>
+                                        <% } %>
+                                </div>
+                                <% }) %>
+                                    <% } else { %>
+                                        <p class="text-muted">No songs yet.</p>
+                                        <% } %>
+                                            <div class="mt-3">
+                                                <a href="/songs" class="btn btn-outline-primary btn-sm">View All
+                                                    Songs</a>
+                                            </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Artists List (linked) -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person-circle"></i> Artists
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <% if (artists && artists.length> 0) { %>
+                            <% artists.forEach(artist=> { %>
+                                <div class="py-1">
+                                    <a href="/artists/<%= artist.id %>" class="text-decoration-none">
+                                        <%= artist.name %>
+                                    </a>
+                                </div>
+                                <% }) %>
+                                    <% } else { %>
+                                        <p class="text-muted">No artists yet.</p>
+                                        <% } %>
+                                            <div class="mt-3">
+                                                <a href="/artists" class="btn btn-outline-primary btn-sm">View All
+                                                    Artists</a>
+                                            </div>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+</div>

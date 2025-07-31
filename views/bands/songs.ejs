@@ -1,0 +1,165 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <%= band.name %> - Songs
+                </h1>
+                <p class="text-muted">Manage which songs this band plays</p>
+            </div>
+            <div>
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-music-note-list"></i> Song Selection
+                </h5>
+            </div>
+            <div class="card-body">
+                <% if (allSongs && allSongs.length> 0) { %>
+                    <div class="row" id="songsGrid">
+                        <% allSongs.forEach(song=> { %>
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card song-selection-card <%= bandSongIds.includes(song.id) ? 'border-primary bg-light' : '' %>"
+                                    data-song-id="<%= song.id %>">
+                                    <div class="card-body">
+                                        <div class="form-check">
+                                            <input class="form-check-input song-checkbox" type="checkbox"
+                                                id="song_<%= song.id %>" data-song-id="<%= song.id %>"
+                                                <%=bandSongIds.includes(song.id) ? 'checked' : '' %>
+                                            >
+                                            <label class="form-check-label w-100" for="song_<%= song.id %>">
+                                                <div class="song-title">
+                                                    <%= song.title %>
+                                                </div>
+                                                <% if (song.Artists && song.Artists.length> 0) { %>
+                                                    <div class="song-artist">by <%= song.Artists[0].name %>
+                                                    </div>
+                                                    <% } %>
+                                                        <div
+                                                            class="d-flex justify-content-between align-items-center mt-2">
+                                                            <div>
+                                                                <% if (song.Vocalist) { %>
+                                                                    <span class="song-vocalist">
+                                                                        <%= song.Vocalist.name %>
+                                                                    </span>
+                                                                    <% } %>
+                                                                        <% if (song.key) { %>
+                                                                            <span class="song-key">
+                                                                                <%= song.key %>
+                                                                            </span>
+                                                                            <% } %>
+                                                            </div>
+                                                            <% if (song.time) { %>
+                                                                <span class="song-time">
+                                                                    <%= Math.floor(song.time / 60) %>:<%= (song.time %
+                                                                            60).toString().padStart(2, '0' ) %>
+                                                                </span>
+                                                                <% } %>
+                                                        </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }) %>
+                    </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="bi bi-music-note text-muted" style="font-size: 3rem;"></i>
+                            <h4 class="text-muted mt-3">No songs in the system yet</h4>
+                            <p class="text-muted">Add some songs first, then you can assign them to this band.</p>
+                            <a href="/songs/new" class="btn btn-primary">
+                                <i class="bi bi-plus"></i> Add Your First Song
+                            </a>
+                        </div>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .song-selection-card {
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .song-selection-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .song-selection-card.border-primary {
+        border-width: 2px !important;
+    }
+
+    .form-check-input:checked~.form-check-label {
+        color: #0d6efd;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const bandId = <%= band.id %>;
+        const checkboxes = document.querySelectorAll('.song-checkbox');
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', async (e) => {
+                const songId = e.target.dataset.songId;
+                const isChecked = e.target.checked;
+                const card = e.target.closest('.song-selection-card');
+
+                try {
+                    const url = `/bands/${bandId}/songs/${songId}`;
+                    const method = isChecked ? 'POST' : 'DELETE';
+
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (response.ok) {
+                        // Update card appearance
+                        if (isChecked) {
+                            card.classList.add('border-primary', 'bg-light');
+                        } else {
+                            card.classList.remove('border-primary', 'bg-light');
+                        }
+                    } else {
+                        // Revert checkbox state if request failed
+                        e.target.checked = !isChecked;
+                        const data = await response.json();
+                        alert('Error: ' + (data.error || 'Unknown error occurred'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    // Revert checkbox state if request failed
+                    e.target.checked = !isChecked;
+                    alert('Error updating song selection');
+                }
+            });
+        });
+
+        // Make cards clickable
+        document.querySelectorAll('.song-selection-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.type !== 'checkbox') {
+                    const checkbox = card.querySelector('.song-checkbox');
+                    checkbox.click();
+                }
+            });
+        });
+    });
+</script>

@@ -1,0 +1,204 @@
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-music-note"></i> Add New Song
+                </h4>
+            </div>
+            <div class="card-body">
+                <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            <% errors.forEach(error => { %>
+                                <li>
+                                    <%= error.msg %>
+                                </li>
+                                <% }) %>
+                        </ul>
+                    </div>
+                    <% } %>
+
+                        <% if (typeof existingSong !=='undefined' ) { %>
+                            <div class="alert alert-warning">
+                                <strong>Song already exists!</strong>
+                                <a href="/songs/<%= existingSong.id %>" class="alert-link">View existing song</a> or
+                                <a href="/songs/<%= existingSong.id %>/edit" class="alert-link">edit it</a>.
+                            </div>
+                            <% } %>
+
+                                <form action="/songs" method="POST">
+                                    <div class="mb-3">
+                                        <label for="title" class="form-label">Song Title *</label>
+                                        <input type="text" class="form-control" id="title" name="title"
+                                            value="<%= typeof formData !== 'undefined' ? formData.title : '' %>"
+                                            required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="artist" class="form-label">Artist *</label>
+                                        <input type="text" class="form-control" id="artist" name="artist"
+                                            value="<%= typeof formData !== 'undefined' ? formData.artist : '' %>"
+                                            list="artistsList" placeholder="Start typing artist name..." required>
+                                        <datalist id="artistsList">
+                                            <% if (typeof artists !=='undefined' ) { %>
+                                                <% artists.forEach(artist=> { %>
+                                                    <option value="<%= artist.name %>">
+                                                        <% }) %>
+                                                            <% } %>
+                                        </datalist>
+                                        <div class="form-text">Type to search existing artists or enter a new one</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="vocalist" class="form-label">Vocalist (Optional)</label>
+                                        <input type="text" class="form-control" id="vocalist" name="vocalist"
+                                            value="<%= typeof formData !== 'undefined' ? formData.vocalist : '' %>"
+                                            list="vocalistsList" placeholder="Who sings this song?">
+                                        <datalist id="vocalistsList">
+                                            <% if (typeof vocalists !=='undefined' ) { %>
+                                                <% vocalists.forEach(vocalist=> { %>
+                                                    <option value="<%= vocalist.name %>">
+                                                        <% }) %>
+                                                            <% } %>
+                                        </datalist>
+                                        <div class="form-text">Different vocalist for same song? No problem - we'll ask
+                                            if you want to edit the existing song</div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="key" class="form-label">Key (Optional)</label>
+                                                <select class="form-select" id="key" name="key">
+                                                    <option value="">Select key...</option>
+                                                    <optgroup label="Major Keys">
+                                                        <option value="C" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='C' ? 'selected' : '' %>>C</option>
+                                                        <option value="C#" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='C#' ? 'selected' : '' %>>C#</option>
+                                                        <option value="Db" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Db' ? 'selected' : '' %>>Db</option>
+                                                        <option value="D" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='D' ? 'selected' : '' %>>D</option>
+                                                        <option value="D#" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='D#' ? 'selected' : '' %>>D#</option>
+                                                        <option value="Eb" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Eb' ? 'selected' : '' %>>Eb</option>
+                                                        <option value="E" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='E' ? 'selected' : '' %>>E</option>
+                                                        <option value="F" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='F' ? 'selected' : '' %>>F</option>
+                                                        <option value="F#" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='F#' ? 'selected' : '' %>>F#</option>
+                                                        <option value="Gb" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Gb' ? 'selected' : '' %>>Gb</option>
+                                                        <option value="G" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='G' ? 'selected' : '' %>>G</option>
+                                                        <option value="G#" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='G#' ? 'selected' : '' %>>G#</option>
+                                                        <option value="Ab" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Ab' ? 'selected' : '' %>>Ab</option>
+                                                        <option value="A" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='A' ? 'selected' : '' %>>A</option>
+                                                        <option value="A#" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='A#' ? 'selected' : '' %>>A#</option>
+                                                        <option value="Bb" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Bb' ? 'selected' : '' %>>Bb</option>
+                                                        <option value="B" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='B' ? 'selected' : '' %>>B</option>
+                                                    </optgroup>
+                                                    <optgroup label="Minor Keys">
+                                                        <option value="Cm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Cm' ? 'selected' : '' %>>Cm</option>
+                                                        <option value="C#m" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='C#m' ? 'selected' : '' %>>C#m</option>
+                                                        <option value="Dbm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Dbm' ? 'selected' : '' %>>Dbm</option>
+                                                        <option value="Dm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Dm' ? 'selected' : '' %>>Dm</option>
+                                                        <option value="D#m" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='D#m' ? 'selected' : '' %>>D#m</option>
+                                                        <option value="Ebm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Ebm' ? 'selected' : '' %>>Ebm</option>
+                                                        <option value="Em" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Em' ? 'selected' : '' %>>Em</option>
+                                                        <option value="Fm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Fm' ? 'selected' : '' %>>Fm</option>
+                                                        <option value="F#m" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='F#m' ? 'selected' : '' %>>F#m</option>
+                                                        <option value="Gbm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Gbm' ? 'selected' : '' %>>Gbm</option>
+                                                        <option value="Gm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Gm' ? 'selected' : '' %>>Gm</option>
+                                                        <option value="G#m" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='G#m' ? 'selected' : '' %>>G#m</option>
+                                                        <option value="Abm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Abm' ? 'selected' : '' %>>Abm</option>
+                                                        <option value="Am" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Am' ? 'selected' : '' %>>Am</option>
+                                                        <option value="A#m" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='A#m' ? 'selected' : '' %>>A#m</option>
+                                                        <option value="Bbm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Bbm' ? 'selected' : '' %>>Bbm</option>
+                                                        <option value="Bm" <%=typeof formData !=='undefined' &&
+                                                            formData.key==='Bm' ? 'selected' : '' %>>Bm</option>
+                                                    </optgroup>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="time" class="form-label">Duration (Optional)</label>
+                                                <div class="input-group">
+                                                    <input type="number" class="form-control" id="timeMinutes"
+                                                        placeholder="Min" min="0" max="59">
+                                                    <span class="input-group-text">:</span>
+                                                    <input type="number" class="form-control" id="timeSeconds"
+                                                        placeholder="Sec" min="0" max="59">
+                                                    <input type="hidden" id="time" name="time">
+                                                </div>
+                                                <div class="form-text">Used to calculate setlist timing</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between">
+                                        <a href="/songs" class="btn btn-outline-secondary">
+                                            <i class="bi bi-arrow-left"></i> Cancel
+                                        </a>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-plus"></i> Add Song
+                                        </button>
+                                    </div>
+                                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Handle time input conversion
+    document.addEventListener('DOMContentLoaded', () => {
+        const minutesInput = document.getElementById('timeMinutes');
+        const secondsInput = document.getElementById('timeSeconds');
+        const timeInput = document.getElementById('time');
+
+        function updateTimeValue() {
+            const minutes = parseInt(minutesInput.value) || 0;
+            const seconds = parseInt(secondsInput.value) || 0;
+            const totalSeconds = (minutes * 60) + seconds;
+            timeInput.value = totalSeconds > 0 ? totalSeconds : '';
+        }
+
+        minutesInput.addEventListener('input', updateTimeValue);
+        secondsInput.addEventListener('input', updateTimeValue);
+
+  // Initialize if form data exists
+  <% if (typeof formData !== 'undefined' && formData.time) { %>
+    const totalTime = <%= formData.time %>;
+            minutesInput.value = Math.floor(totalTime / 60);
+            secondsInput.value = totalTime % 60;
+  <% } %>
+});
+</script>

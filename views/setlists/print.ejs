@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= setlist.title %> - Print View
+    </title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+        }
+
+        .setlist-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .band-name {
+            font-size: 18px;
+            color: #666;
+            margin: 5px 0 0 0;
+        }
+
+        .set-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+
+        .set-header {
+            background: #f5f5f5;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .song-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .song-item {
+            padding: 6px 12px;
+            border-left: 3px solid #ddd;
+            margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .song-number {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #666;
+            min-width: 20px;
+        }
+
+        .song-details {
+            flex: 1;
+        }
+
+        .song-title {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .song-artist {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .song-info {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .key {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .vocalist {
+            background: #d1ecf1;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .time {
+            font-family: monospace;
+        }
+
+        .set-stats {
+            margin-top: 8px;
+            text-align: right;
+            color: #666;
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 15px;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            .set-section {
+                page-break-inside: avoid;
+            }
+        }
+
+        @page {
+            margin: 0.5in;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="no-print" style="margin-bottom: 20px; text-align: center;">
+        <button onclick="window.print()"
+            style="padding: 10px 20px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            🖨️ Print Setlist
+        </button>
+        <button onclick="window.history.back()"
+            style="padding: 10px 20px; font-size: 16px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+            ← Go Back
+        </button>
+    </div>
+
+    <div class="header">
+        <h1 class="setlist-title">
+            <%= setlist.title %>
+        </h1>
+        <p class="band-name">
+            <%= setlist.Band.name %>
+        </p>
+        <% if (setlist.isFinalized) { %>
+            <p style="margin: 10px 0 0 0; color: #28a745; font-weight: bold;">✓ FINALIZED</p>
+            <% } %>
+    </div>
+
+    <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
+        <% setlist.SetlistSets.sort((a, b)=> a.order - b.order).forEach(set => { %>
+            <% if (set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+                <div class="set-section">
+                    <div class="set-header">
+                        <%= set.name %>
+                            <% let setTime=0; set.SetlistSongs.forEach(setlistSong=> {
+                                if (setlistSong.Song && setlistSong.Song.time) {
+                                setTime += setlistSong.Song.time;
+                                }
+                                });
+                                %>
+                                <% if (setTime> 0) { %>
+                                    - <%= Math.floor(setTime / 60) %>:<%= (setTime % 60).toString().padStart(2, '0' ) %>
+                                            <% } %>
+                    </div>
+
+                    <ul class="song-list">
+                        <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) => { %>
+                            <li class="song-item">
+                                <span class="song-number">
+                                    <%= index + 1 %>.
+                                </span>
+                                <div class="song-details">
+                                    <div class="song-title">
+                                        <%= setlistSong.Song.title %>
+                                    </div>
+                                    <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) { %>
+                                        <div class="song-artist">by <%= setlistSong.Song.Artists[0].name %>
+                                        </div>
+                                        <% } %>
+                                </div>
+                                <div class="song-info">
+                                    <% if (setlistSong.Song.Vocalist) { %>
+                                        <span class="vocalist">
+                                            <%= setlistSong.Song.Vocalist.name %>
+                                        </span>
+                                        <% } %>
+                                            <% if (setlistSong.Song.key) { %>
+                                                <span class="key">
+                                                    <%= setlistSong.Song.key %>
+                                                </span>
+                                                <% } %>
+                                                    <% if (setlistSong.Song.time) { %>
+                                                        <span class="time">
+                                                            <%= Math.floor(setlistSong.Song.time / 60) %>:<%=
+                                                                    (setlistSong.Song.time %
+                                                                    60).toString().padStart(2, '0' ) %>
+                                                        </span>
+                                                        <% } %>
+                                </div>
+                            </li>
+                            <% }) %>
+                    </ul>
+
+                    <div class="set-stats">
+                        <%= set.SetlistSongs.length %> songs
+                            <% if (setTime> 0) { %>
+                                • <%= Math.floor(setTime / 60) %>:<%= (setTime % 60).toString().padStart(2, '0' ) %>
+                                        estimated
+                                        <% } %>
+                    </div>
+                </div>
+                <% } %>
+                    <% }) %>
+                        <% } else { %>
+                            <div style="text-align: center; padding: 50px; color: #666;">
+                                <p>This setlist is empty.</p>
+                            </div>
+                            <% } %>
+
+                                <div class="footer">
+                                    <% let totalSongs=0; let totalTime=0; if (setlist.SetlistSets) {
+                                        setlist.SetlistSets.forEach(set=> {
+                                        if (set.SetlistSongs && set.name !== 'Maybe') {
+                                        totalSongs += set.SetlistSongs.length;
+                                        set.SetlistSongs.forEach(setlistSong => {
+                                        if (setlistSong.Song && setlistSong.Song.time) {
+                                        totalTime += setlistSong.Song.time;
+                                        }
+                                        });
+                                        }
+                                        });
+                                        }
+                                        %>
+                                        <p>
+                                            Total: <%= totalSongs %> songs
+                                                <% if (totalTime> 0) { %>
+                                                    • <%= Math.floor(totalTime / 60) %>:<%= (totalTime %
+                                                            60).toString().padStart(2, '0' ) %> estimated duration
+                                                            <% } %>
+                                        </p>
+                                        <p>Generated on <%= new Date().toLocaleDateString() %>
+                                        </p>
+                                </div>
+</body>
+
+</html>

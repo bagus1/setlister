@@ -1,0 +1,146 @@
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-pencil"></i> Edit Song: <%= song.title %>
+                </h4>
+            </div>
+            <div class="card-body">
+                <% if (typeof errors !=='undefined' && errors.length> 0) { %>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            <% errors.forEach(error=> { %>
+                                <li>
+                                    <%= error.msg %>
+                                </li>
+                                <% }) %>
+                        </ul>
+                    </div>
+                    <% } %>
+
+                        <form action="/songs/<%= song.id %>?_method=PUT" method="POST">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Song Title *</label>
+                                <input type="text" class="form-control" id="title" name="title"
+                                    value="<%= typeof formData !== 'undefined' ? formData.title : song.title %>"
+                                    required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="artist" class="form-label">Artist *</label>
+                                <input type="text" class="form-control" id="artist" name="artist"
+                                    value="<%= typeof formData !== 'undefined' ? formData.artist : (song.Artists && song.Artists.length > 0 ? song.Artists[0].name : '') %>"
+                                    list="artistsList" placeholder="Start typing artist name..." required>
+                                <datalist id="artistsList">
+                                    <% if (typeof artists !=='undefined' ) { %>
+                                        <% artists.forEach(artist=> { %>
+                                            <option value="<%= artist.name %>">
+                                                <% }) %>
+                                                    <% } %>
+                                </datalist>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="vocalist" class="form-label">Vocalist (Optional)</label>
+                                <input type="text" class="form-control" id="vocalist" name="vocalist"
+                                    value="<%= typeof formData !== 'undefined' ? formData.vocalist : (song.Vocalist ? song.Vocalist.name : '') %>"
+                                    list="vocalistsList" placeholder="Who sings this song?">
+                                <datalist id="vocalistsList">
+                                    <% if (typeof vocalists !=='undefined' ) { %>
+                                        <% vocalists.forEach(vocalist=> { %>
+                                            <option value="<%= vocalist.name %>">
+                                                <% }) %>
+                                                    <% } %>
+                                </datalist>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="key" class="form-label">Key (Optional)</label>
+                                        <select class="form-select" id="key" name="key">
+                                            <option value="">Select key...</option>
+                                            <optgroup label="Major Keys">
+                                                <% ['C', 'C#' , 'Db' , 'D' , 'D#' , 'Eb' , 'E' , 'F' , 'F#' , 'Gb' , 'G'
+                                                    , 'G#' , 'Ab' , 'A' , 'A#' , 'Bb' , 'B' ].forEach(k=> { %>
+                                                    <option value="<%= k %>" <%=(typeof formData !=='undefined' ?
+                                                        formData.key : song.key)===k ? 'selected' : '' %>><%= k %>
+                                                    </option>
+                                                    <% }) %>
+                                            </optgroup>
+                                            <optgroup label="Minor Keys">
+                                                <% ['Cm', 'C#m' , 'Dbm' , 'Dm' , 'D#m' , 'Ebm' , 'Em' , 'Fm' , 'F#m'
+                                                    , 'Gbm' , 'Gm' , 'G#m' , 'Abm' , 'Am' , 'A#m' , 'Bbm' , 'Bm'
+                                                    ].forEach(k=> { %>
+                                                    <option value="<%= k %>" <%=(typeof formData !=='undefined' ?
+                                                        formData.key : song.key)===k ? 'selected' : '' %>><%= k %>
+                                                    </option>
+                                                    <% }) %>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="time" class="form-label">Duration (Optional)</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="timeMinutes" placeholder="Min"
+                                                min="0" max="59">
+                                            <span class="input-group-text">:</span>
+                                            <input type="number" class="form-control" id="timeSeconds" placeholder="Sec"
+                                                min="0" max="59">
+                                            <input type="hidden" id="time" name="time">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Update Song
+                                </button>
+                            </div>
+                        </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Handle time input conversion
+    document.addEventListener('DOMContentLoaded', () => {
+        const minutesInput = document.getElementById('timeMinutes');
+        const secondsInput = document.getElementById('timeSeconds');
+        const timeInput = document.getElementById('time');
+
+  // Initialize with existing song time
+  <% if (song.time) { %>
+    const totalTime = <%= song.time %>;
+            minutesInput.value = Math.floor(totalTime / 60);
+            secondsInput.value = totalTime % 60;
+            timeInput.value = totalTime;
+  <% } %>
+
+            function updateTimeValue() {
+                const minutes = parseInt(minutesInput.value) || 0;
+                const seconds = parseInt(secondsInput.value) || 0;
+                const totalSeconds = (minutes * 60) + seconds;
+                timeInput.value = totalSeconds > 0 ? totalSeconds : '';
+            }
+
+        minutesInput.addEventListener('input', updateTimeValue);
+        secondsInput.addEventListener('input', updateTimeValue);
+
+  // Handle form data override if it exists
+  <% if (typeof formData !== 'undefined' && formData.time) { %>
+    const formTime = <%= formData.time %>;
+            minutesInput.value = Math.floor(formTime / 60);
+            secondsInput.value = formTime % 60;
+            timeInput.value = formTime;
+  <% } %>
+});
+</script>

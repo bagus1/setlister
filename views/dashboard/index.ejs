@@ -68,9 +68,14 @@
                     <h5 class="mb-0">
                         <i class="bi bi-music-note"></i> Recent Songs
                     </h5>
-                    <a href="/songs/new" class="btn btn-primary btn-sm">
-                        <i class="bi bi-plus"></i> Add Song
-                    </a>
+                    <div class="btn-group" role="group">
+                        <a href="/songs/new" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus"></i> Add Song
+                        </a>
+                        <a href="/bulk-add-songs" class="btn btn-success btn-sm">
+                            <i class="bi bi-upload"></i> Bulk Add
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     <% if (recentSongs && recentSongs.length> 0) { %>

@@ -7,9 +7,14 @@
             </div>
             <div>
                 <% if (loggedIn) { %>
-                    <a href="/songs/new" class="btn btn-primary">
-                        <i class="bi bi-plus"></i> Add Song
-                    </a>
+                    <div class="btn-group" role="group">
+                        <a href="/songs/new" class="btn btn-primary">
+                            <i class="bi bi-plus"></i> Add Song
+                        </a>
+                        <a href="/bulk-add-songs" class="btn btn-success">
+                            <i class="bi bi-upload"></i> Bulk Add
+                        </a>
+                    </div>
                     <% } %>
             </div>
         </div>

@@ -1,0 +1,244 @@
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-upload"></i>
+                        Bulk Add Songs
+                    </h4>
+                </div>
+                <div class="card-body">
+
+                    <!-- Display Results -->
+                    <% if (typeof results !=='undefined' ) { %>
+                        <div class="mb-4">
+                            <% if (results.added.length> 0) { %>
+                                <div class="alert alert-success">
+                                    <h5><i class="bi bi-check-circle"></i> Successfully Added <%= results.added.length
+                                            %> Songs</h5>
+                                    <ul class="mb-0">
+                                        <% results.added.forEach(title=> { %>
+                                            <li>
+                                                <%= title %>
+                                            </li>
+                                            <% }) %>
+                                    </ul>
+                                </div>
+                                <% } %>
+
+                                    <% if (results.skipped && results.skipped.length> 0) { %>
+                                        <div class="alert alert-warning">
+                                            <h6><i class="bi bi-exclamation-triangle"></i> Duplicates Skipped (<%=
+                                                    results.skipped.length %>)</h6>
+                                            <ul class="mb-0">
+                                                <% results.skipped.forEach(msg=> { %>
+                                                    <li>
+                                                        <%= msg %>
+                                                    </li>
+                                                    <% }) %>
+                                            </ul>
+                                        </div>
+                                        <% } %>
+
+                                            <% if (results.errors && results.errors.length> 0) { %>
+                                                <div class="alert alert-danger">
+                                                    <h6><i class="bi bi-x-circle"></i> Errors (<%= results.errors.length
+                                                            %>)</h6>
+                                                    <ul class="mb-0">
+                                                        <% results.errors.forEach(msg=> { %>
+                                                            <li>
+                                                                <%= msg %>
+                                                            </li>
+                                                            <% }) %>
+                                                    </ul>
+                                                </div>
+                                                <% } %>
+
+                                                    <% if (results.added.length> 0) { %>
+                                                        <div class="mt-3">
+                                                            <a href="/songs" class="btn btn-primary">
+                                                                <i class="bi bi-arrow-left"></i> View All Songs
+                                                            </a>
+                                                            <a href="/bulk-add-songs" class="btn btn-secondary">Add More
+                                                                Songs</a>
+                                                        </div>
+                                                        <% } %>
+                        </div>
+                        <% } %>
+
+                            <!-- Display Errors -->
+                            <% if (typeof errors !=='undefined' && errors.length> 0) { %>
+                                <div class="alert alert-danger mb-4">
+                                    <h6>Please fix the following errors:</h6>
+                                    <ul class="mb-0">
+                                        <% errors.forEach(error=> { %>
+                                            <li>
+                                                <%= error.msg %>
+                                            </li>
+                                            <% }) %>
+                                    </ul>
+                                </div>
+                                <% } %>
+
+                                    <!-- Bulk Add Form -->
+                                    <% if (typeof results==='undefined' || !results || results.added.length===0) { %>
+                                        <form method="POST" action="/bulk-add-songs">
+                                            <!-- Format Selection -->
+                                            <div class="mb-4">
+                                                <label class="form-label fw-bold">Choose Format:</label>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="format"
+                                                                id="text" value="text" <%=(typeof format !=='undefined'
+                                                                && format==='text' ) || typeof format==='undefined'
+                                                                ? 'checked' : '' %>>
+                                                            <label class="form-check-label" for="text">
+                                                                <strong>Simple Text</strong><br>
+                                                                <small class="text-muted">One song title per
+                                                                    line</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="format"
+                                                                id="csv" value="csv" <%=typeof format !=='undefined' &&
+                                                                format==='csv' ? 'checked' : '' %>>
+                                                            <label class="form-check-label" for="csv">
+                                                                <strong>CSV Format</strong><br>
+                                                                <small
+                                                                    class="text-muted">Title,Artist,Vocalist,Key,Time</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Song Data Textarea -->
+                                            <div class="mb-4">
+                                                <label for="data" class="form-label fw-bold">Song Data:</label>
+                                                <textarea class="form-control" id="data" name="data" rows="15"
+                                                    placeholder="Paste your song data here..."
+                                                    required><%= typeof data !== 'undefined' ? data : '' %></textarea>
+                                            </div>
+
+                                            <!-- Submit Button -->
+                                            <div class="d-flex gap-2">
+                                                <button type="submit" class="btn btn-success">
+                                                    <i class="bi bi-upload"></i> Add Songs
+                                                </button>
+                                                <a href="/songs" class="btn btn-secondary">
+                                                    <i class="bi bi-arrow-left"></i> Back to Songs
+                                                </a>
+                                            </div>
+                                        </form>
+                                        <% } %>
+                </div>
+            </div>
+
+            <!-- Format Examples -->
+            <% if (typeof results==='undefined' || !results || results.added.length===0) { %>
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-list"></i> Simple Text Format</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-2"><strong>Example:</strong></p>
+                                <pre class="bg-light p-2 border rounded"><code>Sweet Child O' Mine
+Hotel California  
+Bohemian Rhapsody
+Stairway to Heaven
+Wonderwall</code></pre>
+                                <small class="text-muted">
+                                    ✅ Just paste song titles, one per line<br>
+                                    ✅ Perfect for quick imports<br>
+                                    ✅ You can add artist/key details later
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-table"></i> CSV Format</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-2"><strong>Format:</strong> Title,Artist,Vocalist,Key,Time</p>
+                                <pre class="bg-light p-2 border rounded"><code>Sweet Child O' Mine,Guns N' Roses,Axl Rose,G,5:03
+Hotel California,Eagles,Don Henley,Bm,6:30
+Bohemian Rhapsody,Queen,Freddie Mercury,Bb,5:55
+Stairway to Heaven,Led Zeppelin,Robert Plant,Am,8:02</code></pre>
+                                <small class="text-muted">
+                                    ✅ Complete song information<br>
+                                    ✅ Time format: MM:SS or total seconds<br>
+                                    ✅ Creates artists/vocalists automatically<br>
+                                    ✅ Leave empty fields blank (but keep commas)
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Help -->
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Tips & Notes</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6>🎵 Duplicates</h6>
+                                <p class="small">Songs with the same title will be skipped automatically.</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>🎹 Valid Keys</h6>
+                                <p class="small">C, C#, Db, D, D#, Eb, E, F, F#, Gb, G, G#, Ab, A, A#, Bb, B</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>⏱️ Time Format</h6>
+                                <p class="small">Use MM:SS (like 3:45) or total seconds (like 225).</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <% } %>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const textRadio = document.getElementById('text');
+        const csvRadio = document.getElementById('csv');
+        const dataTextarea = document.getElementById('data');
+
+        // Update placeholder based on format selection
+        function updatePlaceholder() {
+            if (textRadio.checked) {
+                dataTextarea.placeholder = `Enter song titles, one per line:
+
+Sweet Child O' Mine
+Hotel California
+Bohemian Rhapsody
+Stairway to Heaven`;
+            } else {
+                dataTextarea.placeholder = `Enter CSV data:
+
+Title,Artist,Vocalist,Key,Time
+Sweet Child O' Mine,Guns N' Roses,Axl Rose,D,5:03
+Hotel California,Eagles,Don Henley,Bm,6:30
+Bohemian Rhapsody,Queen,Freddie Mercury,Bb,5:55`;
+            }
+        }
+
+        textRadio.addEventListener('change', updatePlaceholder);
+        csvRadio.addEventListener('change', updatePlaceholder);
+
+        // Set initial placeholder
+        updatePlaceholder();
+    });
+</script>

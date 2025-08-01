@@ -1,6 +1,8 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { User, Band, BandMember, Song, BandSong, Setlist, SetlistSet } = require('../models');
+const { User, Band, BandMember, Song, BandSong, Setlist, SetlistSet, BandInvitation } = require('../models');
+const { sendBandInvitation } = require('../utils/emailService');
+const { v4: uuidv4 } = require('uuid');
 const { requireAuth } = require('./auth');
 
 const router = express.Router();
@@ -178,7 +180,7 @@ router.post('/:id/setlists', [
     }
 });
 
-// POST /bands/:id/invite - Invite a user to the band
+// POST /bands/:id/invite - Send email invitation to join the band
 router.post('/:id/invite', [
     body('email').isEmail().withMessage('Please enter a valid email')
 ], async (req, res) => {
@@ -197,35 +199,66 @@ router.post('/:id/invite', [
             return res.redirect(`/bands/${bandId}`);
         }
 
-        // Find user to invite
-        const userToInvite = await User.findOne({ where: { email } });
-        if (!userToInvite) {
-            req.flash('error', 'User with this email not found');
-            return res.redirect(`/bands/${bandId}`);
+        // Get band details
+        const band = await Band.findByPk(bandId);
+        if (!band) {
+            req.flash('error', 'Band not found');
+            return res.redirect('/bands');
         }
 
-        // Check if already a member
-        const existingMembership = await BandMember.findOne({
-            where: { bandId, userId: userToInvite.id }
+        // Check if user is already a member
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            const existingMembership = await BandMember.findOne({
+                where: { bandId, userId: existingUser.id }
+            });
+
+            if (existingMembership) {
+                req.flash('error', 'This person is already a member of the band');
+                return res.redirect(`/bands/${bandId}`);
+            }
+        }
+
+        // Check if there's already a pending invitation
+        const existingInvitation = await BandInvitation.findOne({
+            where: {
+                bandId,
+                email,
+                usedAt: null,
+                expiresAt: { [require('sequelize').Op.gt]: new Date() }
+            }
         });
 
-        if (existingMembership) {
-            req.flash('error', 'User is already a member of this band');
+        if (existingInvitation) {
+            req.flash('error', 'An invitation has already been sent to this email address');
             return res.redirect(`/bands/${bandId}`);
         }
 
-        // Add as member
-        await BandMember.create({
+        // Create invitation
+        const invitation = await BandInvitation.create({
             bandId,
-            userId: userToInvite.id,
-            role: 'member'
+            email,
+            token: uuidv4(),
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            invitedBy: userId
         });
 
-        req.flash('success', `${userToInvite.username} has been invited to the band`);
+        // Get inviter name
+        const inviter = await User.findByPk(userId);
+
+        // Send email
+        const emailSent = await sendBandInvitation(invitation, band, inviter.username);
+
+        if (emailSent) {
+            req.flash('success', `Invitation sent to ${email}! They have 7 days to accept.`);
+        } else {
+            req.flash('error', 'Failed to send invitation email. Please check your email configuration.');
+        }
+
         res.redirect(`/bands/${bandId}`);
     } catch (error) {
         console.error('Invite member error:', error);
-        req.flash('error', 'An error occurred inviting the member');
+        req.flash('error', 'An error occurred sending the invitation');
         res.redirect(`/bands/${req.params.id}`);
     }
 });

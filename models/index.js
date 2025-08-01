@@ -21,6 +21,7 @@ const SetlistSet = require('./SetlistSet')(sequelize);
 const SetlistSong = require('./SetlistSong')(sequelize);
 const Medley = require('./Medley')(sequelize);
 const MedleySong = require('./MedleySong')(sequelize);
+const BandInvitation = require('./BandInvitation');
 
 // Define associations
 // User-Band (many-to-many through BandMember)
@@ -82,5 +83,6 @@ module.exports = {
     SetlistSet,
     SetlistSong,
     Medley,
-    MedleySong
+    MedleySong,
+    BandInvitation
 }; 

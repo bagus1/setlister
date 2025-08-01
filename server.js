@@ -62,6 +62,8 @@ app.use('/songs', songRoutes);
 app.use('/artists', artistRoutes);
 app.use('/medleys', medleyRoutes);
 app.use('/setlists', setlistRoutes);
+app.use('/invite', invitationRoutes);
+app.use('/invite', invitationRoutes);
 
 // Socket.io for real-time collaboration
 io.on('connection', (socket) => {

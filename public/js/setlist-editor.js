@@ -5,6 +5,7 @@ class SetlistEditor {
         this.socket = io();
         this.isDragging = false;
         this.draggedElement = null;
+        this.sortableActive = false;
 
         this.init();
     }
@@ -58,13 +59,10 @@ class SetlistEditor {
 
         element.addEventListener('dragend', (e) => {
             this.isDragging = false;
-            element.classList.remove('dragging');
-            
-            // Force clear any lingering styles
-            element.style.opacity = '';
-            element.style.transform = '';
-            element.style.backgroundColor = '';
-            
+
+            // Comprehensive style cleanup
+            this.clearDragStyles(element);
+
             this.draggedElement = null;
         });
     }
@@ -93,8 +91,31 @@ class SetlistEditor {
     }
 
     handleDrop(dropZone) {
+        // Don't handle if SortableJS is managing the drag
+        if (this.sortableActive) {
+            return;
+        }
+
         const songId = this.draggedElement.dataset.songId;
         const setName = dropZone.dataset.setName;
+
+        // Ensure dragging class is removed
+        this.draggedElement.classList.remove('dragging');
+        this.clearDragStyles(this.draggedElement);
+
+        // Check if this is a reorder within the same set (handled by SortableJS)
+        if (this.draggedElement.classList.contains('setlist-song') &&
+            this.draggedElement.parentElement === dropZone) {
+            // This is a reorder within the same set, let SortableJS handle it
+            return;
+        }
+
+        // Check if song already exists in this set to prevent duplicates
+        const existingSong = dropZone.querySelector(`.setlist-song[data-song-id="${songId}"]`);
+        if (existingSong) {
+            // Song already exists in this set, don't add duplicate
+            return;
+        }
 
         // Clone the song element for the setlist
         const songClone = this.createSetlistSong(this.draggedElement, setName);
@@ -112,6 +133,18 @@ class SetlistEditor {
             setTimeout(() => {
                 this.draggedElement.remove(); // Remove after a short delay
             }, 100);
+        } else if (this.draggedElement.classList.contains('setlist-song')) {
+            // If moving from another set, remove from original location
+            const originalDropZone = this.draggedElement.parentElement;
+            this.draggedElement.remove();
+
+            // Update original set display
+            if (originalDropZone) {
+                this.updateSetDisplay(originalDropZone.dataset.setName);
+                if (originalDropZone.children.length === 0) {
+                    originalDropZone.classList.remove('has-songs');
+                }
+            }
         }
 
         // Update set display
@@ -133,16 +166,54 @@ class SetlistEditor {
         clone.classList.remove('band-song');
         clone.classList.add('setlist-song');
 
-        // Add remove button
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'btn btn-sm btn-outline-danger ms-2';
-        removeBtn.innerHTML = '<i class="bi bi-x"></i>';
-        removeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.removeSongFromSet(clone, setName);
-        });
+        // Get the song title element and modify its structure
+        const titleElement = clone.querySelector('.song-title');
+        if (titleElement) {
+            // Create a container for title and remove button
+            const titleContainer = document.createElement('div');
+            titleContainer.className = 'd-flex align-items-center';
+            titleContainer.style.minHeight = '1.2em';
 
-        clone.appendChild(removeBtn);
+            // Create the title with overflow hidden
+            const titleText = document.createElement('div');
+            titleText.className = 'song-title-text';
+            titleText.style.overflow = 'hidden';
+            titleText.style.textOverflow = 'ellipsis';
+            titleText.style.whiteSpace = 'nowrap';
+            titleText.style.flex = '1';
+            titleText.textContent = titleElement.textContent;
+
+            // Create small remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'btn btn-sm btn-outline-danger ms-2';
+            removeBtn.style.fontSize = '0.7rem';
+            removeBtn.style.padding = '0.1rem 0.3rem';
+            removeBtn.style.lineHeight = '1';
+            removeBtn.innerHTML = '<i class="bi bi-x"></i>';
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.removeSongFromSet(clone, setName);
+            });
+
+            // Assemble the new structure
+            titleContainer.appendChild(titleText);
+            titleContainer.appendChild(removeBtn);
+
+            // Replace the original title element
+            titleElement.parentNode.replaceChild(titleContainer, titleElement);
+        } else {
+            // Fallback if no title element found - add button at the end
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'btn btn-sm btn-outline-danger ms-2';
+            removeBtn.style.fontSize = '0.7rem';
+            removeBtn.style.padding = '0.1rem 0.3rem';
+            removeBtn.innerHTML = '<i class="bi bi-x"></i>';
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.removeSongFromSet(clone, setName);
+            });
+            clone.appendChild(removeBtn);
+        }
 
         return clone;
     }
@@ -208,19 +279,19 @@ class SetlistEditor {
         try {
             const response = await fetch(`/songs/api/${songId}`);
             if (!response.ok) return;
-            
+
             const song = await response.json();
-            
+
             // Create band song element
             const bandSongElement = this.createBandSongElement(song);
-            
+
             // Add to band songs area
             const bandSongsContainer = document.querySelector('.card-body');
             if (bandSongsContainer) {
                 // Insert in alphabetical order
                 const existingSongs = Array.from(bandSongsContainer.querySelectorAll('.band-song'));
                 let insertPosition = existingSongs.length;
-                
+
                 for (let i = 0; i < existingSongs.length; i++) {
                     const existingTitle = existingSongs[i].querySelector('.song-title').textContent.trim();
                     if (song.title.localeCompare(existingTitle) < 0) {
@@ -228,13 +299,13 @@ class SetlistEditor {
                         break;
                     }
                 }
-                
+
                 if (insertPosition < existingSongs.length) {
                     bandSongsContainer.insertBefore(bandSongElement, existingSongs[insertPosition]);
                 } else {
                     bandSongsContainer.appendChild(bandSongElement);
                 }
-                
+
                 // Make it draggable
                 this.makeDraggable(bandSongElement);
             }
@@ -248,29 +319,29 @@ class SetlistEditor {
         songCard.className = 'song-card band-song';
         songCard.setAttribute('data-song-id', song.id);
         songCard.setAttribute('data-song-time', song.time || 0);
-        
+
         let artistHtml = '';
         if (song.Artists && song.Artists.length > 0) {
             artistHtml = `<div class="song-artist">by ${song.Artists[0].name}</div>`;
         }
-        
+
         let vocalistHtml = '';
         if (song.Vocalist) {
             vocalistHtml = `<span class="song-vocalist">${song.Vocalist.name}</span>`;
         }
-        
+
         let keyHtml = '';
         if (song.key) {
             keyHtml = `<span class="song-key">${song.key}</span>`;
         }
-        
+
         let timeHtml = '';
         if (song.time) {
             const minutes = Math.floor(song.time / 60);
             const seconds = (song.time % 60).toString().padStart(2, '0');
             timeHtml = `<span class="song-time">${minutes}:${seconds}</span>`;
         }
-        
+
         songCard.innerHTML = `
             <div class="song-title">${song.title}</div>
             ${artistHtml}
@@ -282,7 +353,7 @@ class SetlistEditor {
                 ${timeHtml}
             </div>
         `;
-        
+
         return songCard;
     }
 
@@ -396,19 +467,70 @@ class SetlistEditor {
             });
         }
 
-        // Reorder within sets
+        // Reorder within sets using SortableJS
         document.querySelectorAll('.drop-zone').forEach(zone => {
             new Sortable(zone, {
-                group: 'setlist',
+                group: {
+                    name: 'setlist-songs',
+                    pull: true,
+                    put: true
+                },
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                filter: '.band-song', // Don't let SortableJS handle band songs
+                preventOnFilter: false, // Allow our custom handler for band songs
+                onStart: (evt) => {
+                    // Disable our custom drag handlers when SortableJS is active
+                    this.sortableActive = true;
+
+                    // Clean up any existing drag styles
+                    this.clearDragStyles(evt.item);
+                },
                 onEnd: (evt) => {
-                    this.updateSetDisplay(zone.dataset.setName);
+                    // Re-enable our custom drag handlers
+                    this.sortableActive = false;
+
+                    // Ensure drag styles are cleaned up
+                    this.clearDragStyles(evt.item);
+
+                    // Clean up any other dragged elements that might be lingering
+                    document.querySelectorAll('.setlist-song, .band-song').forEach(el => {
+                        this.clearDragStyles(el);
+                    });
+
+                    // Update displays for both source and target sets
+                    const fromSet = evt.from.dataset.setName;
+                    const toSet = evt.to.dataset.setName;
+
+                    if (fromSet) {
+                        this.updateSetDisplay(fromSet);
+                        if (evt.from.children.length === 0) {
+                            evt.from.classList.remove('has-songs');
+                        }
+                    }
+
+                    if (toSet && toSet !== fromSet) {
+                        this.updateSetDisplay(toSet);
+                        evt.to.classList.add('has-songs');
+                    }
+
                     this.autoSave();
                 }
             });
         });
+    }
+
+    clearDragStyles(element) {
+        if (element) {
+            element.classList.remove('dragging', 'sortable-ghost', 'sortable-chosen', 'sortable-drag');
+            element.style.opacity = '';
+            element.style.transform = '';
+            element.style.backgroundColor = '';
+            element.style.filter = '';
+            element.style.transition = '';
+        }
     }
 }
 

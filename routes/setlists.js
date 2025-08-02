@@ -12,13 +12,13 @@ router.use(requireAuth);
 router.get('/:id', async (req, res) => {
     try {
         const setlistId = req.params.id;
-        
+
         // Check if user is authenticated
         if (!req.session.user || !req.session.user.id) {
             req.flash('error', 'Please log in to view setlists');
             return res.redirect('/auth/login');
         }
-        
+
         const userId = req.session.user.id;
 
         const setlist = await Setlist.findByPk(setlistId, {
@@ -92,6 +92,12 @@ router.get('/:id/edit', async (req, res) => {
             return res.redirect('/bands');
         }
 
+        // Check if setlist date has passed (no editing after performance date)
+        if (setlist.date && new Date() > new Date(setlist.date)) {
+            req.flash('error', 'This setlist cannot be edited as the performance date has passed');
+            return res.redirect(`/setlists/${setlist.id}/finalize`);
+        }
+
         // Get all band's songs
         const allBandSongs = await Song.findAll({
             include: [
@@ -114,7 +120,7 @@ router.get('/:id/edit', async (req, res) => {
                 attributes: ['songId']
             }]
         });
-        
+
         // Extract used song IDs
         const usedSongIds = [];
         setlistSets.forEach(set => {
@@ -163,13 +169,18 @@ router.post('/:id/save', async (req, res) => {
             return res.status(404).json({ error: 'Setlist not found' });
         }
 
+        // Check if setlist date has passed (no saving after performance date)
+        if (setlist.date && new Date() > new Date(setlist.date)) {
+            return res.status(403).json({ error: 'This setlist cannot be edited as the performance date has passed' });
+        }
+
         // Clear existing setlist songs
         // First get all SetlistSets for this setlist
         const setlistSets = await SetlistSet.findAll({
             where: { setlistId },
             attributes: ['id']
         });
-        
+
         if (setlistSets.length > 0) {
             const setlistSetIds = setlistSets.map(set => set.id);
             await SetlistSong.destroy({
@@ -358,13 +369,13 @@ router.get('/:id/print', async (req, res) => {
 router.get('/:id/export', async (req, res) => {
     try {
         const setlistId = req.params.id;
-        
+
         // Check if user is authenticated
         if (!req.session.user || !req.session.user.id) {
             req.flash('error', 'Please log in to export setlists');
             return res.redirect('/auth/login');
         }
-        
+
         const userId = req.session.user.id;
 
         const setlist = await Setlist.findByPk(setlistId, {

@@ -93,8 +93,16 @@
                                     <% currentSet.SetlistSongs.forEach(setlistSong=> { %>
                                         <div class="song-card setlist-song" data-song-id="<%= setlistSong.Song.id %>"
                                             data-song-time="<%= setlistSong.Song.time || 0 %>">
-                                            <div class="song-title">
-                                                <%= setlistSong.Song.title %>
+                                            <div class="d-flex align-items-center" style="min-height: 1.2em;">
+                                                <div class="song-title-text"
+                                                    style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+                                                    <%= setlistSong.Song.title %>
+                                                </div>
+                                                <button class="btn btn-sm btn-outline-danger ms-2"
+                                                    style="font-size: 0.7rem; padding: 0.1rem 0.3rem; line-height: 1;"
+                                                    onclick="removeSongFromSet(this, '<%= setName %>')">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
                                             </div>
                                             <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) { %>
                                                 <div class="song-artist">by <%= setlistSong.Song.Artists[0].name %>
@@ -121,10 +129,6 @@
                                                             </span>
                                                             <% } %>
                                                     </div>
-                                                    <button class="btn btn-sm btn-outline-danger ms-2"
-                                                        onclick="removeSongFromSet(this, '<%= setName %>')">
-                                                        <i class="bi bi-x"></i>
-                                                    </button>
                                         </div>
                                         <% }) %>
                                             <% } %>
@@ -146,8 +150,16 @@
                                             <div class="song-card setlist-song"
                                                 data-song-id="<%= setlistSong.Song.id %>"
                                                 data-song-time="<%= setlistSong.Song.time || 0 %>">
-                                                <div class="song-title">
-                                                    <%= setlistSong.Song.title %>
+                                                <div class="d-flex align-items-center" style="min-height: 1.2em;">
+                                                    <div class="song-title-text"
+                                                        style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+                                                        <%= setlistSong.Song.title %>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-danger ms-2"
+                                                        style="font-size: 0.7rem; padding: 0.1rem 0.3rem; line-height: 1;"
+                                                        onclick="removeSongFromSet(this, 'Maybe')">
+                                                        <i class="bi bi-x"></i>
+                                                    </button>
                                                 </div>
                                                 <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) {
                                                     %>
@@ -176,10 +188,6 @@
                                                                 </span>
                                                                 <% } %>
                                                         </div>
-                                                        <button class="btn btn-sm btn-outline-danger ms-2"
-                                                            onclick="removeSongFromSet(this, 'Maybe')">
-                                                            <i class="bi bi-x"></i>
-                                                        </button>
                                             </div>
                                             <% }) %>
                                                 <% } %>

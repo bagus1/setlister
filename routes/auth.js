@@ -153,17 +153,32 @@ router.post('/login', [
     }
 });
 
-// POST /auth/logout - Handle logout
-router.post('/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            console.error('Logout error:', err);
-            req.flash('error', 'An error occurred during logout');
-        } else {
-            req.flash('success', 'Logged out successfully');
-        }
+// GET /auth/logout - Handle logout (for links)
+router.get('/logout', (req, res) => {
+    if (req.session) {
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Logout error:', err);
+            }
+            res.redirect('/');
+        });
+    } else {
         res.redirect('/');
-    });
+    }
+});
+
+// POST /auth/logout - Handle logout (for forms)
+router.post('/logout', (req, res) => {
+    if (req.session) {
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Logout error:', err);
+            }
+            res.redirect('/');
+        });
+    } else {
+        res.redirect('/');
+    }
 });
 
 module.exports = { router, requireAuth }; 

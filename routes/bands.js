@@ -115,19 +115,36 @@ router.get('/:id', async (req, res) => {
         });
 
         // Get pending invitations (not used, not expired)
-        const pendingInvitations = await BandInvitation.findAll({
-            where: {
-                bandId,
-                usedAt: null,
-                expiresAt: { [require('sequelize').Op.gt]: new Date() }
-            },
-            include: [{
-                model: User,
-                as: 'Inviter',
-                attributes: ['username']
-            }],
-            order: [['createdAt', 'DESC']]
-        });
+        let pendingInvitations = [];
+        try {
+            console.log(`[${new Date().toISOString()}] Attempting to load pending invitations with association...`);
+            pendingInvitations = await BandInvitation.findAll({
+                where: {
+                    bandId,
+                    usedAt: null,
+                    expiresAt: { [require('sequelize').Op.gt]: new Date() }
+                },
+                include: [{
+                    model: User,
+                    as: 'Inviter',
+                    attributes: ['username']
+                }],
+                order: [['createdAt', 'DESC']]
+            });
+            console.log(`[${new Date().toISOString()}] Successfully loaded ${pendingInvitations.length} pending invitations with association`);
+        } catch (associationError) {
+            console.error(`[${new Date().toISOString()}] Association error, falling back to basic query:`, associationError);
+            // Fallback: get invitations without the association
+            pendingInvitations = await BandInvitation.findAll({
+                where: {
+                    bandId,
+                    usedAt: null,
+                    expiresAt: { [require('sequelize').Op.gt]: new Date() }
+                },
+                order: [['createdAt', 'DESC']]
+            });
+            console.log(`[${new Date().toISOString()}] Fallback query loaded ${pendingInvitations.length} pending invitations`);
+        }
 
         res.render('bands/show', {
             title: band.name,
@@ -387,9 +404,12 @@ router.delete('/:id/songs/:songId', async (req, res) => {
 
 // DELETE /bands/:id/invitations/:invitationId - Delete invitation
 router.delete('/:id/invitations/:invitationId', async (req, res) => {
+    console.log(`[${new Date().toISOString()}] DELETE invitation route hit:`, req.params);
     try {
         const { id: bandId, invitationId } = req.params;
         const userId = req.session.user.id;
+
+        console.log(`[${new Date().toISOString()}] Deleting invitation:`, { bandId, invitationId, userId });
 
         // Check if user is owner of the band
         const membership = await BandMember.findOne({
@@ -397,6 +417,7 @@ router.delete('/:id/invitations/:invitationId', async (req, res) => {
         });
 
         if (!membership) {
+            console.log(`[${new Date().toISOString()}] User ${userId} is not owner of band ${bandId}`);
             return res.status(403).json({ error: 'Only band owners can delete invitations' });
         }
 
@@ -409,9 +430,46 @@ router.delete('/:id/invitations/:invitationId', async (req, res) => {
             }
         });
 
+        console.log(`[${new Date().toISOString()}] Successfully deleted invitation ${invitationId}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('Delete invitation error:', error);
+        console.error(`[${new Date().toISOString()}] Delete invitation error:`, error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// POST /bands/:id/invitations/:invitationId/delete - Workaround for DELETE requests
+router.post('/:id/invitations/:invitationId/delete', async (req, res) => {
+    console.log(`[${new Date().toISOString()}] POST delete invitation route hit:`, req.params);
+    try {
+        const { id: bandId, invitationId } = req.params;
+        const userId = req.session.user.id;
+
+        console.log(`[${new Date().toISOString()}] Deleting invitation via POST:`, { bandId, invitationId, userId });
+
+        // Check if user is owner of the band
+        const membership = await BandMember.findOne({
+            where: { bandId, userId, role: 'owner' }
+        });
+
+        if (!membership) {
+            console.log(`[${new Date().toISOString()}] User ${userId} is not owner of band ${bandId}`);
+            return res.status(403).json({ error: 'Only band owners can delete invitations' });
+        }
+
+        // Delete the invitation
+        await BandInvitation.destroy({
+            where: {
+                id: invitationId,
+                bandId,
+                usedAt: null // Only delete unused invitations
+            }
+        });
+
+        console.log(`[${new Date().toISOString()}] Successfully deleted invitation ${invitationId} via POST`);
+        res.json({ success: true });
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] POST delete invitation error:`, error);
         res.status(500).json({ error: 'Server error' });
     }
 });

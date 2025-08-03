@@ -67,6 +67,20 @@ app.use('/setlists', setlistRoutes);
 app.use('/invite', invitationRoutes);
 app.use('/bulk-add-songs', bulkAddSongsRoutes);
 
+// Test DELETE route
+app.delete('/test-delete', (req, res) => {
+    console.log(`[${new Date().toISOString()}] Test DELETE route hit!`);
+    res.json({ success: true, message: 'Test DELETE route works!' });
+});
+
+// Simple DELETE route following web example pattern
+app.delete('/items/:id', (req, res) => {
+    console.log(`[${new Date().toISOString()}] DELETE items route hit:`, req.params);
+    const itemId = parseInt(req.params.id);
+    console.log(`[${new Date().toISOString()}] Attempting to delete item:`, itemId);
+    res.status(204).send(); // Send a 204 No Content status for successful deletion
+});
+
 // Socket.io for real-time collaboration
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -105,9 +119,10 @@ const PORT = process.env.PORT || 3000;
 
 // Sync database and start server
 db.sequelize.sync().then(() => {
+    console.log(`[${new Date().toISOString()}] Database synced successfully`);
     server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+        console.log(`[${new Date().toISOString()}] Server running on port ${PORT}`);
     });
 }).catch(err => {
-    console.error('Unable to connect to database:', err);
+    console.error(`[${new Date().toISOString()}] Unable to connect to database:`, err);
 }); 

@@ -1,3 +1,55 @@
+<style>
+    .song-selection-card {
+        position: relative;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .song-selection-card.loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .loading-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 24px;
+        height: 24px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    @keyframes spin {
+        0% {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        100% {
+            transform: translate(-50%, -50%) rotate(360deg);
+        }
+    }
+
+    .success-flash {
+        animation: successFlash 0.6s ease-out;
+    }
+
+    @keyframes successFlash {
+        0% {
+            background-color: #d4edda;
+        }
+
+        100% {
+            background-color: transparent;
+        }
+    }
+</style>
+
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -30,7 +82,7 @@
                         <% allSongs.forEach(song=> { %>
                             <div class="col-md-6 col-lg-4 mb-3">
                                 <div class="card song-selection-card <%= bandSongIds.includes(song.id) ? 'border-primary bg-light' : '' %>"
-                                    data-song-id="<%= song.id %>">
+                                    data-song-id="<%= song.id %>" style="cursor: pointer;">
                                     <div class="card-body">
                                         <div class="form-check">
                                             <input class="form-check-input song-checkbox" type="checkbox"
@@ -87,70 +139,151 @@
 </div>
 
 <script>
-    $(document).ready(function () {
+    document.addEventListener('DOMContentLoaded', function () {
         // Handle song selection via clicking on cards (since checkboxes are hidden)
-        $('.song-selection-card').on('click', function () {
-            const songId = $(this).data('song-id');
-            const checkbox = $(this).find('.song-checkbox');
-            const isChecked = checkbox.prop('checked');
-            const bandId = <%= band.id %>;
+        const songCards = document.querySelectorAll('.song-selection-card');
 
-            // Toggle the checkbox state
-            checkbox.prop('checked', !isChecked);
+        songCards.forEach(card => {
+            let isLoading = false; // Prevent rapid clicks during AJAX
 
-            // Update visual state
-            if (!isChecked) {
-                $(this).addClass('border-primary bg-light');
-            } else {
-                $(this).removeClass('border-primary bg-light');
-            }
+            card.addEventListener('click', function () {
+                // Prevent multiple rapid clicks
+                if (isLoading) {
+                    console.log('Card is loading, ignoring click');
+                    return;
+                }
 
-            // Send AJAX request
-            if (!isChecked) {
-                // Add song to band
-                $.post(`/bands/${bandId}/songs/${songId}`, function (data) {
-                    if (data.success) {
-                        console.log('Song added to band');
-                    } else {
-                        // Revert on error
-                        checkbox.prop('checked', false);
-                        $(this).removeClass('border-primary bg-light');
-                        alert('Error adding song to band');
+                const songId = this.dataset.songId;
+                const checkbox = this.querySelector('.song-checkbox');
+                const isChecked = checkbox.checked;
+                const bandId = <%= band.id %>;
+
+                console.log(`BEFORE: Song ${songId}, isChecked: ${isChecked}, checkbox.checked: ${checkbox.checked}`);
+
+                // Set loading state with spinner
+                isLoading = true;
+                this.classList.add('loading');
+
+                // Add spinner
+                const spinner = document.createElement('div');
+                spinner.className = 'loading-spinner';
+                this.appendChild(spinner);
+
+                // Toggle the checkbox state optimistically
+                checkbox.checked = !isChecked;
+                console.log(`AFTER TOGGLE: checkbox.checked: ${checkbox.checked}`);
+
+                // Update visual state optimistically
+                if (!isChecked) {
+                    this.classList.add('border-primary', 'bg-light');
+                } else {
+                    this.classList.remove('border-primary', 'bg-light');
+                }
+
+                // Send AJAX request
+                const operation = !isChecked ? 'add' : 'remove';
+                const method = !isChecked ? 'POST' : 'DELETE';
+
+                console.log(`${operation}ing song ${songId} to/from band ${bandId}`);
+
+                fetch(`/bands/${bandId}/songs/${songId}`, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
                     }
-                }).fail(function () {
-                    // Revert on error
-                    checkbox.prop('checked', false);
-                    $(this).removeClass('border-primary bg-light');
-                    alert('Error adding song to band');
-                });
-            } else {
-                // Remove song from band
-                $.ajax({
-                    url: `/bands/${bandId}/songs/${songId}`,
-                    type: 'DELETE',
-                    success: function (data) {
-                        if (data.success) {
-                            console.log('Song removed from band');
-                        } else {
-                            // Revert on error
-                            checkbox.prop('checked', true);
-                            $(this).addClass('border-primary bg-light');
-                            alert('Error removing song from band');
+                })
+                    .then(response => {
+                        console.log(`Response status: ${response.status}`);
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
-                    },
-                    error: function () {
-                        // Revert on error
-                        checkbox.prop('checked', true);
-                        $(this).addClass('border-primary bg-light');
-                        alert('Error removing song from band');
-                    }
-                });
-            }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            console.log(`Song ${operation}ed successfully`);
+
+                            // SUCCESS: Ensure visual state matches the operation that just succeeded
+                            if (operation === 'add') {
+                                // Song was successfully added - ensure it shows as selected
+                                checkbox.checked = true;
+                                this.classList.add('border-primary', 'bg-light');
+                            } else {
+                                // Song was successfully removed - ensure it shows as unselected  
+                                checkbox.checked = false;
+                                this.classList.remove('border-primary', 'bg-light');
+                            }
+
+                            console.log(`SUCCESS: Final state - checkbox.checked: ${checkbox.checked}`);
+
+                            // Success animation
+                            this.classList.add('success-flash');
+                            setTimeout(() => {
+                                this.classList.remove('success-flash');
+                            }, 600);
+                        } else {
+                            console.error(`Failed to ${operation} song:`, data);
+
+                            // Special case: If song is already in band, sync visual state instead of error
+                            if (data.error === 'Song already in band') {
+                                console.log('Song already in band - syncing visual state');
+                                checkbox.checked = true;
+                                this.classList.add('border-primary', 'bg-light');
+                            } else {
+                                // Revert on actual error
+                                checkbox.checked = isChecked;
+                                if (isChecked) {
+                                    this.classList.add('border-primary', 'bg-light');
+                                } else {
+                                    this.classList.remove('border-primary', 'bg-light');
+                                }
+                                const action = operation === 'add' ? 'adding song to' : 'removing song from';
+                                alert(`Error ${action} band`);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`Network error ${operation}ing song:`, error);
+                        
+                        // Check if it's a 400 "already in band" error
+                        if (error.message.includes('400') && operation === 'add') {
+                            console.log('Network error suggests song already in band - syncing visual state');
+                            checkbox.checked = true;
+                            this.classList.add('border-primary', 'bg-light');
+                        } else {
+                            // Revert on other errors
+                            checkbox.checked = isChecked;
+                            if (isChecked) {
+                                this.classList.add('border-primary', 'bg-light');
+                            } else {
+                                this.classList.remove('border-primary', 'bg-light');
+                            }
+                            const action = operation === 'add' ? 'adding song to' : 'removing song from';
+                            alert(`Error ${action} band (Network Error)`);
+                        }
+                    })
+                    .finally(() => {
+                        // Reset loading state
+                        isLoading = false;
+                        this.classList.remove('loading');
+
+                        // Remove spinner
+                        const currentSpinner = this.querySelector('.loading-spinner');
+                        if (currentSpinner) {
+                            currentSpinner.remove();
+                        }
+
+                        console.log(`${operation} operation completed for song ${songId}`);
+                    });
+            });
         });
 
         // Prevent checkbox clicks from bubbling up
-        $('.song-checkbox').on('click', function (e) {
-            e.stopPropagation();
+        const checkboxes = document.querySelectorAll('.song-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
         });
     });
 </script>

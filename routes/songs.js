@@ -154,7 +154,8 @@ router.get('/:id', async (req, res) => {
 
         res.render('songs/show', {
             title: song.title,
-            song
+            song,
+            loggedIn: !!req.session.user
         });
     } catch (error) {
         console.error('Song show error:', error);

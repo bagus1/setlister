@@ -26,9 +26,9 @@ router.get('/:token', async (req, res) => {
             return res.redirect('/auth/login');
         }
 
-        // Check if user already exists
+        // Check if user already exists (case insensitive)
         const existingUser = await User.findOne({
-            where: { email: invitation.email }
+            where: { email: invitation.email.toLowerCase() }
         });
 
         res.render('invitations/accept', {
@@ -80,7 +80,7 @@ router.post('/:token/accept', [
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             const existingUser = await User.findOne({
-                where: { email: invitation.email }
+                where: { email: invitation.email.toLowerCase() }
             });
             return res.render('invitations/accept', {
                 title: `Join ${invitation.Band.name}`,
@@ -95,11 +95,11 @@ router.post('/:token/accept', [
         let user;
 
         if (action === 'register') {
-            // Check if user already exists
+            // Check if user already exists (case insensitive)
             const existingUser = await User.findOne({
                 where: {
                     [Op.or]: [
-                        { email: invitation.email },
+                        { email: invitation.email.toLowerCase() },
                         { username }
                     ]
                 }
@@ -107,7 +107,7 @@ router.post('/:token/accept', [
 
             if (existingUser) {
                 const existingUserCheck = await User.findOne({
-                    where: { email: invitation.email }
+                    where: { email: invitation.email.toLowerCase() }
                 });
                 return res.render('invitations/accept', {
                     title: `Join ${invitation.Band.name}`,
@@ -119,23 +119,23 @@ router.post('/:token/accept', [
                 });
             }
 
-            // Create new user
+            // Create new user with lowercase email
             const hashedPassword = await bcrypt.hash(password, 12);
             user = await User.create({
                 username,
-                email: invitation.email,
+                email: invitation.email.toLowerCase(),
                 password: hashedPassword
             });
 
         } else if (action === 'login') {
-            // Find existing user and verify password
+            // Find existing user and verify password (case insensitive)
             user = await User.findOne({
-                where: { email: invitation.email }
+                where: { email: invitation.email.toLowerCase() }
             });
 
             if (!user) {
                 const existingUserCheck = await User.findOne({
-                    where: { email: invitation.email }
+                    where: { email: invitation.email.toLowerCase() }
                 });
                 return res.render('invitations/accept', {
                     title: `Join ${invitation.Band.name}`,
@@ -149,7 +149,7 @@ router.post('/:token/accept', [
             const isPasswordValid = await bcrypt.compare(loginPassword, user.password);
             if (!isPasswordValid) {
                 const existingUserCheck = await User.findOne({
-                    where: { email: invitation.email }
+                    where: { email: invitation.email.toLowerCase() }
                 });
                 return res.render('invitations/accept', {
                     title: `Join ${invitation.Band.name}`,

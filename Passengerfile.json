@@ -1,0 +1,11 @@
+{
+    "app_type": "node",
+    "startup_file": "server.js",
+    "environment": "production",
+    "port": 3000,
+    "environment_variables": {
+        "NODE_ENV": "production",
+        "BASE_URL": "https://setlists.bagus.org",
+        "FROM_EMAIL": "noreply@bagus.org"
+    }
+}

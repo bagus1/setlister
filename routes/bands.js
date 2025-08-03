@@ -114,10 +114,26 @@ router.get('/:id', async (req, res) => {
             order: [['updatedAt', 'DESC']]
         });
 
+        // Get pending invitations (not used, not expired)
+        const pendingInvitations = await BandInvitation.findAll({
+            where: {
+                bandId,
+                usedAt: null,
+                expiresAt: { [require('sequelize').Op.gt]: new Date() }
+            },
+            include: [{
+                model: User,
+                as: 'Inviter',
+                attributes: ['username']
+            }],
+            order: [['createdAt', 'DESC']]
+        });
+
         res.render('bands/show', {
             title: band.name,
             band,
             setlists,
+            pendingInvitations,
             userId
         });
     } catch (error) {
@@ -365,6 +381,37 @@ router.delete('/:id/songs/:songId', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Remove band song error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// DELETE /bands/:id/invitations/:invitationId - Delete invitation
+router.delete('/:id/invitations/:invitationId', async (req, res) => {
+    try {
+        const { id: bandId, invitationId } = req.params;
+        const userId = req.session.user.id;
+
+        // Check if user is owner of the band
+        const membership = await BandMember.findOne({
+            where: { bandId, userId, role: 'owner' }
+        });
+
+        if (!membership) {
+            return res.status(403).json({ error: 'Only band owners can delete invitations' });
+        }
+
+        // Delete the invitation
+        await BandInvitation.destroy({
+            where: {
+                id: invitationId,
+                bandId,
+                usedAt: null // Only delete unused invitations
+            }
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete invitation error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });

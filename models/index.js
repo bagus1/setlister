@@ -74,6 +74,10 @@ Song.belongsToMany(Medley, { through: MedleySong, foreignKey: 'songId' });
 BandInvitation.belongsTo(Band, { foreignKey: 'bandId' });
 Band.hasMany(BandInvitation, { foreignKey: 'bandId' });
 
+// BandInvitation-User (for invitedBy field)
+BandInvitation.belongsTo(User, { as: 'Inviter', foreignKey: 'invitedBy' });
+User.hasMany(BandInvitation, { as: 'SentInvitations', foreignKey: 'invitedBy' });
+
 module.exports = {
     sequelize,
     User,

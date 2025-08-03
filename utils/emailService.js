@@ -8,10 +8,14 @@ if (process.env.SENDGRID_API_KEY) {
 const sendBandInvitation = async (invitation, band, inviterName) => {
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
     const invitationUrl = `${baseUrl}/invite/${invitation.token}`;
+    
+    const fromEmail = process.env.FROM_EMAIL || 'noreply@setlistmanager.com';
+    console.log('DEBUG: FROM_EMAIL environment variable:', process.env.FROM_EMAIL);
+    console.log('DEBUG: Using from email:', fromEmail);
 
     const msg = {
         to: invitation.email,
-        from: process.env.FROM_EMAIL || 'noreply@setlistmanager.com',
+        from: fromEmail,
         subject: `🎵 You're invited to join ${band.name}!`,
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

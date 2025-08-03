@@ -80,6 +80,50 @@
         </div>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Handle delete invitation buttons
+            document.querySelectorAll('.delete-invitation').forEach(button => {
+                button.addEventListener('click', function () {
+                    const invitationId = this.getAttribute('data-invitation-id');
+                    const email = this.getAttribute('data-email');
+
+                    if (confirm(`Are you sure you want to delete the invitation to ${email}? This will allow you to send a new invitation.`)) {
+                        fetch(`/bands/<%= band.id %>/invitations/${invitationId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // Remove the invitation item from the DOM
+                                    this.closest('.list-group-item').remove();
+
+                                    // Check if there are any invitations left
+                                    const remainingInvitations = document.querySelectorAll('.delete-invitation');
+                                    if (remainingInvitations.length === 0) {
+                                        // Replace the list with "No pending invitations" message
+                                        const listGroup = document.querySelector('.list-group');
+                                        if (listGroup) {
+                                            listGroup.innerHTML = '<p class="text-muted small">No pending invitations</p>';
+                                        }
+                                    }
+                                } else {
+                                    alert('Error deleting invitation: ' + (data.error || 'Unknown error'));
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Error deleting invitation. Please try again.');
+                            });
+                    }
+                });
+            });
+        });
+    </script>
+
     <!-- Band Members Section -->
     <div class="col-md-4 mb-4">
         <div class="card">
@@ -115,7 +159,45 @@
                                         </button>
                                     </div>
                                 </form>
-                                <% } %>
+
+                                <!-- Pending Invitations -->
+                                <% if (typeof pendingInvitations !=='undefined' && pendingInvitations.length> 0) { %>
+                                    <hr>
+                                    <h6>Pending Invitations</h6>
+                                    <div class="list-group list-group-flush">
+                                        <% pendingInvitations.forEach(invitation=> { %>
+                                            <div
+                                                class="list-group-item d-flex justify-content-between align-items-center py-2 px-0">
+                                                <div>
+                                                    <div class="fw-bold">
+                                                        <%= invitation.email %>
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        Invited by <%= invitation.Inviter ? invitation.Inviter.username
+                                                            : 'Unknown' %>
+                                                            on <%= new Date(invitation.createdAt).toLocaleDateString()
+                                                                %>
+                                                    </small>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        Expires: <%= new Date(invitation.expiresAt).toLocaleDateString()
+                                                            %>
+                                                    </small>
+                                                </div>
+                                                <button class="btn btn-outline-danger btn-sm delete-invitation"
+                                                    data-invitation-id="<%= invitation.id %>"
+                                                    data-email="<%= invitation.email %>">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                            <% }) %>
+                                    </div>
+                                    <% } else if (isOwner) { %>
+                                        <hr>
+                                        <h6>Pending Invitations</h6>
+                                        <p class="text-muted small">No pending invitations</p>
+                                        <% } %>
+                                            <% } %>
             </div>
         </div>
     </div>

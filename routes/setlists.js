@@ -555,6 +555,98 @@ router.post('/:id/export', async (req, res) => {
     }
 });
 
+// GET /setlists/:id/export-csv - Export setlist as CSV (direct download)
+router.get('/:id/export-csv', async (req, res) => {
+    try {
+        const setlistId = req.params.id;
+
+        // Check if user is authenticated
+        if (!req.session.user || !req.session.user.id) {
+            req.flash('error', 'Please log in to export setlists');
+            return res.redirect('/auth/login');
+        }
+
+        const userId = req.session.user.id;
+
+        const setlist = await Setlist.findByPk(setlistId, {
+            include: [
+                {
+                    model: Band,
+                    include: [{
+                        model: User,
+                        where: { id: userId },
+                        through: { attributes: [] }
+                    }]
+                },
+                {
+                    model: SetlistSet,
+                    include: [{
+                        model: SetlistSong,
+                        include: [{
+                            model: Song,
+                            include: ['Artists', 'Vocalist']
+                        }],
+                        order: [['order', 'ASC']]
+                    }],
+                    order: [['order', 'ASC']]
+                }
+            ]
+        });
+
+        if (!setlist) {
+            req.flash('error', 'Setlist not found');
+            return res.redirect('/bands');
+        }
+
+        // Helper function to escape CSV values
+        function escapeCsv(value) {
+            if (value === null || value === undefined) return '';
+            const str = String(value);
+            if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }
+
+        // Generate CSV content
+        let csvContent = 'Set,Order,Title,Artist,Vocalist,Key,Time,BPM\n';
+
+        setlist.SetlistSets.forEach(set => {
+            if (set.SetlistSongs.length > 0) {
+                set.SetlistSongs.forEach((setlistSong, index) => {
+                    const song = setlistSong.Song;
+
+                    const setName = escapeCsv(set.name);
+                    const order = index + 1;
+                    const title = escapeCsv(song.title);
+                    const artist = song.Artists && song.Artists.length > 0 ? escapeCsv(song.Artists[0].name) : '';
+                    const vocalist = song.Vocalist ? escapeCsv(song.Vocalist.name) : '';
+                    const key = song.key ? escapeCsv(song.key) : '';
+
+                    let time = '';
+                    if (song.time) {
+                        const minutes = Math.floor(song.time / 60);
+                        const seconds = song.time % 60;
+                        time = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    }
+
+                    const bpm = song.bpm || '';
+
+                    csvContent += `${setName},${order},${title},${artist},${vocalist},${key},${time},${bpm}\n`;
+                });
+            }
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${setlist.title}.csv"`);
+        res.send(csvContent);
+    } catch (error) {
+        console.error('CSV export setlist error:', error);
+        req.flash('error', 'An error occurred during CSV export');
+        res.redirect('/bands');
+    }
+});
+
 // API endpoint to update setlist via Socket.io
 router.post('/:id/update', async (req, res) => {
     try {

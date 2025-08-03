@@ -79,6 +79,12 @@ A real-time collaborative setlist management system for bands, supporting multip
 - **Format**: One song per line text export
 - **Customizable**: Controls to select which fields to include
 
+#### **CSV Export** (`/setlists/x/export-csv`)
+- **Format**: Comma-separated values file download
+- **Fields**: Set, Order, Title, Artist, Vocalist, Key, Time, BPM
+- **Usage**: Direct download for spreadsheet applications
+- **Data**: Complete song information for each setlist song
+
 ---
 
 ## ✅ **Implementation Status**
@@ -92,7 +98,7 @@ A real-time collaborative setlist management system for bands, supporting multip
 - ✅ **Medley Support** - Multi-song combinations with auto-naming
 - ✅ **Real-time Setlist Collaboration** - Socket.io powered drag-and-drop
 - ✅ **4-Set + Maybe Structure** - Exactly as specified
-- ✅ **Setlist Finalization & Export** - Print views with customizable options
+- ✅ **Setlist Finalization & Export** - Print views with customizable options and CSV export
 - ✅ **Color-coded UI** - Visual distinction for title, vocalist, and key
 - ✅ **Time Calculations** - Set length tracking and total timing
 

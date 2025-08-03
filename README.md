@@ -32,11 +32,18 @@ A real-time collaborative setlist management system for bands. Multiple band mem
    ```
 
 3. **Set up environment variables** (optional)
-   Create a `.env` file for SendGrid email functionality:
+   Create a `.env` file for production configuration:
    ```bash
+   # Required for production
+   NODE_ENV=production
+   SESSION_SECRET=generate-a-very-long-random-secure-string-at-least-a-billion-characters-long
+   FROM_EMAIL=noreply@yourdomain.com
+   BASE_URL=https://yourdomain.com
+   
+   # Optional - for email invitations
    SENDGRID_API_KEY=your_sendgrid_api_key_here
    ```
-   *Note: Email invitations will be disabled if no API key is provided*
+   *Note: Email invitations will be disabled if no SendGrid API key is provided*
 
 ## Database Setup
 
@@ -128,6 +135,7 @@ The application will be available at: **http://localhost:3000**
 ### Finalizing Setlists
 - Review total time and song counts (excluding "Maybe" songs)
 - Use "Copy Titles" to copy set lists to clipboard
+- Export setlist as CSV with song details (Set, Order, Title, Artist, Vocalist, Key, Time, BPM)
 - Print view available for physical setlists
 
 ## Technology Stack

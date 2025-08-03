@@ -89,6 +89,20 @@
                         </p>
                     </div>
                     <div class="col-md-6">
+                        <strong>BPM:</strong>
+                        <p>
+                            <% if (song.bpm) { %>
+                                <i class="bi bi-speedometer"></i>
+                                <%= song.bpm %> beats per minute
+                                    <% } else { %>
+                                        <span class="text-muted">Not specified</span>
+                                        <% } %>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
                         <strong>Added:</strong>
                         <p>
                             <%= new Date(song.createdAt).toLocaleDateString() %>

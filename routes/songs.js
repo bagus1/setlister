@@ -66,11 +66,12 @@ router.post('/', requireAuth, [
     body('vocalistInput').optional(),
     body('key').optional(),
     body('minutes').optional().isInt({ min: 0 }).withMessage('Minutes must be a positive number'),
-    body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59')
+    body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59'),
+    body('bpm').optional().isInt({ min: 40, max: 300 }).withMessage('BPM must be between 40 and 300')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
-        const { title, artistInput, vocalistInput, key, minutes = 0, seconds = 0 } = req.body;
+        const { title, artistInput, vocalistInput, key, minutes = 0, seconds = 0, bpm } = req.body;
 
         // Check for duplicate song
         const existingSong = await Song.findOne({
@@ -119,6 +120,7 @@ router.post('/', requireAuth, [
             title: title.trim(),
             key: key || null,
             time: totalTime || null,
+            bpm: bpm || null,
             vocalistId
         });
 
@@ -204,7 +206,8 @@ router.put('/:id', requireAuth, [
     body('vocalistInput').optional(),
     body('key').optional(),
     body('minutes').optional().isInt({ min: 0 }).withMessage('Minutes must be a positive number'),
-    body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59')
+    body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59'),
+    body('bpm').optional().isInt({ min: 40, max: 300 }).withMessage('BPM must be between 40 and 300')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -237,7 +240,7 @@ router.put('/:id', requireAuth, [
             return res.redirect('/songs');
         }
 
-        const { title, artistInput, vocalistInput, key, minutes = 0, seconds = 0 } = req.body;
+        const { title, artistInput, vocalistInput, key, minutes = 0, seconds = 0, bpm } = req.body;
 
         // Calculate total time in seconds
         const totalTime = (parseInt(minutes) * 60) + parseInt(seconds);
@@ -257,6 +260,7 @@ router.put('/:id', requireAuth, [
             title: title.trim(),
             key: key || null,
             time: totalTime || null,
+            bpm: bpm || null,
             vocalistId
         });
 

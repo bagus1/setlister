@@ -163,6 +163,18 @@
                                         </div>
                                     </div>
 
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="bpm" class="form-label">BPM (Optional)</label>
+                                                <input type="number" class="form-control" id="bpm" name="bpm"
+                                                    value="<%= typeof formData !== 'undefined' ? formData.bpm || '' : '' %>"
+                                                    placeholder="Beats per minute" min="40" max="300">
+                                                <div class="form-text">Typical range: 60-180 BPM</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="d-flex justify-content-between">
                                         <a href="/songs" class="btn btn-outline-secondary">
                                             <i class="bi bi-arrow-left"></i> Cancel

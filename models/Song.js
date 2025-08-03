@@ -26,6 +26,13 @@ module.exports = (sequelize) => {
                 min: 0
             }
         },
+        bpm: {
+            type: DataTypes.INTEGER, // Beats per minute
+            validate: {
+                min: 40,
+                max: 300
+            }
+        },
         vocalistId: {
             type: DataTypes.INTEGER,
             references: {

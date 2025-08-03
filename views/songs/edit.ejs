@@ -81,6 +81,14 @@
                                             enter manually.</div>
                             </div>
 
+                            <div class="mb-3">
+                                <label for="bpm" class="form-label">BPM (Beats Per Minute)</label>
+                                <input type="number" class="form-control" id="bpm" name="bpm"
+                                    value="<%= song.bpm || '' %>" placeholder="Beats per minute" min="40" max="300">
+                                <div class="form-text">Optional: Tempo in beats per minute. Typical range: 60-180 BPM.
+                                </div>
+                            </div>
+
                             <div class="d-flex justify-content-between">
                                 <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
                                     <i class="bi bi-arrow-left"></i> Cancel

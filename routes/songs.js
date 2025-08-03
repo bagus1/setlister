@@ -67,11 +67,22 @@ router.post('/', requireAuth, [
     body('key').optional(),
     body('minutes').optional().isInt({ min: 0 }).withMessage('Minutes must be a positive number'),
     body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59'),
-    body('bpm').optional().isInt({ min: 40, max: 300 }).withMessage('BPM must be between 40 and 300')
+    body('bpm').optional().custom((value) => {
+        if (value === '' || value == null || value === undefined) {
+            return true; // Allow empty values
+        }
+        const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 40 || numValue > 300) {
+            throw new Error('BPM must be between 40 and 300');
+        }
+        return true;
+    })
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
         const { title, artist, vocalist, key, minutes = 0, seconds = 0, bpm } = req.body;
+
+        console.log('Song creation data:', { title, artist, vocalist, key, minutes, seconds, bpm });
 
         // Check for duplicate song
         const existingSong = await Song.findOne({
@@ -84,6 +95,9 @@ router.post('/', requireAuth, [
             null;
 
         if (!errors.isEmpty() || duplicateWarning) {
+            console.log('Validation errors:', errors.array());
+            console.log('Duplicate warning:', duplicateWarning);
+
             const artists = await Artist.findAll({
                 order: [['name', 'ASC']]
             });
@@ -108,29 +122,40 @@ router.post('/', requireAuth, [
         // Handle vocalist
         let vocalistId = null;
         if (vocalist && vocalist.trim()) {
+            console.log('Creating/finding vocalist:', vocalist);
             const [vocalistRecord] = await Vocalist.findOrCreate({
                 where: { name: vocalist.trim() },
                 defaults: { name: vocalist.trim() }
             });
             vocalistId = vocalistRecord.id;
+            console.log('Vocalist ID:', vocalistId);
         }
+
+        // Convert BPM to proper value
+        const bpmValue = bpm && bpm.trim() ? parseInt(bpm) : null;
+        console.log('BPM value:', bpmValue);
 
         // Create song
         const song = await Song.create({
             title: title.trim(),
             key: key || null,
             time: totalTime || null,
-            bpm: bpm || null,
+            bpm: bpmValue,
             vocalistId
         });
 
+        console.log('Song created:', song.id);
+
         // Handle artist
         if (artist && artist.trim()) {
+            console.log('Creating/finding artist:', artist);
             const [artistRecord] = await Artist.findOrCreate({
                 where: { name: artist.trim() },
                 defaults: { name: artist.trim() }
             });
+            console.log('Artist record:', artistRecord.id, artistRecord.name);
             await song.addArtist(artistRecord);
+            console.log('Artist added to song');
         }
 
         req.flash('success', 'Song added successfully');

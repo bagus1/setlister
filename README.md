@@ -1,143 +1,218 @@
-# Setlist Manager - Multi-User Band Management System
+# Setlist Manager
 
-## 🎵 **COMPLETE & RUNNING!** 🎵
+A real-time collaborative setlist management system for bands. Multiple band members can simultaneously edit setlists with live drag-and-drop updates via Socket.io.
 
-A real-time collaborative setlist management system for bands, supporting multiple users working on the same setlist simultaneously with live drag-and-drop updates.
+## Features
 
-## ✅ **What's Been Built**
+- **User Authentication** - Register/login with session management
+- **Band Management** - Create bands, invite members via email
+- **Song Database** - Add songs with artist, vocalist, key, duration, and BPM
+- **Real-time Collaboration** - Live setlist editing with Socket.io
+- **Drag & Drop Interface** - Intuitive setlist creation with 4 sets + "Maybe" list
+- **Export & Print** - Finalize setlists with export options
+- **Bulk Song Import** - Add multiple songs via text or CSV format
 
-This is a **fully functional Express application** with all core features implemented:
+## Prerequisites
 
-### 🚀 **Core Features Completed**
-- ✅ **Authentication System** - Login/Register with sessions
-- ✅ **Dashboard** - Different views for logged in/out users with cards for bands, songs, medleys, artists
-- ✅ **Band Management** - Create bands, invite members, manage songs
-- ✅ **Song Management** - Add songs with artist/vocalist auto-fill, time tracking, key support
-- ✅ **Artist Management** - Auto-created when adding songs, linked to song lists
-- ✅ **Medley Support** - Combine multiple songs into medleys with auto-naming
-- ✅ **Real-time Setlist Collaboration** - Socket.io powered drag-and-drop editing
-- ✅ **4-Set + Maybe List Structure** - Exactly as specified in requirements
-- ✅ **Setlist Finalization & Export** - Print views with customizable export options
-- ✅ **Color-coded UI** - Title, vocalist, and key color coding
-- ✅ **Time Calculations** - Set length tracking and total setlist timing
+- **Node.js** (version 14 or higher)
+- **npm** (comes with Node.js)
+- **Git** (for cloning the repository)
 
-### 🎯 **Key Requirements Implemented**
-- **Logged In Dashboard**: Cards for bands, songs, medleys, artists with create buttons
-- **Logged Out Dashboard**: Unlinked bands, linked songs/artists (as specified)
-- **Band Song Management**: Checkbox/card interface to select band's songs
-- **Setlist Creation**: Auto-creates with 4 sets + maybe, Socket.io collaboration
-- **Drag & Drop**: Full drag-drop between sets with real-time updates
-- **Finalize View**: Row layout, set reordering, time calculations
-- **Print/Export**: Configurable export with song details
+## Installation
 
-## 🛠 **Technology Stack**
-- **Backend**: Node.js + Express
-- **Database**: SQLite with Sequelize ORM
-- **Frontend**: EJS templates with Bootstrap 5
-- **Real-time**: Socket.io for collaboration
-- **Styling**: Bootstrap + custom CSS for song cards and drag-drop
-- **JavaScript**: Vanilla JS with SortableJS for drag-drop functionality
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/bagus1/setlister.git
+   cd setlister
+   ```
 
-## 🚀 **Getting Started**
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Prerequisites
-- Node.js (v14 or higher)
-- npm
+3. **Set up environment variables** (optional)
+   Create a `.env` file for SendGrid email functionality:
+   ```bash
+   SENDGRID_API_KEY=your_sendgrid_api_key_here
+   ```
+   *Note: Email invitations will be disabled if no API key is provided*
 
-### Installation & Running
+## Database Setup
+
+The application uses SQLite with Sequelize ORM. The database will be automatically created when you first run the application.
+
+### First Run - Database Creation
+
+When you start the application for the first time:
+
+1. **Sequelize will automatically create** `database.sqlite` in the project root
+2. **All tables will be created** with proper schema and relationships
+3. **No manual SQL commands needed** - everything is handled by the ORM
+
+### Database Schema
+
+The following tables will be created automatically:
+- `users` - User accounts and authentication
+- `bands` - Band information
+- `band_members` - User-band relationships  
+- `songs` - Song database with title, key, time, BPM, etc.
+- `artists` & `vocalists` - Auto-created from song entries
+- `band_songs` - Songs associated with each band
+- `setlists` - Setlist metadata
+- `setlist_sets` - Set organization (Set 1, Set 2, Set 3, Set 4, Maybe)
+- `setlist_songs` - Songs within sets with ordering
+- `medleys` - Song combinations
+- `band_invitations` - Email invitation system
+
+### Resetting the Database
+
+To start with a fresh database:
 ```bash
-# Dependencies are already installed!
-# Server is currently running on http://localhost:3000
+# Stop the server first
+pkill -f "node server.js"
 
-# To restart if needed:
+# Remove the existing database
+rm database.sqlite
+
+# Restart - a new database will be created automatically
 npm start
+```
 
-# For development with auto-reload:
+## Running the Application
+
+### Development Mode
+```bash
 npm run dev
 ```
 
-### First Steps
-1. **Visit** http://localhost:3000
-2. **Register** a new account 
-3. **Create** your first band
-4. **Add** some songs to the system
-5. **Manage** your band's song list
-6. **Create** a setlist and start dragging songs!
-
-## 📊 **Database Schema**
-
-The SQLite database includes these tables:
-- `users` - User accounts with authentication
-- `bands` - Band information with creator tracking
-- `band_members` - User-band relationships with roles
-- `songs` - Master song database with time/key fields
-- `artists` & `vocalists` - Auto-created from song entries
-- `band_songs` - Which songs each band plays
-- `setlists` - Setlist metadata with finalization status
-- `setlist_sets` - The 4 sets + maybe list structure
-- `setlist_songs` - Songs within each set with ordering
-- `medleys` & `medley_songs` - Multi-song combinations
-
-## 🎭 **Usage Workflows**
-
-### Creating Your First Setlist
-1. Register/Login → Dashboard
-2. Create Band → Add Members (optional)
-3. Manage Band Songs → Check songs your band plays
-4. Create New Setlist → Drag songs to sets
-5. Finalize → Review and export
-
-### Real-time Collaboration
-1. Multiple band members open same setlist edit page
-2. Changes sync instantly via Socket.io
-3. See live updates as others drag songs around
-4. Auto-save ensures no work is lost
-
-### Song Management
-- **Auto-fill Artists**: Type to search or create new
-- **Vocalist Handling**: Same song, different vocalist = update existing
-- **Time Tracking**: Enter duration for set time calculations
-- **Key Support**: Full major/minor key selection
-
-## 🔧 **File Structure**
-```
-again/
-├── server.js              # Main Express server
-├── package.json           # Dependencies
-├── models/                # Sequelize models
-│   ├── index.js           # Database connection & associations
-│   ├── User.js            # User authentication
-│   ├── Band.js            # Band management
-│   ├── Song.js            # Song data with time/key
-│   └── ...               # All other models
-├── routes/                # Express route handlers
-│   ├── auth.js           # Login/register
-│   ├── dashboard.js      # Home page logic
-│   ├── bands.js          # Band & setlist management
-│   ├── songs.js          # Song CRUD with auto-fill
-│   └── ...              # Other route files
-├── views/                # EJS templates
-│   ├── layout.ejs        # Main layout with Bootstrap
-│   ├── dashboard/        # Dashboard views
-│   ├── auth/             # Login/register forms
-│   ├── bands/            # Band management pages
-│   ├── songs/            # Song forms and lists
-│   └── setlists/         # Setlist editor & export
-└── public/
-    └── js/
-        └── setlist-editor.js  # Drag-drop & Socket.io logic
+### Production Mode  
+```bash
+npm start
 ```
 
-## 🎯 **What Makes This Special**
+The application will be available at: **http://localhost:3000**
 
-1. **Follows Requirements Exactly**: Built precisely to reqs.txt specifications
-2. **Real-time Collaboration**: Actually works with Socket.io
-3. **Professional UI**: Bootstrap + custom styling for music workflows
-4. **Complete Feature Set**: Nothing missing from requirements
-5. **Production Ready**: Error handling, validation, secure sessions
+## First Time Setup
 
-## 🚀 **Ready to Use!**
+1. **Access the application** at http://localhost:3000
+2. **Register** a new user account
+3. **Create your first band**
+4. **Add some songs** to the system
+5. **Manage your band's repertoire** by selecting songs
+6. **Create a setlist** and start organizing with drag & drop
 
-The application is **completely functional** and ready for bands to start managing their setlists. All core features from the requirements are implemented and working.
+## Usage
 
-**Server Status**: ✅ Running on http://localhost:3000 
+### Adding Songs
+- Use the "Add New Song" form with artist and vocalist auto-complete
+- Optionally add key, duration (minutes:seconds), and BPM
+- Use "Bulk Add Songs" for importing multiple songs at once
+
+### Managing Band Songs
+- Go to "Manage Songs" for your band
+- Click song cards to add/remove them from your band's repertoire
+- Visual feedback shows selected songs with borders
+
+### Creating Setlists
+- Create a new setlist from your band dashboard
+- Drag songs from "Band Songs" into Set 1, Set 2, Set 3, Set 4, or Maybe
+- Changes sync in real-time with other band members
+- Reorder songs within sets by dragging
+
+### Collaboration
+- Multiple band members can edit the same setlist simultaneously
+- All changes appear instantly via Socket.io
+- No need to refresh or coordinate - just start editing
+
+### Finalizing Setlists
+- Review total time and song counts (excluding "Maybe" songs)
+- Use "Copy Titles" to copy set lists to clipboard
+- Print view available for physical setlists
+
+## Technology Stack
+
+- **Backend**: Node.js, Express.js
+- **Database**: SQLite with Sequelize ORM
+- **Frontend**: EJS templates, Bootstrap 5
+- **Real-time**: Socket.io
+- **Authentication**: express-session, bcryptjs
+- **Email**: SendGrid (optional)
+- **File Upload**: Multer (for bulk imports)
+
+## File Structure
+
+```
+setlister/
+├── server.js                 # Main application server
+├── package.json              # Dependencies and scripts
+├── models/                   # Sequelize database models
+│   ├── index.js             # Database connection & associations
+│   ├── User.js              # User authentication model
+│   ├── Band.js              # Band model
+│   ├── Song.js              # Song model with BPM field
+│   └── ...                  # Other models
+├── routes/                   # Express route handlers  
+│   ├── auth.js              # Authentication routes
+│   ├── dashboard.js         # Dashboard routes
+│   ├── bands.js             # Band management
+│   ├── songs.js             # Song CRUD operations
+│   ├── setlists.js          # Setlist management
+│   └── ...                  # Other route files
+├── views/                    # EJS templates
+│   ├── layout.ejs           # Main layout template
+│   ├── dashboard/           # Dashboard views
+│   ├── auth/                # Login/register forms
+│   ├── bands/               # Band management pages
+│   ├── songs/               # Song forms and lists
+│   └── setlists/            # Setlist editor and export
+├── public/                   # Static assets
+│   └── js/
+│       └── setlist-editor.js # Client-side drag & drop
+└── utils/                    # Utility functions
+    └── emailService.js       # SendGrid email integration
+```
+
+## Troubleshooting
+
+### Port Already in Use
+If port 3000 is busy, kill existing processes:
+```bash
+pkill -f "node server.js"
+```
+
+### Database Connection Issues
+If you encounter database connection errors:
+1. Ensure the project directory is writable
+2. Try deleting `database.sqlite` and restarting (creates fresh database)
+3. Check that no other processes are using the database file
+
+## Development
+
+### Adding New Features
+1. Create/modify Sequelize models in `models/`
+2. Add routes in appropriate files under `routes/`
+3. Create EJS templates in `views/`
+4. Update client-side JavaScript if needed
+
+### Database Changes
+For schema changes, either:
+- Delete `database.sqlite` to recreate (loses data)
+- Manually alter tables with SQL commands
+- Use Sequelize migrations (not currently configured)
+
+## License
+
+This project is open source and available under the MIT License.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## Support
+
+For issues or questions, please create an issue on the GitHub repository. 

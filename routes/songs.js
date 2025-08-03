@@ -62,8 +62,8 @@ router.get('/new', requireAuth, async (req, res) => {
 // POST /songs - Create new song
 router.post('/', requireAuth, [
     body('title').notEmpty().withMessage('Song title is required'),
-    body('artistInput').optional(),
-    body('vocalistInput').optional(),
+    body('artist').optional(),
+    body('vocalist').optional(),
     body('key').optional(),
     body('minutes').optional().isInt({ min: 0 }).withMessage('Minutes must be a positive number'),
     body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59'),
@@ -71,7 +71,7 @@ router.post('/', requireAuth, [
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
-        const { title, artistInput, vocalistInput, key, minutes = 0, seconds = 0, bpm } = req.body;
+        const { title, artist, vocalist, key, minutes = 0, seconds = 0, bpm } = req.body;
 
         // Check for duplicate song
         const existingSong = await Song.findOne({
@@ -107,12 +107,12 @@ router.post('/', requireAuth, [
 
         // Handle vocalist
         let vocalistId = null;
-        if (vocalistInput && vocalistInput.trim()) {
-            const [vocalist] = await Vocalist.findOrCreate({
-                where: { name: vocalistInput.trim() },
-                defaults: { name: vocalistInput.trim() }
+        if (vocalist && vocalist.trim()) {
+            const [vocalistRecord] = await Vocalist.findOrCreate({
+                where: { name: vocalist.trim() },
+                defaults: { name: vocalist.trim() }
             });
-            vocalistId = vocalist.id;
+            vocalistId = vocalistRecord.id;
         }
 
         // Create song
@@ -125,12 +125,12 @@ router.post('/', requireAuth, [
         });
 
         // Handle artist
-        if (artistInput && artistInput.trim()) {
-            const [artist] = await Artist.findOrCreate({
-                where: { name: artistInput.trim() },
-                defaults: { name: artistInput.trim() }
+        if (artist && artist.trim()) {
+            const [artistRecord] = await Artist.findOrCreate({
+                where: { name: artist.trim() },
+                defaults: { name: artist.trim() }
             });
-            await song.addArtist(artist);
+            await song.addArtist(artistRecord);
         }
 
         req.flash('success', 'Song added successfully');
@@ -202,8 +202,8 @@ router.get('/:id/edit', requireAuth, async (req, res) => {
 // PUT /songs/:id - Update song
 router.put('/:id', requireAuth, [
     body('title').notEmpty().withMessage('Song title is required'),
-    body('artistInput').optional(),
-    body('vocalistInput').optional(),
+    body('artistId').optional(),
+    body('vocalistId').optional(),
     body('key').optional(),
     body('minutes').optional().isInt({ min: 0 }).withMessage('Minutes must be a positive number'),
     body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59'),
@@ -240,20 +240,10 @@ router.put('/:id', requireAuth, [
             return res.redirect('/songs');
         }
 
-        const { title, artistInput, vocalistInput, key, minutes = 0, seconds = 0, bpm } = req.body;
+        const { title, artistId, vocalistId, key, minutes = 0, seconds = 0, bpm } = req.body;
 
         // Calculate total time in seconds
         const totalTime = (parseInt(minutes) * 60) + parseInt(seconds);
-
-        // Handle vocalist
-        let vocalistId = null;
-        if (vocalistInput && vocalistInput.trim()) {
-            const [vocalist] = await Vocalist.findOrCreate({
-                where: { name: vocalistInput.trim() },
-                defaults: { name: vocalistInput.trim() }
-            });
-            vocalistId = vocalist.id;
-        }
 
         // Update song
         await song.update({
@@ -261,17 +251,16 @@ router.put('/:id', requireAuth, [
             key: key || null,
             time: totalTime || null,
             bpm: bpm || null,
-            vocalistId
+            vocalistId: vocalistId || null
         });
 
         // Handle artist
         await song.setArtists([]); // Clear existing associations
-        if (artistInput && artistInput.trim()) {
-            const [artist] = await Artist.findOrCreate({
-                where: { name: artistInput.trim() },
-                defaults: { name: artistInput.trim() }
-            });
-            await song.addArtist(artist);
+        if (artistId) {
+            const artist = await Artist.findByPk(artistId);
+            if (artist) {
+                await song.addArtist(artist);
+            }
         }
 
         req.flash('success', 'Song updated successfully');

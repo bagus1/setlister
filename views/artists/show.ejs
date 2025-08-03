@@ -1,0 +1,99 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="bi bi-person-circle"></i>
+                    <%= artist.name %>
+                </h1>
+                <p class="text-muted">Artist profile and songs</p>
+            </div>
+            <div>
+                <a href="/artists" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Artists
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-music-note"></i> Songs by <%= artist.name %>
+                </h5>
+            </div>
+            <div class="card-body">
+                <% if (artist.Songs && artist.Songs.length> 0) { %>
+                    <div class="row">
+                        <% artist.Songs.forEach(song=> { %>
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card song-card">
+                                    <div class="card-body">
+                                        <h6 class="card-title mb-2">
+                                            <a href="/songs/<%= song.id %>" class="text-decoration-none">
+                                                <%= song.title %>
+                                            </a>
+                                        </h6>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <% if (song.Vocalist) { %>
+                                                    <span class="badge bg-secondary me-1">
+                                                        <i class="bi bi-mic"></i>
+                                                        <%= song.Vocalist.name %>
+                                                    </span>
+                                                    <% } %>
+                                                        <% if (song.key) { %>
+                                                            <span class="badge bg-primary me-1">
+                                                                Key: <%= song.key %>
+                                                            </span>
+                                                            <% } %>
+                                                                <% if (song.bpm) { %>
+                                                                    <span class="badge bg-warning text-dark">
+                                                                        <i class="bi bi-speedometer"></i>
+                                                                        <%= song.bpm %> BPM
+                                                                    </span>
+                                                                    <% } %>
+                                            </div>
+                                            <% if (song.time) { %>
+                                                <small class="text-muted">
+                                                    <%= Math.floor(song.time / 60) %>:<%= (song.time %
+                                                            60).toString().padStart(2, '0' ) %>
+                                                </small>
+                                                <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }) %>
+                    </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="bi bi-music-note text-muted" style="font-size: 3rem;"></i>
+                            <h4 class="text-muted mt-3">No songs yet</h4>
+                            <p class="text-muted">No songs by <%= artist.name %> in your library yet.</p>
+                            <% if (loggedIn) { %>
+                                <a href="/songs/new" class="btn btn-primary">
+                                    <i class="bi bi-plus"></i> Add a Song
+                                </a>
+                                <% } %>
+                        </div>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .song-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+
+    .song-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+</style>

@@ -1,0 +1,70 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="bi bi-person-lines-fill"></i> Artists
+                </h1>
+                <p class="text-muted">Browse all artists in your library</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-music-note-list"></i> All Artists
+                </h5>
+            </div>
+            <div class="card-body">
+                <% if (artists && artists.length> 0) { %>
+                    <div class="row" id="artistsContainer">
+                        <% artists.forEach(artist=> { %>
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card artist-card">
+                                    <div class="card-body">
+                                        <h6 class="card-title mb-2">
+                                            <a href="/artists/<%= artist.id %>" class="text-decoration-none">
+                                                <i class="bi bi-person-circle"></i>
+                                                <%= artist.name %>
+                                            </a>
+                                        </h6>
+                                        <p class="text-muted mb-0">
+                                            <small>Artist</small>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }) %>
+                    </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="bi bi-person-x text-muted" style="font-size: 3rem;"></i>
+                            <h4 class="text-muted mt-3">No artists yet</h4>
+                            <p class="text-muted">Artists will appear here when you add songs to your library!</p>
+                            <% if (loggedIn) { %>
+                                <a href="/songs/new" class="btn btn-primary">
+                                    <i class="bi bi-plus"></i> Add Your First Song
+                                </a>
+                                <% } %>
+                        </div>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .artist-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+
+    .artist-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+</style>

@@ -4,7 +4,7 @@ A real-time collaborative setlist management system for bands. Multiple band mem
 
 ## Features
 
-- **User Authentication** - Register/login with session management
+- **User Authentication** - Register/login with session management and password reset
 - **Band Management** - Create bands, invite members via email
 - **Song Database** - Add songs with artist, vocalist, key, duration, and BPM
 - **Real-time Collaboration** - Live setlist editing with Socket.io
@@ -71,6 +71,7 @@ The following tables will be created automatically:
 - `setlist_songs` - Songs within sets with ordering
 - `medleys` - Song combinations
 - `band_invitations` - Email invitation system
+- `password_resets` - Password reset tokens with expiration
 
 ### Resetting the Database
 

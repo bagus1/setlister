@@ -5,10 +5,38 @@ if (process.env.SENDGRID_API_KEY) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
+const sendEmail = async (to, subject, content) => {
+    const fromEmail = process.env.FROM_EMAIL || 'noreply@setlistmanager.com';
+    console.log('DEBUG: FROM_EMAIL environment variable:', process.env.FROM_EMAIL);
+    console.log('DEBUG: Using from email:', fromEmail);
+
+    const msg = {
+        to,
+        from: fromEmail,
+        subject,
+        html: content,
+        text: content.replace(/<[^>]*>/g, '') // Strip HTML tags for text version
+    };
+
+    try {
+        await sgMail.send(msg);
+        console.log(`Email sent to ${to}`);
+        return true;
+    } catch (error) {
+        console.error('Email sending error:', error);
+        if (error.response) {
+            console.error('SendGrid error details:', error.response.body);
+        }
+        throw error;
+    }
+};
+
 const sendBandInvitation = async (invitation, band, inviterName) => {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://setlists.bagus.org'
+        : (process.env.BASE_URL || 'http://localhost:3000');
     const invitationUrl = `${baseUrl}/invite/${invitation.token}`;
-    
+
     const fromEmail = process.env.FROM_EMAIL || 'noreply@setlistmanager.com';
     console.log('DEBUG: FROM_EMAIL environment variable:', process.env.FROM_EMAIL);
     console.log('DEBUG: Using from email:', fromEmail);
@@ -71,5 +99,6 @@ This invitation expires on ${invitation.expiresAt.toLocaleDateString()}.
 };
 
 module.exports = {
-    sendBandInvitation
+    sendBandInvitation,
+    sendEmail
 }; 

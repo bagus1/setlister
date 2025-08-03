@@ -1,8 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
-const { User, BandInvitation, BandMember, Band } = require('../models');
+const { User, BandInvitation, BandMember, Band, PasswordReset } = require('../models'); // Added PasswordReset
 const { Op } = require('sequelize');
+const crypto = require('crypto');
+const { sendEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -54,11 +56,12 @@ router.post('/register', [
         }
 
         const { username, email, password } = req.body;
+        const emailLower = email.toLowerCase();
 
         // Check if user already exists
         const existingUser = await User.findOne({
             where: {
-                [Op.or]: [{ email }, { username }]
+                [Op.or]: [{ email: emailLower }, { username }]
             }
         });
 
@@ -74,24 +77,24 @@ router.post('/register', [
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        // Create user
+        // Create user with lowercase email
         const user = await User.create({
             username,
-            email,
+            email: emailLower,
             password: hashedPassword
         });
 
-        // Check for pending invitations for this email
-        console.log(`[${new Date().toISOString()}] REGISTER: Checking for pending invitations for email: ${email}`);
+        // Check for pending invitations for this email (case insensitive)
+        console.log(`[${new Date().toISOString()}] REGISTER: Checking for pending invitations for email: ${emailLower}`);
         const pendingInvitations = await BandInvitation.findAll({
             where: {
-                email: email,
+                email: { [Op.iLike]: emailLower }, // Case insensitive search
                 usedAt: null,
                 expiresAt: { [Op.gt]: new Date() }
             },
             include: [{ model: Band, as: 'Band' }]
         });
-        console.log(`[${new Date().toISOString()}] REGISTER: Found ${pendingInvitations.length} pending invitations for ${email}`);
+        console.log(`[${new Date().toISOString()}] REGISTER: Found ${pendingInvitations.length} pending invitations for ${emailLower}`);
 
         // Automatically add user to bands they have pending invitations for
         if (pendingInvitations.length > 0) {
@@ -166,9 +169,10 @@ router.post('/login', [
         }
 
         const { email, password } = req.body;
+        const emailLower = email.toLowerCase();
 
-        // Find user
-        const user = await User.findOne({ where: { email } });
+        // Find user (case insensitive)
+        const user = await User.findOne({ where: { email: emailLower } });
         if (!user) {
             return res.render('auth/login', {
                 title: 'Login',
@@ -187,18 +191,18 @@ router.post('/login', [
             });
         }
 
-        // Check for pending invitations for this email
-        console.log(`[${new Date().toISOString()}] LOGIN: Checking for pending invitations for email: ${email}`);
+        // Check for pending invitations for this email (case insensitive)
+        console.log(`[${new Date().toISOString()}] LOGIN: Checking for pending invitations for email: ${emailLower}`);
         let pendingInvitations = [];
         try {
             pendingInvitations = await BandInvitation.findAll({
                 where: {
-                    email: email,
+                    email: { [Op.iLike]: emailLower }, // Case insensitive search
                     usedAt: null,
                     expiresAt: { [Op.gt]: new Date() }
                 }
             });
-            console.log(`[${new Date().toISOString()}] LOGIN: Found ${pendingInvitations.length} pending invitations for ${email}`);
+            console.log(`[${new Date().toISOString()}] LOGIN: Found ${pendingInvitations.length} pending invitations for ${emailLower}`);
 
             if (pendingInvitations.length > 0) {
                 console.log(`[${new Date().toISOString()}] LOGIN: Processing ${pendingInvitations.length} invitations`);
@@ -294,6 +298,200 @@ router.post('/logout', (req, res) => {
         });
     } else {
         res.redirect('/');
+    }
+});
+
+// GET /auth/forgot-password - Show forgot password form
+router.get('/forgot-password', (req, res) => {
+    res.render('auth/forgot-password', {
+        title: 'Forgot Password',
+        errors: [],
+        success: req.flash('success')
+    });
+});
+
+// POST /auth/forgot-password - Process password reset request
+router.post('/forgot-password', [
+    body('email').isEmail().withMessage('Please enter a valid email address')
+], async (req, res) => {
+    console.log(`[${new Date().toISOString()}] Forgot password POST request received:`, req.body);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        console.log(`[${new Date().toISOString()}] Validation errors:`, errors.array());
+        return res.render('auth/forgot-password', {
+            title: 'Forgot Password',
+            errors: errors.array(),
+            email: req.body.email
+        });
+    }
+
+    try {
+        const { email } = req.body;
+        const emailLower = email.toLowerCase();
+        console.log(`[${new Date().toISOString()}] Processing password reset for email: ${emailLower}`);
+
+        // Check if user exists (case insensitive)
+        const user = await User.findOne({ where: { email: emailLower } });
+        if (!user) {
+            console.log(`[${new Date().toISOString()}] User not found for email: ${emailLower}`);
+            // Don't reveal if email exists or not for security
+            req.flash('success', 'If an account with that email exists, a password reset link has been sent.');
+            return res.redirect('/auth/forgot-password');
+        }
+
+        console.log(`[${new Date().toISOString()}] User found, generating reset token for: ${emailLower}`);
+
+        // Generate secure token
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+        // Save reset token with lowercase email
+        await PasswordReset.create({
+            email: emailLower,
+            token,
+            expiresAt
+        });
+
+        console.log(`[${new Date().toISOString()}] Reset token created for: ${emailLower}`);
+
+        // Send email
+        const baseUrl = process.env.NODE_ENV === 'production'
+            ? 'https://setlists.bagus.org'
+            : (process.env.BASE_URL || 'http://localhost:3000');
+        const resetUrl = `${baseUrl}/auth/reset-password/${token}`;
+        const emailContent = `
+            <h2>Password Reset Request</h2>
+            <p>You requested a password reset for your Setlist Manager account.</p>
+            <p>Click the link below to reset your password:</p>
+            <p><a href="${resetUrl}">Reset Password</a></p>
+            <p>This link will expire in 1 hour.</p>
+            <p>If you didn't request this reset, please ignore this email.</p>
+        `;
+
+        try {
+            await sendEmail(emailLower, 'Password Reset Request', emailContent);
+            console.log(`[${new Date().toISOString()}] Password reset email sent to: ${emailLower}`);
+        } catch (emailError) {
+            console.error(`[${new Date().toISOString()}] Failed to send password reset email:`, emailError);
+            // Still show success message for security
+        }
+
+        req.flash('success', 'If an account with that email exists, a password reset link has been sent.');
+        res.redirect('/auth/forgot-password');
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Password reset request error:`, error);
+        req.flash('error', 'An error occurred. Please try again.');
+        res.redirect('/auth/forgot-password');
+    }
+});
+
+// GET /auth/reset-password/:token - Show reset password form
+router.get('/reset-password/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        // Find valid reset token
+        const resetRecord = await PasswordReset.findOne({
+            where: {
+                token,
+                expiresAt: { [Op.gt]: new Date() },
+                usedAt: null
+            }
+        });
+
+        if (!resetRecord) {
+            req.flash('error', 'Invalid or expired password reset link.');
+            return res.redirect('/auth/forgot-password');
+        }
+
+        res.render('auth/reset-password', {
+            title: 'Reset Password',
+            token,
+            errors: [],
+            email: resetRecord.email
+        });
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Reset password page error:`, error);
+        req.flash('error', 'An error occurred. Please try again.');
+        res.redirect('/auth/forgot-password');
+    }
+});
+
+// POST /auth/reset-password/:token - Process password reset
+router.post('/reset-password/:token', [
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+    body('confirmPassword').custom((value, { req }) => {
+        if (value !== req.body.password) {
+            throw new Error('Password confirmation does not match password');
+        }
+        return true;
+    })
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.render('auth/reset-password', {
+            title: 'Reset Password',
+            token: req.params.token,
+            errors: errors.array(),
+            email: req.body.email
+        });
+    }
+
+    try {
+        const { token } = req.params;
+        const { password, email } = req.body;
+        const emailLower = email.toLowerCase();
+
+        // Find valid reset token (case insensitive)
+        const resetRecord = await PasswordReset.findOne({
+            where: {
+                token,
+                email: emailLower,
+                expiresAt: { [Op.gt]: new Date() },
+                usedAt: null
+            }
+        });
+
+        if (!resetRecord) {
+            req.flash('error', 'Invalid or expired password reset link.');
+            return res.redirect('/auth/forgot-password');
+        }
+
+        // Find user (case insensitive)
+        const user = await User.findOne({ where: { email: emailLower } });
+        if (!user) {
+            req.flash('error', 'User not found.');
+            return res.redirect('/auth/forgot-password');
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Update user password
+        await user.update({ password: hashedPassword });
+
+        // Mark reset token as used
+        await resetRecord.update({ usedAt: new Date() });
+
+        // Delete any other unused reset tokens for this email (case insensitive)
+        await PasswordReset.destroy({
+            where: {
+                email: emailLower,
+                usedAt: null
+            }
+        });
+
+        console.log(`[${new Date().toISOString()}] Password reset successful for user: ${emailLower}`);
+        req.flash('success', 'Your password has been reset successfully. You can now log in with your new password.');
+        res.redirect('/auth/login');
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Password reset error:`, error);
+        req.flash('error', 'An error occurred. Please try again.');
+        res.redirect('/auth/forgot-password');
     }
 });
 

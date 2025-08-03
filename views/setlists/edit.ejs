@@ -99,8 +99,7 @@
                                                     <%= setlistSong.Song.title %>
                                                 </div>
                                                 <button class="btn btn-sm btn-outline-danger ms-2"
-                                                    style="font-size: 0.7rem; padding: 0.1rem 0.3rem; line-height: 1;"
-                                                    onclick="removeSongFromSet(this, '<%= setName %>')">
+                                                    style="font-size: 0.7rem; padding: 0.1rem 0.3rem; line-height: 1;">
                                                     <i class="bi bi-x"></i>
                                                 </button>
                                             </div>
@@ -156,8 +155,7 @@
                                                         <%= setlistSong.Song.title %>
                                                     </div>
                                                     <button class="btn btn-sm btn-outline-danger ms-2"
-                                                        style="font-size: 0.7rem; padding: 0.1rem 0.3rem; line-height: 1;"
-                                                        onclick="removeSongFromSet(this, 'Maybe')">
+                                                        style="font-size: 0.7rem; padding: 0.1rem 0.3rem; line-height: 1;">
                                                         <i class="bi bi-x"></i>
                                                     </button>
                                                 </div>
@@ -203,32 +201,6 @@
 <script src="/js/setlist-editor.js"></script>
 
 <script>
-    // Helper function for remove buttons
-    function removeSongFromSet(button, setName) {
-        const songElement = button.closest('.setlist-song');
-        const songId = songElement.dataset.songId;
-        const dropZone = songElement.parentElement;
-
-        if (setName === 'Maybe') {
-            songElement.remove();
-        } else {
-            const maybeZone = document.querySelector('.drop-zone[data-set-name="Maybe"]');
-            if (maybeZone) {
-                maybeZone.appendChild(songElement);
-                maybeZone.classList.add('has-songs');
-            }
-        }
-
-        if (dropZone.children.length === 0) {
-            dropZone.classList.remove('has-songs');
-        }
-
-        // Trigger auto-save
-        if (window.setlistEditor) {
-            window.setlistEditor.autoSave();
-        }
-    }
-
     // Initialize set times on load
     document.addEventListener('DOMContentLoaded', () => {
         ['Set 1', 'Set 2', 'Set 3', 'Set 4'].forEach(setName => {

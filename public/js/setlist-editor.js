@@ -14,6 +14,9 @@ class SetlistEditor {
         this.setupSocketConnection();
         this.setupDragAndDrop();
         this.setupEventListeners();
+
+        // Set up event listeners for existing X buttons
+        this.setupExistingRemoveButtons();
     }
 
     setupSocketConnection() {
@@ -85,12 +88,36 @@ class SetlistEditor {
             zone.classList.remove('drag-over');
 
             if (this.draggedElement) {
-                this.handleDrop(zone);
+                // Calculate drop position
+                const dropPosition = this.calculateDropPosition(zone, e.clientY);
+                this.handleDrop(zone, dropPosition);
             }
         });
     }
 
-    handleDrop(dropZone) {
+    calculateDropPosition(dropZone, clientY) {
+        const songs = dropZone.querySelectorAll('.setlist-song');
+        if (songs.length === 0) {
+            return 0; // First song in empty set
+        }
+
+        const dropZoneRect = dropZone.getBoundingClientRect();
+        const dropZoneTop = dropZoneRect.top;
+
+        // Find the closest song element
+        for (let i = 0; i < songs.length; i++) {
+            const songRect = songs[i].getBoundingClientRect();
+            const songMiddle = songRect.top + songRect.height / 2;
+
+            if (clientY < songMiddle) {
+                return i; // Insert before this song
+            }
+        }
+
+        return songs.length; // Insert at the end
+    }
+
+    handleDrop(dropZone, dropPosition) {
         // Don't handle if SortableJS is managing the drag
         if (this.sortableActive) {
             return;
@@ -120,8 +147,16 @@ class SetlistEditor {
         // Clone the song element for the setlist
         const songClone = this.createSetlistSong(this.draggedElement, setName);
 
-        // Add to drop zone
-        dropZone.appendChild(songClone);
+        // Insert at the specific position
+        const songs = dropZone.querySelectorAll('.setlist-song');
+        if (dropPosition === 0) {
+            dropZone.insertBefore(songClone, dropZone.firstChild);
+        } else if (dropPosition >= songs.length) {
+            dropZone.appendChild(songClone);
+        } else {
+            dropZone.insertBefore(songClone, songs[dropPosition]);
+        }
+
         dropZone.classList.add('has-songs');
 
         // Make the new song draggable
@@ -150,11 +185,12 @@ class SetlistEditor {
         // Update set display
         this.updateSetDisplay(setName);
 
-        // Broadcast update
+        // Broadcast update with the actual position
+        const actualPosition = Array.from(dropZone.querySelectorAll('.setlist-song')).indexOf(songClone);
         this.broadcastUpdate('song-added', {
             songId,
             setName,
-            position: dropZone.children.length - 1
+            position: actualPosition
         });
 
         // Auto-save
@@ -192,6 +228,9 @@ class SetlistEditor {
             removeBtn.innerHTML = '<i class="bi bi-x"></i>';
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                console.log('[X BUTTON] Clicked, calling removeSongFromSet with:', { clone, setName });
+                console.log('[X BUTTON] clone is:', clone);
+                console.log('[X BUTTON] clone.dataset.songId:', clone.dataset.songId);
                 this.removeSongFromSet(clone, setName);
             });
 
@@ -210,6 +249,9 @@ class SetlistEditor {
             removeBtn.innerHTML = '<i class="bi bi-x"></i>';
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                console.log('[X BUTTON FALLBACK] Clicked, calling removeSongFromSet with:', { clone, setName });
+                console.log('[X BUTTON FALLBACK] clone is:', clone);
+                console.log('[X BUTTON FALLBACK] clone.dataset.songId:', clone.dataset.songId);
                 this.removeSongFromSet(clone, setName);
             });
             clone.appendChild(removeBtn);
@@ -219,6 +261,8 @@ class SetlistEditor {
     }
 
     removeSongFromSet(songElement, setName) {
+        console.log('[REMOVE] removeSongFromSet called:', { setName, songId: songElement.dataset.songId });
+
         const songId = songElement.dataset.songId;
         const songTime = songElement.dataset.songTime;
         const dropZone = songElement.parentElement;
@@ -226,14 +270,17 @@ class SetlistEditor {
         // Handle different removal logic based on set
         if (setName === 'Maybe') {
             // Remove completely from maybe and restore to band songs
+            console.log('[REMOVE] Removing from Maybe, restoring to band songs');
             songElement.remove();
             this.restoreToBandSongs(songId, songTime);
         } else {
             // Move to maybe if removing from regular set
+            console.log('[REMOVE] Moving from', setName, 'to Maybe');
             const maybeZone = document.querySelector('.drop-zone[data-set-name="Maybe"]');
             if (maybeZone) {
                 maybeZone.appendChild(songElement);
                 maybeZone.classList.add('has-songs');
+                console.log('[REMOVE] Song moved to Maybe zone');
             }
         }
 
@@ -255,6 +302,7 @@ class SetlistEditor {
         });
 
         // Auto-save
+        console.log('[REMOVE] Calling autoSave');
         this.autoSave();
     }
 
@@ -401,14 +449,250 @@ class SetlistEditor {
         // Handle updates from other users
         console.log('Remote update received:', updateData);
 
-        // You can implement visual indicators here
-        // For example, briefly highlight changed areas
+        const { action, data } = updateData;
+
+        switch (action) {
+            case 'song-added':
+                this.handleRemoteSongAdded(data);
+                break;
+            case 'song-removed':
+                this.handleRemoteSongRemoved(data);
+                break;
+            case 'song-moved':
+                this.handleRemoteSongMoved(data);
+                break;
+        }
+    }
+
+    handleRemoteSongAdded(data) {
+        const { songId, setName, position } = data;
+
+        // Check if song is already in the target set
+        const targetZone = document.querySelector(`.drop-zone[data-set-name="${setName}"]`);
+        const existingSong = targetZone.querySelector(`.setlist-song[data-song-id="${songId}"]`);
+
+        if (existingSong) {
+            return; // Already there, don't duplicate
+        }
+
+        // Find the song in band songs or another set
+        let sourceSong = document.querySelector(`.band-song[data-song-id="${songId}"]`);
+        if (!sourceSong) {
+            sourceSong = document.querySelector(`.setlist-song[data-song-id="${songId}"]`);
+        }
+
+        if (sourceSong) {
+            // Create new setlist song
+            const songClone = this.createSetlistSong(sourceSong, setName);
+
+            // Insert at the specified position
+            if (position === 0) {
+                targetZone.insertBefore(songClone, targetZone.firstChild);
+            } else {
+                const songs = targetZone.querySelectorAll('.setlist-song');
+                if (position < songs.length) {
+                    targetZone.insertBefore(songClone, songs[position]);
+                } else {
+                    targetZone.appendChild(songClone);
+                }
+            }
+
+            // Make it draggable
+            this.makeDraggable(songClone);
+
+            // Update displays
+            targetZone.classList.add('has-songs');
+            this.updateSetDisplay(setName);
+
+            // Remove from source if it was a band song
+            if (sourceSong.classList.contains('band-song')) {
+                sourceSong.style.display = 'none';
+                setTimeout(() => sourceSong.remove(), 100);
+            } else if (sourceSong.classList.contains('setlist-song')) {
+                // Remove from original set
+                const originalZone = sourceSong.parentElement;
+                sourceSong.remove();
+
+                if (originalZone.children.length === 0) {
+                    originalZone.classList.remove('has-songs');
+                }
+                this.updateSetDisplay(originalZone.dataset.setName);
+            }
+
+            // Visual feedback
+            this.highlightElement(songClone);
+        }
+
+        // Auto-save the changes
+        this.autoSave();
+    }
+
+    handleRemoteSongRemoved(data) {
+        const { songId, fromSet } = data;
+
+        console.log(`[REMOTE REMOVE] Song ${songId} removed from ${fromSet}`);
+
+        // Debug: Check all songs with this ID in the DOM
+        const allSongsWithId = document.querySelectorAll(`[data-song-id="${songId}"]`);
+        console.log(`[REMOTE REMOVE] Found ${allSongsWithId.length} elements with song ID ${songId}:`,
+            Array.from(allSongsWithId).map(el => ({
+                className: el.className,
+                parentSet: el.parentElement?.dataset?.setName || 'unknown'
+            }))
+        );
+
+        const songElement = document.querySelector(`.setlist-song[data-song-id="${songId}"]`);
+        if (!songElement) {
+            console.log(`[REMOTE REMOVE] Song element not found for ID ${songId}`);
+            console.log(`[REMOTE REMOVE] Available setlist songs:`,
+                Array.from(document.querySelectorAll('.setlist-song')).map(el => ({
+                    id: el.dataset.songId,
+                    set: el.parentElement?.dataset?.setName || 'unknown'
+                }))
+            );
+            return;
+        }
+
+        console.log(`[REMOTE REMOVE] Found song element in set: ${songElement.parentElement?.dataset?.setName}`);
+
+        // Handle different removal logic based on set
+        if (fromSet === 'Maybe') {
+            // Remove completely and restore to band songs
+            console.log(`[REMOTE REMOVE] Removing from Maybe, restoring to band songs`);
+            songElement.remove();
+            this.restoreToBandSongs(songId, songElement.dataset.songTime);
+        } else {
+            // Move to maybe if removing from regular set
+            console.log(`[REMOTE REMOVE] Moving from ${fromSet} to Maybe`);
+            const maybeZone = document.querySelector('.drop-zone[data-set-name="Maybe"]');
+            if (maybeZone) {
+                console.log(`[REMOTE REMOVE] Moving song to Maybe zone`);
+                maybeZone.appendChild(songElement);
+                maybeZone.classList.add('has-songs');
+                console.log(`[REMOTE REMOVE] Song moved to Maybe, has-songs class added`);
+            } else {
+                console.log(`[REMOTE REMOVE] Maybe zone not found`);
+            }
+        }
+
+        // Update displays
+        this.updateSetDisplay(fromSet);
+        if (fromSet !== 'Maybe') {
+            this.updateSetDisplay('Maybe');
+        }
+
+        // Check if original set is empty
+        const originalZone = document.querySelector(`.drop-zone[data-set-name="${fromSet}"]`);
+        if (originalZone && originalZone.children.length === 0) {
+            originalZone.classList.remove('has-songs');
+        }
+
+        console.log(`[REMOTE REMOVE] Remove completed successfully`);
+
+        // Auto-save the changes
+        this.autoSave();
+    }
+
+    handleRemoteSongMoved(data) {
+        const { songId, fromSet, toSet, position } = data;
+
+        console.log(`[REMOTE MOVE] Song ${songId} from ${fromSet} to ${toSet} at position ${position}`);
+
+        const songElement = document.querySelector(`.setlist-song[data-song-id="${songId}"]`);
+        if (!songElement) {
+            console.log(`[REMOTE MOVE] Song element not found for ID ${songId}`);
+            return;
+        }
+
+        const targetZone = document.querySelector(`.drop-zone[data-set-name="${toSet}"]`);
+        if (!targetZone) {
+            console.log(`[REMOTE MOVE] Target zone not found for set ${toSet}`);
+            return;
+        }
+
+        // For moves within the same set, we need to handle the position calculation differently
+        if (fromSet === toSet) {
+            console.log(`[REMOTE MOVE] Same-set reorder: ${fromSet} -> ${toSet} at position ${position}`);
+
+            // Get all songs in the target zone (excluding the one being moved)
+            const allSongs = Array.from(targetZone.querySelectorAll('.setlist-song'));
+            const currentIndex = allSongs.indexOf(songElement);
+
+            console.log(`[REMOTE MOVE] Current index: ${currentIndex}, Target position: ${position}`);
+
+            // Remove the song temporarily to calculate the correct position
+            songElement.remove();
+
+            // Re-insert at the correct position
+            const remainingSongs = targetZone.querySelectorAll('.setlist-song');
+            console.log(`[REMOTE MOVE] Remaining songs count: ${remainingSongs.length}`);
+
+            if (position === 0) {
+                targetZone.insertBefore(songElement, targetZone.firstChild);
+            } else if (position >= remainingSongs.length) {
+                targetZone.appendChild(songElement);
+            } else {
+                targetZone.insertBefore(songElement, remainingSongs[position]);
+            }
+        } else {
+            console.log(`[REMOTE MOVE] Cross-set move: ${fromSet} -> ${toSet} at position ${position}`);
+
+            // Moving between different sets
+            // Remove from source set first
+            const sourceZone = document.querySelector(`.drop-zone[data-set-name="${fromSet}"]`);
+            if (sourceZone) {
+                songElement.remove();
+
+                // Update source set display
+                this.updateSetDisplay(fromSet);
+                if (sourceZone.children.length === 0) {
+                    sourceZone.classList.remove('has-songs');
+                }
+            }
+
+            // Insert into target set
+            const songs = targetZone.querySelectorAll('.setlist-song');
+            console.log(`[REMOTE MOVE] Target songs count: ${songs.length}`);
+
+            if (position === 0) {
+                targetZone.insertBefore(songElement, targetZone.firstChild);
+            } else if (position >= songs.length) {
+                targetZone.appendChild(songElement);
+            } else {
+                targetZone.insertBefore(songElement, songs[position]);
+            }
+        }
+
+        // Update displays
+        targetZone.classList.add('has-songs');
+        this.updateSetDisplay(toSet);
+
+        // Visual feedback
+        this.highlightElement(songElement);
+
+        console.log(`[REMOTE MOVE] Move completed successfully`);
+
+        // Auto-save the changes
+        this.autoSave();
+    }
+
+    highlightElement(element) {
+        // Add a brief highlight effect
+        element.style.transition = 'background-color 0.3s ease';
+        element.style.backgroundColor = '#fff3cd';
+
+        setTimeout(() => {
+            element.style.backgroundColor = '';
+            element.style.transition = '';
+        }, 1000);
     }
 
     autoSave() {
+        console.log('[AUTOSAVE] Auto-save triggered');
         // Debounce auto-save
         clearTimeout(this.saveTimeout);
         this.saveTimeout = setTimeout(() => {
+            console.log('[AUTOSAVE] Executing save after debounce');
             this.saveSetlist();
         }, 2000);
     }
@@ -424,6 +708,8 @@ class SetlistEditor {
             sets[setName] = songs;
         });
 
+        console.log('[SAVE] Sending sets data:', sets);
+
         fetch(`/setlists/${this.setlistId}/save`, {
             method: 'POST',
             headers: {
@@ -433,6 +719,7 @@ class SetlistEditor {
         })
             .then(response => response.json())
             .then(data => {
+                console.log('[SAVE] Server response:', data);
                 if (data.success) {
                     this.showSaveStatus('saved');
                 } else {
@@ -440,7 +727,7 @@ class SetlistEditor {
                 }
             })
             .catch(error => {
-                console.error('Save error:', error);
+                console.error('[SAVE] Save error:', error);
                 this.showSaveStatus('error');
             });
     }
@@ -516,8 +803,32 @@ class SetlistEditor {
                         evt.to.classList.add('has-songs');
                     }
 
+                    // Broadcast the move (both between sets and reordering within same set)
+                    const songId = evt.item.dataset.songId;
+                    const newPosition = Array.from(evt.to.querySelectorAll('.setlist-song')).indexOf(evt.item);
+
+                    this.broadcastUpdate('song-moved', {
+                        songId,
+                        fromSet,
+                        toSet,
+                        position: newPosition
+                    });
+
                     this.autoSave();
                 }
+            });
+        });
+    }
+
+    setupExistingRemoveButtons() {
+        document.querySelectorAll('.setlist-song .btn-outline-danger').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const songElement = button.closest('.setlist-song');
+                const setName = songElement.parentElement.dataset.setName;
+                const songId = songElement.dataset.songId;
+                console.log('[EXISTING X BUTTON] Clicked, calling removeSongFromSet with:', { songElement, setName });
+                this.removeSongFromSet(songElement, setName);
             });
         });
     }

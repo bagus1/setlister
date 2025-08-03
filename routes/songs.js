@@ -309,14 +309,18 @@ router.put('/:id', requireAuth, [
 
 // DELETE /songs/:id - Delete song
 router.delete('/:id', requireAuth, async (req, res) => {
+    console.log(`[${new Date().toISOString()}] DELETE song route hit:`, req.params);
     try {
         const song = await Song.findByPk(req.params.id);
         if (!song) {
+            console.log(`[${new Date().toISOString()}] Song ${req.params.id} not found`);
             req.flash('error', 'Song not found');
             return res.redirect('/songs');
         }
 
+        console.log(`[${new Date().toISOString()}] Deleting song:`, song.title);
         await song.destroy();
+        console.log(`[${new Date().toISOString()}] Successfully deleted song ${req.params.id}`);
         req.flash('success', 'Song deleted successfully');
         res.redirect('/songs');
     } catch (error) {

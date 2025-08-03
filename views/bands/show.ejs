@@ -89,8 +89,8 @@
                     const email = this.getAttribute('data-email');
 
                     if (confirm(`Are you sure you want to delete the invitation to ${email}? This will allow you to send a new invitation.`)) {
-                        fetch(`/bands/<%= band.id %>/invitations/${invitationId}`, {
-                            method: 'DELETE',
+                        fetch(`/bands/<%= band.id %>/invitations/${invitationId}/delete`, {
+                            method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             }

@@ -121,17 +121,17 @@ router.get('/:id/edit', async (req, res) => {
             }]
         });
 
-        // Extract used song IDs
+        // Extract used song IDs (only from regular sets, not Maybe)
         const usedSongIds = [];
         setlistSets.forEach(set => {
-            if (set.SetlistSongs) {
+            if (set.SetlistSongs && set.name !== 'Maybe') {
                 set.SetlistSongs.forEach(setlistSong => {
                     usedSongIds.push(setlistSong.songId);
                 });
             }
         });
 
-        // Filter out songs already in the setlist
+        // Filter out songs already in regular sets (but keep Maybe songs available)
         const bandSongs = allBandSongs.filter(song => !usedSongIds.includes(song.id));
 
         res.render('setlists/edit', {
@@ -153,6 +153,9 @@ router.post('/:id/save', async (req, res) => {
         const userId = req.session.user.id;
         const { sets } = req.body;
 
+        console.log(`[SAVE] Setlist ${setlistId} save request from user ${userId}`);
+        console.log(`[SAVE] Received sets:`, sets);
+
         // Verify user has access
         const setlist = await Setlist.findByPk(setlistId, {
             include: [{
@@ -166,11 +169,13 @@ router.post('/:id/save', async (req, res) => {
         });
 
         if (!setlist) {
+            console.log(`[SAVE] Setlist not found: ${setlistId}`);
             return res.status(404).json({ error: 'Setlist not found' });
         }
 
         // Check if setlist date has passed (no saving after performance date)
         if (setlist.date && new Date() > new Date(setlist.date)) {
+            console.log(`[SAVE] Setlist date has passed: ${setlist.date}`);
             return res.status(403).json({ error: 'This setlist cannot be edited as the performance date has passed' });
         }
 
@@ -188,10 +193,13 @@ router.post('/:id/save', async (req, res) => {
                     setlistSetId: setlistSetIds
                 }
             });
+            console.log(`[SAVE] Cleared ${setlistSetIds.length} existing sets`);
         }
 
         // Update sets
         for (const [setName, songs] of Object.entries(sets)) {
+            console.log(`[SAVE] Processing set "${setName}" with ${songs.length} songs`);
+
             let setlistSet = await SetlistSet.findOne({
                 where: { setlistId, name: setName }
             });
@@ -204,6 +212,7 @@ router.post('/:id/save', async (req, res) => {
                     name: setName,
                     order: setOrder
                 });
+                console.log(`[SAVE] Created new set "${setName}" with order ${setOrder}`);
             }
 
             if (setlistSet) {
@@ -215,12 +224,14 @@ router.post('/:id/save', async (req, res) => {
                         order: i + 1
                     });
                 }
+                console.log(`[SAVE] Added ${songs.length} songs to set "${setName}"`);
             }
         }
 
+        console.log(`[SAVE] Setlist ${setlistId} saved successfully`);
         res.json({ success: true });
     } catch (error) {
-        console.error('Save setlist error:', error);
+        console.error('[SAVE] Save setlist error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });

@@ -62,16 +62,18 @@ router.get('/new', requireAuth, async (req, res) => {
 // POST /songs - Create new song
 router.post('/', requireAuth, [
     body('title').notEmpty().withMessage('Song title is required'),
-    body('artist').optional(),
-    body('vocalist').optional(),
+    body('artist').optional().trim(),
+    body('vocalist').optional().trim(),
     body('key').optional(),
     body('minutes').optional().isInt({ min: 0 }).withMessage('Minutes must be a positive number'),
     body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59'),
     body('bpm').optional().custom((value) => {
-        if (value === '' || value == null || value === undefined) {
-            return true; // Allow empty values
+        // Allow completely empty values
+        if (!value || value === '' || value === null || value === undefined) {
+            return true;
         }
-        const numValue = parseInt(value);
+        // If a value is provided, validate it
+        const numValue = Number(value);
         if (isNaN(numValue) || numValue < 40 || numValue > 300) {
             throw new Error('BPM must be between 40 and 300');
         }
@@ -82,7 +84,10 @@ router.post('/', requireAuth, [
         const errors = validationResult(req);
         const { title, artist, vocalist, key, minutes = 0, seconds = 0, bpm } = req.body;
 
-        console.log('Song creation data:', { title, artist, vocalist, key, minutes, seconds, bpm });
+        console.log('=== SONG CREATION DEBUG ===');
+        console.log('Form data received:', { title, artist, vocalist, key, minutes, seconds, bpm });
+        console.log('BPM value type:', typeof bpm, 'BPM value:', bpm);
+        console.log('Artist value:', artist, 'length:', artist ? artist.length : 'undefined');
 
         // Check for duplicate song
         const existingSong = await Song.findOne({
@@ -132,8 +137,13 @@ router.post('/', requireAuth, [
         }
 
         // Convert BPM to proper value
-        const bpmValue = bpm && bpm.trim() ? parseInt(bpm) : null;
-        console.log('BPM value:', bpmValue);
+        let bpmValue = null;
+        if (bpm && typeof bpm === 'string' && bpm.trim() !== '') {
+            bpmValue = parseInt(bpm.trim());
+        } else if (bpm && typeof bpm === 'number') {
+            bpmValue = bpm;
+        }
+        console.log('Processed BPM value:', bpmValue);
 
         // Create song
         const song = await Song.create({

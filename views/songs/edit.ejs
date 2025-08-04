@@ -19,7 +19,7 @@
                     </div>
                     <% } %>
 
-                        <form action="/songs/<%= song.id %>/edit" method="POST">
+                        <form action="/songs/<%= song.id %>/update" method="POST">
                             <div class="mb-3">
                                 <label for="title" class="form-label">Song Title</label>
                                 <input type="text" class="form-control" id="title" name="title"
@@ -27,29 +27,29 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="artistId" class="form-label">Artist</label>
-                                <select class="form-control" id="artistId" name="artistId">
-                                    <option value="">Select or search for artist...</option>
+                                <label for="artist" class="form-label">Artist</label>
+                                <input type="text" class="form-control" id="artist" name="artist"
+                                    value="<%= song.Artists && song.Artists.length > 0 ? song.Artists[0].name : '' %>"
+                                    list="artistsList" placeholder="Start typing artist name...">
+                                <datalist id="artistsList">
                                     <% artists.forEach(artist=> { %>
-                                        <option value="<%= artist.id %>" <% if (song.Artists && song.Artists.length> 0
-                                            && song.Artists[0].id === artist.id) { %> selected<% } %>>
-                                                <%= artist.name %>
-                                        </option>
-                                        <% }) %>
-                                </select>
+                                        <option value="<%= artist.name %>">
+                                            <% }) %>
+                                </datalist>
+                                <div class="form-text">Type to search existing artists or enter a new one</div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="vocalistId" class="form-label">Vocalist</label>
-                                <select class="form-control" id="vocalistId" name="vocalistId">
-                                    <option value="">Select vocalist...</option>
+                                <label for="vocalist" class="form-label">Vocalist</label>
+                                <input type="text" class="form-control" id="vocalist" name="vocalist"
+                                    value="<%= song.Vocalist ? song.Vocalist.name : '' %>" list="vocalistsList"
+                                    placeholder="Who sings this song?">
+                                <datalist id="vocalistsList">
                                     <% vocalists.forEach(vocalist=> { %>
-                                        <option value="<%= vocalist.id %>" <% if (song.Vocalist &&
-                                            song.Vocalist.id===vocalist.id) { %> selected<% } %>>
-                                                <%= vocalist.name %>
-                                        </option>
-                                        <% }) %>
-                                </select>
+                                        <option value="<%= vocalist.name %>">
+                                            <% }) %>
+                                </datalist>
+                                <div class="form-text">Type to search existing vocalists or enter a new one</div>
                             </div>
 
                             <div class="mb-3">

@@ -88,7 +88,7 @@ router.post('/register', [
         console.log(`[${new Date().toISOString()}] REGISTER: Checking for pending invitations for email: ${emailLower}`);
         const pendingInvitations = await BandInvitation.findAll({
             where: {
-                email: { [Op.iLike]: emailLower }, // Case insensitive search
+                email: { [Op.like]: emailLower }, // Case insensitive search
                 usedAt: null,
                 expiresAt: { [Op.gt]: new Date() }
             },
@@ -197,7 +197,7 @@ router.post('/login', [
         try {
             pendingInvitations = await BandInvitation.findAll({
                 where: {
-                    email: { [Op.iLike]: emailLower }, // Case insensitive search
+                    email: { [Op.like]: emailLower }, // Case insensitive search
                     usedAt: null,
                     expiresAt: { [Op.gt]: new Date() }
                 }

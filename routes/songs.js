@@ -6,6 +6,74 @@ const { Op } = require('sequelize');
 
 const router = express.Router();
 
+// API Routes (must come before /:id routes)
+
+// GET /songs/api/artists/search - Search artists for autofill
+router.get('/api/artists/search', async (req, res) => {
+    try {
+        const { q } = req.query;
+        const artists = await Artist.findAll({
+            where: {
+                name: {
+                    [Op.iLike]: `%${q}%`
+                }
+            },
+            limit: 10,
+            order: [['name', 'ASC']]
+        });
+
+        res.json(artists.map(artist => ({
+            id: artist.id,
+            name: artist.name
+        })));
+    } catch (error) {
+        console.error('Artist search error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// GET /songs/api/vocalists/search - Search vocalists for autofill
+router.get('/api/vocalists/search', async (req, res) => {
+    try {
+        const { q } = req.query;
+        const vocalists = await Vocalist.findAll({
+            where: {
+                name: {
+                    [Op.iLike]: `%${q}%`
+                }
+            },
+            limit: 10,
+            order: [['name', 'ASC']]
+        });
+
+        res.json(vocalists.map(vocalist => ({
+            id: vocalist.id,
+            name: vocalist.name
+        })));
+    } catch (error) {
+        console.error('Vocalist search error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// GET /songs/api/song/:id - Get song details
+router.get('/api/song/:id', async (req, res) => {
+    try {
+        const song = await Song.findByPk(req.params.id, {
+            include: ['Artists', 'Vocalist']
+        });
+
+        if (!song) {
+            return res.status(404).json({ error: 'Song not found' });
+        }
+
+        res.json(song);
+    } catch (error) {
+        console.error('Get song error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // GET /songs - Show all songs
 router.get('/', async (req, res) => {
     try {
@@ -203,6 +271,11 @@ router.get('/:id', async (req, res) => {
 
 // GET /songs/:id/edit - Show edit song form
 router.get('/:id/edit', requireAuth, async (req, res) => {
+    console.log('=== GET EDIT FORM ROUTE HIT ===');
+    console.log('URL:', req.url);
+    console.log('Method:', req.method);
+    console.log('Params:', req.params);
+    console.log('User:', req.session.user);
     try {
         const song = await Song.findByPk(req.params.id, {
             include: ['Artists', 'Vocalist']
@@ -221,6 +294,10 @@ router.get('/:id/edit', requireAuth, async (req, res) => {
             order: [['name', 'ASC']]
         });
 
+        console.log('=== RENDERING EDIT FORM ===');
+        console.log('Song found:', song.title, 'ID:', song.id);
+        console.log('Artists count:', artists.length);
+        console.log('Vocalists count:', vocalists.length);
         res.render('songs/edit', {
             title: `Edit ${song.title}`,
             song,
@@ -234,15 +311,43 @@ router.get('/:id/edit', requireAuth, async (req, res) => {
     }
 });
 
-// PUT /songs/:id - Update song
-router.put('/:id', requireAuth, [
+// POST /songs/:id/update - Update song (alternative to PUT)
+router.post('/:id/update', requireAuth, (req, res, next) => {
+    console.log('=== POST UPDATE ROUTE HIT ===');
+    console.log('URL:', req.url);
+    console.log('Method:', req.method);
+    console.log('Params:', req.params);
+    console.log('User:', req.session.user);
+    next();
+}, [
     body('title').notEmpty().withMessage('Song title is required'),
-    body('artistId').optional(),
-    body('vocalistId').optional(),
+    body('artist').optional().trim(),
+    body('vocalist').optional().trim(),
     body('key').optional(),
-    body('minutes').optional().isInt({ min: 0 }).withMessage('Minutes must be a positive number'),
-    body('seconds').optional().isInt({ min: 0, max: 59 }).withMessage('Seconds must be between 0 and 59'),
-    body('bpm').optional().isInt({ min: 40, max: 300 }).withMessage('BPM must be between 40 and 300')
+    body('time').optional().custom((value) => {
+        // Allow completely empty values
+        if (!value || value === '' || value === null || value === undefined) {
+            return true;
+        }
+        // If a value is provided, validate it
+        const numValue = Number(value);
+        if (isNaN(numValue) || numValue < 0) {
+            throw new Error('Time must be a positive number');
+        }
+        return true;
+    }),
+    body('bpm').optional().custom((value) => {
+        // Allow completely empty values
+        if (!value || value === '' || value === null || value === undefined) {
+            return true;
+        }
+        // If a value is provided, validate it
+        const numValue = Number(value);
+        if (isNaN(numValue) || numValue < 40 || numValue > 300) {
+            throw new Error('BPM must be between 40 and 300');
+        }
+        return true;
+    })
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -275,27 +380,56 @@ router.put('/:id', requireAuth, [
             return res.redirect('/songs');
         }
 
-        const { title, artistId, vocalistId, key, minutes = 0, seconds = 0, bpm } = req.body;
+        const { title, artist, vocalist, key, time, bpm } = req.body;
+
+        console.log('=== SONG EDIT DEBUG ===');
+        console.log('Form data received:', { title, artist, vocalist, key, time, bpm });
+        console.log('Artist value:', artist, 'length:', artist ? artist.length : 'undefined');
+        console.log('Artist trimmed:', artist ? artist.trim() : 'undefined');
 
         // Calculate total time in seconds
-        const totalTime = (parseInt(minutes) * 60) + parseInt(seconds);
+        const totalTime = time ? parseInt(time) : null;
+
+        // Convert BPM to proper value
+        let bpmValue = null;
+        if (bpm && typeof bpm === 'string' && bpm.trim() !== '') {
+            bpmValue = parseInt(bpm.trim());
+        } else if (bpm && typeof bpm === 'number') {
+            bpmValue = bpm;
+        }
+
+        // Handle vocalist
+        let vocalistId = null;
+        if (vocalist && vocalist.trim()) {
+            console.log('Creating/finding vocalist for edit:', vocalist);
+            const [vocalistRecord] = await Vocalist.findOrCreate({
+                where: { name: vocalist.trim() },
+                defaults: { name: vocalist.trim() }
+            });
+            vocalistId = vocalistRecord.id;
+            console.log('Vocalist ID for edit:', vocalistId);
+        }
 
         // Update song
         await song.update({
             title: title.trim(),
             key: key || null,
             time: totalTime || null,
-            bpm: bpm || null,
-            vocalistId: vocalistId || null
+            bpm: bpmValue,
+            vocalistId
         });
 
         // Handle artist
         await song.setArtists([]); // Clear existing associations
-        if (artistId) {
-            const artist = await Artist.findByPk(artistId);
-            if (artist) {
-                await song.addArtist(artist);
-            }
+        if (artist && artist.trim()) {
+            console.log('Creating/finding artist for edit:', artist);
+            const [artistRecord] = await Artist.findOrCreate({
+                where: { name: artist.trim() },
+                defaults: { name: artist.trim() }
+            });
+            console.log('Artist record for edit:', artistRecord.id, artistRecord.name);
+            await song.addArtist(artistRecord);
+            console.log('Artist added to song during edit');
         }
 
         req.flash('success', 'Song updated successfully');
@@ -306,6 +440,8 @@ router.put('/:id', requireAuth, [
         res.redirect(`/songs/${req.params.id}/edit`);
     }
 });
+
+// PUT /songs/:id - Update song
 
 // DELETE /songs/:id - Delete song
 router.delete('/:id', requireAuth, async (req, res) => {
@@ -330,72 +466,16 @@ router.delete('/:id', requireAuth, async (req, res) => {
     }
 });
 
-// API Routes
 
-// GET /songs/api/artists/search - Search artists for autofill
-router.get('/api/artists/search', async (req, res) => {
-    try {
-        const { q } = req.query;
-        const artists = await Artist.findAll({
-            where: {
-                name: {
-                    [Op.iLike]: `%${q}%`
-                }
-            },
-            limit: 10,
-            order: [['name', 'ASC']]
-        });
 
-        res.json(artists.map(artist => ({
-            id: artist.id,
-            name: artist.name
-        })));
-    } catch (error) {
-        console.error('Artist search error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// GET /songs/api/vocalists/search - Search vocalists for autofill
-router.get('/api/vocalists/search', async (req, res) => {
-    try {
-        const { q } = req.query;
-        const vocalists = await Vocalist.findAll({
-            where: {
-                name: {
-                    [Op.iLike]: `%${q}%`
-                }
-            },
-            limit: 10,
-            order: [['name', 'ASC']]
-        });
-
-        res.json(vocalists.map(vocalist => ({
-            id: vocalist.id,
-            name: vocalist.name
-        })));
-    } catch (error) {
-        console.error('Vocalist search error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// GET /songs/api/:id - Get song details
-router.get('/api/:id', async (req, res) => {
-    try {
-        const song = await Song.findByPk(req.params.id, {
-            include: ['Artists', 'Vocalist']
-        });
-
-        if (!song) {
-            return res.status(404).json({ error: 'Song not found' });
-        }
-
-        res.json(song);
-    } catch (error) {
-        console.error('Get song error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
+// Debug route to catch all unmatched requests
+router.use('*', (req, res, next) => {
+    console.log('=== UNMATCHED ROUTE IN SONGS ===');
+    console.log('URL:', req.url);
+    console.log('Method:', req.method);
+    console.log('Original Method:', req.originalMethod);
+    console.log('Body:', req.body);
+    next();
 });
 
 module.exports = router; 

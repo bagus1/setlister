@@ -32,7 +32,7 @@
                 </div>
                 <div class="card-body">
                     <% if (userBands && userBands.length> 0) { %>
-                        <% userBands.forEach(band => { %>
+                        <% userBands.forEach(band=> { %>
                             <div class="col-md-6 mb-3">
                                 <div class="card">
                                     <div class="card-body">
@@ -76,10 +76,12 @@
                 </div>
                 <div class="card-body">
                     <% if (recentSongs && recentSongs.length> 0) { %>
-                        <% recentSongs.forEach(song => { %>
+                        <% recentSongs.forEach(song=> { %>
                             <div class="song-card">
                                 <div class="song-title">
-                                    <%= song.title %>
+                                    <a href="/songs/<%= song.id %>" class="text-decoration-none">
+                                        <%= song.title %>
+                                    </a>
                                 </div>
                                 <% if (song.Artists && song.Artists.length> 0) { %>
                                     <div class="song-artist">by <%= song.Artists[0].name %>
@@ -129,7 +131,7 @@
                 </div>
                 <div class="card-body">
                     <% if (recentMedleys && recentMedleys.length> 0) { %>
-                        <% recentMedleys.forEach(medley => { %>
+                        <% recentMedleys.forEach(medley=> { %>
                             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                                 <div>
                                     <a href="/medleys/<%= medley.id %>" class="text-decoration-none">
@@ -174,7 +176,7 @@
                 </div>
                 <div class="card-body">
                     <% if (artists && artists.length> 0) { %>
-                        <% artists.forEach(artist => { %>
+                        <% artists.forEach(artist=> { %>
                             <div class="py-1">
                                 <a href="/artists/<%= artist.id %>" class="text-decoration-none">
                                     <%= artist.name %>
@@ -205,7 +207,7 @@
                     </div>
                     <div class="card-body">
                         <% if (bands && bands.length> 0) { %>
-                            <% bands.forEach(band => { %>
+                            <% bands.forEach(band=> { %>
                                 <div class="py-1">
                                     <%= band.name %>
                                         <% if (band.description) { %>
@@ -232,7 +234,7 @@
                     </div>
                     <div class="card-body">
                         <% if (songs && songs.length> 0) { %>
-                            <% songs.forEach(song => { %>
+                            <% songs.forEach(song=> { %>
                                 <div class="py-1">
                                     <a href="/songs/<%= song.id %>" class="text-decoration-none">
                                         <%= song.title %>
@@ -263,7 +265,7 @@
                     </div>
                     <div class="card-body">
                         <% if (artists && artists.length> 0) { %>
-                            <% artists.forEach(artist => { %>
+                            <% artists.forEach(artist=> { %>
                                 <div class="py-1">
                                     <a href="/artists/<%= artist.id %>" class="text-decoration-none">
                                         <%= artist.name %>

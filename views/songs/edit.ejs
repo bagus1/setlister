@@ -57,7 +57,9 @@
                                 <select class="form-control" id="key" name="key">
                                     <option value="">Select key...</option>
                                     <% ['C', 'C#' , 'Db' , 'D' , 'D#' , 'Eb' , 'E' , 'F' , 'F#' , 'Gb' , 'G' , 'G#'
-                                        , 'Ab' , 'A' , 'A#' , 'Bb' , 'B' ].forEach(k=> { %>
+                                        , 'Ab' , 'A' , 'A#' , 'Bb' , 'B' , 'Cm' , 'C#m' , 'Dbm' , 'Dm' , 'D#m' , 'Ebm'
+                                        , 'Em' , 'Fm' , 'F#m' , 'Gbm' , 'Gm' , 'G#m' , 'Abm' , 'Am' , 'A#m' , 'Bbm'
+                                        , 'Bm' ].forEach(k=> { %>
                                         <option value="<%= k %>" <% if (song.key===k) { %> selected<% } %>><%= k %>
                                         </option>
                                         <% }) %>

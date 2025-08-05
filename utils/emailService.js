@@ -102,7 +102,7 @@ const sendBandInvitationNotification = async (invitation, band, inviterName, use
     const baseUrl = process.env.NODE_ENV === 'production'
         ? 'https://setlists.bagus.org'
         : (process.env.BASE_URL || 'http://localhost:3000');
-    const dashboardUrl = `${baseUrl}/dashboard`;
+    const dashboardUrl = `${baseUrl}/`;
 
     const fromEmail = process.env.FROM_EMAIL || 'noreply@setlistmanager.com';
 

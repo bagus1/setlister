@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { User, Band, BandMember, Song, BandSong, Setlist, SetlistSet, BandInvitation } = require('../models');
-const { sendBandInvitation } = require('../utils/emailService');
+const { sendBandInvitation, sendBandInvitationNotification } = require('../utils/emailService');
 const { v4: uuidv4 } = require('uuid');
 const { requireAuth } = require('./auth');
 
@@ -239,7 +239,7 @@ router.post('/:id/invite', [
             return res.redirect('/bands');
         }
 
-        // Check if user is already a member
+        // Check if user already exists and handle accordingly
         const existingUser = await User.findOne({ where: { email } });
         if (existingUser) {
             const existingMembership = await BandMember.findOne({
@@ -250,6 +250,27 @@ router.post('/:id/invite', [
                 req.flash('error', 'This person is already a member of the band');
                 return res.redirect(`/bands/${bandId}`);
             }
+
+            // User exists but is not a member of this band - add them automatically
+            await BandMember.create({
+                bandId,
+                userId: existingUser.id,
+                role: 'member'
+            });
+
+            // Get inviter name
+            const inviter = await User.findByPk(userId);
+
+            // Send notification email to existing user
+            const emailSent = await sendBandInvitationNotification(null, band, inviter.username, existingUser.email);
+
+            if (emailSent) {
+                req.flash('success', `${email} has been added to the band! A notification email has been sent.`);
+            } else {
+                req.flash('success', `${email} has been added to the band! (Email notification failed)`);
+            }
+
+            return res.redirect(`/bands/${bandId}`);
         }
 
         // Check if there's already a pending invitation

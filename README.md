@@ -101,6 +101,195 @@ npm start
 
 The application will be available at: **http://localhost:3000**
 
+## Deployment & Production
+
+### cPanel Deployment Setup
+
+This application is configured to run on cPanel with Passenger. The deployment uses a Git-based workflow with automatic dependency management.
+
+#### Prerequisites
+- cPanel hosting with Node.js support
+- Git repository (GitHub, GitLab, etc.)
+- SSH access to your server
+
+#### Server Configuration
+1. **Create a Git repository** in cPanel's Git Version Control
+2. **Set up the repository path**: `/home/username/repositories/setlister`
+3. **Configure Passenger** via `.htaccess` file (automatically handled)
+4. **Set environment variables** in cPanel's Node.js app settings
+
+#### Environment Variables (Production)
+Configure these in your cPanel Node.js app settings:
+```
+NODE_ENV=production
+SESSION_SECRET=your-very-long-random-secret-string
+FROM_EMAIL=noreply@yourdomain.com
+BASE_URL=https://yourdomain.com
+SENDGRID_API_KEY=your_sendgrid_api_key_here
+```
+
+**⚠️ Security Note**: Environment variables are managed via a `.env` file on the server (not in Git) for security. The `.htaccess` file only contains non-sensitive configuration.
+
+### Deployment Script
+
+The project includes `deploy-git.sh` for automated deployment and server management.
+
+#### Setup
+1. **Make the script executable**:
+   ```bash
+   chmod +x deploy-git.sh
+   ```
+
+2. **Configure environment variables** (optional):
+   ```bash
+   export BAGUS_NAME=your_username
+   export BAGUS_FTP=your_server.com
+   export SETLIST_PATH=/home/your_username/repositories/setlister
+   ```
+
+#### Available Commands
+
+**Full Deployment** (push to git, pull on server, auto-install dependencies):
+```bash
+./deploy-git.sh deploy
+```
+
+**Quick Deploy** (just pull changes on server):
+```bash
+./deploy-git.sh quick
+```
+
+**Server Management**:
+```bash
+./deploy-git.sh start      # Start the server
+./deploy-git.sh stop       # Stop the server
+./deploy-git.sh restart    # Restart the server
+```
+
+**Dependency Management**:
+```bash
+./deploy-git.sh deps       # Update dependencies on server
+```
+
+**Status & Maintenance**:
+```bash
+./deploy-git.sh status     # Show deployment status
+./deploy-git.sh backup     # Create backup
+./deploy-git.sh rollback   # Rollback to previous commit
+./deploy-git.sh help       # Show all available commands
+```
+
+### Dependency Management
+
+#### Automatic Dependency Updates
+The deployment script automatically detects when `package.json` changes and installs dependencies:
+- **`deploy`** mode: Full deployment with auto-dependency install
+- **`quick`** mode: Quick deploy with auto-dependency install
+
+#### Manual Dependency Updates
+If you need to update dependencies manually:
+```bash
+./deploy-git.sh deps
+```
+
+#### Adding New Dependencies
+1. **Add locally**: `npm install package-name`
+2. **Commit changes**: `git add package.json package-lock.json && git commit -m "Add new dependency"`
+3. **Deploy**: `./deploy-git.sh deploy` (automatically installs on server)
+
+#### Updating Existing Dependencies
+1. **Update locally**: `npm update` or `npm install package@version`
+2. **Commit changes**: `git add package.json package-lock.json && git commit -m "Update dependencies"`
+3. **Deploy**: `./deploy-git.sh deploy`
+
+#### Troubleshooting Dependencies
+If you encounter dependency issues:
+
+1. **Check Passenger logs**:
+   ```bash
+   ssh username@server.com "tail -20 /home/username/logs/setlist-passenger.log"
+   ```
+
+2. **Force reinstall dependencies**:
+   ```bash
+   ./deploy-git.sh deps
+   ```
+
+3. **Check if node_modules exists**:
+   ```bash
+   ssh username@server.com "ls -la /home/username/repositories/setlister/node_modules"
+   ```
+
+4. **Manual dependency installation** (if needed):
+   ```bash
+   ssh username@server.com "cd /home/username/repositories/setlister && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
+   ```
+
+### Production Considerations
+
+#### Database
+- **SQLite file**: Located at `/home/username/repositories/setlister/database.sqlite`
+- **Backup regularly**: Use `./deploy-git.sh backup` to create backups
+- **File permissions**: Ensure the database file is writable by the web server
+
+#### Logs
+- **Passenger logs**: `/home/username/logs/setlist-passenger.log`
+- **Application logs**: Check server console output in cPanel Node.js manager
+
+#### Performance
+- **Static assets**: Served directly by Apache/Passenger
+- **Database**: SQLite is suitable for small to medium-sized applications
+- **Memory**: Monitor memory usage in cPanel
+
+#### Security
+- **Environment variables**: Never commit sensitive data to Git
+- **Session secret**: Use a strong, random string for `SESSION_SECRET`
+- **HTTPS**: Configure SSL certificate for production domain
+- **Email verification**: Set up proper SendGrid configuration for invitations
+
+### Deployment Workflow
+
+#### Typical Development Cycle
+1. **Make changes locally**
+2. **Test thoroughly** on local development server
+3. **Commit changes**: `git add . && git commit -m "Description of changes"`
+4. **Deploy**: `./deploy-git.sh deploy`
+5. **Verify**: Check the production site
+
+#### Emergency Rollback
+If a deployment causes issues:
+```bash
+./deploy-git.sh rollback
+```
+
+#### Creating Backups
+Before major changes:
+```bash
+./deploy-git.sh backup
+```
+
+### Monitoring & Maintenance
+
+#### Check Server Status
+```bash
+./deploy-git.sh status
+```
+
+#### View Recent Logs
+```bash
+ssh username@server.com "tail -f /home/username/logs/setlist-passenger.log"
+```
+
+#### Monitor Process
+```bash
+ssh username@server.com "ps aux | grep -E '(server|setlist|node)'"
+```
+
+#### Restart After Configuration Changes
+```bash
+./deploy-git.sh restart
+```
+
 ## First Time Setup
 
 1. **Access the application** at http://localhost:3000

@@ -7,6 +7,8 @@
 #   deploy   - Deploy current changes (push to git, pull on server)
 #   quick    - Quick deploy (just pull on server)
 #   restart  - Just restart the server
+#   stop     - Stop the server (kill Passenger process)
+#   start    - Start the server (touch restart.txt)
 #   status   - Show deployment status
 #   backup   - Create backup
 #   rollback - Rollback to previous commit
@@ -57,6 +59,8 @@ Modes:
   deploy   - Deploy current changes (push to git, pull on server) [default]
   quick    - Quick deploy (just pull on server)
   restart  - Just restart the server
+  stop     - Stop the server (kill Passenger process)
+  start    - Start the server (touch restart.txt)
   status   - Show deployment status
   backup   - Create backup
   rollback - Rollback to previous commit
@@ -71,6 +75,8 @@ Examples:
   ./deploy-git.sh deploy    # Full deployment
   ./deploy-git.sh quick     # Quick server update
   ./deploy-git.sh restart   # Just restart server
+  ./deploy-git.sh stop      # Stop server
+  ./deploy-git.sh start     # Start server
   ./deploy-git.sh status    # Show status
 
 EOF
@@ -155,6 +161,26 @@ restart_server() {
         return 1
     }
     print_success "Server restarted successfully"
+}
+
+# Function to stop server
+stop_server() {
+    print_status "Stopping server..."
+    ssh "$BAGUS_NAME@$BAGUS_FTP" "pkill -f 'Passenger NodeApp.*setlister'" || {
+        print_warning "No Passenger process found to stop"
+        return 0
+    }
+    print_success "Server stopped successfully"
+}
+
+# Function to start server
+start_server() {
+    print_status "Starting server..."
+    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && touch tmp/restart.txt" || {
+        print_error "Failed to start server"
+        return 1
+    }
+    print_success "Server started successfully"
 }
 
 # Function to show status
@@ -247,6 +273,14 @@ main() {
             ;;
         "restart")
             restart_server
+            exit 0
+            ;;
+        "stop")
+            stop_server
+            exit 0
+            ;;
+        "start")
+            start_server
             exit 0
             ;;
         "backup")

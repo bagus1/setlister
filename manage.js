@@ -3,6 +3,11 @@
 const { User, Band, Song, BandMember, BandInvitation, Setlist, SetlistSet, BandSong } = require('./models');
 const readline = require('readline');
 
+// Environment variables for server connection
+const HOST_USER = process.env.HOST_USER || 'bagus1';
+const HOST_DOMAIN = process.env.HOST_DOMAIN || 'bagus.org';
+const SETLIST_PATH = process.env.SETLIST_PATH || '/home/bagus1/repositories/setlister';
+
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -19,8 +24,15 @@ const colors = {
     reset: '\x1b[0m'
 };
 
+// Check if colors are supported
+const supportsColor = process.stdout.isTTY && process.env.TERM !== 'dumb';
+
 function log(message, color = 'reset') {
-    console.log(`${colors[color]}${message}${colors.reset}`);
+    if (supportsColor && colors[color]) {
+        console.log(`${colors[color]}${message}${colors.reset}`);
+    } else {
+        console.log(message);
+    }
 }
 
 function question(prompt) {
@@ -32,6 +44,32 @@ function question(prompt) {
 async function confirmAction(action) {
     const answer = await question(`Are you sure you want to ${action}? (yes/no): `);
     return answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y';
+}
+
+async function askForEnvironment() {
+    log('\n🎵 Setlist Manager - Database Management Tool', 'cyan');
+    log('==============================================', 'cyan');
+    log('Where would you like to work?', 'yellow');
+    log('1. Local database (localhost)', 'white');
+    log('2. Server database (remote)', 'white');
+
+    const choice = await question('\nEnter your choice (1-2): ');
+
+    if (choice === '2') {
+        log('\n📡 Server Database Access', 'blue');
+        log('========================', 'blue');
+        log(`Server: ${HOST_USER}@${HOST_DOMAIN}`, 'blue');
+        log(`Path: ${SETLIST_PATH}`, 'blue');
+        log('\nTo manage the server database, you need to run this script on the server:', 'yellow');
+        log(`1. SSH to the server: ssh ${HOST_USER}@${HOST_DOMAIN}`, 'white');
+        log(`2. Navigate to: cd ${SETLIST_PATH}`, 'white');
+        log('3. Run: npm run manage', 'white');
+        log('\nExiting...', 'yellow');
+        rl.close();
+        process.exit(0);
+    }
+
+    return 'local';
 }
 
 async function listUsers() {
@@ -220,6 +258,8 @@ async function showMenu() {
 
 async function main() {
     try {
+        const environment = await askForEnvironment();
+
         // Sync database
         await require('./models').sequelize.sync();
         log('Database connected successfully!', 'green');

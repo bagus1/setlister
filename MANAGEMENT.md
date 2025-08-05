@@ -22,8 +22,7 @@ Enter your choice (1-2):
 
 **Note**: For server database access, you need to run the script directly on the server:
 1. SSH to the server: `ssh bagus1@bagus.org`
-2. Navigate to: `cd /home/bagus1/repositories/setlister`
-3. Run: `./manage-server.sh` (recommended)
+2. Run: `/home/bagus1/repositories/setlister/manage-server.sh` (recommended)
    Or: `npm run manage-server`
 
 ### Interactive Mode

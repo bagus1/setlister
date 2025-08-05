@@ -62,8 +62,7 @@ async function askForEnvironment() {
         log(`Path: ${SETLIST_PATH}`, 'blue');
         log('\nTo manage the server database, you need to run this script on the server:', 'yellow');
         log(`1. SSH to the server: ssh ${HOST_USER}@${HOST_DOMAIN}`, 'white');
-        log(`2. Navigate to: cd ${SETLIST_PATH}`, 'white');
-        log('3. Run: ./manage-server.sh', 'white');
+        log(`2. Run: ${SETLIST_PATH}/manage-server.sh`, 'white');
         log('   Or: npm run manage-server', 'white');
         log('\nExiting...', 'yellow');
         rl.close();

@@ -172,20 +172,38 @@
             const selectedArtist = artistFilter.value;
             const selectedKey = keyFilter.value;
 
-            songItems.forEach(item => {
-                const title = item.dataset.title;
-                const artist = item.dataset.artist;
-                const key = item.dataset.key;
+            // Get all song cards and their parent containers
+            const songCards = document.querySelectorAll('.song-card');
+            const songContainers = document.querySelectorAll('.col-md-6.col-lg-4.mb-3');
+
+            songCards.forEach((card, index) => {
+                const container = songContainers[index];
+                const title = card.dataset.title;
+                const artist = card.dataset.artist;
+                const key = card.dataset.key;
 
                 const matchesSearch = title.includes(searchTerm) || artist.toLowerCase().includes(searchTerm);
                 const matchesArtist = !selectedArtist || artist === selectedArtist;
                 const matchesKey = !selectedKey || key === selectedKey;
 
                 if (matchesSearch && matchesArtist && matchesKey) {
-                    item.style.display = 'block';
+                    container.style.display = 'block';
                 } else {
-                    item.style.display = 'none';
+                    container.style.display = 'none';
                 }
+            });
+
+            // Reposition visible cards to remove gaps
+            const visibleContainers = Array.from(songContainers).filter(container =>
+                container.style.display !== 'none'
+            );
+
+            // Clear the container
+            songsContainer.innerHTML = '';
+
+            // Add visible cards back in order
+            visibleContainers.forEach(container => {
+                songsContainer.appendChild(container);
             });
         }
 

@@ -296,6 +296,88 @@ ssh username@server.com "ps aux | grep -E '(server|setlist|node)'"
 - Export setlist as CSV with song details (Set, Order, Title, Artist, Vocalist, Key, Time, BPM)
 - Print view available for physical setlists
 
+## Administrative Tools
+
+### CLI Management Tool
+
+Certain administrative functions are only available through the command-line interface (CLI) for security and data integrity reasons.
+
+#### Available Commands
+
+**Local Database Management:**
+```bash
+npm run manage
+```
+
+**Server Database Management:**
+```bash
+# Interactive mode
+ssh bagus1@bagus.org "/home/bagus1/repositories/setlister/manage-server.sh"
+
+# Command line mode
+npm run manage server list-bands
+npm run manage server list-users
+npm run manage server stats
+```
+
+#### CLI-Only Functions
+
+The following functions are **only available through the CLI** and cannot be performed through the web interface:
+
+- **User Management**
+  - List all users with creation dates
+  - Delete users (with cascading cleanup of related data)
+  - View user statistics
+
+- **Band Management**
+  - List all bands with member counts
+  - Delete bands (removes all associated data)
+  - View band statistics
+
+- **Song Management**
+  - List all songs in the database
+  - Delete songs (removes from all bands and setlists)
+  - View song statistics
+
+- **Data Cleanup**
+  - Remove orphaned data (expired invitations, unused records)
+  - Clean up database inconsistencies
+  - View overall application statistics
+
+- **System Statistics**
+  - Total users, bands, songs, setlists
+  - Active invitations count
+  - Database health metrics
+
+#### Security Considerations
+
+- **No web interface** for destructive operations to prevent accidental data loss
+- **Confirmation prompts** for all delete operations
+- **Cascading deletes** ensure data consistency when removing records
+- **Local and remote access** with proper authentication
+
+#### Usage Examples
+
+```bash
+# View all users
+npm run manage list-users
+
+# Delete a specific user (with confirmation)
+npm run manage delete-user
+
+# View system statistics
+npm run manage stats
+
+# Clean up orphaned data
+npm run manage cleanup
+
+# Server operations
+npm run manage server list-bands
+npm run manage server stats
+```
+
+For detailed CLI documentation, see [MANAGEMENT.md](MANAGEMENT.md).
+
 ## Technology Stack
 
 - **Backend**: Node.js, Express.js

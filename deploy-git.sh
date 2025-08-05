@@ -29,8 +29,8 @@ BAGUS_NAME=${BAGUS_NAME:-bagus1}
 BAGUS_FTP=${BAGUS_FTP:-bagus.org}
 SETLIST_PATH=${SETLIST_PATH:-/home/bagus1/repositories/setlister}
 
-# Default mode
-MODE=${1:-deploy}
+# Default mode - show help if no argument provided
+MODE=${1:-help}
 
 # Function to print colored output
 print_status() {
@@ -57,7 +57,7 @@ Setlist Manager Git-Based Deployment Script
 Usage: ./deploy-git.sh [mode]
 
 Modes:
-  deploy   - Deploy current changes (push to git, pull on server) [default]
+  deploy   - Deploy current changes (push to git, pull on server)
   quick    - Quick deploy (just pull on server)
   restart  - Just restart the server
   stop     - Stop the server (kill Passenger process)
@@ -66,7 +66,7 @@ Modes:
   status   - Show deployment status
   backup   - Create backup
   rollback - Rollback to previous commit
-  help     - Show this help message
+  help     - Show this help message (default)
 
 Environment Variables:
   BAGUS_NAME     - Username for server (default: bagus1)

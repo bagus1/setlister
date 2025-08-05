@@ -142,8 +142,8 @@ The project includes `deploy-git.sh` for automated deployment and server managem
 
 2. **Configure environment variables** (optional):
    ```bash
-   export BAGUS_NAME=your_username
-   export BAGUS_FTP=your_server.com
+   export HOST_USER=your_username
+export HOST_DOMAIN=your_server.com
    export SETLIST_PATH=/home/your_username/repositories/setlister
    ```
 

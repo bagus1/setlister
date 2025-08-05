@@ -30,9 +30,9 @@ NC='\033[0m' # No Color
 
 # Default values
 MODE=${1:-mods}
-BAGUS_NAME=${BAGUS_NAME:-bagus1}
+HOST_USER=${HOST_USER:-bagus1}
 BAGUS_PASS=${BAGUS_PASS:-}
-BAGUS_FTP=${BAGUS_FTP:-ftp.bagus.org}
+HOST_DOMAIN=${HOST_DOMAIN:-ftp.bagus.org}
 SETLIST_PATH=${SETLIST_PATH:-/home/bagus1/public_html/setlist-manager}
 
 # Backup directory
@@ -80,9 +80,9 @@ Modes:
   help     - Show this help message
 
 Environment Variables:
-  BAGUS_NAME     - Username for server (default: bagus1)
+  HOST_USER     - Username for server (default: bagus1)
   BAGUS_PASS     - Password for server
-  BAGUS_FTP      - FTP server (default: ftp.bagus.org)
+  HOST_DOMAIN      - FTP server (default: ftp.bagus.org)
   SETLIST_PATH   - Path on server (default: /home/bagus1/public_html/setlist-manager)
 
 Examples:
@@ -120,19 +120,19 @@ create_backup() {
     BACKUP_FILE="$BACKUP_DIR/setlist_backup_$TIMESTAMP.tar.gz"
     
     # Create backup on server
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && tar -czf /tmp/setlist_backup_$TIMESTAMP.tar.gz ." || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && tar -czf /tmp/setlist_backup_$TIMESTAMP.tar.gz ." || {
         print_error "Failed to create backup on server"
         return 1
     }
     
     # Download backup
-    scp "$BAGUS_NAME@$BAGUS_FTP:/tmp/setlist_backup_$TIMESTAMP.tar.gz" "$BACKUP_FILE" || {
+    scp "$HOST_USER@$HOST_DOMAIN:/tmp/setlist_backup_$TIMESTAMP.tar.gz" "$BACKUP_FILE" || {
         print_error "Failed to download backup"
         return 1
     }
     
     # Clean up server backup
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "rm /tmp/setlist_backup_$TIMESTAMP.tar.gz"
+    ssh "$HOST_USER@$HOST_DOMAIN" "rm /tmp/setlist_backup_$TIMESTAMP.tar.gz"
     
     print_success "Backup created: $BACKUP_FILE"
 }
@@ -171,10 +171,10 @@ deploy_files() {
             fi
             
             # Create directory if it doesn't exist
-            ssh "$BAGUS_NAME@$BAGUS_FTP" "mkdir -p $target_dir"
+            ssh "$HOST_USER@$HOST_DOMAIN" "mkdir -p $target_dir"
             
             # Copy file
-            scp "$file" "$BAGUS_NAME@$BAGUS_FTP:$target_dir/" || {
+            scp "$file" "$HOST_USER@$HOST_DOMAIN:$target_dir/" || {
                 print_error "Failed to deploy $file"
                 return 1
             }
@@ -190,7 +190,7 @@ deploy_files() {
 # Function to restart server
 restart_server() {
     print_status "Restarting server..."
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && touch tmp/restart.txt" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && touch tmp/restart.txt" || {
         print_error "Failed to restart server"
         return 1
     }
@@ -208,7 +208,7 @@ show_status() {
     git status --porcelain
     
     echo -e "\n${BLUE}Server Status:${NC}"
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && ls -la tmp/restart.txt 2>/dev/null && echo 'Server restart file exists' || echo 'No restart file found'"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && ls -la tmp/restart.txt 2>/dev/null && echo 'Server restart file exists' || echo 'No restart file found'"
     
     echo -e "\n${BLUE}Recent Backups:${NC}"
     ls -la "$BACKUP_DIR"/*.tar.gz 2>/dev/null | tail -5 || echo "No backups found"
@@ -243,8 +243,8 @@ rollback() {
     fi
     
     # Upload and extract backup
-    scp "$backup_file" "$BAGUS_NAME@$BAGUS_FTP:/tmp/"
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && tar -xzf /tmp/$(basename $backup_file) --strip-components=1 && rm /tmp/$(basename $backup_file)"
+    scp "$backup_file" "$HOST_USER@$HOST_DOMAIN:/tmp/"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && tar -xzf /tmp/$(basename $backup_file) --strip-components=1 && rm /tmp/$(basename $backup_file)"
     restart_server
     
     print_success "Rollback completed"

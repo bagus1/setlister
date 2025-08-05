@@ -25,8 +25,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Environment variables
-BAGUS_NAME=${BAGUS_NAME:-bagus1}
-BAGUS_FTP=${BAGUS_FTP:-bagus.org}
+HOST_USER=${HOST_USER:-bagus1}
+HOST_DOMAIN=${HOST_DOMAIN:-bagus.org}
 SETLIST_PATH=${SETLIST_PATH:-/home/bagus1/repositories/setlister}
 
 # Default mode - show help if no argument provided
@@ -69,8 +69,8 @@ Modes:
   help     - Show this help message (default)
 
 Environment Variables:
-  BAGUS_NAME     - Username for server (default: bagus1)
-  BAGUS_FTP      - Server (default: bagus.org)
+  HOST_USER      - Username for server (default: bagus1)
+  HOST_DOMAIN    - Server domain (default: bagus.org)
   SETLIST_PATH   - Path on server (default: /home/bagus1/repositories/setlister)
 
 Examples:
@@ -125,15 +125,15 @@ deploy_via_git() {
     
     # Pull on server
     print_status "Pulling changes on server..."
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && git pull origin main" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
         print_error "Failed to pull on server"
         return 1
     }
     
     # Install dependencies if package.json changed
-    if ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
         print_status "Installing dependencies..."
-        ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
     fi
     
     # Restart server
@@ -146,15 +146,15 @@ deploy_via_git() {
 quick_deploy() {
     print_status "Quick deploy - pulling on server..."
     
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && git pull origin main" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
         print_error "Failed to pull on server"
         return 1
     }
     
     # Install dependencies if package.json changed
-    if ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
         print_status "Installing dependencies..."
-        ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
     fi
     
     restart_server
@@ -165,7 +165,7 @@ quick_deploy() {
 # Function to restart server
 restart_server() {
     print_status "Restarting server..."
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && touch tmp/restart.txt" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && touch tmp/restart.txt" || {
         print_error "Failed to restart server"
         return 1
     }
@@ -175,7 +175,7 @@ restart_server() {
 # Function to stop server
 stop_server() {
     print_status "Stopping server..."
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "pkill -f 'Passenger NodeApp.*setlister'" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "pkill -f 'Passenger NodeApp.*setlister'" || {
         print_warning "No Passenger process found to stop"
         return 0
     }
@@ -185,7 +185,7 @@ stop_server() {
 # Function to start server
 start_server() {
     print_status "Starting server..."
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && touch tmp/restart.txt" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && touch tmp/restart.txt" || {
         print_error "Failed to start server"
         return 1
     }
@@ -195,7 +195,7 @@ start_server() {
 # Function to update dependencies
 update_dependencies() {
     print_status "Updating dependencies..."
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production" || {
         print_error "Failed to update dependencies"
         return 1
     }
@@ -216,10 +216,10 @@ show_status() {
     git log --oneline -5
     
     echo -e "\n${BLUE}Server Status:${NC}"
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && echo 'Current commit:' && git log --oneline -1 && echo 'Server restart file:' && ls -la tmp/restart.txt 2>/dev/null && echo 'Server restart file exists' || echo 'No restart file found'"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && echo 'Current commit:' && git log --oneline -1 && echo 'Server restart file:' && ls -la tmp/restart.txt 2>/dev/null && echo 'Server restart file exists' || echo 'No restart file found'"
     
     echo -e "\n${BLUE}Database Status:${NC}"
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && ls -la database.sqlite 2>/dev/null && echo 'Database exists' || echo 'Database not found'"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && ls -la database.sqlite 2>/dev/null && echo 'Database exists' || echo 'Database not found'"
 }
 
 # Function to create backup
@@ -268,7 +268,7 @@ create_backup() {
     print_status "Creating backup on server..."
     
     # Create backup on server
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && tar -czf /tmp/setlist_backup_$TIMESTAMP.tar.gz ." || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && tar -czf /tmp/setlist_backup_$TIMESTAMP.tar.gz ." || {
         print_error "Failed to create backup on server"
         return 1
     }
@@ -276,13 +276,13 @@ create_backup() {
     print_status "Downloading backup to: $BACKUP_FILE"
     
     # Download backup
-    scp "$BAGUS_NAME@$BAGUS_FTP:/tmp/setlist_backup_$TIMESTAMP.tar.gz" "$BACKUP_FILE" || {
+    scp "$HOST_USER@$HOST_DOMAIN:/tmp/setlist_backup_$TIMESTAMP.tar.gz" "$BACKUP_FILE" || {
         print_error "Failed to download backup"
         return 1
     }
     
     # Clean up server backup
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "rm /tmp/setlist_backup_$TIMESTAMP.tar.gz"
+    ssh "$HOST_USER@$HOST_DOMAIN" "rm /tmp/setlist_backup_$TIMESTAMP.tar.gz"
     
     print_success "Backup created: $BACKUP_FILE"
     print_warning "⚠️  This backup contains sensitive data (.env file)"
@@ -311,7 +311,7 @@ rollback() {
     git push --force origin main
     
     # Pull on server
-    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && git reset --hard $PREVIOUS_COMMIT"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git reset --hard $PREVIOUS_COMMIT"
     
     restart_server
     

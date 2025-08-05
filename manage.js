@@ -68,11 +68,21 @@ async function listUsers() {
     log('\n=== Users ===', 'cyan');
     const users = await User.findAll({
         attributes: ['id', 'username', 'email', 'createdAt'],
+        include: [{
+            model: Band,
+            through: { attributes: ['role'] },
+            attributes: ['id', 'name']
+        }],
         order: [['createdAt', 'DESC']]
     });
 
     users.forEach(user => {
+        const bands = user.Bands && user.Bands.length > 0
+            ? user.Bands.map(band => `${band.name}(${band.BandMember.role})`).join(', ')
+            : 'No bands';
+
         log(`ID: ${user.id} | ${user.username} | ${user.email} | Created: ${user.createdAt.toLocaleDateString()}`, 'blue');
+        log(`  Bands: ${bands}`, 'white');
     });
     log(`Total users: ${users.length}`, 'green');
 }

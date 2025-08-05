@@ -187,23 +187,10 @@
                 const matchesKey = !selectedKey || key === selectedKey;
 
                 if (matchesSearch && matchesArtist && matchesKey) {
-                    container.style.display = 'block';
+                    container.classList.remove('d-none');
                 } else {
-                    container.style.display = 'none';
+                    container.classList.add('d-none');
                 }
-            });
-
-            // Reposition visible cards to remove gaps
-            const visibleContainers = Array.from(songContainers).filter(container =>
-                container.style.display !== 'none'
-            );
-
-            // Clear the container
-            songsContainer.innerHTML = '';
-
-            // Add visible cards back in order
-            visibleContainers.forEach(container => {
-                songsContainer.appendChild(container);
             });
         }
 

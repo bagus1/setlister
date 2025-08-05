@@ -9,6 +9,7 @@
 #   restart  - Just restart the server
 #   stop     - Stop the server (kill Passenger process)
 #   start    - Start the server (touch restart.txt)
+#   deps     - Update dependencies on server
 #   status   - Show deployment status
 #   backup   - Create backup
 #   rollback - Rollback to previous commit
@@ -61,6 +62,7 @@ Modes:
   restart  - Just restart the server
   stop     - Stop the server (kill Passenger process)
   start    - Start the server (touch restart.txt)
+  deps     - Update dependencies on server
   status   - Show deployment status
   backup   - Create backup
   rollback - Rollback to previous commit
@@ -77,6 +79,7 @@ Examples:
   ./deploy-git.sh restart   # Just restart server
   ./deploy-git.sh stop      # Stop server
   ./deploy-git.sh start     # Start server
+  ./deploy-git.sh deps      # Update dependencies
   ./deploy-git.sh status    # Show status
 
 EOF
@@ -130,7 +133,7 @@ deploy_via_git() {
     # Install dependencies if package.json changed
     if ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
         print_status "Installing dependencies..."
-        ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && npm install --production"
+        ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
     fi
     
     # Restart server
@@ -147,6 +150,12 @@ quick_deploy() {
         print_error "Failed to pull on server"
         return 1
     }
+    
+    # Install dependencies if package.json changed
+    if ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
+        print_status "Installing dependencies..."
+        ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
+    fi
     
     restart_server
     
@@ -181,6 +190,19 @@ start_server() {
         return 1
     }
     print_success "Server started successfully"
+}
+
+# Function to update dependencies
+update_dependencies() {
+    print_status "Updating dependencies..."
+    ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production" || {
+        print_error "Failed to update dependencies"
+        return 1
+    }
+    print_success "Dependencies updated successfully"
+    
+    # Restart server to ensure new dependencies are loaded
+    restart_server
 }
 
 # Function to show status
@@ -297,6 +319,9 @@ main() {
             ;;
         "quick")
             quick_deploy
+            ;;
+        "deps")
+            update_dependencies
             ;;
         *)
             print_error "Unknown mode: $MODE"

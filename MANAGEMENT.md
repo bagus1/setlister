@@ -4,26 +4,32 @@ The `manage.js` script provides a command-line interface for administrative task
 
 ## Usage
 
-### Environment Selection
-When you start the script, it will first ask where you want to work:
+### Environment Information
+When you start the script, it will first show server database access instructions, then continue with local database management:
 
 ```
 🎵 Setlist Manager - Database Management Tool
 ==============================================
-Where would you like to work?
-1. Local database (localhost)
-2. Server database (remote)
 
-Enter your choice (1-2):
+📡 Server Database Access
+========================
+Server: bagus1@bagus.org
+Path: /home/bagus1/repositories/setlister
+
+To manage the server database, use one of these commands:
+1. Interactive mode: ssh bagus1@bagus.org "/home/bagus1/repositories/setlister/manage-server.sh"
+2. Command line mode: npm run manage server <command>
+   Examples:
+   npm run manage server list-bands
+   npm run manage server list-users
+   npm run manage server stats
+
+Continuing with local database...
+==============================================
 ```
 
-- **Option 1 (Local)**: Works with your local database
-- **Option 2 (Server)**: Shows instructions for connecting to the server database
-
-**Note**: For server database access, you need to run the script directly on the server:
-1. SSH to the server: `ssh bagus1@bagus.org`
-2. Run: `/home/bagus1/repositories/setlister/manage-server.sh` (recommended)
-   Or: `npm run manage-server`
+**Local Mode**: Works with your local database (default behavior)
+**Server Mode**: Use the commands shown above to access the server database
 
 ### Interactive Mode
 Run the script without arguments to enter interactive mode:

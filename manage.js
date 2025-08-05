@@ -293,7 +293,7 @@ async function main() {
                     log('Invalid choice. Please try again.', 'red');
             }
 
-            await question('\nPress Enter to continue...');
+
         }
     } catch (error) {
         log(`Error: ${error.message}`, 'red');

@@ -313,6 +313,9 @@ npm run manage
 ```bash
 # Interactive mode
 ssh bagus1@bagus.org "/home/bagus1/repositories/setlister/manage-server.sh"
+# Note: if your environmental variables are set properly your command will be
+#       printed out properly when you run npm run manage locally to make 
+#       it easy to connect to the cli on your server.  
 
 # Command line mode
 npm run manage server list-bands

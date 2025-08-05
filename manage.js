@@ -254,7 +254,7 @@ async function showMenu() {
     log('6. Delete song', 'red');
     log('7. Cleanup orphaned data', 'yellow');
     log('8. Show statistics', 'cyan');
-    log('9. Exit', 'reset');
+    log('9. Exit (or type q/quit)', 'reset');
     log('=====================================', 'magenta');
 }
 
@@ -268,9 +268,9 @@ async function main() {
 
         while (true) {
             await showMenu();
-            const choice = await question('Enter your choice (1-9): ');
+            const choice = await question('Enter your choice (1-9, q to quit): ');
 
-            switch (choice) {
+            switch (choice.toLowerCase()) {
                 case '1':
                     await listUsers();
                     break;
@@ -296,6 +296,8 @@ async function main() {
                     await showStats();
                     break;
                 case '9':
+                case 'q':
+                case 'quit':
                     log('Goodbye!', 'green');
                     rl.close();
                     process.exit(0);

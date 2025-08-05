@@ -190,11 +190,14 @@
 
                 // Send AJAX request
                 const operation = !isChecked ? 'add' : 'remove';
-                const method = !isChecked ? 'POST' : 'DELETE';
+                const method = 'POST'; // Always use POST
+                const url = !isChecked ?
+                    `/bands/${bandId}/songs/${songId}` :
+                    `/bands/${bandId}/songs/${songId}/remove`;
 
                 console.log(`${operation}ing song ${songId} to/from band ${bandId}`);
 
-                fetch(`/bands/${bandId}/songs/${songId}`, {
+                fetch(url, {
                     method: method,
                     headers: {
                         'Content-Type': 'application/json'

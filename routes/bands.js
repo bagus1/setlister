@@ -402,6 +402,32 @@ router.delete('/:id/songs/:songId', async (req, res) => {
     }
 });
 
+// POST /bands/:id/songs/:songId/remove - Workaround for DELETE requests
+router.post('/:id/songs/:songId/remove', async (req, res) => {
+    try {
+        const { id: bandId, songId } = req.params;
+        const userId = req.session.user.id;
+
+        // Check if user is a member
+        const membership = await BandMember.findOne({
+            where: { bandId, userId }
+        });
+
+        if (!membership) {
+            return res.status(403).json({ error: 'Not authorized' });
+        }
+
+        await BandSong.destroy({
+            where: { bandId, songId }
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Remove band song error (POST):', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // DELETE /bands/:id/invitations/:invitationId - Delete invitation
 router.delete('/:id/invitations/:invitationId', async (req, res) => {
     console.log(`[${new Date().toISOString()}] DELETE invitation route hit:`, req.params);

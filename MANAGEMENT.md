@@ -4,6 +4,27 @@ The `manage.js` script provides a command-line interface for administrative task
 
 ## Usage
 
+### Environment Selection
+When you start the script, it will first ask where you want to work:
+
+```
+🎵 Setlist Manager - Database Management Tool
+==============================================
+Where would you like to work?
+1. Local database (localhost)
+2. Server database (remote)
+
+Enter your choice (1-2):
+```
+
+- **Option 1 (Local)**: Works with your local database
+- **Option 2 (Server)**: Shows instructions for connecting to the server database
+
+**Note**: For server database access, you need to run the script directly on the server:
+1. SSH to the server: `ssh bagus1@bagus.org`
+2. Navigate to: `cd /home/bagus1/repositories/setlister`
+3. Run: `npm run manage`
+
 ### Interactive Mode
 Run the script without arguments to enter interactive mode:
 
@@ -94,4 +115,13 @@ The script includes proper cascading deletes to maintain database integrity:
 
 ## Environment
 
-The script uses the same database configuration as your main application, so it will work with your local development database or production database depending on your environment variables. 
+The script uses the same database configuration as your main application, so it will work with your local development database or production database depending on your environment variables.
+
+### Environment Variables
+The script uses the same environment variables as `deploy-git.sh`:
+
+- `HOST_USER` - Username for server (default: bagus1)
+- `HOST_DOMAIN` - Server domain (default: bagus.org)  
+- `SETLIST_PATH` - Path on server (default: /home/bagus1/repositories/setlister)
+
+These are used when selecting the server database option. 

@@ -46,30 +46,22 @@ async function confirmAction(action) {
     return answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y';
 }
 
-async function askForEnvironment() {
+async function showServerInstructions() {
     log('\n🎵 Setlist Manager - Database Management Tool', 'cyan');
     log('==============================================', 'cyan');
-    log('Where would you like to work?', 'yellow');
-    log('1. Local database (localhost)', 'white');
-    log('2. Server database (remote)', 'white');
-
-    const choice = await question('\nEnter your choice (1-2): ');
-
-    if (choice === '2') {
-        log('\n📡 Server Database Access', 'blue');
-        log('========================', 'blue');
-        log(`Server: ${HOST_USER}@${HOST_DOMAIN}`, 'blue');
-        log(`Path: ${SETLIST_PATH}`, 'blue');
-        log('\nTo manage the server database, you need to run this script on the server:', 'yellow');
-        log(`1. SSH to the server: ssh ${HOST_USER}@${HOST_DOMAIN}`, 'white');
-        log(`2. Run: ${SETLIST_PATH}/manage-server.sh`, 'white');
-        log('   Or: npm run manage-server', 'white');
-        log('\nExiting...', 'yellow');
-        rl.close();
-        process.exit(0);
-    }
-
-    return 'local';
+    log('\n📡 Server Database Access', 'blue');
+    log('========================', 'blue');
+    log(`Server: ${HOST_USER}@${HOST_DOMAIN}`, 'blue');
+    log(`Path: ${SETLIST_PATH}`, 'blue');
+    log('\nTo manage the server database, use one of these commands:', 'yellow');
+    log('1. Interactive mode: ssh bagus1@bagus.org "/home/bagus1/repositories/setlister/manage-server.sh"', 'white');
+    log('2. Command line mode: npm run manage server <command>', 'white');
+    log('   Examples:', 'white');
+    log('   npm run manage server list-bands', 'white');
+    log('   npm run manage server list-users', 'white');
+    log('   npm run manage server stats', 'white');
+    log('\nContinuing with local database...', 'blue');
+    log('==============================================', 'cyan');
 }
 
 async function listUsers() {
@@ -258,7 +250,7 @@ async function showMenu() {
 
 async function main() {
     try {
-        const environment = await askForEnvironment();
+        await showServerInstructions();
 
         // Sync database
         await require('./models').sequelize.sync();
@@ -317,6 +309,33 @@ if (process.argv.length > 2) {
 
     (async () => {
         try {
+            // Check if this is a server command
+            if (command === 'server') {
+                const serverCommand = args[0];
+                if (!serverCommand) {
+                    log('Usage: npm run manage server <command>', 'red');
+                    log('Example: npm run manage server list-bands', 'yellow');
+                    process.exit(1);
+                }
+
+                const { exec } = require('child_process');
+                const sshCommand = `ssh ${HOST_USER}@${HOST_DOMAIN} "${SETLIST_PATH}/manage-server.sh ${serverCommand}"`;
+
+                exec(sshCommand, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error('Error connecting to server:', error.message);
+                        process.exit(1);
+                    }
+                    if (stderr) {
+                        console.error('Server error:', stderr);
+                    }
+                    if (stdout) {
+                        console.log(stdout);
+                    }
+                });
+                return;
+            }
+
             await require('./models').sequelize.sync();
 
             switch (command) {
@@ -338,6 +357,7 @@ if (process.argv.length > 2) {
                 default:
                     log(`Unknown command: ${command}`, 'red');
                     log('Available commands: list-users, list-bands, list-songs, stats, cleanup', 'yellow');
+                    log('For server commands: npm run manage server <command>', 'yellow');
             }
 
             process.exit(0);

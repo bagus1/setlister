@@ -397,31 +397,56 @@ For detailed CLI documentation, see [MANAGEMENT.md](MANAGEMENT.md).
 setlister/
 ├── server.js                 # Main application server
 ├── package.json              # Dependencies and scripts
+├── manage.js                 # CLI management tool
+├── manage-server.sh          # Server management script
+├── deploy-git.sh             # Git-based deployment script
+├── ftploy.sh                 # FTP deployment script (legacy)
+├── Passengerfile.json        # Passenger configuration
+├── database.sqlite           # SQLite database file
+├── .gitignore                # Git ignore rules
 ├── models/                   # Sequelize database models
 │   ├── index.js             # Database connection & associations
 │   ├── User.js              # User authentication model
 │   ├── Band.js              # Band model
 │   ├── Song.js              # Song model with BPM field
-│   └── ...                  # Other models
+│   ├── Artist.js            # Artist model
+│   ├── Vocalist.js          # Vocalist model
+│   ├── BandMember.js        # Band membership model
+│   ├── BandSong.js          # Band-song associations
+│   ├── Setlist.js           # Setlist model
+│   ├── SetlistSet.js        # Set organization model
+│   ├── SetlistSong.js       # Setlist song model
+│   ├── Medley.js            # Medley model
+│   ├── MedleySong.js        # Medley song associations
+│   ├── BandInvitation.js    # Email invitation model
+│   └── PasswordReset.js     # Password reset model
 ├── routes/                   # Express route handlers  
 │   ├── auth.js              # Authentication routes
 │   ├── dashboard.js         # Dashboard routes
 │   ├── bands.js             # Band management
 │   ├── songs.js             # Song CRUD operations
 │   ├── setlists.js          # Setlist management
-│   └── ...                  # Other route files
+│   ├── bulk-add-songs.js    # Bulk song import
+│   ├── invitations.js       # Invitation management
+│   ├── medleys.js           # Medley management
+│   └── artists.js           # Artist management
 ├── views/                    # EJS templates
 │   ├── layout.ejs           # Main layout template
+│   ├── error.ejs            # Error page template
 │   ├── dashboard/           # Dashboard views
 │   ├── auth/                # Login/register forms
 │   ├── bands/               # Band management pages
 │   ├── songs/               # Song forms and lists
-│   └── setlists/            # Setlist editor and export
+│   ├── setlists/            # Setlist editor and export
+│   ├── invitations/         # Invitation pages
+│   └── artists/             # Artist management pages
 ├── public/                   # Static assets
 │   └── js/
 │       └── setlist-editor.js # Client-side drag & drop
-└── utils/                    # Utility functions
-    └── emailService.js       # SendGrid email integration
+├── utils/                    # Utility functions
+│   └── emailService.js       # SendGrid email integration
+└── docs/                     # Documentation
+    └── user-guide.html       # HTML user guide
 ```
 
 ## Troubleshooting

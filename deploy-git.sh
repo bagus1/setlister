@@ -226,18 +226,54 @@ show_status() {
 create_backup() {
     print_status "Creating backup..."
     
+    # Prompt user for backup directory (outside of git repo for security)
+    echo -e "${YELLOW}⚠️  SECURITY WARNING: Backup contains .env file with secrets${NC}"
+    echo -e "${YELLOW}   Choose a location OUTSIDE this git repository${NC}"
+    echo
+    
+    # Suggest a default backup location
+    DEFAULT_BACKUP_DIR="$HOME/Desktop/setlist_backups"
+    
+    read -p "Enter backup directory path (default: $DEFAULT_BACKUP_DIR): " BACKUP_DIR
+    
+    # Use default if user didn't enter anything
+    if [[ -z "$BACKUP_DIR" ]]; then
+        BACKUP_DIR="$DEFAULT_BACKUP_DIR"
+        print_status "Using default backup directory: $BACKUP_DIR"
+    fi
+    
+    # Expand tilde and resolve path
+    BACKUP_DIR=$(eval echo "$BACKUP_DIR")
+    
+    # Validate the backup directory is outside the git repo
+    GIT_ROOT=$(git rev-parse --show-toplevel)
+    if [[ "$BACKUP_DIR" == "$GIT_ROOT"* ]]; then
+        print_error "Backup directory cannot be inside the git repository!"
+        print_error "Git root: $GIT_ROOT"
+        print_error "Backup dir: $BACKUP_DIR"
+        print_error "Please choose a location outside the repository."
+        return 1
+    fi
+    
     # Create backup directory
-    mkdir -p "./backups"
+    mkdir -p "$BACKUP_DIR" || {
+        print_error "Failed to create backup directory: $BACKUP_DIR"
+        return 1
+    }
     
     # Create backup filename
     TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-    BACKUP_FILE="./backups/setlist_backup_$TIMESTAMP.tar.gz"
+    BACKUP_FILE="$BACKUP_DIR/setlist_backup_$TIMESTAMP.tar.gz"
+    
+    print_status "Creating backup on server..."
     
     # Create backup on server
     ssh "$BAGUS_NAME@$BAGUS_FTP" "cd $SETLIST_PATH && tar -czf /tmp/setlist_backup_$TIMESTAMP.tar.gz ." || {
         print_error "Failed to create backup on server"
         return 1
     }
+    
+    print_status "Downloading backup to: $BACKUP_FILE"
     
     # Download backup
     scp "$BAGUS_NAME@$BAGUS_FTP:/tmp/setlist_backup_$TIMESTAMP.tar.gz" "$BACKUP_FILE" || {
@@ -249,6 +285,8 @@ create_backup() {
     ssh "$BAGUS_NAME@$BAGUS_FTP" "rm /tmp/setlist_backup_$TIMESTAMP.tar.gz"
     
     print_success "Backup created: $BACKUP_FILE"
+    print_warning "⚠️  This backup contains sensitive data (.env file)"
+    print_warning "   Keep it secure and don't share it!"
 }
 
 # Function to rollback

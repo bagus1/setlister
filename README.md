@@ -143,41 +143,9 @@ The project includes `deploy-git.sh` for automated deployment and server managem
 2. **Configure environment variables** (optional):
    ```bash
    export HOST_USER=your_username
-export HOST_DOMAIN=your_server.com
+   export HOST_DOMAIN=your_server.com
    export SETLIST_PATH=/home/your_username/repositories/setlister
    ```
-
-#### Available Commands
-
-**Full Deployment** (push to git, pull on server, auto-install dependencies):
-```bash
-./deploy-git.sh deploy
-```
-
-**Quick Deploy** (just pull changes on server):
-```bash
-./deploy-git.sh quick
-```
-
-**Server Management**:
-```bash
-./deploy-git.sh start      # Start the server
-./deploy-git.sh stop       # Stop the server
-./deploy-git.sh restart    # Restart the server
-```
-
-**Dependency Management**:
-```bash
-./deploy-git.sh deps       # Update dependencies on server
-```
-
-**Status & Maintenance**:
-```bash
-./deploy-git.sh status     # Show deployment status
-./deploy-git.sh backup     # Create backup
-./deploy-git.sh rollback   # Rollback to previous commit
-./deploy-git.sh help       # Show all available commands
-```
 
 ### Dependency Management
 

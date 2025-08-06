@@ -168,7 +168,9 @@ class SetlistEditor {
         if (this.draggedElement.classList.contains('band-song')) {
             this.draggedElement.style.display = 'none'; // Hide immediately
             setTimeout(() => {
-                this.draggedElement.remove(); // Remove after a short delay
+                if (this.draggedElement) {
+                    this.draggedElement.remove(); // Remove after a short delay
+                }
             }, 100);
         } else if (this.draggedElement.classList.contains('setlist-song')) {
             // If moving from another set, remove from original location
@@ -277,6 +279,7 @@ class SetlistEditor {
             songElement.remove();
             // Call restore after removing from DOM so the check works correctly
             setTimeout(() => {
+                console.log('[REMOVE] Calling restoreToBandSongs after DOM removal');
                 this.restoreToBandSongs(songId, songTime);
             }, 0);
         } else {
@@ -287,6 +290,23 @@ class SetlistEditor {
                 maybeZone.appendChild(songElement);
                 maybeZone.classList.add('has-songs');
                 console.log('[REMOVE] Song moved to Maybe zone');
+
+                // Update the remove button's event listener to use "Maybe" as the setName
+                const removeBtn = songElement.querySelector('.btn-outline-danger');
+                if (removeBtn) {
+                    console.log('[REMOVE] Found remove button, updating event listener');
+                    // Remove the old event listener and add a new one
+                    const newRemoveBtn = removeBtn.cloneNode(true);
+                    removeBtn.parentNode.replaceChild(newRemoveBtn, removeBtn);
+                    newRemoveBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        console.log('[X BUTTON] Clicked, calling removeSongFromSet with:', { songElement, setName: 'Maybe' });
+                        this.removeSongFromSet(songElement, 'Maybe');
+                    });
+                    console.log('[REMOVE] Event listener updated successfully');
+                } else {
+                    console.error('[REMOVE] Could not find remove button in song element');
+                }
             }
         }
 
@@ -314,15 +334,19 @@ class SetlistEditor {
     }
 
     restoreToBandSongs(songId, songTime) {
-        // Check if song is already in band songs area
-        const existingBandSong = document.querySelector(`.band-song[data-song-id="${songId}"]`);
-        if (existingBandSong) {
-            console.log('[RESTORE] Song already in band songs, skipping');
-            return; // Already there, don't duplicate
+        console.log('[RESTORE] restoreToBandSongs called for song ID:', songId);
+
+        // Check if song is already visible in band songs area
+        const bandSongsContainer = document.querySelector('.col-md-4 .card-body');
+        const existingBandSong = bandSongsContainer?.querySelector(`.band-song[data-song-id="${songId}"]`);
+        if (existingBandSong && existingBandSong.offsetParent !== null) {
+            console.log('[RESTORE] Song already visible in band songs, skipping');
+            return; // Already there and visible, don't duplicate
         }
 
         // Check if song is still in any other set (should be 0 since we removed it from Maybe)
         const songInOtherSets = document.querySelectorAll(`.setlist-song[data-song-id="${songId}"]`);
+        console.log('[RESTORE] Songs found in other sets:', songInOtherSets.length);
         if (songInOtherSets.length > 0) {
             console.log('[RESTORE] Song still in other sets, not restoring:', songInOtherSets.length);
             return; // Still in use elsewhere, don't restore
@@ -335,17 +359,25 @@ class SetlistEditor {
 
     async fetchAndRestoreSong(songId) {
         try {
-            const response = await fetch(`/songs/api/${songId}`);
-            if (!response.ok) return;
+            console.log('[RESTORE] Fetching song details for ID:', songId);
+            const response = await fetch(`/songs/api/song/${songId}`);
+            console.log('[RESTORE] API response status:', response.status);
+
+            if (!response.ok) {
+                console.error('[RESTORE] API request failed:', response.status, response.statusText);
+                return;
+            }
 
             const song = await response.json();
+            console.log('[RESTORE] Song data received:', song.title);
 
             // Create band song element
             const bandSongElement = this.createBandSongElement(song);
 
-            // Add to band songs area
-            const bandSongsContainer = document.querySelector('.card-body');
+            // Add to band songs area - use more specific selector
+            const bandSongsContainer = document.querySelector('.col-md-4 .card-body');
             if (bandSongsContainer) {
+                console.log('[RESTORE] Found band songs container');
                 // Insert in alphabetical order
                 const existingSongs = Array.from(bandSongsContainer.querySelectorAll('.band-song'));
                 let insertPosition = existingSongs.length;
@@ -366,6 +398,9 @@ class SetlistEditor {
 
                 // Make it draggable
                 this.makeDraggable(bandSongElement);
+                console.log('[RESTORE] Song successfully restored to band songs list');
+            } else {
+                console.error('[RESTORE] Could not find band songs container');
             }
         } catch (error) {
             console.error('Error restoring song to band songs:', error);

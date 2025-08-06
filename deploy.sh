@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Setlist Manager Git-Based Deployment Script
-# Usage: ./deploy-git.sh [mode]
+# Usage: ./deploy.sh [mode]
 # 
 # Modes:
 #   deploy   - Deploy current changes (push to git, pull on server, restart)
-#   update   - Update files without restart (push to git, pull on server)
-#   quick    - Quick deploy (just pull on server)
+#   update   - Quick deploy (just pull on server, restart)
+#   quick    - Update files without restart (push to git, pull on server)
 #   restart  - Just restart the server
 #   stop     - Stop the server (kill Passenger process)
 #   start    - Start the server (touch restart.txt)
@@ -55,7 +55,7 @@ show_help() {
     cat << EOF
 Setlist Manager Git-Based Deployment Script
 
-Usage: ./deploy-git.sh [mode]
+Usage: ./deploy.sh [mode]
 
 Modes:
   deploy   - Deploy current changes (push to git, pull on server, restart)
@@ -76,14 +76,14 @@ Environment Variables:
   SETLIST_PATH   - Path on server (default: /home/bagus1/repositories/setlister)
 
 Examples:
-  ./deploy-git.sh deploy    # Full deployment with restart
-  ./deploy-git.sh update    # Quick deploy with restart
-  ./deploy-git.sh quick     # Update files without restart
-  ./deploy-git.sh restart   # Just restart server
-  ./deploy-git.sh stop      # Stop server
-  ./deploy-git.sh start     # Start server
-  ./deploy-git.sh deps      # Update dependencies
-  ./deploy-git.sh status    # Show status
+  ./deploy.sh deploy    # Full deployment with restart
+  ./deploy.sh update    # Quick deploy with restart
+  ./deploy.sh quick     # Update files without restart
+  ./deploy.sh restart   # Just restart server
+  ./deploy.sh stop      # Stop server
+  ./deploy.sh start     # Start server
+  ./deploy.sh deps      # Update dependencies
+  ./deploy.sh status    # Show status
 
 EOF
 }
@@ -195,7 +195,7 @@ quick_deploy() {
     fi
     
     print_success "Files updated successfully! (No server restart)"
-    print_warning "Note: Some changes may require a restart. Use './deploy-git.sh restart' if needed."
+    print_warning "Note: Some changes may require a restart. Use './deploy.sh restart' if needed."
 }
 
 # Function to restart server

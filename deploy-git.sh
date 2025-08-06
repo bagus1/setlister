@@ -4,7 +4,8 @@
 # Usage: ./deploy-git.sh [mode]
 # 
 # Modes:
-#   deploy   - Deploy current changes (push to git, pull on server)
+#   deploy   - Deploy current changes (push to git, pull on server, restart)
+#   update   - Update files without restart (push to git, pull on server)
 #   quick    - Quick deploy (just pull on server)
 #   restart  - Just restart the server
 #   stop     - Stop the server (kill Passenger process)
@@ -57,7 +58,8 @@ Setlist Manager Git-Based Deployment Script
 Usage: ./deploy-git.sh [mode]
 
 Modes:
-  deploy   - Deploy current changes (push to git, pull on server)
+  deploy   - Deploy current changes (push to git, pull on server, restart)
+  update   - Update files without restart (push to git, pull on server)
   quick    - Quick deploy (just pull on server)
   restart  - Just restart the server
   stop     - Stop the server (kill Passenger process)
@@ -74,7 +76,8 @@ Environment Variables:
   SETLIST_PATH   - Path on server (default: /home/bagus1/repositories/setlister)
 
 Examples:
-  ./deploy-git.sh deploy    # Full deployment
+  ./deploy-git.sh deploy    # Full deployment with restart
+  ./deploy-git.sh update    # Update files without restart
   ./deploy-git.sh quick     # Quick server update
   ./deploy-git.sh restart   # Just restart server
   ./deploy-git.sh stop      # Stop server
@@ -143,6 +146,36 @@ deploy_via_git() {
     restart_server
     
     print_success "Deployment completed!"
+}
+
+# Function to update files without restart
+update_via_git() {
+    print_status "Updating files via Git (no restart)..."
+    
+    # Check if we have changes to push
+    if [ "$(git rev-list HEAD...origin/main --count)" != "0" ]; then
+        print_status "Pushing changes to GitHub..."
+        git push origin main
+        print_success "Changes pushed to GitHub"
+    else
+        print_status "No changes to push"
+    fi
+    
+    # Pull on server
+    print_status "Pulling changes on server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
+        print_error "Failed to pull on server"
+        return 1
+    }
+    
+    # Install dependencies if package.json changed
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
+        print_status "Installing dependencies..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
+    fi
+    
+    print_success "Files updated successfully! (No server restart)"
+    print_warning "Note: Some changes may require a restart. Use './deploy-git.sh restart' if needed."
 }
 
 # Function to quick deploy (just pull on server)
@@ -357,6 +390,10 @@ main() {
         "deploy")
             check_git_status
             deploy_via_git
+            ;;
+        "update")
+            check_git_status
+            update_via_git
             ;;
         "quick")
             quick_deploy

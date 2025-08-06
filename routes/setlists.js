@@ -242,6 +242,11 @@ router.get('/:id/finalize', async (req, res) => {
         const setlistId = req.params.id;
         const userId = req.session.user.id;
 
+        console.log(`[FINALIZE] Loading finalize page for setlist ${setlistId} by user ${userId}`);
+
+        // Add a small delay to ensure any pending saves are completed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         const setlist = await Setlist.findByPk(setlistId, {
             include: [
                 {
@@ -265,9 +270,13 @@ router.get('/:id/finalize', async (req, res) => {
         });
 
         if (!setlist) {
+            console.log(`[FINALIZE] Setlist not found: ${setlistId}`);
             req.flash('error', 'Setlist not found');
             return res.redirect('/bands');
         }
+
+        console.log(`[FINALIZE] Setlist found: ${setlist.title}`);
+        console.log(`[FINALIZE] Number of sets: ${setlist.SetlistSets ? setlist.SetlistSets.length : 0}`);
 
         // Calculate set times
         const setTimes = {};
@@ -276,6 +285,7 @@ router.get('/:id/finalize', async (req, res) => {
         setlist.SetlistSets.forEach(set => {
             if (set.name !== 'Maybe') {
                 let setTime = 0;
+                console.log(`[FINALIZE] Processing set "${set.name}" with ${set.SetlistSongs ? set.SetlistSongs.length : 0} songs`);
                 set.SetlistSongs.forEach(setlistSong => {
                     if (setlistSong.Song.time) {
                         setTime += setlistSong.Song.time;
@@ -283,8 +293,11 @@ router.get('/:id/finalize', async (req, res) => {
                 });
                 setTimes[set.name] = setTime;
                 totalTime += setTime;
+                console.log(`[FINALIZE] Set "${set.name}" time: ${setTime} seconds`);
             }
         });
+
+        console.log(`[FINALIZE] Total time: ${totalTime} seconds`);
 
         res.render('setlists/finalize', {
             title: `Finalize ${setlist.title}`,
@@ -695,6 +708,43 @@ router.post('/:id/update', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Update setlist error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// DELETE /setlists/:id - Delete a setlist
+router.delete('/:id', async (req, res) => {
+    try {
+        const setlistId = req.params.id;
+        const userId = req.session.user.id;
+
+        // Find setlist and verify user has access
+        const setlist = await Setlist.findByPk(setlistId, {
+            include: [{
+                model: Band,
+                include: [{
+                    model: User,
+                    where: { id: userId },
+                    through: { attributes: [] }
+                }]
+            }]
+        });
+
+        if (!setlist) {
+            return res.status(404).json({ error: 'Setlist not found or access denied' });
+        }
+
+        // Check if setlist is finalized and date has passed
+        if (setlist.isFinalized && setlist.date && new Date() > new Date(setlist.date)) {
+            return res.status(400).json({ error: 'Cannot delete a finalized setlist after the performance date' });
+        }
+
+        // Delete the setlist (cascade will handle related records)
+        await setlist.destroy();
+
+        res.json({ success: true, message: 'Setlist deleted successfully' });
+    } catch (error) {
+        console.error('Delete setlist error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });

@@ -6,6 +6,8 @@ class SetlistEditor {
         this.isDragging = false;
         this.draggedElement = null;
         this.sortableActive = false;
+        this.hasCriticalChanges = false;
+        this.saveTimeout = null;
 
         this.init();
     }
@@ -193,7 +195,8 @@ class SetlistEditor {
             position: actualPosition
         });
 
-        // Auto-save
+        // Mark as critical change and auto-save
+        this.hasCriticalChanges = true;
         this.autoSave();
     }
 
@@ -303,6 +306,7 @@ class SetlistEditor {
 
         // Auto-save
         console.log('[REMOVE] Calling autoSave');
+        this.hasCriticalChanges = true;
         this.autoSave();
     }
 
@@ -689,12 +693,25 @@ class SetlistEditor {
 
     autoSave() {
         console.log('[AUTOSAVE] Auto-save triggered');
-        // Debounce auto-save
-        clearTimeout(this.saveTimeout);
-        this.saveTimeout = setTimeout(() => {
-            console.log('[AUTOSAVE] Executing save after debounce');
+        // Clear any existing timeout
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+        }
+
+        // Save immediately for critical changes, debounce for minor changes
+        const shouldSaveImmediately = this.hasCriticalChanges;
+        this.hasCriticalChanges = false;
+
+        if (shouldSaveImmediately) {
+            console.log('[AUTOSAVE] Executing immediate save for critical changes');
             this.saveSetlist();
-        }, 2000);
+        } else {
+            // Debounce auto-save for minor changes
+            this.saveTimeout = setTimeout(() => {
+                console.log('[AUTOSAVE] Executing save after debounce');
+                this.saveSetlist();
+            }, 1000); // Reduced from 2000ms to 1000ms for faster saves
+        }
     }
 
     saveSetlist() {
@@ -722,8 +739,10 @@ class SetlistEditor {
                 console.log('[SAVE] Server response:', data);
                 if (data.success) {
                     this.showSaveStatus('saved');
+                    console.log('[SAVE] Setlist saved successfully');
                 } else {
                     this.showSaveStatus('error');
+                    console.error('[SAVE] Server returned error:', data.error);
                 }
             })
             .catch(error => {
@@ -814,6 +833,8 @@ class SetlistEditor {
                         position: newPosition
                     });
 
+                    // Mark as critical change and auto-save
+                    this.hasCriticalChanges = true;
                     this.autoSave();
                 }
             });

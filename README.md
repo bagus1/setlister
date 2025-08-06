@@ -130,22 +130,110 @@ SENDGRID_API_KEY=your_sendgrid_api_key_here
 
 **⚠️ Security Note**: Environment variables are managed via a `.env` file on the server (not in Git) for security. The `.htaccess` file only contains non-sensitive configuration.
 
-### Deployment Script
+## Deployment
 
-The project includes `deploy-git.sh` for automated deployment and server management.
+The project includes `deploy.sh` for automated deployment and server management.
 
-#### Setup
+### Setup
+
 1. **Make the script executable**:
    ```bash
-   chmod +x deploy-git.sh
+   chmod +x deploy.sh
    ```
 
 2. **Configure environment variables** (optional):
    ```bash
    export HOST_USER=your_username
-   export HOST_DOMAIN=your_server.com
-   export SETLIST_PATH=/home/your_username/repositories/setlister
+   export HOST_DOMAIN=your_domain.com
+   export SETLIST_PATH=/path/to/your/app
    ```
+
+### Deployment Modes
+
+The script provides multiple deployment modes for different scenarios:
+
+#### **Quick Updates** (Most Common)
+```bash
+./deploy.sh quick
+```
+- Commits and pushes changes
+- Updates files on server
+- **No server restart** (fastest!)
+- Perfect for: UI changes, templates, CSS, JavaScript
+
+#### **Full Deployment**
+```bash
+./deploy.sh deploy
+```
+- Commits and pushes changes
+- Updates files on server
+- **Restarts server**
+- Use for: major changes, server.js updates, dependencies
+
+#### **Quick Deploy with Restart**
+```bash
+./deploy.sh update
+```
+- Just pulls on server (assumes changes already pushed)
+- **Restarts server**
+- Fast when you've already committed/pushed
+
+#### **Server Management**
+```bash
+./deploy.sh restart    # Restart server
+./deploy.sh stop       # Stop server
+./deploy.sh start      # Start server
+./deploy.sh status     # Check deployment status
+```
+
+#### **Dependencies**
+```bash
+./deploy.sh deps       # Update dependencies on server
+```
+
+#### **Backup & Recovery**
+```bash
+./deploy.sh backup     # Create backup
+./deploy.sh rollback   # Rollback to previous commit
+```
+
+### Typical Workflow
+
+1. **Make changes** to your code
+2. **Quick update**: `./deploy.sh quick` (for most changes)
+3. **If issues arise**: `./deploy.sh restart` to restart server
+4. **For major changes**: `./deploy.sh deploy` for full deployment
+
+### Production Deployment
+
+1. **Initial Setup**:
+   ```bash
+   ./deploy.sh deps
+   ```
+
+2. **Deploy**: `./deploy.sh deploy` (automatically installs on server)
+
+### Development Workflow
+
+1. **Make changes** locally
+2. **Test locally**: `npm start`
+3. **Deploy**: `./deploy.sh deploy`
+
+### Server Management
+
+- **Check status**: `./deploy.sh status`
+- **Restart server**: `./deploy.sh restart`
+- **Update dependencies**: `./deploy.sh deps`
+- **Create backup**: `./deploy.sh backup`
+- **Rollback**: `./deploy.sh rollback`
+
+### Best Practices
+
+- **Use `quick` mode** for most UI/template changes
+- **Use `deploy` mode** for server.js or dependency changes
+- **Backup regularly**: Use `./deploy.sh backup` to create backups
+- **Check status**: Use `./deploy.sh status` to verify deployment
+- **Test locally** before deploying to production
 
 ### Dependency Management
 
@@ -157,18 +245,18 @@ The deployment script automatically detects when `package.json` changes and inst
 #### Manual Dependency Updates
 If you need to update dependencies manually:
 ```bash
-./deploy-git.sh deps
+./deploy.sh deps
 ```
 
 #### Adding New Dependencies
 1. **Add locally**: `npm install package-name`
 2. **Commit changes**: `git add package.json package-lock.json && git commit -m "Add new dependency"`
-3. **Deploy**: `./deploy-git.sh deploy` (automatically installs on server)
+3. **Deploy**: `./deploy.sh deploy` (automatically installs on server)
 
 #### Updating Existing Dependencies
 1. **Update locally**: `npm update` or `npm install package@version`
 2. **Commit changes**: `git add package.json package-lock.json && git commit -m "Update dependencies"`
-3. **Deploy**: `./deploy-git.sh deploy`
+3. **Deploy**: `./deploy.sh deploy`
 
 #### Troubleshooting Dependencies
 If you encounter dependency issues:
@@ -180,7 +268,7 @@ If you encounter dependency issues:
 
 2. **Force reinstall dependencies**:
    ```bash
-   ./deploy-git.sh deps
+   ./deploy.sh deps
    ```
 
 3. **Check if node_modules exists**:
@@ -197,7 +285,7 @@ If you encounter dependency issues:
 
 #### Database
 - **SQLite file**: Located at `/home/username/repositories/setlister/database.sqlite`
-- **Backup regularly**: Use `./deploy-git.sh backup` to create backups
+- **Backup regularly**: Use `./deploy.sh backup` to create backups
 - **File permissions**: Ensure the database file is writable by the web server
 
 #### Logs
@@ -221,26 +309,26 @@ If you encounter dependency issues:
 1. **Make changes locally**
 2. **Test thoroughly** on local development server
 3. **Commit changes**: `git add . && git commit -m "Description of changes"`
-4. **Deploy**: `./deploy-git.sh deploy`
+4. **Deploy**: `./deploy.sh deploy`
 5. **Verify**: Check the production site
 
 #### Emergency Rollback
 If a deployment causes issues:
 ```bash
-./deploy-git.sh rollback
+./deploy.sh rollback
 ```
 
 #### Creating Backups
 Before major changes:
 ```bash
-./deploy-git.sh backup
+./deploy.sh backup
 ```
 
 ### Monitoring & Maintenance
 
 #### Check Server Status
 ```bash
-./deploy-git.sh status
+./deploy.sh status
 ```
 
 #### View Recent Logs
@@ -255,7 +343,7 @@ ssh username@server.com "ps aux | grep -E '(server|setlist|node)'"
 
 #### Restart After Configuration Changes
 ```bash
-./deploy-git.sh restart
+./deploy.sh restart
 ```
 
 ## First Time Setup
@@ -399,7 +487,7 @@ setlister/
 ├── package.json              # Dependencies and scripts
 ├── manage.js                 # CLI management tool
 ├── manage-server.sh          # Server management script
-├── deploy-git.sh             # Git-based deployment script
+├── deploy.sh                 # Git-based deployment script
 ├── ftploy.sh                 # FTP deployment script (legacy)
 ├── Passengerfile.json        # Passenger configuration
 ├── database.sqlite           # SQLite database file

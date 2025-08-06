@@ -121,18 +121,28 @@ router.get('/:id/edit', async (req, res) => {
             }]
         });
 
-        // Extract used song IDs (only from regular sets, not Maybe)
+        console.log(`[EDIT] Found ${setlistSets.length} sets for setlist ${setlistId}`);
+        setlistSets.forEach(set => {
+            console.log(`[EDIT] Set "${set.name}": ${set.SetlistSongs ? set.SetlistSongs.length : 0} songs`);
+        });
+
+        // Extract used song IDs (from all sets including Maybe)
         const usedSongIds = [];
         setlistSets.forEach(set => {
-            if (set.SetlistSongs && set.name !== 'Maybe') {
+            if (set.SetlistSongs) {
                 set.SetlistSongs.forEach(setlistSong => {
                     usedSongIds.push(setlistSong.songId);
                 });
             }
         });
 
-        // Filter out songs already in regular sets (but keep Maybe songs available)
+        console.log(`[EDIT] Setlist ${setlistId}: Found ${usedSongIds.length} songs in sets (including Maybe)`);
+        console.log(`[EDIT] Used song IDs:`, usedSongIds);
+
+        // Filter out songs already in any set (including Maybe)
         const bandSongs = allBandSongs.filter(song => !usedSongIds.includes(song.id));
+
+        console.log(`[EDIT] All band songs: ${allBandSongs.length}, Filtered band songs: ${bandSongs.length}`);
 
         res.render('setlists/edit', {
             title: `Edit ${setlist.title}`,

@@ -275,7 +275,10 @@ class SetlistEditor {
             // Remove completely from maybe and restore to band songs
             console.log('[REMOVE] Removing from Maybe, restoring to band songs');
             songElement.remove();
-            this.restoreToBandSongs(songId, songTime);
+            // Call restore after removing from DOM so the check works correctly
+            setTimeout(() => {
+                this.restoreToBandSongs(songId, songTime);
+            }, 0);
         } else {
             // Move to maybe if removing from regular set
             console.log('[REMOVE] Moving from', setName, 'to Maybe');
@@ -314,15 +317,18 @@ class SetlistEditor {
         // Check if song is already in band songs area
         const existingBandSong = document.querySelector(`.band-song[data-song-id="${songId}"]`);
         if (existingBandSong) {
+            console.log('[RESTORE] Song already in band songs, skipping');
             return; // Already there, don't duplicate
         }
 
-        // Check if song is still in any other set
+        // Check if song is still in any other set (should be 0 since we removed it from Maybe)
         const songInOtherSets = document.querySelectorAll(`.setlist-song[data-song-id="${songId}"]`);
         if (songInOtherSets.length > 0) {
+            console.log('[RESTORE] Song still in other sets, not restoring:', songInOtherSets.length);
             return; // Still in use elsewhere, don't restore
         }
 
+        console.log('[RESTORE] Proceeding with restoration for song ID:', songId);
         // Fetch song details from server and recreate band song element
         this.fetchAndRestoreSong(songId);
     }

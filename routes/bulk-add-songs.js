@@ -12,9 +12,104 @@ router.get('/', requireAuth, (req, res) => {
     });
 });
 
-// POST /bulk-add-songs - Process bulk add
+// Smart parser function that automatically detects format
+function parseBulkInput(input) {
+    const lines = input.trim().split('\n').filter(line => line.trim());
+
+    return lines.map((line, index) => {
+        const parts = line.split(',').map(part => part.trim().replace(/^["']|["']$/g, ''));
+
+        // Handle different formats based on number of parts
+        if (parts.length === 1) {
+            // Single title only
+            return {
+                lineNumber: index + 1,
+                title: parts[0],
+                artistName: '',
+                vocalistName: '',
+                key: '',
+                timeStr: '',
+                bpm: '',
+                format: 'title-only'
+            };
+        } else if (parts.length === 2) {
+            // Title, Artist
+            return {
+                lineNumber: index + 1,
+                title: parts[0],
+                artistName: parts[1],
+                vocalistName: '',
+                key: '',
+                timeStr: '',
+                bpm: '',
+                format: 'title-artist'
+            };
+        } else if (parts.length === 3) {
+            // Title, Artist, Vocalist
+            return {
+                lineNumber: index + 1,
+                title: parts[0],
+                artistName: parts[1],
+                vocalistName: parts[2],
+                key: '',
+                timeStr: '',
+                bpm: '',
+                format: 'title-artist-vocalist'
+            };
+        } else if (parts.length === 4) {
+            // Title, Artist, Vocalist, Key
+            return {
+                lineNumber: index + 1,
+                title: parts[0],
+                artistName: parts[1],
+                vocalistName: parts[2],
+                key: parts[3],
+                timeStr: '',
+                bpm: '',
+                format: 'title-artist-vocalist-key'
+            };
+        } else if (parts.length === 5) {
+            // Title, Artist, Vocalist, Key, Time
+            return {
+                lineNumber: index + 1,
+                title: parts[0],
+                artistName: parts[1],
+                vocalistName: parts[2],
+                key: parts[3],
+                timeStr: parts[4],
+                bpm: '',
+                format: 'title-artist-vocalist-key-time'
+            };
+        } else if (parts.length >= 6) {
+            // Title, Artist, Vocalist, Key, Time, BPM (and potentially more)
+            return {
+                lineNumber: index + 1,
+                title: parts[0],
+                artistName: parts[1],
+                vocalistName: parts[2],
+                key: parts[3],
+                timeStr: parts[4],
+                bpm: parts[5],
+                format: 'full-csv'
+            };
+        } else {
+            // Fallback - just title
+            return {
+                lineNumber: index + 1,
+                title: parts[0] || '',
+                artistName: '',
+                vocalistName: '',
+                key: '',
+                timeStr: '',
+                bpm: '',
+                format: 'fallback'
+            };
+        }
+    });
+}
+
+// POST /bulk-add-songs - Process bulk add with smart parsing
 router.post('/', requireAuth, [
-    body('format').isIn(['text', 'csv']).withMessage('Invalid format'),
     body('data').notEmpty().withMessage('Please provide song data')
 ], async (req, res) => {
     try {
@@ -23,153 +118,153 @@ router.post('/', requireAuth, [
             return res.render('songs/bulk-add', {
                 title: 'Bulk Add Songs',
                 errors: errors.array(),
-                format: req.body.format,
                 data: req.body.data
             });
         }
 
-        const { format, data } = req.body;
+        const { data } = req.body;
         const results = {
             added: [],
             errors: [],
-            skipped: []
+            skipped: [],
+            detectedFormat: null
         };
 
-        if (format === 'text') {
-            // Process simple text format (one song per line)
-            const lines = data.split('\n').filter(line => line.trim());
+        // Parse input using smart parser
+        const parsedSongs = parseBulkInput(data);
 
-            for (const line of lines) {
-                const title = line.trim();
-                if (!title) continue;
+        // Determine detected format for display
+        if (parsedSongs.length > 0) {
+            results.detectedFormat = parsedSongs[0].format === 'csv' ? 'CSV' : 'Line-separated';
+        }
 
-                try {
-                    // Check if song already exists
-                    const existingSong = await Song.findOne({
-                        where: { title },
-                        include: ['Artists']
-                    });
+        for (const songData of parsedSongs) {
+            const { lineNumber, title, artistName, vocalistName, key, timeStr, bpm, format } = songData;
 
-                    if (existingSong) {
-                        results.skipped.push(`"${title}" (already exists)`);
-                        continue;
-                    }
-
-                    // Create new song
-                    const song = await Song.create({
-                        title,
-                        time: null, // No time specified in text format
-                        key: null   // No key specified in text format
-                    });
-
-                    results.added.push(title);
-                } catch (error) {
-                    console.error('Error adding song:', error);
-                    results.errors.push(`"${title}": ${error.message}`);
-                }
+            if (!title) {
+                results.errors.push(`Line ${lineNumber}: Missing song title`);
+                continue;
             }
-        } else if (format === 'csv') {
-            // Process CSV format
-            const lines = data.split('\n').filter(line => line.trim());
 
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+            try {
+                // Check if song already exists with proper duplicate logic
+                let existingSong = null;
 
-                try {
-                    // Parse CSV line (title,artist,vocalist,key,time)
-                    const parts = line.split(',').map(part => part.trim().replace(/^["']|["']$/g, ''));
-                    const [title, artistName = '', vocalistName = '', key = '', timeStr = ''] = parts;
-
-                    if (!title) {
-                        results.errors.push(`Line ${i + 1}: Missing song title`);
-                        continue;
-                    }
-
-                    // Check if song already exists
-                    const existingSong = await Song.findOne({
+                if (artistName) {
+                    // If artist is provided, check for same title AND same artist
+                    existingSong = await Song.findOne({
                         where: { title },
-                        include: ['Artists']
+                        include: [{
+                            model: Artist,
+                            where: { name: artistName },
+                            required: true
+                        }]
+                    });
+                } else {
+                    // If no artist provided, check for same title with NO artists
+                    existingSong = await Song.findOne({
+                        where: { title },
+                        include: [{
+                            model: Artist,
+                            required: false
+                        }]
                     });
 
-                    if (existingSong) {
-                        results.skipped.push(`"${title}" (already exists)`);
-                        continue;
+                    // Only consider it a duplicate if the existing song also has no artists
+                    if (existingSong && existingSong.Artists && existingSong.Artists.length > 0) {
+                        existingSong = null; // Not a duplicate if existing song has artists but new one doesn't
                     }
+                }
 
-                    // Validate key if provided
-                    const validKeys = ['C', 'Cm', 'C#', 'C#m', 'Db', 'Dbm', 'D', 'Dm', 'D#', 'D#m', 'Eb', 'Ebm', 'E', 'Em', 'F', 'Fm', 'F#', 'F#m', 'Gb', 'Gbm', 'G', 'Gm', 'G#', 'G#m', 'Ab', 'Abm', 'A', 'Am', 'A#', 'A#m', 'Bb', 'Bbm', 'B', 'Bm'];
-                    const songKey = key && validKeys.includes(key) ? key : null;
+                if (existingSong) {
+                    const existingArtist = existingSong.Artists && existingSong.Artists.length > 0 ? existingSong.Artists[0].name : 'no artist';
+                    const newArtist = artistName || 'no artist';
+                    results.skipped.push(`"${title}" by ${newArtist} (already exists)`);
+                    continue;
+                }
 
-                    // Parse time if provided (assumes format like "3:45" or "245" seconds)
-                    let songTime = null;
-                    if (timeStr) {
-                        if (timeStr.includes(':')) {
-                            const [minutes, seconds] = timeStr.split(':').map(Number);
-                            if (!isNaN(minutes) && !isNaN(seconds)) {
-                                songTime = (minutes * 60) + seconds;
-                            }
-                        } else {
-                            const totalSeconds = parseInt(timeStr);
-                            if (!isNaN(totalSeconds)) {
-                                songTime = totalSeconds;
-                            }
+                // Validate key if provided
+                const validKeys = ['C', 'Cm', 'C#', 'C#m', 'Db', 'Dbm', 'D', 'Dm', 'D#', 'D#m', 'Eb', 'Ebm', 'E', 'Em', 'F', 'Fm', 'F#', 'F#m', 'Gb', 'Gbm', 'G', 'Gm', 'G#', 'G#m', 'Ab', 'Abm', 'A', 'Am', 'A#', 'A#m', 'Bb', 'Bbm', 'B', 'Bm'];
+                const songKey = key && validKeys.includes(key) ? key : null;
+
+                // Parse time if provided (assumes format like "3:45" or "245" seconds)
+                let songTime = null;
+                if (timeStr) {
+                    if (timeStr.includes(':')) {
+                        const [minutes, seconds] = timeStr.split(':').map(Number);
+                        if (!isNaN(minutes) && !isNaN(seconds)) {
+                            songTime = (minutes * 60) + seconds;
+                        }
+                    } else {
+                        const totalSeconds = parseInt(timeStr);
+                        if (!isNaN(totalSeconds)) {
+                            songTime = totalSeconds;
                         }
                     }
-
-                    // Create or find artist
-                    let artist = null;
-                    if (artistName) {
-                        [artist] = await Artist.findOrCreate({
-                            where: { name: artistName },
-                            defaults: { name: artistName }
-                        });
-                    }
-
-                    // Create or find vocalist
-                    let vocalist = null;
-                    if (vocalistName) {
-                        [vocalist] = await Vocalist.findOrCreate({
-                            where: { name: vocalistName },
-                            defaults: { name: vocalistName }
-                        });
-                    }
-
-                    // Create song
-                    const song = await Song.create({
-                        title,
-                        key: songKey,
-                        time: songTime,
-                        vocalistId: vocalist ? vocalist.id : null
-                    });
-
-                    // Associate with artist if provided
-                    if (artist) {
-                        await song.addArtist(artist);
-                    }
-
-                    let displayText = `"${title}"`;
-                    if (artistName) displayText += ` by ${artistName}`;
-                    if (vocalistName) displayText += ` (vocals: ${vocalistName})`;
-                    if (songKey) displayText += ` [${songKey}]`;
-                    if (songTime) {
-                        const minutes = Math.floor(songTime / 60);
-                        const seconds = songTime % 60;
-                        displayText += ` (${minutes}:${seconds.toString().padStart(2, '0')})`;
-                    }
-
-                    results.added.push(displayText);
-                } catch (error) {
-                    console.error('Error processing CSV line:', error);
-                    results.errors.push(`Line ${i + 1}: ${error.message}`);
                 }
+
+                // Parse BPM if provided
+                let songBpm = null;
+                if (bpm && bpm.trim() !== '') {
+                    const bpmValue = parseInt(bpm.trim());
+                    if (!isNaN(bpmValue) && bpmValue >= 40 && bpmValue <= 300) {
+                        songBpm = bpmValue;
+                    }
+                }
+
+                // Create or find artist
+                let artist = null;
+                if (artistName) {
+                    [artist] = await Artist.findOrCreate({
+                        where: { name: artistName },
+                        defaults: { name: artistName }
+                    });
+                }
+
+                // Create or find vocalist
+                let vocalist = null;
+                if (vocalistName) {
+                    [vocalist] = await Vocalist.findOrCreate({
+                        where: { name: vocalistName },
+                        defaults: { name: vocalistName }
+                    });
+                }
+
+                // Create song
+                const song = await Song.create({
+                    title,
+                    key: songKey,
+                    time: songTime,
+                    bpm: songBpm,
+                    vocalistId: vocalist ? vocalist.id : null
+                });
+
+                // Associate with artist if provided
+                if (artist) {
+                    await song.addArtist(artist);
+                }
+
+                let displayText = `"${title}"`;
+                if (artistName) displayText += ` by ${artistName}`;
+                if (vocalistName) displayText += ` (vocals: ${vocalistName})`;
+                if (songKey) displayText += ` [${songKey}]`;
+                if (songTime) {
+                    const minutes = Math.floor(songTime / 60);
+                    const seconds = songTime % 60;
+                    displayText += ` (${minutes}:${seconds.toString().padStart(2, '0')})`;
+                }
+                if (songBpm) displayText += ` ${songBpm} BPM`;
+
+                results.added.push(displayText);
+            } catch (error) {
+                console.error('Error processing song:', error);
+                results.errors.push(`Line ${lineNumber}: ${error.message}`);
             }
         }
 
         res.render('songs/bulk-add', {
             title: 'Bulk Add Songs',
             results,
-            format,
             data
         });
 

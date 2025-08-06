@@ -104,8 +104,11 @@ check_git_status() {
             git add .
             git commit -m "Auto-commit before deployment $(date)"
             print_success "Changes committed"
-        else
+        elif [[ $REPLY =~ ^[Nn]$ ]] || [[ -z $REPLY ]]; then
             print_warning "Deploying with uncommitted changes"
+        else
+            print_error "Invalid input. Please enter 'y' for yes or 'N' for no."
+            exit 1
         fi
     fi
 }

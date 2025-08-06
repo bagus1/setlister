@@ -17,13 +17,18 @@
                                 <div class="alert alert-success">
                                     <h5><i class="bi bi-check-circle"></i> Successfully Added <%= results.added.length
                                             %> Songs</h5>
-                                    <ul class="mb-0">
-                                        <% results.added.forEach(title=> { %>
-                                            <li>
-                                                <%= title %>
-                                            </li>
-                                            <% }) %>
-                                    </ul>
+                                    <% if (results.detectedFormat) { %>
+                                        <p class="mb-2"><small class="text-muted">Detected format: <strong>
+                                                    <%= results.detectedFormat %>
+                                                </strong></small></p>
+                                        <% } %>
+                                            <ul class="mb-0">
+                                                <% results.added.forEach(title=> { %>
+                                                    <li>
+                                                        <%= title %>
+                                                    </li>
+                                                    <% }) %>
+                                            </ul>
                                 </div>
                                 <% } %>
 
@@ -84,36 +89,19 @@
                                     <!-- Bulk Add Form -->
                                     <% if (typeof results==='undefined' || !results || results.added.length===0) { %>
                                         <form method="POST" action="/bulk-add-songs">
-                                            <!-- Format Selection -->
-                                            <div class="mb-4">
-                                                <label class="form-label fw-bold">Choose Format:</label>
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="radio" name="format"
-                                                                id="text" value="text" <%=(typeof format !=='undefined'
-                                                                && format==='text' ) || typeof format==='undefined'
-                                                                ? 'checked' : '' %>>
-                                                            <label class="form-check-label" for="text">
-                                                                <strong>Simple Text</strong><br>
-                                                                <small class="text-muted">One song title per
-                                                                    line</small>
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="radio" name="format"
-                                                                id="csv" value="csv" <%=typeof format !=='undefined' &&
-                                                                format==='csv' ? 'checked' : '' %>>
-                                                            <label class="form-check-label" for="csv">
-                                                                <strong>CSV Format</strong><br>
-                                                                <small
-                                                                    class="text-muted">Title,Artist,Vocalist,Key,Time</small>
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                            <!-- Smart Format Detection Notice -->
+                                            <div class="alert alert-info mb-4">
+                                                <h6><i class="bi bi-lightbulb"></i> How to Add Songs</h6>
+                                                <p class="mb-0">You can paste songs here one song per line and they will
+                                                    be imported. You can add additional information about the song by
+                                                    adding it in the following order and separating them by commas:
+                                                    title, artist, vocalist, key, time, bpm.</p>
+                                                <hr>
+                                                <strong>Examples:</strong><br>
+                                                <strong>Simple:</strong> Sweet Child O' Mine<br>
+                                                <strong>With Artist:</strong> Hotel California, Eagles<br>
+                                                <strong>Full Details:</strong> Better Days, Bruce Springsteen, Bagus,
+                                                Eb, 3:33, 125
                                             </div>
 
                                             <!-- Song Data Textarea -->
@@ -138,108 +126,55 @@
                 </div>
             </div>
 
-            <!-- Format Examples -->
-            <% if (typeof results==='undefined' || !results || results.added.length===0) { %>
-                <div class="row mt-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="bi bi-list"></i> Simple Text Format</h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-2"><strong>Example:</strong></p>
-                                <pre class="bg-light p-2 border rounded"><code>Sweet Child O' Mine
-Hotel California  
-Bohemian Rhapsody
-Stairway to Heaven
-Wonderwall</code></pre>
-                                <small class="text-muted">
-                                    ✅ Just paste song titles, one per line<br>
-                                    ✅ Perfect for quick imports<br>
-                                    ✅ You can add artist/key details later
-                                </small>
-                            </div>
+            <!-- Additional Help -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Smart Parsing Tips</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6>🎯 Auto-Detection</h6>
+                            <p class="small">If your data contains commas, it's treated as CSV. Otherwise, it's
+                                parsed as line-separated.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>🎵 Duplicates</h6>
+                            <p class="small">Songs with the same title will be skipped automatically.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>🎹 Valid Keys</h6>
+                            <p class="small">C, C#, Db, D, D#, Eb, E, F, F#, Gb, G, G#, Ab, A, A#, Bb, B<br>
+                                Cm, C#m, Dbm, Dm, D#m, Ebm, Em, Fm, F#m, Gbm, Gm, G#m, Abm, Am, A#m, Bbm, Bm</p>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="bi bi-table"></i> CSV Format</h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="mb-2"><strong>Format:</strong> Title,Artist,Vocalist,Key,Time</p>
-                                <pre class="bg-light p-2 border rounded"><code>Sweet Child O' Mine,Guns N' Roses,Axl Rose,G,5:03
-Hotel California,Eagles,Don Henley,Bm,6:30
-Bohemian Rhapsody,Queen,Freddie Mercury,Bb,5:55
-Stairway to Heaven,Led Zeppelin,Robert Plant,Am,8:02</code></pre>
-                                <small class="text-muted">
-                                    ✅ Complete song information<br>
-                                    ✅ Time format: MM:SS or total seconds<br>
-                                    ✅ Creates artists/vocalists automatically<br>
-                                    ✅ Leave empty fields blank (but keep commas)
-                                </small>
-                            </div>
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <h6>⏱️ Time Format</h6>
+                            <p class="small">Use MM:SS (like 3:45) or total seconds (like 225).</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>📝 Mixed Formats</h6>
+                            <p class="small">You can mix formats in the same import - the system handles each line
+                                appropriately.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>🔍 Line Numbers</h6>
+                            <p class="small">Error messages include line numbers to help you identify and fix
+                                issues.</p>
                         </div>
                     </div>
                 </div>
-
-                <!-- Additional Help -->
-                <div class="card mt-4">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Tips & Notes</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <h6>🎵 Duplicates</h6>
-                                <p class="small">Songs with the same title will be skipped automatically.</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6>🎹 Valid Keys</h6>
-                                <p class="small">C, C#, Db, D, D#, Eb, E, F, F#, Gb, G, G#, Ab, A, A#, Bb, B<br>
-                                    Cm, C#m, Dbm, Dm, D#m, Ebm, Em, Fm, F#m, Gbm, Gm, G#m, Abm, Am, A#m, Bbm, Bm</p>
-                            </div>
-                            <div class="col-md-4">
-                                <h6>⏱️ Time Format</h6>
-                                <p class="small">Use MM:SS (like 3:45) or total seconds (like 225).</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <% } %>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const textRadio = document.getElementById('text');
-        const csvRadio = document.getElementById('csv');
         const dataTextarea = document.getElementById('data');
 
-        // Update placeholder based on format selection
-        function updatePlaceholder() {
-            if (textRadio.checked) {
-                dataTextarea.placeholder = `Enter song titles, one per line:
-
-Sweet Child O' Mine
-Hotel California
-Bohemian Rhapsody
-Stairway to Heaven`;
-            } else {
-                dataTextarea.placeholder = `Enter CSV data:
-
-Title,Artist,Vocalist,Key,Time
-Sweet Child O' Mine,Guns N' Roses,Axl Rose,D,5:03
-Hotel California,Eagles,Don Henley,Bm,6:30
-Bohemian Rhapsody,Queen,Freddie Mercury,Bb,5:55`;
-            }
-        }
-
-        textRadio.addEventListener('change', updatePlaceholder);
-        csvRadio.addEventListener('change', updatePlaceholder);
-
-        // Set initial placeholder
-        updatePlaceholder();
+        // Update placeholder with dynamic examples
+        dataTextarea.placeholder = `Paste your song data here...`;
     });
 </script>

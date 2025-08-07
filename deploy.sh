@@ -5,7 +5,7 @@
 # 
 # Modes:
 #   deploy   - Deploy current changes (push to git, pull on server, restart)
-#   update   - Quick deploy (just pull on server, restart)
+#   update   - Quick deploy (push to git, pull on server, restart)
 #   quick    - Update files without restart (auto-commit, push to git, pull on server)
 #   restart  - Just restart the server
 #   stop     - Stop the server (kill Passenger process)
@@ -59,7 +59,7 @@ Usage: ./deploy.sh [mode]
 
 Modes:
   deploy   - Deploy current changes (push to git, pull on server, restart)
-  update   - Quick deploy (just pull on server, restart)
+  update   - Quick deploy (push to git, pull on server, restart)
   quick    - Update files without restart (auto-commit, push to git, pull on server)
   restart  - Just restart the server
   stop     - Stop the server (kill Passenger process)
@@ -150,8 +150,19 @@ deploy_via_git() {
 
 # Function to update files without restart
 update_via_git() {
-    print_status "Quick deploy - pulling on server..."
+    print_status "Quick deploy - pushing and pulling..."
     
+    # Check if we have changes to push
+    if [ "$(git rev-list HEAD...origin/main --count)" != "0" ]; then
+        print_status "Pushing changes to GitHub..."
+        git push origin main
+        print_success "Changes pushed to GitHub"
+    else
+        print_status "No changes to push"
+    fi
+    
+    # Pull on server
+    print_status "Pulling changes on server..."
     ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
         print_error "Failed to pull on server"
         return 1

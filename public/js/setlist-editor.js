@@ -84,6 +84,7 @@ class SetlistEditor {
 
         // Get coordinates (works for both mouse and touch)
         const coords = this.getEventCoordinates(e);
+        console.log('[DRAG START] Event type:', e.type, 'Coordinates:', coords);
 
         this.isDragging = true;
         this.draggedElement = element;
@@ -97,6 +98,7 @@ class SetlistEditor {
         if (e.touches) {
             this.touchStartX = coords.x;
             this.touchStartY = coords.y;
+            console.log('[DRAG START] Touch device detected, start pos:', { x: this.touchStartX, y: this.touchStartY });
         }
 
         // Create drag preview
@@ -108,7 +110,7 @@ class SetlistEditor {
         // Add global event listeners
         document.addEventListener('mousemove', this.handleDragMove);
         document.addEventListener('mouseup', this.handleDragEnd);
-        document.addEventListener('touchmove', this.handleDragMove);
+        document.addEventListener('touchmove', this.handleDragMove, { passive: false });
         document.addEventListener('touchend', this.handleDragEnd);
 
         // Prevent text selection during drag
@@ -121,6 +123,7 @@ class SetlistEditor {
         e.preventDefault();
 
         const coords = this.getEventCoordinates(e);
+        console.log('[DRAG MOVE] Event type:', e.type, 'Coordinates:', coords);
 
         // Update drag preview position
         if (this.dragPreview) {
@@ -157,10 +160,20 @@ class SetlistEditor {
     }
 
     getEventCoordinates(e) {
+        let coords;
+
         if (e.touches && e.touches[0]) {
-            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            coords = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            console.log('[COORDS] Touch event, using touches[0]:', coords);
+        } else if (e.changedTouches && e.changedTouches[0]) {
+            coords = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            console.log('[COORDS] Touch event, using changedTouches[0]:', coords);
+        } else {
+            coords = { x: e.clientX, y: e.clientY };
+            console.log('[COORDS] Mouse event:', coords);
         }
-        return { x: e.clientX, y: e.clientY };
+
+        return coords;
     }
 
     createDragPreview(element) {
@@ -203,15 +216,22 @@ class SetlistEditor {
 
     findDropZoneAtPosition(coords) {
         const dropZones = document.querySelectorAll('.drop-zone');
+        console.log('[FIND DROP ZONE] Looking for drop zone at coordinates:', coords);
 
         for (let zone of dropZones) {
             const rect = zone.getBoundingClientRect();
+            console.log('[FIND DROP ZONE] Checking zone:', zone.dataset.setName, 'Rect:', {
+                left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom
+            });
+
             if (coords.x >= rect.left && coords.x <= rect.right &&
                 coords.y >= rect.top && coords.y <= rect.bottom) {
+                console.log('[FIND DROP ZONE] Found matching zone:', zone.dataset.setName);
                 return zone;
             }
         }
 
+        console.log('[FIND DROP ZONE] No drop zone found');
         return null;
     }
 

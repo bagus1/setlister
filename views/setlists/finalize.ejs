@@ -15,7 +15,7 @@
                     <% } %>
             </div>
             <div>
-                <% if (!setlist.date || new Date() <=new Date(setlist.date)) { %>
+                <% if (isEditable) { %>
                     <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left"></i> Back to Editor
                     </a>
@@ -93,7 +93,7 @@
                                             <i class="bi bi-music-note text-muted" style="font-size: 3rem;"></i>
                                             <h4 class="text-muted mt-3">No songs in setlist yet</h4>
                                             <p class="text-muted">Add some songs to the setlist before finalizing.</p>
-                                            <% if (!setlist.date || new Date() <=new Date(setlist.date)) { %>
+                                            <% if (isEditable) { %>
                                                 <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
                                                     <i class="bi bi-plus"></i> Add Songs to Setlist
                                                 </a>
@@ -112,7 +112,7 @@
                 </h6>
             </div>
             <div class="card-body">
-                <% if (setlist.date && new Date()> new Date(setlist.date)) { %>
+                <% if (!isEditable) { %>
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i>
                         <strong>Show completed</strong><br>

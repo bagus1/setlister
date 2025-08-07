@@ -221,12 +221,15 @@ router.post('/', requireAuth, [
                     }
                 }
 
-                // Create or find artist
+                // Create or find artist (case-insensitive)
                 let artist = null;
                 if (artistName) {
                     [artist] = await Artist.findOrCreate({
-                        where: { name: artistName },
-                        defaults: { name: artistName }
+                        where: Sequelize.where(
+                            Sequelize.fn('LOWER', Sequelize.col('name')),
+                            Sequelize.fn('LOWER', artistName.trim())
+                        ),
+                        defaults: { name: artistName.trim() }
                     });
                 }
 

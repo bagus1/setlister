@@ -232,7 +232,10 @@ router.post('/', requireAuth, [
         if (artist && artist.trim()) {
             console.log('Creating/finding artist:', artist);
             const [artistRecord] = await Artist.findOrCreate({
-                where: { name: artist.trim() },
+                where: Sequelize.where(
+                    Sequelize.fn('LOWER', Sequelize.col('name')),
+                    Sequelize.fn('LOWER', artist.trim())
+                ),
                 defaults: { name: artist.trim() }
             });
             console.log('Artist record:', artistRecord.id, artistRecord.name);

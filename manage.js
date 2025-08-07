@@ -431,9 +431,10 @@ async function showMenu() {
     log('6. Delete song', 'red');
     log('7. Delete links from song', 'red');
     log('8. Edit song', 'cyan');
-    log('9. Cleanup orphaned data', 'yellow');
-    log('10. Show statistics', 'cyan');
-    log('11. Exit (or type q/quit)', 'reset');
+    log('9. Find & delete case duplicate songs', 'yellow');
+    log('10. Cleanup orphaned data', 'yellow');
+    log('11. Show statistics', 'cyan');
+    log('12. Exit (or type q/quit)', 'reset');
     log('=====================================', 'magenta');
 }
 
@@ -447,7 +448,7 @@ async function main() {
 
         while (true) {
             await showMenu();
-            const choice = await question('Enter your choice (1-11, q to quit): ');
+            const choice = await question('Enter your choice (1-12, q to quit): ');
 
             switch (choice.toLowerCase()) {
                 case '1':
@@ -475,12 +476,15 @@ async function main() {
                     await editSong();
                     break;
                 case '9':
-                    await cleanupOrphanedData();
+                    await findCaseDuplicates();
                     break;
                 case '10':
-                    await showStats();
+                    await cleanupOrphanedData();
                     break;
                 case '11':
+                    await showStats();
+                    break;
+                case '12':
                 case 'q':
                 case 'quit':
                     log('Goodbye!', 'green');
@@ -496,6 +500,119 @@ async function main() {
         log(`Error: ${error.message}`, 'red');
         rl.close();
         process.exit(1);
+    }
+}
+
+// Function to convert to proper title case
+function toTitleCase(str) {
+    return str.replace(/\w\S*/g, (txt) => {
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+}
+
+async function findCaseDuplicates() {
+    log('\n=== Find Case Duplicate Songs ===', 'cyan');
+
+    try {
+        const songs = await Song.findAll({
+            include: ['Artists'],
+            order: [['id', 'ASC']]
+        });
+
+        // Group songs by lowercase title
+        const titleGroups = {};
+        songs.forEach(song => {
+            const lowerTitle = song.title.toLowerCase();
+            if (!titleGroups[lowerTitle]) {
+                titleGroups[lowerTitle] = [];
+            }
+            titleGroups[lowerTitle].push(song);
+        });
+
+        // Find groups with duplicates
+        const duplicates = Object.entries(titleGroups).filter(([, group]) => group.length > 1);
+
+        log(`Found ${duplicates.length} sets of duplicate titles:`, 'yellow');
+        log('===============================================', 'yellow');
+
+        const songsToDelete = [];
+
+        duplicates.forEach(([lowerTitle, group]) => {
+            log(`\nDuplicate group for: "${lowerTitle}"`, 'blue');
+
+            // Find the proper title case version
+            const properTitleCase = toTitleCase(lowerTitle);
+            let bestMatch = null;
+            let bestScore = -1;
+
+            group.forEach(song => {
+                const artist = song.Artists && song.Artists.length > 0 ? song.Artists[0].name : 'No Artist';
+                log(`  ID: ${song.id} | Title: '${song.title}' | Artist: ${artist}`, 'white');
+
+                // Score based on how close to proper title case
+                let score = 0;
+                if (song.title === properTitleCase) {
+                    score = 100; // Perfect match
+                } else if (song.title === song.title.charAt(0).toUpperCase() + song.title.slice(1).toLowerCase()) {
+                    score = 50; // Basic capitalization
+                } else {
+                    score = 0; // Not proper case
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = song;
+                }
+            });
+
+            // Mark others for deletion
+            group.forEach(song => {
+                if (song.id !== bestMatch.id) {
+                    songsToDelete.push({
+                        id: song.id,
+                        title: song.title,
+                        artist: song.Artists && song.Artists.length > 0 ? song.Artists[0].name : 'No Artist',
+                        reason: 'Case duplicate (keeping proper title case)'
+                    });
+                }
+            });
+
+            log(`  -> KEEPING: ID ${bestMatch.id} - '${bestMatch.title}' (best case format)`, 'green');
+        });
+
+        log('\n===============================================', 'yellow');
+        log('SONGS TO DELETE:', 'red');
+        log('===============================================', 'yellow');
+
+        if (songsToDelete.length === 0) {
+            log('No songs need to be deleted.', 'green');
+        } else {
+            songsToDelete.forEach(song => {
+                log(`ID: ${song.id} | Title: '${song.title}' | Artist: ${song.artist} | Reason: ${song.reason}`, 'red');
+            });
+
+            log(`\nTotal songs to delete: ${songsToDelete.length}`, 'yellow');
+
+            const confirmed = await confirmAction(`delete these ${songsToDelete.length} duplicate songs`);
+            if (confirmed) {
+                let deletedCount = 0;
+                for (const songToDelete of songsToDelete) {
+                    try {
+                        await Song.destroy({ where: { id: songToDelete.id } });
+                        log(`Deleted: ${songToDelete.title} (ID: ${songToDelete.id})`, 'green');
+                        deletedCount++;
+                    } catch (error) {
+                        log(`Failed to delete: ${songToDelete.title} (ID: ${songToDelete.id}) - ${error.message}`, 'red');
+                    }
+                }
+                log(`\nSuccessfully deleted ${deletedCount} duplicate songs!`, 'green');
+            } else {
+                log('Deletion cancelled.', 'yellow');
+            }
+        }
+
+    } catch (error) {
+        log(`Error: ${error.message}`, 'red');
     }
 }
 
@@ -551,6 +668,9 @@ if (process.argv.length > 2) {
                 case 'edit-song':
                     await editSong();
                     break;
+                case 'find-case-duplicates':
+                    await findCaseDuplicates();
+                    break;
                 case 'stats':
                     await showStats();
                     break;
@@ -559,7 +679,7 @@ if (process.argv.length > 2) {
                     break;
                 default:
                     log(`Unknown command: ${command}`, 'red');
-                    log('Available commands: list-users, list-bands, list-songs, delete-links, edit-song, stats, cleanup', 'yellow');
+                    log('Available commands: list-users, list-bands, list-songs, delete-links, edit-song, find-case-duplicates, stats, cleanup', 'yellow');
                     log('For server commands: npm run manage server <command>', 'yellow');
             }
 

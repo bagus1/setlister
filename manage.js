@@ -90,18 +90,75 @@ async function listUsers() {
 async function listBands() {
     log('\n=== Bands ===', 'cyan');
     const bands = await Band.findAll({
-        include: [{
-            model: User,
-            through: { attributes: ['role'] }
-        }],
+        include: [
+            {
+                model: User,
+                through: { attributes: ['role'] },
+                attributes: ['id', 'username', 'email']
+            },
+            {
+                model: Song,
+                through: { attributes: [] },
+                include: ['Artists'],
+                attributes: ['id', 'title']
+            }
+        ],
         order: [['createdAt', 'DESC']]
     });
 
-    bands.forEach(band => {
+    if (bands.length === 0) {
+        log('No bands found.', 'yellow');
+        return;
+    }
+
+    // Show simple list first
+    bands.forEach((band, index) => {
         const memberCount = band.Users ? band.Users.length : 0;
-        log(`ID: ${band.id} | ${band.name} | Members: ${memberCount} | Created: ${band.createdAt.toLocaleDateString()}`, 'blue');
+        const songCount = band.Songs ? band.Songs.length : 0;
+        log(`${index + 1}. ${band.name} (ID: ${band.id}) | Members: ${memberCount} | Songs: ${songCount} | Created: ${band.createdAt.toLocaleDateString()}`, 'blue');
     });
-    log(`Total bands: ${bands.length}`, 'green');
+
+    log(`\nTotal bands: ${bands.length}`, 'green');
+
+    // Prompt for detailed view
+    const choice = await question('\nEnter band number for detailed info (or press Enter to skip): ');
+
+    if (!choice.trim()) {
+        return; // User chose to skip
+    }
+
+    const bandIndex = parseInt(choice) - 1;
+    if (isNaN(bandIndex) || bandIndex < 0 || bandIndex >= bands.length) {
+        log('Invalid band number.', 'red');
+        return;
+    }
+
+    const selectedBand = bands[bandIndex];
+
+    log(`\n=== Detailed Info for "${selectedBand.name}" ===`, 'cyan');
+    log(`ID: ${selectedBand.id} | Created: ${selectedBand.createdAt.toLocaleDateString()}`, 'blue');
+
+    // Show detailed members
+    if (selectedBand.Users && selectedBand.Users.length > 0) {
+        log('\nMembers:', 'yellow');
+        selectedBand.Users.forEach(user => {
+            const role = user.BandMember ? user.BandMember.role : 'member';
+            log(`  - ${user.username} (${user.email}) - ${role}`, 'white');
+        });
+    } else {
+        log('\nMembers: None', 'yellow');
+    }
+
+    // Show detailed songs
+    if (selectedBand.Songs && selectedBand.Songs.length > 0) {
+        log('\nSongs:', 'yellow');
+        selectedBand.Songs.forEach(song => {
+            const artist = song.Artists && song.Artists.length > 0 ? song.Artists[0].name : 'Unknown Artist';
+            log(`  - ID: ${song.id} | "${song.title}" by ${artist}`, 'white');
+        });
+    } else {
+        log('\nSongs: None', 'yellow');
+    }
 }
 
 async function listSongs() {

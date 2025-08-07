@@ -23,7 +23,7 @@ const Medley = require('./Medley')(sequelize);
 const MedleySong = require('./MedleySong')(sequelize);
 const BandInvitation = require('./BandInvitation')(sequelize);
 const PasswordReset = require('./PasswordReset')(sequelize);
-const Link = require('./Link');
+const Link = require('./Link')(sequelize);
 
 // Define associations
 // User-Band (many-to-many through BandMember)

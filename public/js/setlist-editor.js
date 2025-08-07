@@ -41,7 +41,7 @@ class SetlistEditor {
     }
 
     setupDragAndDrop() {
-        // Make band songs draggable
+        // Make band songs draggable (only these use our custom system)
         document.querySelectorAll('.band-song').forEach(song => {
             this.makeDraggable(song);
         });
@@ -51,13 +51,17 @@ class SetlistEditor {
             this.setupDropZone(zone);
         });
 
-        // Make existing setlist songs draggable
-        document.querySelectorAll('.setlist-song').forEach(song => {
-            this.makeDraggable(song);
-        });
+        // Don't make setlist songs draggable with our custom system
+        // Let SortableJS handle setlist song reordering
     }
 
     makeDraggable(element) {
+        // Only make band songs draggable with our custom system
+        // Let SortableJS handle setlist songs
+        if (element.classList.contains('setlist-song')) {
+            return; // Don't add our custom drag handlers to setlist songs
+        }
+
         // Remove HTML5 draggable attribute
         element.draggable = false;
 
@@ -134,13 +138,18 @@ class SetlistEditor {
         e.preventDefault();
 
         const coords = this.getEventCoordinates(e);
+        console.log('[DRAG END] Coordinates:', coords);
 
         // Find drop zone at current position
         const dropZone = this.findDropZoneAtPosition(coords);
+        console.log('[DRAG END] Drop zone found:', dropZone?.dataset?.setName);
 
         if (dropZone) {
             const dropPosition = this.calculateDropPosition(dropZone, coords.y);
+            console.log('[DRAG END] Drop position:', dropPosition);
             this.handleDrop(dropZone, dropPosition);
+        } else {
+            console.log('[DRAG END] No drop zone found at coordinates');
         }
 
         // Clean up
@@ -164,10 +173,13 @@ class SetlistEditor {
         this.dragPreview = element.cloneNode(true);
         this.dragPreview.style.position = 'fixed';
         this.dragPreview.style.zIndex = '9999';
-        this.dragPreview.style.opacity = '0.8';
+        this.dragPreview.style.opacity = '0.9';
         this.dragPreview.style.pointerEvents = 'none';
-        this.dragPreview.style.transform = 'rotate(5deg)';
-        this.dragPreview.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+        this.dragPreview.style.transform = 'none'; // Remove tilt
+        this.dragPreview.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
+        this.dragPreview.style.border = '2px solid #007bff';
+        this.dragPreview.style.borderRadius = '8px';
+        this.dragPreview.style.backgroundColor = '#ffffff';
 
         // Remove any existing event listeners from preview
         const newPreview = this.dragPreview.cloneNode(true);
@@ -358,6 +370,9 @@ class SetlistEditor {
         const clone = originalSong.cloneNode(true);
         clone.classList.remove('band-song');
         clone.classList.add('setlist-song');
+
+        // Remove any existing X buttons to prevent duplication
+        clone.querySelectorAll('.btn-outline-danger').forEach(btn => btn.remove());
 
         // Get the song title element and modify its structure
         const titleElement = clone.querySelector('.song-title');

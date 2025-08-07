@@ -21,6 +21,7 @@ const medleyRoutes = require('./routes/medleys');
 const setlistRoutes = require('./routes/setlists');
 const invitationRoutes = require('./routes/invitations');
 const bulkAddSongsRoutes = require('./routes/bulk-add-songs');
+const linkRoutes = require('./routes/links');
 
 const app = express();
 const server = http.createServer(app);
@@ -69,6 +70,7 @@ app.use('/medleys', medleyRoutes);
 app.use('/setlists', setlistRoutes);
 app.use('/invite', invitationRoutes);
 app.use('/bulk-add-songs', bulkAddSongsRoutes);
+app.use('/songs', linkRoutes);
 
 // Test DELETE route
 app.delete('/test-delete', (req, res) => {

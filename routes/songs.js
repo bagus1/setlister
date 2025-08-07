@@ -249,7 +249,7 @@ router.post('/', requireAuth, [
 router.get('/:id', async (req, res) => {
     try {
         const song = await Song.findByPk(req.params.id, {
-            include: ['Artists', 'Vocalist']
+            include: ['Artists', 'Vocalist', 'Links']
         });
 
         if (!song) {
@@ -257,10 +257,43 @@ router.get('/:id', async (req, res) => {
             return res.redirect('/songs');
         }
 
+        // Helper functions for link display
+        const getLinkIcon = (type) => {
+            const icons = {
+                'youtube': 'youtube',
+                'spotify': 'spotify',
+                'lyrics': 'file-text',
+                'tab': 'music-note',
+                'bass tab': 'music-note-beamed',
+                'chords': 'music-note-list',
+                'tutorial': 'play-circle',
+                'other': 'link-45deg'
+            };
+            return icons[type] || 'link-45deg';
+        };
+
+        const getLinkDisplayText = (link) => {
+            const typeLabels = {
+                'youtube': 'YouTube',
+                'spotify': 'Spotify',
+                'lyrics': 'Lyrics',
+                'tab': 'Tab',
+                'bass tab': 'Bass Tab',
+                'chords': 'Chords',
+                'tutorial': 'Tutorial',
+                'other': 'Other'
+            };
+
+            const typeLabel = typeLabels[link.type] || 'Link';
+            return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
+        };
+
         res.render('songs/show', {
             title: song.title,
             song,
-            loggedIn: !!req.session.user
+            loggedIn: !!req.session.user,
+            getLinkIcon,
+            getLinkDisplayText
         });
     } catch (error) {
         console.error('Song show error:', error);

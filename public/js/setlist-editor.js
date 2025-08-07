@@ -9,6 +9,13 @@ class SetlistEditor {
         this.hasCriticalChanges = false;
         this.saveTimeout = null;
 
+        // Touch drag state
+        this.touchStartX = 0;
+        this.touchStartY = 0;
+        this.dragOffsetX = 0;
+        this.dragOffsetY = 0;
+        this.dragPreview = null;
+
         this.init();
     }
 
@@ -51,48 +58,193 @@ class SetlistEditor {
     }
 
     makeDraggable(element) {
-        element.draggable = true;
+        // Remove HTML5 draggable attribute
+        element.draggable = false;
 
-        element.addEventListener('dragstart', (e) => {
-            this.isDragging = true;
-            this.draggedElement = element;
-            element.classList.add('dragging');
+        // Add unified event listeners for both mouse and touch
+        element.addEventListener('mousedown', (e) => this.handleDragStart(e, element));
+        element.addEventListener('touchstart', (e) => this.handleDragStart(e, element));
 
-            e.dataTransfer.setData('text/plain', '');
-            e.dataTransfer.effectAllowed = 'move';
+        // Prevent default touch behaviors
+        element.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    }
+
+    handleDragStart(e, element) {
+        // Don't start drag if SortableJS is active
+        if (this.sortableActive) {
+            return;
+        }
+
+        // Prevent default behaviors
+        e.preventDefault();
+
+        // Get coordinates (works for both mouse and touch)
+        const coords = this.getEventCoordinates(e);
+
+        this.isDragging = true;
+        this.draggedElement = element;
+
+        // Calculate offset for smooth dragging
+        const rect = element.getBoundingClientRect();
+        this.dragOffsetX = coords.x - rect.left;
+        this.dragOffsetY = coords.y - rect.top;
+
+        // Store touch start position for touch devices
+        if (e.touches) {
+            this.touchStartX = coords.x;
+            this.touchStartY = coords.y;
+        }
+
+        // Create drag preview
+        this.createDragPreview(element);
+
+        // Add dragging class
+        element.classList.add('dragging');
+
+        // Add global event listeners
+        document.addEventListener('mousemove', this.handleDragMove);
+        document.addEventListener('mouseup', this.handleDragEnd);
+        document.addEventListener('touchmove', this.handleDragMove);
+        document.addEventListener('touchend', this.handleDragEnd);
+
+        // Prevent text selection during drag
+        document.body.style.userSelect = 'none';
+    }
+
+    handleDragMove = (e) => {
+        if (!this.isDragging || !this.draggedElement) return;
+
+        e.preventDefault();
+
+        const coords = this.getEventCoordinates(e);
+
+        // Update drag preview position
+        if (this.dragPreview) {
+            this.dragPreview.style.left = (coords.x - this.dragOffsetX) + 'px';
+            this.dragPreview.style.top = (coords.y - this.dragOffsetY) + 'px';
+        }
+
+        // Check for drop zones
+        this.checkDropZones(coords);
+    }
+
+    handleDragEnd = (e) => {
+        if (!this.isDragging) return;
+
+        e.preventDefault();
+
+        const coords = this.getEventCoordinates(e);
+
+        // Find drop zone at current position
+        const dropZone = this.findDropZoneAtPosition(coords);
+
+        if (dropZone) {
+            const dropPosition = this.calculateDropPosition(dropZone, coords.y);
+            this.handleDrop(dropZone, dropPosition);
+        }
+
+        // Clean up
+        this.cleanupDrag();
+    }
+
+    getEventCoordinates(e) {
+        if (e.touches && e.touches[0]) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    }
+
+    createDragPreview(element) {
+        // Remove existing preview
+        if (this.dragPreview) {
+            this.dragPreview.remove();
+        }
+
+        // Create new preview
+        this.dragPreview = element.cloneNode(true);
+        this.dragPreview.style.position = 'fixed';
+        this.dragPreview.style.zIndex = '9999';
+        this.dragPreview.style.opacity = '0.8';
+        this.dragPreview.style.pointerEvents = 'none';
+        this.dragPreview.style.transform = 'rotate(5deg)';
+        this.dragPreview.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+
+        // Remove any existing event listeners from preview
+        const newPreview = this.dragPreview.cloneNode(true);
+        this.dragPreview = newPreview;
+
+        document.body.appendChild(this.dragPreview);
+    }
+
+    checkDropZones(coords) {
+        // Remove all drag-over classes
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.classList.remove('drag-over');
         });
 
-        element.addEventListener('dragend', (e) => {
-            this.isDragging = false;
+        // Find zone under cursor
+        const dropZone = this.findDropZoneAtPosition(coords);
+        if (dropZone) {
+            dropZone.classList.add('drag-over');
+        }
+    }
 
-            // Comprehensive style cleanup
-            this.clearDragStyles(element);
+    findDropZoneAtPosition(coords) {
+        const dropZones = document.querySelectorAll('.drop-zone');
 
+        for (let zone of dropZones) {
+            const rect = zone.getBoundingClientRect();
+            if (coords.x >= rect.left && coords.x <= rect.right &&
+                coords.y >= rect.top && coords.y <= rect.bottom) {
+                return zone;
+            }
+        }
+
+        return null;
+    }
+
+    cleanupDrag() {
+        this.isDragging = false;
+
+        // Remove global event listeners
+        document.removeEventListener('mousemove', this.handleDragMove);
+        document.removeEventListener('mouseup', this.handleDragEnd);
+        document.removeEventListener('touchmove', this.handleDragMove);
+        document.removeEventListener('touchend', this.handleDragEnd);
+
+        // Remove drag preview
+        if (this.dragPreview) {
+            this.dragPreview.remove();
+            this.dragPreview = null;
+        }
+
+        // Remove drag-over classes
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.classList.remove('drag-over');
+        });
+
+        // Clear dragging class
+        if (this.draggedElement) {
+            this.clearDragStyles(this.draggedElement);
             this.draggedElement = null;
-        });
+        }
+
+        // Restore text selection
+        document.body.style.userSelect = '';
     }
 
     setupDropZone(zone) {
-        zone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            zone.classList.add('drag-over');
-        });
-
-        zone.addEventListener('dragleave', (e) => {
-            if (!zone.contains(e.relatedTarget)) {
-                zone.classList.remove('drag-over');
+        // Remove HTML5 drop events - we handle drops in handleDragEnd
+        // Just add visual feedback for drag-over
+        zone.addEventListener('mouseenter', (e) => {
+            if (this.isDragging) {
+                zone.classList.add('drag-over');
             }
         });
 
-        zone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            zone.classList.remove('drag-over');
-
-            if (this.draggedElement) {
-                // Calculate drop position
-                const dropPosition = this.calculateDropPosition(zone, e.clientY);
-                this.handleDrop(zone, dropPosition);
+        zone.addEventListener('mouseleave', (e) => {
+            if (!zone.contains(e.relatedTarget)) {
+                zone.classList.remove('drag-over');
             }
         });
     }
@@ -120,7 +272,7 @@ class SetlistEditor {
     }
 
     handleDrop(dropZone, dropPosition) {
-        // Don't handle if SortableJS is managing the drag
+        // Don't handle if SortableJS is active
         if (this.sortableActive) {
             return;
         }
@@ -903,6 +1055,12 @@ class SetlistEditor {
             element.style.backgroundColor = '';
             element.style.filter = '';
             element.style.transition = '';
+        }
+
+        // Also clean up drag preview if it exists
+        if (this.dragPreview) {
+            this.dragPreview.remove();
+            this.dragPreview = null;
         }
     }
 }

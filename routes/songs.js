@@ -157,14 +157,18 @@ router.post('/', requireAuth, [
         console.log('BPM value type:', typeof bpm, 'BPM value:', bpm);
         console.log('Artist value:', artist, 'length:', artist ? artist.length : 'undefined');
 
-        // Check for duplicate song
+        // Check for duplicate song (case-insensitive)
+        const { Sequelize } = require('sequelize');
         const existingSong = await Song.findOne({
-            where: { title },
+            where: Sequelize.where(
+                Sequelize.fn('LOWER', Sequelize.col('title')),
+                Sequelize.fn('LOWER', title.trim())
+            ),
             include: ['Artists']
         });
 
         const duplicateWarning = existingSong ?
-            `A song with the title "${title}" already exists${existingSong.Artists && existingSong.Artists.length > 0 ? ` by ${existingSong.Artists[0].name}` : ''}.` :
+            `A song with the title "${title}" already exists${existingSong.Artists && existingSong.Artists.length > 0 ? ` by ${existingSong.Artists[0].name}` : ''} (found: "${existingSong.title}").` :
             null;
 
         if (!errors.isEmpty() || duplicateWarning) {

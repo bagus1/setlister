@@ -108,7 +108,7 @@ async function listSongs() {
     log('\n=== Songs ===', 'cyan');
     const songs = await Song.findAll({
         include: ['Artists', 'Vocalist'],
-        order: [['createdAt', 'DESC']]
+        order: [['id', 'ASC']]
     });
 
     songs.forEach(song => {

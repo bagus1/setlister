@@ -8,6 +8,19 @@ const router = express.Router();
 // All setlist routes require authentication
 router.use(requireAuth);
 
+// Helper function to check if setlist is still editable (until end of setlist date)
+function isSetlistEditable(setlist) {
+    if (!setlist.date) {
+        return true; // No date set, always editable
+    }
+
+    const setlistDate = new Date(setlist.date);
+    const endOfSetlistDate = new Date(setlistDate);
+    endOfSetlistDate.setHours(23, 59, 59, 999); // End of the setlist date
+
+    return new Date() <= endOfSetlistDate;
+}
+
 // GET /setlists/:id - Show setlist details
 router.get('/:id', async (req, res) => {
     try {
@@ -93,15 +106,9 @@ router.get('/:id/edit', async (req, res) => {
         }
 
         // Check if setlist date has passed (allow editing until end of the setlist date)
-        if (setlist.date) {
-            const setlistDate = new Date(setlist.date);
-            const endOfSetlistDate = new Date(setlistDate);
-            endOfSetlistDate.setHours(23, 59, 59, 999); // End of the setlist date
-
-            if (new Date() > endOfSetlistDate) {
-                req.flash('error', 'This setlist cannot be edited as the performance date has passed');
-                return res.redirect(`/setlists/${setlist.id}/finalize`);
-            }
+        if (!isSetlistEditable(setlist)) {
+            req.flash('error', 'This setlist cannot be edited as the performance date has passed');
+            return res.redirect(`/setlists/${setlist.id}/finalize`);
         }
 
         // Get all band's songs
@@ -190,15 +197,9 @@ router.post('/:id/save', async (req, res) => {
         }
 
         // Check if setlist date has passed (allow editing until end of the setlist date)
-        if (setlist.date) {
-            const setlistDate = new Date(setlist.date);
-            const endOfSetlistDate = new Date(setlistDate);
-            endOfSetlistDate.setHours(23, 59, 59, 999); // End of the setlist date
-
-            if (new Date() > endOfSetlistDate) {
-                console.log(`[SAVE] Setlist date has passed: ${setlist.date}`);
-                return res.status(403).json({ error: 'This setlist cannot be edited as the performance date has passed' });
-            }
+        if (!isSetlistEditable(setlist)) {
+            console.log(`[SAVE] Setlist date has passed: ${setlist.date}`);
+            return res.status(403).json({ error: 'This setlist cannot be edited as the performance date has passed' });
         }
 
         // Clear existing setlist songs
@@ -322,13 +323,7 @@ router.get('/:id/finalize', async (req, res) => {
         console.log(`[FINALIZE] Total time: ${totalTime} seconds`);
 
         // Calculate if setlist is still editable (until end of setlist date)
-        let isEditable = true;
-        if (setlist.date) {
-            const setlistDate = new Date(setlist.date);
-            const endOfSetlistDate = new Date(setlistDate);
-            endOfSetlistDate.setHours(23, 59, 59, 999); // End of the setlist date
-            isEditable = new Date() <= endOfSetlistDate;
-        }
+        const isEditable = isSetlistEditable(setlist);
 
         res.render('setlists/finalize', {
             title: `Finalize ${setlist.title}`,
@@ -767,14 +762,8 @@ router.delete('/:id', async (req, res) => {
         }
 
         // Check if setlist is finalized and date has passed
-        if (setlist.isFinalized && setlist.date) {
-            const setlistDate = new Date(setlist.date);
-            const endOfSetlistDate = new Date(setlistDate);
-            endOfSetlistDate.setHours(23, 59, 59, 999); // End of the setlist date
-
-            if (new Date() > endOfSetlistDate) {
-                return res.status(400).json({ error: 'Cannot delete a finalized setlist after the performance date' });
-            }
+        if (setlist.isFinalized && !isSetlistEditable(setlist)) {
+            return res.status(400).json({ error: 'Cannot delete a finalized setlist after the performance date' });
         }
 
         // Delete the setlist (cascade will handle related records)

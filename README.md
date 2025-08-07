@@ -134,6 +134,24 @@ SENDGRID_API_KEY=your_sendgrid_api_key_here
 
 The project includes `deploy.sh` for automated deployment and server management.
 
+### 🎯 Quick Reference
+
+**Most Common Commands:**
+```bash
+./deploy.sh quick     # Fast updates (UI/templates) - no restart
+./deploy.sh deploy    # Full deployment with restart
+./deploy.sh restart   # Just restart the server
+./deploy.sh status    # Check deployment status
+```
+
+**Emergency Commands:**
+```bash
+./deploy.sh rollback  # Revert to previous commit
+./deploy.sh backup    # Create backup before changes
+./deploy.sh stop      # Stop server
+./deploy.sh start     # Start server
+```
+
 ### Setup
 
 1. **Make the script executable**:
@@ -151,6 +169,23 @@ The project includes `deploy.sh` for automated deployment and server management.
 ### Deployment Modes
 
 The script provides multiple deployment modes for different scenarios:
+
+#### **📋 Deployment Modes Reference Table**
+
+| Mode | **Local Git Operations** | **Server Git Operations** | **Server Restart** | **Use Case** |
+|------|-------------------------|---------------------------|-------------------|--------------|
+| **`deploy`** | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull` | ✅ Yes | Full deployment with new changes |
+| **`update`** | ✅ `git add .`<br>✅ `git commit`<br>❌ No push | ✅ `git pull` | ✅ Yes | Quick deploy (pulls latest from remote) |
+| **`quick`** | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull` | ❌ No | Fast file updates (UI/templates) |
+| **`restart`** | ❌ None | ❌ None | ✅ Yes | Just restart the server |
+| **`stop`** | ❌ None | ❌ None | ❌ Kills process | Stop the server |
+| **`start`** | ❌ None | ❌ None | ✅ Touch restart.txt | Start the server |
+| **`deps`** | ❌ None | ❌ None | ❌ No | Update npm dependencies |
+| **`status`** | ❌ None | ❌ None | ❌ No | Show deployment status |
+| **`backup`** | ❌ None | ❌ None | ❌ No | Create server backup |
+| **`rollback`** | ✅ `git reset --hard`<br>✅ `git push --force` | ✅ `git reset --hard` | ✅ Yes | Rollback to previous commit |
+
+#### **🚀 Primary Deployment Modes**
 
 #### **Quick Updates** (Most Common)
 ```bash

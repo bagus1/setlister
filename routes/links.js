@@ -7,7 +7,7 @@ const { requireAuth } = require('./auth');
 // POST /songs/:songId/links - Add a new link to a song
 router.post('/:songId/links', requireAuth, [
     body('type')
-        .isIn(['youtube', 'spotify', 'apple-music', 'soundcloud', 'bandcamp', 'lyrics', 'tab', 'bass tab', 'chords', 'tutorial', 'audio', 'sheet-music', 'backing-track', 'karaoke', 'other'])
+        .isIn(['youtube', 'spotify', 'apple-music', 'soundcloud', 'bandcamp', 'lyrics', 'tab', 'bass tab', 'chords', 'guitar tutorial', 'bass tutorial', 'keyboard tutorial', 'audio', 'sheet-music', 'backing-track', 'karaoke', 'horn chart', 'other'])
         .withMessage('Please select a valid link type'),
     body('url')
         .isURL()

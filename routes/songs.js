@@ -269,11 +269,14 @@ router.get('/:id', async (req, res) => {
                 'tab': 'music-note',
                 'bass tab': 'music-note-beamed',
                 'chords': 'music-note-list',
-                'tutorial': 'play-circle',
+                'guitar tutorial': 'play-circle',
+                'bass tutorial': 'play-circle',
+                'keyboard tutorial': 'play-circle',
                 'audio': 'headphones',
                 'sheet-music': 'file-earmark-music',
                 'backing-track': 'music-player',
                 'karaoke': 'mic',
+                'horn chart': 'file-earmark-music',
                 'other': 'link-45deg'
             };
             return icons[type] || 'link-45deg';
@@ -290,11 +293,14 @@ router.get('/:id', async (req, res) => {
                 'tab': 'Tab',
                 'bass tab': 'Bass Tab',
                 'chords': 'Chords',
-                'tutorial': 'Tutorial',
+                'guitar tutorial': 'Guitar Tutorial',
+                'bass tutorial': 'Bass Tutorial',
+                'keyboard tutorial': 'Keyboard Tutorial',
                 'audio': 'Audio File',
                 'sheet-music': 'Sheet Music',
                 'backing-track': 'Backing Track',
                 'karaoke': 'Karaoke',
+                'horn chart': 'Horn Chart',
                 'other': 'Other'
             };
 

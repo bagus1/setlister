@@ -23,6 +23,7 @@ const Medley = require('./Medley')(sequelize);
 const MedleySong = require('./MedleySong')(sequelize);
 const BandInvitation = require('./BandInvitation')(sequelize);
 const PasswordReset = require('./PasswordReset')(sequelize);
+const Link = require('./Link');
 
 // Define associations
 // User-Band (many-to-many through BandMember)
@@ -82,6 +83,10 @@ User.hasMany(BandInvitation, { as: 'SentInvitations', foreignKey: 'invitedBy' })
 // PasswordReset associations (if any needed)
 // Currently no associations needed for PasswordReset
 
+// Song-Link (one-to-many)
+Song.hasMany(Link, { foreignKey: 'songId' });
+Link.belongsTo(Song, { foreignKey: 'songId' });
+
 module.exports = {
     sequelize,
     User,
@@ -97,5 +102,6 @@ module.exports = {
     Medley,
     MedleySong,
     BandInvitation,
-    PasswordReset
+    PasswordReset,
+    Link
 }; 

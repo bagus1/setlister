@@ -147,23 +147,33 @@ router.post('/', requireAuth, [
             }
 
             try {
-                // Check if song already exists with proper duplicate logic
+                // Check if song already exists with proper duplicate logic (case-insensitive)
+                const { Sequelize } = require('sequelize');
                 let existingSong = null;
 
                 if (artistName) {
-                    // If artist is provided, check for same title AND same artist
+                    // If artist is provided, check for same title AND same artist (both case-insensitive)
                     existingSong = await Song.findOne({
-                        where: { title },
+                        where: Sequelize.where(
+                            Sequelize.fn('LOWER', Sequelize.col('Song.title')),
+                            Sequelize.fn('LOWER', title.trim())
+                        ),
                         include: [{
                             model: Artist,
-                            where: { name: artistName },
+                            where: Sequelize.where(
+                                Sequelize.fn('LOWER', Sequelize.col('Artists.name')),
+                                Sequelize.fn('LOWER', artistName.trim())
+                            ),
                             required: true
                         }]
                     });
                 } else {
-                    // If no artist provided, check for same title with NO artists
+                    // If no artist provided, check for same title with NO artists (case-insensitive)
                     existingSong = await Song.findOne({
-                        where: { title },
+                        where: Sequelize.where(
+                            Sequelize.fn('LOWER', Sequelize.col('Song.title')),
+                            Sequelize.fn('LOWER', title.trim())
+                        ),
                         include: [{
                             model: Artist,
                             required: false
@@ -178,8 +188,7 @@ router.post('/', requireAuth, [
 
                 if (existingSong) {
                     const existingArtist = existingSong.Artists && existingSong.Artists.length > 0 ? existingSong.Artists[0].name : 'no artist';
-                    const newArtist = artistName || 'no artist';
-                    results.skipped.push(`"${title}" by ${newArtist} (already exists)`);
+                    results.duplicates.push(`Line ${lineNumber}: "${title}" by ${artistName || 'no artist'} (already exists as "${existingSong.title}" by ${existingArtist})`);
                     continue;
                 }
 

@@ -410,27 +410,16 @@ router.post('/:id/update', requireAuth, (req, res, next) => {
             console.log('Vocalist ID for edit:', vocalistId);
         }
 
-        // Update song
+        // Update song (excluding title and artist which are now read-only)
         await song.update({
-            title: title.trim(),
             key: key || null,
             time: totalTime || null,
             bpm: bpmValue,
             vocalistId
         });
 
-        // Handle artist
-        await song.setArtists([]); // Clear existing associations
-        if (artist && artist.trim()) {
-            console.log('Creating/finding artist for edit:', artist);
-            const [artistRecord] = await Artist.findOrCreate({
-                where: { name: artist.trim() },
-                defaults: { name: artist.trim() }
-            });
-            console.log('Artist record for edit:', artistRecord.id, artistRecord.name);
-            await song.addArtist(artistRecord);
-            console.log('Artist added to song during edit');
-        }
+        // Note: Title and artist are now read-only and cannot be changed
+        // The form sends these values but we ignore them for security
 
         req.flash('success', 'Song updated successfully');
         res.redirect(`/songs/${song.id}`);

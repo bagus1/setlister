@@ -22,21 +22,17 @@
                         <form action="/songs/<%= song.id %>/update" method="POST">
                             <div class="mb-3">
                                 <label for="title" class="form-label">Song Title</label>
-                                <input type="text" class="form-control" id="title" name="title"
-                                    value="<%= song.title %>" required>
+                                <input type="text" class="form-control bg-light" id="title" name="title"
+                                    value="<%= song.title %>" readonly>
+                                <div class="form-text text-muted">Song title cannot be edited</div>
                             </div>
 
                             <div class="mb-3">
                                 <label for="artist" class="form-label">Artist</label>
-                                <input type="text" class="form-control" id="artist" name="artist"
+                                <input type="text" class="form-control bg-light" id="artist" name="artist"
                                     value="<%= song.Artists && song.Artists.length > 0 ? song.Artists[0].name : '' %>"
-                                    list="artistsList" placeholder="Start typing artist name...">
-                                <datalist id="artistsList">
-                                    <% artists.forEach(artist=> { %>
-                                        <option value="<%= artist.name %>">
-                                            <% }) %>
-                                </datalist>
-                                <div class="form-text">Type to search existing artists or enter a new one</div>
+                                    readonly>
+                                <div class="form-text text-muted">Artist cannot be edited</div>
                             </div>
 
                             <div class="mb-3">

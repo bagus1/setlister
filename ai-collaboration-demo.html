@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Collaboration Demo - Setlist Manager CLI Enhancement</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #ffffff;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 18px;
+        }
+
+        .conversation {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .user-message {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .ai-message {
+            background-color: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .user-label,
+        .ai-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .user-label {
+            color: #1976d2;
+        }
+
+        .ai-label {
+            color: #7b1fa2;
+        }
+
+        .code-block {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .success-box {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .success-box h3 {
+            color: #155724;
+            margin-top: 0;
+        }
+
+        .feature-list {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .feature-list h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+
+        .feature-list ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .feature-list li {
+            margin-bottom: 8px;
+        }
+
+        .error-fix {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .error-fix h3 {
+            color: #721c24;
+            margin-top: 0;
+        }
+
+        .before-after {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+        }
+
+        .before,
+        .after {
+            flex: 1;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .before {
+            background-color: #ffe6e6;
+            border: 1px solid #ffcccc;
+        }
+
+        .after {
+            background-color: #e6ffe6;
+            border: 1px solid #ccffcc;
+        }
+
+        .before h4,
+        .after h4 {
+            margin-top: 0;
+            font-size: 14px;
+        }
+
+        .before h4 {
+            color: #cc0000;
+        }
+
+        .after h4 {
+            color: #006600;
+        }
+
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🎵 AI Collaboration Demo</h1>
+        <p><strong>Setlist Manager CLI Enhancement</strong></p>
+        <p>Showcasing rapid feature development and bug fixing with AI assistance</p>
+    </div>
+
+    <div class="conversation">
+        <div class="user-message">
+            <span class="user-label">👤 Bagus said:</span>
+            <p>"in the cli manage.js for the delete links from song, have an additional input after the song id is
+                entered so that a user can select which link they want to delete or type 'all' to delete all links for
+                that song"</p>
+        </div>
+
+        <div class="ai-message">
+            <span class="ai-label">🤖 AI responded:</span>
+            <p>"I'll modify the deleteLinks function in manage.js to allow users to select specific links to delete or
+                delete all links. Let me first look at the current implementation..."</p>
+            <p>The AI then proceeded to:</p>
+            <ul>
+                <li>Examine the existing code structure</li>
+                <li>Implement selective link deletion functionality</li>
+                <li>Add input validation and user-friendly prompts</li>
+                <li>Fix a template literal issue</li>
+                <li>Commit and deploy the changes</li>
+            </ul>
+        </div>
+
+        <div class="success-box">
+            <h3>✅ Enhanced CLI Link Deletion Functionality!</h3>
+            <p><strong>What was implemented:</strong></p>
+
+            <div class="feature-list">
+                <h3>🔧 Selective Link Deletion Features:</h3>
+                <ul>
+                    <li><strong>Individual Selection:</strong> Delete specific links by number</li>
+                    <li><strong>Bulk Deletion:</strong> Delete all links with "all" command</li>
+                    <li><strong>Safe Cancellation:</strong> Cancel operation at any time</li>
+                    <li><strong>Input Validation:</strong> Prevents invalid selections</li>
+                </ul>
+            </div>
+
+            <div class="feature-list">
+                <h3>🎯 User Experience Improvements:</h3>
+                <ul>
+                    <li><strong>Clear Options Display:</strong> Shows numbered list of links</li>
+                    <li><strong>Flexible Input:</strong> Accepts numbers, "all", or "cancel"</li>
+                    <li><strong>Confirmation Prompts:</strong> Double-confirms before deletion</li>
+                    <li><strong>Error Handling:</strong> Validates input and provides helpful messages</li>
+                </ul>
+            </div>
+
+            <div class="code-block">
+                Example Usage:
+                === Delete Links from Song ===
+                Enter song ID: 123
+
+                Song: Sweet Home Alabama
+                Artist: Lynyrd Skynyrd
+
+                Links (3):
+                1. [youtube] Official video - https://youtube.com/watch?v=...
+                2. [spotify] Album version - https://open.spotify.com/track/...
+                3. [lyrics] Song lyrics - https://genius.com/...
+
+                Options:
+                - Enter a number (1-3) to delete that specific link
+                - Type "all" to delete all links
+                - Type "cancel" to abort
+
+                Enter your choice: 2
+            </div>
+        </div>
+    </div>
+
+    <div class="conversation">
+        <div class="user-message">
+            <span class="user-label">👤 Bagus reported:</span>
+            <p>"There's an error: Enter your choice: Error: question(...).toLowerCase is not a function"</p>
+        </div>
+
+        <div class="ai-message">
+            <span class="ai-label">🤖 AI diagnosed and fixed:</span>
+            <p>"I see the issue! The question function returns a Promise, so I need to await it before calling
+                .toLowerCase(). Let me fix this..."</p>
+        </div>
+
+        <div class="error-fix">
+            <h3>🐛 Bug Analysis & Fix</h3>
+
+            <div class="before-after">
+                <div class="before">
+                    <h4>❌ Before (Broken):</h4>
+                    <div class="code-block">
+                        const choice = await question('\nEnter your choice: ').toLowerCase().trim();
+                    </div>
+                    <p>This tried to call .toLowerCase() on the Promise returned by question(), which doesn't have that
+                        method.</p>
+                </div>
+
+                <div class="after">
+                    <h4>✅ After (Fixed):</h4>
+                    <div class="code-block">
+                        const choice = (await question('\nEnter your choice: ')).toLowerCase().trim();
+                    </div>
+                    <p>Now it properly awaits the Promise first, then calls string methods on the resolved value.</p>
+                </div>
+            </div>
+
+            <h3>🔧 The Technical Fix:</h3>
+            <ul>
+                <li><strong>Before:</strong> <span class="highlight">await question(...).toLowerCase()</span> ❌ (Promise
+                    has no toLowerCase method)</li>
+                <li><strong>After:</strong> <span class="highlight">(await question(...)).toLowerCase()</span> ✅ (String
+                    has toLowerCase method)</li>
+            </ul>
+
+            <p>The AI immediately:</p>
+            <ul>
+                <li>Identified the Promise chain issue</li>
+                <li>Applied the correct fix with proper parentheses</li>
+                <li>Committed and deployed the fix</li>
+                <li>Provided clear explanation of the problem and solution</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="success-box">
+        <h3>🎉 Key Takeaways from This Collaboration</h3>
+
+        <div class="feature-list">
+            <h3>🚀 Development Speed:</h3>
+            <ul>
+                <li><strong>Feature Request → Implementation:</strong> Minutes, not hours</li>
+                <li><strong>Bug Report → Fix:</strong> Immediate diagnosis and resolution</li>
+                <li><strong>Code Review:</strong> Built-in with detailed explanations</li>
+                <li><strong>Deployment:</strong> Automated with proper Git workflow</li>
+            </ul>
+        </div>
+
+        <div class="feature-list">
+            <h3>🎯 Quality Assurance:</h3>
+            <ul>
+                <li><strong>Input Validation:</strong> Comprehensive error checking</li>
+                <li><strong>User Experience:</strong> Clear prompts and confirmations</li>
+                <li><strong>Code Quality:</strong> Proper async/await patterns</li>
+                <li><strong>Documentation:</strong> Detailed explanations and examples</li>
+            </ul>
+        </div>
+
+        <div class="feature-list">
+            <h3>🛠️ Technical Excellence:</h3>
+            <ul>
+                <li><strong>Promise Handling:</strong> Proper async/await usage</li>
+                <li><strong>Error Prevention:</strong> Input sanitization and validation</li>
+                <li><strong>User Safety:</strong> Confirmation prompts and cancellation options</li>
+                <li><strong>Maintainability:</strong> Clean, readable code with comments</li>
+            </ul>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+        <h3>🎵 The Result</h3>
+        <p><strong>A fully functional, user-friendly CLI tool that provides granular control over link
+                management,</strong></p>
+        <p>developed and debugged in real-time with AI assistance.</p>
+        <p style="font-size: 18px; color: #007bff; margin-top: 20px;"><strong>This is the future of software
+                development! 🚀</strong></p>
+    </div>
+</body>
+
+</html>

@@ -251,7 +251,7 @@ async function deleteLinks() {
         log('- Type "all" to delete all links', 'white');
         log('- Type "cancel" to abort', 'white');
 
-        const choice = await question('\nEnter your choice: ').toLowerCase().trim();
+        const choice = (await question('\nEnter your choice: ')).toLowerCase().trim();
 
         if (choice === 'cancel') {
             log('Operation cancelled.', 'yellow');

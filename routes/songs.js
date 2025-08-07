@@ -262,11 +262,18 @@ router.get('/:id', async (req, res) => {
             const icons = {
                 'youtube': 'youtube',
                 'spotify': 'spotify',
+                'apple-music': 'music-note',
+                'soundcloud': 'cloud',
+                'bandcamp': 'music-note-beamed',
                 'lyrics': 'file-text',
                 'tab': 'music-note',
                 'bass tab': 'music-note-beamed',
                 'chords': 'music-note-list',
                 'tutorial': 'play-circle',
+                'audio': 'headphones',
+                'sheet-music': 'file-earmark-music',
+                'backing-track': 'music-player',
+                'karaoke': 'mic',
                 'other': 'link-45deg'
             };
             return icons[type] || 'link-45deg';
@@ -276,11 +283,18 @@ router.get('/:id', async (req, res) => {
             const typeLabels = {
                 'youtube': 'YouTube',
                 'spotify': 'Spotify',
+                'apple-music': 'Apple Music',
+                'soundcloud': 'SoundCloud',
+                'bandcamp': 'Bandcamp',
                 'lyrics': 'Lyrics',
                 'tab': 'Tab',
                 'bass tab': 'Bass Tab',
                 'chords': 'Chords',
                 'tutorial': 'Tutorial',
+                'audio': 'Audio File',
+                'sheet-music': 'Sheet Music',
+                'backing-track': 'Backing Track',
+                'karaoke': 'Karaoke',
                 'other': 'Other'
             };
 

@@ -246,12 +246,45 @@ async function deleteLinks() {
             log(`  ${index + 1}. [${link.type}] ${link.description || 'No description'} - ${link.url}`, 'white');
         });
 
-        const confirmed = await confirmAction(`delete all ${song.Links.length} links from "${song.title}"`);
+        log('\nOptions:', 'cyan');
+        log(`- Enter a number (1-${song.Links.length}) to delete that specific link`, 'white');
+        log('- Type "all" to delete all links', 'white');
+        log('- Type "cancel" to abort', 'white');
+
+        const choice = await question('\nEnter your choice: ').toLowerCase().trim();
+
+        if (choice === 'cancel') {
+            log('Operation cancelled.', 'yellow');
+            return;
+        }
+
+        if (choice === 'all') {
+            const confirmed = await confirmAction(`delete all ${song.Links.length} links from "${song.title}"`);
+            if (confirmed) {
+                await Link.destroy({
+                    where: { songId: song.id }
+                });
+                log(`${song.Links.length} links deleted successfully!`, 'green');
+            } else {
+                log('Deletion cancelled.', 'yellow');
+            }
+            return;
+        }
+
+        const linkIndex = parseInt(choice) - 1;
+        if (isNaN(linkIndex) || linkIndex < 0 || linkIndex >= song.Links.length) {
+            log('Invalid choice. Please enter a valid number or "all".', 'red');
+            return;
+        }
+
+        const selectedLink = song.Links[linkIndex];
+        const confirmed = await confirmAction(`delete link [${selectedLink.type}] ${selectedLink.description || 'No description'} from "${song.title}"`);
+
         if (confirmed) {
             await Link.destroy({
-                where: { songId: song.id }
+                where: { id: selectedLink.id }
             });
-            log(`${song.Links.length} links deleted successfully!`, 'green');
+            log('Link deleted successfully!', 'green');
         } else {
             log('Deletion cancelled.', 'yellow');
         }

@@ -163,15 +163,6 @@
                                             <%= getLinkDisplayText(link) %>
                                         </a>
                                     </div>
-                                    <% if (loggedIn) { %>
-                                        <form action="/songs/<%= song.id %>/links/<%= link.id %>?_method=DELETE"
-                                            method="POST" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                onclick="return confirm('Are you sure you want to delete this link?')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                        <% } %>
                                 </div>
                                 <% }) %>
                         </div>

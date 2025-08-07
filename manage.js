@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { User, Band, Song, BandMember, BandInvitation, Setlist, SetlistSet, BandSong } = require('./models');
+const { User, Band, Song, BandMember, BandInvitation, Setlist, SetlistSet, BandSong, Link } = require('./models');
 const readline = require('readline');
 
 // Environment variables for server connection
@@ -175,25 +175,88 @@ async function deleteBand() {
 }
 
 async function deleteSong() {
+    log('\n=== Delete Song ===', 'red');
     const songId = await question('Enter song ID to delete: ');
-    const song = await Song.findByPk(songId);
 
-    if (!song) {
-        log('Song not found!', 'red');
-        return;
+    try {
+        const song = await Song.findByPk(songId, {
+            include: ['Artists', 'Vocalist', 'Links']
+        });
+
+        if (!song) {
+            log('Song not found!', 'red');
+            return;
+        }
+
+        log(`\nSong: ${song.title}`, 'blue');
+        if (song.Artists && song.Artists.length > 0) {
+            log(`Artist: ${song.Artists[0].name}`, 'blue');
+        }
+        if (song.Vocalist) {
+            log(`Vocalist: ${song.Vocalist.name}`, 'blue');
+        }
+
+        if (song.Links && song.Links.length > 0) {
+            log(`\nLinks (${song.Links.length}):`, 'yellow');
+            song.Links.forEach((link, index) => {
+                log(`  ${index + 1}. [${link.type}] ${link.description || 'No description'} - ${link.url}`, 'white');
+            });
+        } else {
+            log('\nNo links found for this song.', 'yellow');
+        }
+
+        const confirmed = await confirmAction(`delete song "${song.title}"`);
+        if (confirmed) {
+            await song.destroy();
+            log('Song deleted successfully!', 'green');
+        } else {
+            log('Deletion cancelled.', 'yellow');
+        }
+    } catch (error) {
+        log(`Error: ${error.message}`, 'red');
     }
+}
 
-    log(`Found song: ${song.title}`, 'yellow');
+async function deleteLinks() {
+    log('\n=== Delete Links from Song ===', 'red');
+    const songId = await question('Enter song ID: ');
 
-    if (await confirmAction(`delete song ${song.title}`)) {
-        // Delete related data first
-        await BandSong.destroy({ where: { songId } });
+    try {
+        const song = await Song.findByPk(songId, {
+            include: ['Artists', 'Links']
+        });
 
-        // Delete song
-        await song.destroy();
-        log(`Song ${song.title} deleted successfully!`, 'green');
-    } else {
-        log('Deletion cancelled.', 'yellow');
+        if (!song) {
+            log('Song not found!', 'red');
+            return;
+        }
+
+        log(`\nSong: ${song.title}`, 'blue');
+        if (song.Artists && song.Artists.length > 0) {
+            log(`Artist: ${song.Artists[0].name}`, 'blue');
+        }
+
+        if (!song.Links || song.Links.length === 0) {
+            log('\nNo links found for this song.', 'yellow');
+            return;
+        }
+
+        log(`\nLinks (${song.Links.length}):`, 'yellow');
+        song.Links.forEach((link, index) => {
+            log(`  ${index + 1}. [${link.type}] ${link.description || 'No description'} - ${link.url}`, 'white');
+        });
+
+        const confirmed = await confirmAction(`delete all ${song.Links.length} links from "${song.title}"`);
+        if (confirmed) {
+            await Link.destroy({
+                where: { songId: song.id }
+            });
+            log(`${song.Links.length} links deleted successfully!`, 'green');
+        } else {
+            log('Deletion cancelled.', 'yellow');
+        }
+    } catch (error) {
+        log(`Error: ${error.message}`, 'red');
     }
 }
 
@@ -252,9 +315,10 @@ async function showMenu() {
     log('4. Delete user', 'red');
     log('5. Delete band', 'red');
     log('6. Delete song', 'red');
-    log('7. Cleanup orphaned data', 'yellow');
-    log('8. Show statistics', 'cyan');
-    log('9. Exit (or type q/quit)', 'reset');
+    log('7. Delete links from song', 'red');
+    log('8. Cleanup orphaned data', 'yellow');
+    log('9. Show statistics', 'cyan');
+    log('10. Exit (or type q/quit)', 'reset');
     log('=====================================', 'magenta');
 }
 
@@ -268,7 +332,7 @@ async function main() {
 
         while (true) {
             await showMenu();
-            const choice = await question('Enter your choice (1-9, q to quit): ');
+            const choice = await question('Enter your choice (1-10, q to quit): ');
 
             switch (choice.toLowerCase()) {
                 case '1':
@@ -290,12 +354,15 @@ async function main() {
                     await deleteSong();
                     break;
                 case '7':
-                    await cleanupOrphanedData();
+                    await deleteLinks();
                     break;
                 case '8':
-                    await showStats();
+                    await cleanupOrphanedData();
                     break;
                 case '9':
+                    await showStats();
+                    break;
+                case '10':
                 case 'q':
                 case 'quit':
                     log('Goodbye!', 'green');
@@ -360,6 +427,9 @@ if (process.argv.length > 2) {
                 case 'list-songs':
                     await listSongs();
                     break;
+                case 'delete-links':
+                    await deleteLinks();
+                    break;
                 case 'stats':
                     await showStats();
                     break;
@@ -368,7 +438,7 @@ if (process.argv.length > 2) {
                     break;
                 default:
                     log(`Unknown command: ${command}`, 'red');
-                    log('Available commands: list-users, list-bands, list-songs, stats, cleanup', 'yellow');
+                    log('Available commands: list-users, list-bands, list-songs, delete-links, stats, cleanup', 'yellow');
                     log('For server commands: npm run manage server <command>', 'yellow');
             }
 

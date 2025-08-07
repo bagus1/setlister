@@ -293,6 +293,87 @@ async function deleteLinks() {
     }
 }
 
+async function editSong() {
+    log('\n=== Edit Song ===', 'cyan');
+    const songId = await question('Enter song ID: ');
+
+    try {
+        const song = await Song.findByPk(songId, {
+            include: ['Artists', 'Vocalist']
+        });
+
+        if (!song) {
+            log('Song not found!', 'red');
+            return;
+        }
+
+        log(`\nCurrent song details:`, 'blue');
+        log(`Title: ${song.title}`, 'white');
+        if (song.Artists && song.Artists.length > 0) {
+            log(`Artist: ${song.Artists[0].name}`, 'white');
+        } else {
+            log(`Artist: None assigned`, 'white');
+        }
+        if (song.Vocalist) {
+            log(`Vocalist: ${song.Vocalist.name}`, 'white');
+        }
+        if (song.key) {
+            log(`Key: ${song.key}`, 'white');
+        }
+        if (song.time) {
+            const minutes = Math.floor(song.time / 60);
+            const seconds = song.time % 60;
+            log(`Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`, 'white');
+        }
+
+        // Edit title
+        const newTitle = await question('\nEnter new title (or press Enter to keep current): ');
+        if (newTitle.trim()) {
+            song.title = newTitle.trim();
+            log(`Title updated to: ${song.title}`, 'green');
+        }
+
+        // Edit artist
+        const currentArtist = song.Artists && song.Artists.length > 0 ? song.Artists[0].name : '';
+        const newArtist = await question(`Enter new artist (or press Enter to keep current: ${currentArtist}): `);
+
+        if (newArtist.trim()) {
+            // Find or create the artist
+            let artist = await Artist.findOne({
+                where: { name: newArtist.trim() }
+            });
+
+            if (!artist) {
+                artist = await Artist.create({ name: newArtist.trim() });
+                log(`Created new artist: ${artist.name}`, 'green');
+            }
+
+            // Remove existing artist associations and add the new one
+            await song.setArtists([artist]);
+            log(`Artist updated to: ${artist.name}`, 'green');
+        }
+
+        // Save the song
+        await song.save();
+        log('\nSong updated successfully!', 'green');
+
+        // Show final result
+        log('\nUpdated song details:', 'blue');
+        log(`Title: ${song.title}`, 'white');
+        const updatedSong = await Song.findByPk(songId, {
+            include: ['Artists', 'Vocalist']
+        });
+        if (updatedSong.Artists && updatedSong.Artists.length > 0) {
+            log(`Artist: ${updatedSong.Artists[0].name}`, 'white');
+        } else {
+            log(`Artist: None assigned`, 'white');
+        }
+
+    } catch (error) {
+        log(`Error: ${error.message}`, 'red');
+    }
+}
+
 async function cleanupOrphanedData() {
     log('\n=== Cleaning up orphaned data ===', 'cyan');
 
@@ -349,9 +430,10 @@ async function showMenu() {
     log('5. Delete band', 'red');
     log('6. Delete song', 'red');
     log('7. Delete links from song', 'red');
-    log('8. Cleanup orphaned data', 'yellow');
-    log('9. Show statistics', 'cyan');
-    log('10. Exit (or type q/quit)', 'reset');
+    log('8. Edit song', 'cyan');
+    log('9. Cleanup orphaned data', 'yellow');
+    log('10. Show statistics', 'cyan');
+    log('11. Exit (or type q/quit)', 'reset');
     log('=====================================', 'magenta');
 }
 
@@ -365,7 +447,7 @@ async function main() {
 
         while (true) {
             await showMenu();
-            const choice = await question('Enter your choice (1-10, q to quit): ');
+            const choice = await question('Enter your choice (1-11, q to quit): ');
 
             switch (choice.toLowerCase()) {
                 case '1':
@@ -390,12 +472,15 @@ async function main() {
                     await deleteLinks();
                     break;
                 case '8':
-                    await cleanupOrphanedData();
+                    await editSong();
                     break;
                 case '9':
-                    await showStats();
+                    await cleanupOrphanedData();
                     break;
                 case '10':
+                    await showStats();
+                    break;
+                case '11':
                 case 'q':
                 case 'quit':
                     log('Goodbye!', 'green');
@@ -463,6 +548,9 @@ if (process.argv.length > 2) {
                 case 'delete-links':
                     await deleteLinks();
                     break;
+                case 'edit-song':
+                    await editSong();
+                    break;
                 case 'stats':
                     await showStats();
                     break;
@@ -471,7 +559,7 @@ if (process.argv.length > 2) {
                     break;
                 default:
                     log(`Unknown command: ${command}`, 'red');
-                    log('Available commands: list-users, list-bands, list-songs, delete-links, stats, cleanup', 'yellow');
+                    log('Available commands: list-users, list-bands, list-songs, delete-links, edit-song, stats, cleanup', 'yellow');
                     log('For server commands: npm run manage server <command>', 'yellow');
             }
 

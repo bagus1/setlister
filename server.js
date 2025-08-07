@@ -41,7 +41,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'setlist-manager-secret-key',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+    cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
 }));
 
 app.use(flash());

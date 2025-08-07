@@ -16,7 +16,7 @@ module.exports = (sequelize) => {
             }
         },
         type: {
-            type: DataTypes.ENUM('youtube', 'spotify', 'apple-music', 'soundcloud', 'bandcamp', 'lyrics', 'tab', 'bass tab', 'chords', 'tutorial', 'audio', 'sheet-music', 'backing-track', 'karaoke', 'other'),
+            type: DataTypes.ENUM('youtube', 'spotify', 'apple-music', 'soundcloud', 'bandcamp', 'lyrics', 'tab', 'bass tab', 'chords', 'guitar tutorial', 'bass tutorial', 'keyboard tutorial', 'audio', 'sheet-music', 'backing-track', 'karaoke', 'horn chart', 'other'),
             allowNull: false,
             validate: {
                 notEmpty: true

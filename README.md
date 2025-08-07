@@ -175,7 +175,7 @@ The script provides multiple deployment modes for different scenarios:
 | Mode | **Local Git Operations** | **Server Git Operations** | **Server Restart** | **Use Case** |
 |------|-------------------------|---------------------------|-------------------|--------------|
 | **`deploy`** | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull` | ✅ Yes | Full deployment with new changes |
-| **`update`** | ✅ `git add .`<br>✅ `git commit`<br>❌ No push | ✅ `git pull` | ✅ Yes | Quick deploy (pulls latest from remote) |
+| **`update`** | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull` | ✅ Yes | Quick deploy (push and pull with restart) |
 | **`quick`** | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull` | ❌ No | Fast file updates (UI/templates) |
 | **`restart`** | ❌ None | ❌ None | ✅ Yes | Just restart the server |
 | **`stop`** | ❌ None | ❌ None | ❌ Kills process | Stop the server |
@@ -209,9 +209,10 @@ The script provides multiple deployment modes for different scenarios:
 ```bash
 ./deploy.sh update
 ```
-- Just pulls on server (assumes changes already pushed)
+- Commits and pushes changes
+- Updates files on server
 - **Restarts server**
-- Fast when you've already committed/pushed
+- Use for: quick deployments that need server restart
 
 #### **Server Management**
 ```bash

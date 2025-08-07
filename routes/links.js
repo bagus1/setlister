@@ -2,7 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { Link, Song } = require('../models');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth } = require('./auth');
 
 // POST /songs/:songId/links - Add a new link to a song
 router.post('/:songId/links', requireAuth, [

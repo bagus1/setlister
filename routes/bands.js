@@ -335,6 +335,29 @@ router.get('/:id/songs', async (req, res) => {
 
         const band = await Band.findByPk(bandId);
 
+        // Check if referrer is a setlist edit page
+        const referrer = req.get('Referer');
+        let fromSetlist = null;
+
+        if (referrer) {
+            // Look for setlist edit URL pattern: /setlists/:id/edit
+            const setlistEditMatch = referrer.match(/\/setlists\/(\d+)\/edit/);
+            if (setlistEditMatch) {
+                const setlistId = setlistEditMatch[1];
+                // Verify the setlist exists and belongs to this band
+                const { Setlist } = require('../models');
+                const setlist = await Setlist.findOne({
+                    where: { id: setlistId, bandId: bandId }
+                });
+                if (setlist) {
+                    fromSetlist = {
+                        id: setlist.id,
+                        title: setlist.title
+                    };
+                }
+            }
+        }
+
         // Get all songs
         const allSongs = await Song.findAll({
             include: ['Vocalist', 'Artists'],
@@ -356,7 +379,8 @@ router.get('/:id/songs', async (req, res) => {
             title: `${band.name} - Songs`,
             band,
             allSongs,
-            bandSongIds
+            bandSongIds,
+            fromSetlist
         });
     } catch (error) {
         console.error('Band songs error:', error);

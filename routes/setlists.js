@@ -8,17 +8,18 @@ const router = express.Router();
 // All setlist routes require authentication
 router.use(requireAuth);
 
-// Helper function to check if setlist is still editable (until end of setlist date)
+// Helper function to check if setlist is still editable (until one week after setlist date)
 function isSetlistEditable(setlist) {
     if (!setlist.date) {
         return true; // No date set, always editable
     }
 
     const setlistDate = new Date(setlist.date);
-    const endOfSetlistDate = new Date(setlistDate);
-    endOfSetlistDate.setHours(23, 59, 59, 999); // End of the setlist date
+    const oneWeekAfterSetlist = new Date(setlistDate);
+    oneWeekAfterSetlist.setDate(setlistDate.getDate() + 7); // Add 7 days
+    oneWeekAfterSetlist.setHours(23, 59, 59, 999); // End of the day
 
-    return new Date() <= endOfSetlistDate;
+    return new Date() <= oneWeekAfterSetlist;
 }
 
 // GET /setlists/:id - Show setlist details
@@ -105,9 +106,9 @@ router.get('/:id/edit', async (req, res) => {
             return res.redirect('/bands');
         }
 
-        // Check if setlist date has passed (allow editing until end of the setlist date)
+        // Check if setlist date has passed (allow editing until one week after setlist date)
         if (!isSetlistEditable(setlist)) {
-            req.flash('error', 'This setlist cannot be edited as the performance date has passed');
+            req.flash('error', 'This setlist cannot be edited as it has been more than one week since the performance date');
             return res.redirect(`/setlists/${setlist.id}/finalize`);
         }
 
@@ -196,10 +197,10 @@ router.post('/:id/save', async (req, res) => {
             return res.status(404).json({ error: 'Setlist not found' });
         }
 
-        // Check if setlist date has passed (allow editing until end of the setlist date)
+        // Check if setlist date has passed (allow editing until one week after setlist date)
         if (!isSetlistEditable(setlist)) {
             console.log(`[SAVE] Setlist date has passed: ${setlist.date}`);
-            return res.status(403).json({ error: 'This setlist cannot be edited as the performance date has passed' });
+            return res.status(403).json({ error: 'This setlist cannot be edited as it has been more than one week since the performance date' });
         }
 
         // Clear existing setlist songs
@@ -763,7 +764,7 @@ router.delete('/:id', async (req, res) => {
 
         // Check if setlist is finalized and date has passed
         if (setlist.isFinalized && !isSetlistEditable(setlist)) {
-            return res.status(400).json({ error: 'Cannot delete a finalized setlist after the performance date' });
+            return res.status(400).json({ error: 'Cannot delete a finalized setlist after one week from the performance date' });
         }
 
         // Delete the setlist (cascade will handle related records)

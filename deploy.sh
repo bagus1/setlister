@@ -116,6 +116,36 @@ check_git_status() {
     fi
 }
 
+# Function to check branch mismatch between local and server
+check_branch_mismatch() {
+    local local_branch=$(git branch --show-current)
+    local server_branch=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git branch --show-current")
+    
+    if [ "$local_branch" != "$server_branch" ]; then
+        print_warning "Branch mismatch detected:"
+        print_warning "  Local branch:  $local_branch"
+        print_warning "  Server branch: $server_branch"
+        echo
+        read -p "Do you want to switch the server to branch '$local_branch'? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            print_status "Switching server to branch '$local_branch'..."
+            ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $local_branch" || {
+                print_error "Failed to switch server branch to '$local_branch'"
+                return 1
+            }
+            print_success "Server switched to branch '$local_branch'"
+        elif [[ $REPLY =~ ^[Nn]$ ]] || [[ -z $REPLY ]]; then
+            print_error "Deployment aborted due to branch mismatch"
+            print_error "Please ensure local and server are on the same branch before deploying"
+            exit 1
+        else
+            print_error "Invalid input. Please enter 'y' for yes or 'N' for no."
+            exit 1
+        fi
+    fi
+}
+
 # Function to deploy via git
 deploy_via_git() {
     print_status "Deploying via Git..."
@@ -395,19 +425,23 @@ main() {
             exit 0
             ;;
         "rollback")
+            check_branch_mismatch
             rollback
             exit 0
             ;;
         "deploy")
             check_git_status
+            check_branch_mismatch
             deploy_via_git
             ;;
         "update")
             check_git_status
+            check_branch_mismatch
             update_via_git
             ;;
         "quick")
             check_git_status
+            check_branch_mismatch
             quick_deploy
             ;;
         "deps")

@@ -6,7 +6,7 @@
 # Modes:
 #   deploy   - Deploy current changes (push to git, pull on server, restart)
 #   update   - Quick deploy (just pull on server, restart)
-#   quick    - Update files without restart (push to git, pull on server)
+#   quick    - Update files without restart (auto-commit, push to git, pull on server)
 #   restart  - Just restart the server
 #   stop     - Stop the server (kill Passenger process)
 #   start    - Start the server (touch restart.txt)
@@ -60,7 +60,7 @@ Usage: ./deploy.sh [mode]
 Modes:
   deploy   - Deploy current changes (push to git, pull on server, restart)
   update   - Quick deploy (just pull on server, restart)
-  quick    - Update files without restart (push to git, pull on server)
+  quick    - Update files without restart (auto-commit, push to git, pull on server)
   restart  - Just restart the server
   stop     - Stop the server (kill Passenger process)
   start    - Start the server (touch restart.txt)
@@ -396,6 +396,7 @@ main() {
             update_via_git
             ;;
         "quick")
+            check_git_status
             quick_deploy
             ;;
         "deps")

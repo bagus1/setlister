@@ -153,17 +153,15 @@
                 <!-- Existing Links -->
                 <% if (song.Links && song.Links.length> 0) { %>
                     <div class="mb-4">
-                        <h6>Existing Links:</h6>
                         <div class="list-group">
                             <% song.Links.forEach(link=> { %>
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="<%= link.url %>" target="_blank"
+                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
                                     <div>
-                                        <a href="<%= link.url %>" target="_blank" class="text-decoration-none">
-                                            <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
-                                            <%= getLinkDisplayText(link) %>
-                                        </a>
+                                        <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                        <%= getLinkDisplayText(link) %>
                                     </div>
-                                </div>
+                                </a>
                                 <% }) %>
                         </div>
                     </div>

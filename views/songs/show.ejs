@@ -140,37 +140,37 @@
     </div>
 </div>
 
-<!-- Links Section -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-link-45deg"></i> Links
-                </h5>
-            </div>
-            <div class="card-body">
-                <!-- Existing Links -->
-                <% if (song.Links && song.Links.length> 0) { %>
-                    <div class="mb-4">
-                        <div class="list-group">
-                            <% song.Links.forEach(link=> { %>
-                                <a href="<%= link.url %>" target="_blank"
-                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
-                                    <div>
-                                        <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
-                                        <%= getLinkDisplayText(link) %>
-                                    </div>
-                                </a>
-                                <% }) %>
+<!-- Links Section - Only visible to logged in users -->
+<% if (loggedIn) { %>
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-link-45deg"></i> Links
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Existing Links -->
+                    <% if (song.Links && song.Links.length> 0) { %>
+                        <div class="mb-4">
+                            <div class="list-group">
+                                <% song.Links.forEach(link=> { %>
+                                    <a href="<%= link.url %>" target="_blank"
+                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                        <div>
+                                            <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                            <%= getLinkDisplayText(link) %>
+                                        </div>
+                                    </a>
+                                    <% }) %>
+                            </div>
                         </div>
-                    </div>
-                    <% } else { %>
-                        <p class="text-muted mb-4">No links added yet.</p>
-                        <% } %>
+                        <% } else { %>
+                            <p class="text-muted mb-4">No links added yet.</p>
+                            <% } %>
 
-                            <!-- Add New Link Form -->
-                            <% if (loggedIn) { %>
+                                <!-- Add New Link Form -->
                                 <div>
                                     <h6>Add New Link:</h6>
                                     <form action="/songs/<%= song.id %>/links" method="POST">
@@ -220,12 +220,23 @@
                                         </div>
                                     </form>
                                 </div>
-                                <% } else { %>
-                                    <p class="text-muted">
-                                        <a href="/auth/login">Login</a> to add links to this song.
-                                    </p>
-                                    <% } %>
+                </div>
             </div>
         </div>
     </div>
-</div>
+    <% } else { %>
+        <!-- Login prompt for non-authenticated users -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="bi bi-link-45deg fs-1 text-muted mb-3"></i>
+                        <h5>Song Links</h5>
+                        <p class="text-muted">
+                            <a href="/auth/login">Login</a> to view and manage links for this song.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>

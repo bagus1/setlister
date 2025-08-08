@@ -170,6 +170,133 @@ router.get('/:id/edit', async (req, res) => {
     }
 });
 
+// GET /setlists/:id/copy - Show copy setlist form
+router.get('/:id/copy', async (req, res) => {
+    try {
+        const setlistId = req.params.id;
+        const userId = req.session.user.id;
+
+        const setlist = await Setlist.findByPk(setlistId, {
+            include: [
+                {
+                    model: Band,
+                    include: [{
+                        model: User,
+                        where: { id: userId },
+                        through: { attributes: [] }
+                    }]
+                },
+                {
+                    model: SetlistSet,
+                    include: [{
+                        model: SetlistSong,
+                        include: [{ model: Song, include: ['Artists', 'Vocalist'] }],
+                        order: [['order', 'ASC']]
+                    }],
+                    order: [['order', 'ASC']]
+                }
+            ]
+        });
+
+        if (!setlist) {
+            req.flash('error', 'Setlist not found or access denied');
+            return res.redirect('/bands');
+        }
+
+        res.render('setlists/copy', {
+            title: `Copy ${setlist.title}`,
+            setlist
+        });
+    } catch (error) {
+        console.error('Copy setlist error:', error);
+        req.flash('error', 'An error occurred loading the setlist copy form');
+        res.redirect('/bands');
+    }
+});
+
+// POST /setlists/:id/copy - Create a copy of the setlist
+router.post('/:id/copy', [
+    body('title').trim().isLength({ min: 1 }).withMessage('Setlist title is required'),
+    body('date').optional().isISO8601().withMessage('Invalid date format')
+], async (req, res) => {
+    try {
+        const setlistId = req.params.id;
+        const userId = req.session.user.id;
+        const { title, date } = req.body;
+
+        // Verify user has access to original setlist
+        const originalSetlist = await Setlist.findByPk(setlistId, {
+            include: [
+                {
+                    model: Band,
+                    include: [{
+                        model: User,
+                        where: { id: userId },
+                        through: { attributes: [] }
+                    }]
+                },
+                {
+                    model: SetlistSet,
+                    include: [{
+                        model: SetlistSong,
+                        include: [{ model: Song }],
+                        order: [['order', 'ASC']]
+                    }],
+                    order: [['order', 'ASC']]
+                }
+            ]
+        });
+
+        if (!originalSetlist) {
+            req.flash('error', 'Setlist not found or access denied');
+            return res.redirect('/bands');
+        }
+
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            req.flash('error', errors.array()[0].msg);
+            return res.redirect(`/setlists/${setlistId}/copy`);
+        }
+
+        // Create new setlist
+        const newSetlist = await Setlist.create({
+            title,
+            bandId: originalSetlist.bandId,
+            date: date || null,
+            isFinalized: false
+        });
+
+        // Copy all sets and their songs
+        for (const originalSet of originalSetlist.SetlistSets) {
+            // Create new set
+            const newSet = await SetlistSet.create({
+                setlistId: newSetlist.id,
+                name: originalSet.name,
+                order: originalSet.order
+            });
+
+            // Copy all songs in this set
+            if (originalSet.SetlistSongs && originalSet.SetlistSongs.length > 0) {
+                for (let i = 0; i < originalSet.SetlistSongs.length; i++) {
+                    const originalSetlistSong = originalSet.SetlistSongs[i];
+                    await SetlistSong.create({
+                        setlistSetId: newSet.id,
+                        songId: originalSetlistSong.songId,
+                        order: originalSetlistSong.order
+                    });
+                }
+            }
+        }
+
+        req.flash('success', `Setlist "${title}" created successfully from "${originalSetlist.title}"!`);
+        res.redirect(`/setlists/${newSetlist.id}/edit`);
+    } catch (error) {
+        console.error('Copy setlist error:', error);
+        req.flash('error', 'An error occurred copying the setlist');
+        res.redirect('/bands');
+    }
+});
+
 // POST /setlists/:id/save - Save setlist changes
 router.post('/:id/save', async (req, res) => {
     try {

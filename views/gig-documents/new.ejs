@@ -1,0 +1,127 @@
+<%- include('../layout', { title: title }) %>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-file-earmark-plus"></i> New Gig Document</h1>
+                <a href="/gig-documents" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Documents
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form action="/gig-documents" method="POST">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="title" class="form-label">Document Title *</label>
+                                    <input type="text" class="form-control" id="title" name="title" required 
+                                           placeholder="e.g., Bar Band Gig - Friday Night">
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="bandId" class="form-label">Band *</label>
+                                            <select class="form-select" id="bandId" name="bandId" required>
+                                                <option value="">Select a band...</option>
+                                                <% bands.forEach(function(band) { %>
+                                                    <option value="<%= band.id %>"><%= band.name %></option>
+                                                <% }); %>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="gigDate" class="form-label">Gig Date</label>
+                                            <input type="date" class="form-control" id="gigDate" name="gigDate">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="venue" class="form-label">Venue</label>
+                                    <input type="text" class="form-control" id="venue" name="venue" 
+                                           placeholder="e.g., The Blue Moon Bar">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3" 
+                                              placeholder="Optional notes about the gig..."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="bi bi-lightbulb"></i> Quick Setup Options
+                                        </h6>
+                                        
+                                        <div class="mb-3">
+                                            <label for="setlistId" class="form-label">Generate from Setlist</label>
+                                            <select class="form-select" id="setlistId" name="setlistId">
+                                                <option value="">Start from scratch</option>
+                                                <% setlists.forEach(function(setlist) { %>
+                                                    <option value="<%= setlist.id %>"><%= setlist.title %></option>
+                                                <% }); %>
+                                            </select>
+                                            <div class="form-text">
+                                                Select a setlist to automatically generate document content with all songs, chords, and lyrics.
+                                            </div>
+                                        </div>
+
+                                        <div class="alert alert-info">
+                                            <h6><i class="bi bi-info-circle"></i> What This Does</h6>
+                                            <p class="small mb-0">
+                                                Creates a gig document that you can use on your iPad during performances. 
+                                                If you select a setlist, it will automatically include all the chord/lyric content 
+                                                from your songs.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="/gig-documents" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Create Gig Document
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bandSelect = document.getElementById('bandId');
+    const setlistSelect = document.getElementById('setlistId');
+    
+    // Filter setlists based on selected band
+    bandSelect.addEventListener('change', function() {
+        const selectedBandId = this.value;
+        
+        // Reset setlist selection
+        setlistSelect.value = '';
+        
+        // Show/hide setlists based on band
+        Array.from(setlistSelect.options).forEach(option => {
+            if (option.value === '') {
+                option.style.display = 'block'; // Always show "Start from scratch"
+            } else {
+                // For now, show all setlists. In a full implementation, you'd filter by band
+                option.style.display = 'block';
+            }
+        });
+    });
+});
+</script>

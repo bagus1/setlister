@@ -7,60 +7,76 @@ module.exports = (sequelize) => {
             primaryKey: true,
             autoIncrement: true
         },
-        bandId: {
+        songId: {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: 'bands',
+                model: 'songs',
                 key: 'id'
             }
         },
-        title: {
-            type: DataTypes.STRING,
+        type: {
+            type: DataTypes.ENUM('chords', 'bass-tab', 'guitar-tab', 'lyrics'),
             allowNull: false,
             validate: {
-                len: [1, 200]
+                notEmpty: true
             }
         },
-        gigDate: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            comment: 'Date of the gig'
+        version: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 1,
+            comment: 'Auto-incrementing version number for this song/type combination'
         },
-        venue: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            validate: {
-                len: [0, 255]
+        title: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                const song = this.Song;
+                if (song) {
+                    return `${song.title} - ${this.getTypeDisplayName()} - v${this.version}`;
+                }
+                return `${this.getTypeDisplayName()} - v${this.version}`;
             }
-        },
-        description: {
-            type: DataTypes.TEXT,
-            allowNull: true
         },
         content: {
             type: DataTypes.TEXT,
             allowNull: true,
-            comment: 'Generated document content'
+            comment: 'Quill HTML content'
         },
-        format: {
-            type: DataTypes.ENUM('google-doc', 'markdown', 'html', 'pdf'),
-            defaultValue: 'markdown',
-            allowNull: false
-        },
-        status: {
-            type: DataTypes.ENUM('draft', 'final', 'archived'),
-            defaultValue: 'draft',
-            allowNull: false
-        },
-        generatedAt: {
-            type: DataTypes.DATE,
-            allowNull: true
+        isActive: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: true,
+            comment: 'Whether this document is active/current'
         }
     }, {
         tableName: 'gig_documents',
-        timestamps: true
+        timestamps: true,
+        indexes: [
+            {
+                unique: true,
+                fields: ['songId', 'type', 'version']
+            }
+        ]
     });
+
+    // Instance method to get display name for type
+    GigDocument.prototype.getTypeDisplayName = function () {
+        const typeNames = {
+            'chords': 'Chords',
+            'bass-tab': 'Bass Tab',
+            'guitar-tab': 'Guitar Tab',
+            'lyrics': 'Lyrics'
+        };
+        return typeNames[this.type] || this.type;
+    };
+
+    // Instance method to get the next version number for this song/type
+    GigDocument.getNextVersion = async function (songId, type) {
+        const latestVersion = await this.max('version', {
+            where: { songId, type }
+        });
+        return (latestVersion || 0) + 1;
+    };
 
     return GigDocument;
 };

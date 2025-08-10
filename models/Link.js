@@ -16,7 +16,7 @@ module.exports = (sequelize) => {
             }
         },
         type: {
-            type: DataTypes.ENUM('youtube', 'spotify', 'apple-music', 'soundcloud', 'bandcamp', 'lyrics', 'tab', 'bass tab', 'chords', 'guitar tutorial', 'bass tutorial', 'keyboard tutorial', 'audio', 'sheet-music', 'backing-track', 'karaoke', 'horn chart', 'google-doc', 'document', 'other'),
+            type: DataTypes.ENUM('youtube', 'spotify', 'apple-music', 'soundcloud', 'bandcamp', 'lyrics', 'tab', 'bass tab', 'chords', 'guitar tutorial', 'bass tutorial', 'keyboard tutorial', 'audio', 'sheet-music', 'backing-track', 'karaoke', 'horn chart', 'other'),
             allowNull: false,
             validate: {
                 notEmpty: true
@@ -36,21 +36,6 @@ module.exports = (sequelize) => {
                 notEmpty: true,
                 isUrl: true
             }
-        },
-        content: {
-            type: DataTypes.TEXT,
-            allowNull: true,
-            comment: 'Stored document content for songs with chords/lyrics'
-        },
-        format: {
-            type: DataTypes.ENUM('google-doc', 'markdown', 'html', 'plain-text'),
-            allowNull: true,
-            comment: 'Format of stored content'
-        },
-        pageBreaks: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: true,
-            comment: 'Whether to add page breaks when printing'
         }
     }, {
         tableName: 'links',

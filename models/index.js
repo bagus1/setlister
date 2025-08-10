@@ -50,8 +50,10 @@ Vocalist.hasMany(Medley, { foreignKey: 'vocalistId' });
 // BandSong junction table associations
 BandSong.belongsTo(Song, { foreignKey: 'songId' });
 BandSong.belongsTo(Band, { foreignKey: 'bandId' });
+BandSong.belongsTo(GigDocument, { foreignKey: 'gigDocumentId' });
 Song.hasMany(BandSong, { foreignKey: 'songId' });
 Band.hasMany(BandSong, { foreignKey: 'bandId' });
+GigDocument.hasMany(BandSong, { foreignKey: 'gigDocumentId' });
 
 // Band-Setlist (one-to-many)
 Band.hasMany(Setlist, { foreignKey: 'bandId' });
@@ -89,8 +91,8 @@ Song.hasMany(Link, { foreignKey: 'songId' });
 Link.belongsTo(Song, { foreignKey: 'songId' });
 
 // GigDocument associations
-GigDocument.belongsTo(Band, { foreignKey: 'bandId' });
-Band.hasMany(GigDocument, { foreignKey: 'bandId' });
+GigDocument.belongsTo(Song, { foreignKey: 'songId' });
+Song.hasMany(GigDocument, { foreignKey: 'songId' });
 
 module.exports = {
     sequelize,

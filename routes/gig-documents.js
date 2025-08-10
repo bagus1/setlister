@@ -1,286 +1,290 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const { GigDocument, Band, Setlist, Song, Link, SetlistSet, SetlistSong, User } = require('../models');
+const { GigDocument, Song, BandSong } = require('../models');
 const { requireAuth } = require('./auth');
 
-// GET /gig-documents - List all gig documents for user's bands
-router.get('/', requireAuth, async (req, res) => {
+// GET /songs/:songId/docs - List all gig documents for a song
+router.get('/:songId/docs', requireAuth, async (req, res) => {
     try {
-        const userBands = await Band.findAll({
-            include: [{
-                model: User,
-                where: { id: req.session.user.id }
-            }]
+        const songId = req.params.songId;
+        const song = await Song.findByPk(songId, {
+            include: ['Artists', 'Vocalist']
         });
 
-        const bandIds = userBands.map(band => band.id);
-        
+        if (!song) {
+            req.flash('error', 'Song not found');
+            return res.redirect('/songs');
+        }
+
         const gigDocuments = await GigDocument.findAll({
-            where: { bandId: bandIds },
-            include: [{ model: Band }],
-            order: [['createdAt', 'DESC']]
+            where: { songId: songId },
+            order: [['version', 'DESC'], ['createdAt', 'DESC']]
         });
 
         res.render('gig-documents/index', {
-            title: 'Gig Documents',
-            gigDocuments,
-            loggedIn: !!req.session.user
+            title: `Gig Documents - ${song.title}`,
+            song,
+            gigDocuments
         });
     } catch (error) {
-        console.error('Gig documents index error:', error);
+        console.error('List gig documents error:', error);
         req.flash('error', 'Error loading gig documents');
-        res.redirect('/dashboard');
+        res.redirect(`/songs/${req.params.songId}`);
     }
 });
 
-// GET /gig-documents/new - Create new gig document form
-router.get('/new', requireAuth, async (req, res) => {
+// GET /songs/:songId/docs/new - Show form to create new gig document
+router.get('/:songId/docs/new', requireAuth, async (req, res) => {
     try {
-        const userBands = await Band.findAll({
-            include: [{
-                model: User,
-                where: { id: req.session.user.id }
-            }]
+        const songId = req.params.songId;
+        const song = await Song.findByPk(songId, {
+            include: ['Artists', 'Vocalist']
         });
 
-        const setlists = await Setlist.findAll({
-            where: { bandId: userBands.map(band => band.id) },
-            order: [['createdAt', 'DESC']]
-        });
+        if (!song) {
+            req.flash('error', 'Song not found');
+            return res.redirect('/songs');
+        }
 
         res.render('gig-documents/new', {
-            title: 'New Gig Document',
-            bands: userBands,
-            setlists,
-            loggedIn: !!req.session.user
+            title: `New Gig Document - ${song.title}`,
+            song
         });
     } catch (error) {
-        console.error('New gig document error:', error);
+        console.error('New gig document form error:', error);
         req.flash('error', 'Error loading form');
-        res.redirect('/gig-documents');
+        res.redirect(`/songs/${req.params.songId}`);
     }
 });
 
-// POST /gig-documents - Create new gig document
-router.post('/', requireAuth, [
-    body('title').trim().isLength({ min: 1, max: 200 }).withMessage('Title is required'),
-    body('bandId').isInt().withMessage('Please select a band'),
-    body('setlistId').optional().isInt(),
-    body('gigDate').optional().isISO8601().withMessage('Invalid date format'),
-    body('venue').optional().isLength({ max: 255 }).withMessage('Venue too long'),
-    body('description').optional()
+// POST /songs/:songId/docs - Create new gig document
+router.post('/:songId/docs', requireAuth, [
+    body('type')
+        .isIn(['chords', 'bass-tab', 'guitar-tab', 'lyrics'])
+        .withMessage('Please select a valid document type'),
+    body('content')
+        .optional()
+        .isLength({ max: 10000 })
+        .withMessage('Content must be less than 10,000 characters')
 ], async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             req.flash('error', errors.array()[0].msg);
-            return res.redirect('/gig-documents/new');
+            return res.redirect(`/songs/${req.params.songId}/docs/new`);
         }
 
-        const { title, bandId, setlistId, gigDate, venue, description } = req.body;
-
-        // Verify user has access to this band
-        const userBand = await Band.findOne({
-            include: [{
-                model: User,
-                where: { id: req.session.user.id }
-            }],
-            where: { id: bandId }
+        const songId = req.params.songId;
+        const song = await Song.findByPk(songId, {
+            include: ['Artists', 'Vocalist']
         });
 
-        if (!userBand) {
-            req.flash('error', 'Band not found or access denied');
-            return res.redirect('/gig-documents/new');
+        if (!song) {
+            req.flash('error', 'Song not found');
+            return res.redirect('/songs');
         }
 
-        // Generate document content if setlist is provided
-        let content = null;
-        if (setlistId) {
-            const setlist = await Setlist.findByPk(setlistId, {
-                include: [{
-                    model: SetlistSet,
-                    include: [{
-                        model: SetlistSong,
-                        include: [{
-                            model: Song,
-                            include: ['Artists', 'Vocalist', 'Links']
-                        }]
-                    }]
-                }]
-            });
+        const { type, content } = req.body;
 
-            if (setlist) {
-                content = await generateGigDocumentContent(setlist);
-            }
+        // Debug logging
+        console.log('=== CREATE GIG DOCUMENT DEBUG ===');
+        console.log('Request body:', req.body);
+        console.log('Type:', type);
+        console.log('Content:', content);
+        console.log('Content length:', content ? content.length : 0);
+        console.log('Content type:', typeof content);
+
+        // Auto-increment version if not provided
+        let docVersion = 1;
+        const existingDocs = await GigDocument.findAll({
+            where: { songId: songId, type: type },
+            order: [['version', 'DESC']],
+            limit: 1
+        });
+        if (existingDocs.length > 0) {
+            docVersion = existingDocs[0].version + 1;
         }
+
+        // Auto-generate title from type and version
+        const typeLabels = {
+            'chords': 'Chords',
+            'bass-tab': 'Bass Tab',
+            'guitar-tab': 'Guitar Tab',
+            'lyrics': 'Lyrics'
+        };
+        const autoTitle = `${typeLabels[type]} - v${docVersion}`;
 
         const gigDocument = await GigDocument.create({
-            bandId,
-            title: title.trim(),
-            gigDate: gigDate ? new Date(gigDate) : null,
-            venue: venue ? venue.trim() : null,
-            description: description ? description.trim() : null,
-            content,
-            generatedAt: content ? new Date() : null
+            songId: song.id,
+            title: autoTitle,
+            type,
+            version: docVersion,
+            content: content ? content.trim() : null
         });
 
-        req.flash('success', 'Gig document created successfully');
-        res.redirect(`/gig-documents/${gigDocument.id}`);
+        req.flash('success', `Gig document created successfully: ${gigDocument.title} - v${gigDocument.version}`);
+        res.redirect(`/songs/${song.id}/docs/${gigDocument.id}`);
     } catch (error) {
         console.error('Create gig document error:', error);
         req.flash('error', 'Error creating gig document');
-        res.redirect('/gig-documents/new');
+        res.redirect(`/songs/${req.params.songId}/docs/new`);
     }
 });
 
-// GET /gig-documents/:id - Show gig document
-router.get('/:id', requireAuth, async (req, res) => {
+// GET /songs/:songId/docs/:id - Show specific gig document
+router.get('/:songId/docs/:id', requireAuth, async (req, res) => {
     try {
-        const gigDocument = await GigDocument.findByPk(req.params.id, {
-            include: [{ model: Band }]
+        const { songId, id } = req.params;
+
+        const gigDocument = await GigDocument.findOne({
+            where: { id: id, songId: songId },
+            include: [{ model: Song, as: 'Song' }]
         });
 
         if (!gigDocument) {
             req.flash('error', 'Gig document not found');
-            return res.redirect('/gig-documents');
-        }
-
-        // Verify user has access to this band
-        const userBand = await Band.findOne({
-            include: [{
-                model: User,
-                where: { id: req.session.user.id }
-            }],
-            where: { id: gigDocument.bandId }
-        });
-
-        if (!userBand) {
-            req.flash('error', 'Access denied');
-            return res.redirect('/gig-documents');
+            return res.redirect(`/songs/${songId}/docs`);
         }
 
         res.render('gig-documents/show', {
-            title: gigDocument.title,
+            title: `${gigDocument.title} - ${gigDocument.Song.title}`,
             gigDocument,
-            loggedIn: !!req.session.user
+            song: gigDocument.Song
         });
     } catch (error) {
         console.error('Show gig document error:', error);
         req.flash('error', 'Error loading gig document');
-        res.redirect('/gig-documents');
+        res.redirect(`/songs/${req.params.songId}/docs`);
     }
 });
 
-// POST /gig-documents/:id/generate - Generate document content from setlist
-router.post('/:id/generate', requireAuth, async (req, res) => {
+// GET /songs/:songId/docs/:id/edit - Show edit form
+router.get('/:songId/docs/:id/edit', requireAuth, async (req, res) => {
     try {
-        const { setlistId } = req.body;
-        
-        const gigDocument = await GigDocument.findByPk(req.params.id);
+        const { songId, id } = req.params;
+
+        const gigDocument = await GigDocument.findOne({
+            where: { id: id, songId: songId },
+            include: [{ model: Song, as: 'Song' }]
+        });
+
         if (!gigDocument) {
             req.flash('error', 'Gig document not found');
-            return res.redirect('/gig-documents');
+            return res.redirect(`/songs/${songId}/docs`);
         }
 
-        const setlist = await Setlist.findByPk(setlistId, {
-            include: [{
-                model: SetlistSet,
-                include: [{
-                    model: SetlistSong,
-                    include: [{
-                        model: Song,
-                        include: ['Artists', 'Vocalist', 'Links']
-                    }]
-                }]
-            }]
+        res.render('gig-documents/edit', {
+            title: `Edit ${gigDocument.title} - ${gigDocument.Song.title}`,
+            gigDocument,
+            song: gigDocument.Song
         });
-
-        if (!setlist) {
-            req.flash('error', 'Setlist not found');
-            return res.redirect(`/gig-documents/${gigDocument.id}`);
-        }
-
-        const content = await generateGigDocumentContent(setlist);
-        
-        await gigDocument.update({
-            content,
-            generatedAt: new Date()
-        });
-
-        req.flash('success', 'Document content generated successfully');
-        res.redirect(`/gig-documents/${gigDocument.id}`);
     } catch (error) {
-        console.error('Generate content error:', error);
-        req.flash('error', 'Error generating document content');
-        res.redirect(`/gig-documents/${req.params.id}`);
+        console.error('Edit gig document form error:', error);
+        req.flash('error', 'Error loading edit form');
+        res.redirect(`/songs/${req.params.songId}/docs`);
     }
 });
 
-// Helper function to generate gig document content
-async function generateGigDocumentContent(setlist) {
-    let content = `# ${setlist.title}\n\n`;
-    if (setlist.description) {
-        content += `${setlist.description}\n\n`;
-    }
-
-    content += `Generated on ${new Date().toLocaleDateString()}\n\n`;
-
-    // Process each set
-    for (const set of setlist.SetlistSets) {
-        if (set.SetlistSongs.length === 0) continue;
-
-        content += `## ${set.name}\n\n`;
-        
-        for (let i = 0; i < set.SetlistSongs.length; i++) {
-            const setlistSong = set.SetlistSongs[i];
-            const song = setlistSong.Song;
-            
-            content += `### ${i + 1}. ${song.title}\n`;
-            
-            if (song.Artists && song.Artists.length > 0) {
-                content += `**Artist:** ${song.Artists.map(artist => artist.name).join(', ')}\n`;
-            }
-            
-            if (song.Vocalist) {
-                content += `**Vocalist:** ${song.Vocalist.name}\n`;
-            }
-            
-            if (song.key) {
-                content += `**Key:** ${song.key}\n`;
-            }
-            
-            if (song.time) {
-                const minutes = Math.floor(song.time / 60);
-                const seconds = song.time % 60;
-                content += `**Duration:** ${minutes}:${seconds.toString().padStart(2, '0')}\n`;
-            }
-            
-            // Add links/content
-            if (song.Links && song.Links.length > 0) {
-                const chordLinks = song.Links.filter(link => 
-                    ['chords', 'google-doc', 'document'].includes(link.type)
-                );
-                
-                if (chordLinks.length > 0) {
-                    content += `**Chords/Lyrics:**\n`;
-                    for (const link of chordLinks) {
-                        if (link.content) {
-                            content += `${link.content}\n`;
-                        } else if (link.url) {
-                            content += `[${link.description || link.type}](${link.url})\n`;
-                        }
-                    }
-                }
-            }
-            
-            content += '\n';
+// PUT /songs/:songId/docs/:id - Update gig document
+router.put('/:songId/docs/:id', requireAuth, [
+    body('content')
+        .optional()
+        .isLength({ max: 10000 })
+        .withMessage('Content must be less than 10,000 characters')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            req.flash('error', errors.array()[0].msg);
+            return res.redirect(`/songs/${req.params.songId}/docs/${req.params.id}/edit`);
         }
-        
-        content += '\n';
-    }
 
-    return content;
-}
+        const { songId, id } = req.params;
+        const { content } = req.body;
+
+        // Debug logging
+        console.log('=== UPDATE GIG DOCUMENT DEBUG ===');
+        console.log('Request body:', req.body);
+        console.log('Content:', content);
+        console.log('Content length:', content ? content.length : 0);
+        console.log('Content type:', typeof content);
+
+        const gigDocument = await GigDocument.findOne({
+            where: { id: id, songId: songId }
+        });
+
+        if (!gigDocument) {
+            req.flash('error', 'Gig document not found');
+            return res.redirect(`/songs/${songId}/docs`);
+        }
+
+        await gigDocument.update({
+            content: content ? content.trim() : null
+        });
+
+        req.flash('success', 'Gig document updated successfully');
+        res.redirect(`/songs/${songId}/docs/${gigDocument.id}`);
+    } catch (error) {
+        console.error('Update gig document error:', error);
+        req.flash('error', 'Error updating gig document');
+        res.redirect(`/songs/${req.params.songId}/docs/${req.params.id}/edit`);
+    }
+});
+
+// DELETE /songs/:songId/docs/:id - Delete gig document
+router.delete('/:songId/docs/:id', requireAuth, async (req, res) => {
+    try {
+        const { songId, id } = req.params;
+
+        const gigDocument = await GigDocument.findOne({
+            where: { id: id, songId: songId }
+        });
+
+        if (!gigDocument) {
+            req.flash('error', 'Gig document not found');
+            return res.redirect(`/songs/${songId}/docs`);
+        }
+
+        await gigDocument.destroy();
+        req.flash('success', 'Gig document deleted successfully');
+        res.redirect(`/songs/${songId}/docs`);
+    } catch (error) {
+        console.error('Delete gig document error:', error);
+        req.flash('error', 'Error deleting gig document');
+        res.redirect(`/songs/${req.params.songId}/docs`);
+    }
+});
+
+// POST /songs/:songId/docs/:id/set-preferred - Set as preferred document for band
+router.post('/:songId/docs/:id/set-preferred', requireAuth, async (req, res) => {
+    try {
+        const { songId, id } = req.params;
+        const { bandId } = req.body;
+
+        if (!bandId) {
+            req.flash('error', 'Band ID is required');
+            return res.redirect(`/songs/${songId}/docs/${id}`);
+        }
+
+        // Find the BandSong record and update its preferred gig document
+        const bandSong = await BandSong.findOne({
+            where: { bandId: bandId, songId: songId }
+        });
+
+        if (!bandSong) {
+            req.flash('error', 'Song not found in this band');
+            return res.redirect(`/songs/${songId}/docs/${id}`);
+        }
+
+        await bandSong.update({ gigDocumentId: id });
+        req.flash('success', 'Preferred gig document updated');
+        res.redirect(`/songs/${songId}/docs/${id}`);
+    } catch (error) {
+        console.error('Set preferred gig document error:', error);
+        req.flash('error', 'Error setting preferred gig document');
+        res.redirect(`/songs/${req.params.songId}/docs/${req.params.id}`);
+    }
+});
 
 module.exports = router;

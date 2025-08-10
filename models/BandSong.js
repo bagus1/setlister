@@ -22,6 +22,15 @@ module.exports = (sequelize) => {
                 model: 'songs',
                 key: 'id'
             }
+        },
+        gigDocumentId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'gig_documents',
+                key: 'id'
+            },
+            comment: 'Preferred gig document for this band/song combination'
         }
     }, {
         tableName: 'band_songs',

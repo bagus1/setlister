@@ -1,127 +1,137 @@
-<%- include('../layout', { title: title }) %>
-
 <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Create New Gig Document</h1>
+        <a href="/songs/<%= song.id %>/docs" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Song Documents
+        </a>
+    </div>
+
     <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1><i class="bi bi-file-earmark-plus"></i> New Gig Document</h1>
-                <a href="/gig-documents" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Documents
-                </a>
-            </div>
-
+        <div class="col-md-8">
             <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">New Gig Document for "<%= song.title %>"</h5>
+                </div>
                 <div class="card-body">
-                    <form action="/gig-documents" method="POST">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label for="title" class="form-label">Document Title *</label>
-                                    <input type="text" class="form-control" id="title" name="title" required 
-                                           placeholder="e.g., Bar Band Gig - Friday Night">
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="bandId" class="form-label">Band *</label>
-                                            <select class="form-select" id="bandId" name="bandId" required>
-                                                <option value="">Select a band...</option>
-                                                <% bands.forEach(function(band) { %>
-                                                    <option value="<%= band.id %>"><%= band.name %></option>
-                                                <% }); %>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="gigDate" class="form-label">Gig Date</label>
-                                            <input type="date" class="form-control" id="gigDate" name="gigDate">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="venue" class="form-label">Venue</label>
-                                    <input type="text" class="form-control" id="venue" name="venue" 
-                                           placeholder="e.g., The Blue Moon Bar">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="description" class="form-label">Description</label>
-                                    <textarea class="form-control" id="description" name="description" rows="3" 
-                                              placeholder="Optional notes about the gig..."></textarea>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <h6 class="card-title">
-                                            <i class="bi bi-lightbulb"></i> Quick Setup Options
-                                        </h6>
-                                        
-                                        <div class="mb-3">
-                                            <label for="setlistId" class="form-label">Generate from Setlist</label>
-                                            <select class="form-select" id="setlistId" name="setlistId">
-                                                <option value="">Start from scratch</option>
-                                                <% setlists.forEach(function(setlist) { %>
-                                                    <option value="<%= setlist.id %>"><%= setlist.title %></option>
-                                                <% }); %>
-                                            </select>
-                                            <div class="form-text">
-                                                Select a setlist to automatically generate document content with all songs, chords, and lyrics.
-                                            </div>
-                                        </div>
-
-                                        <div class="alert alert-info">
-                                            <h6><i class="bi bi-info-circle"></i> What This Does</h6>
-                                            <p class="small mb-0">
-                                                Creates a gig document that you can use on your iPad during performances. 
-                                                If you select a setlist, it will automatically include all the chord/lyric content 
-                                                from your songs.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <form action="/songs/<%= song.id %>/docs" method="POST">
+                        <div class="mb-3">
+                            <label for="type" class="form-label">Document Type *</label>
+                            <select class="form-select" id="type" name="type" required>
+                                <option value="">Select a type...</option>
+                                <option value="chords">🎸 Chords</option>
+                                <option value="bass-tab">🎸 Bass Tab</option>
+                                <option value="guitar-tab">🎸 Guitar Tab</option>
+                                <option value="lyrics">🎤 Lyrics</option>
+                            </select>
+                            <div class="form-text">Choose the type of content this document will contain.</div>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a href="/gig-documents" class="btn btn-outline-secondary">Cancel</a>
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Content</label>
+                            <div id="editor" style="height: 400px;"></div>
+                            <input type="hidden" id="content" name="content">
+                            <div class="form-text">Use the editor above to create your gig document content.</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-plus-circle"></i> Create Gig Document
+                                <i class="bi bi-save"></i> Create Gig Document
                             </button>
+                            <a href="/songs/<%= song.id %>/docs" class="btn btn-outline-secondary">Cancel</a>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Song Information</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Title:</strong>
+                        <%= song.title %>
+                    </p>
+                    <p><strong>Artist:</strong>
+                        <%= song.Artists.map(a=> a.name).join(', ') %>
+                    </p>
+                    <% if (song.Vocalist) { %>
+                        <p><strong>Vocalist:</strong>
+                            <%= song.Vocalist.name %>
+                        </p>
+                        <% } %>
+                            <% if (song.key) { %>
+                                <p><strong>Key:</strong>
+                                    <%= song.key %>
+                                </p>
+                                <% } %>
+                                    <% if (song.duration) { %>
+                                        <p><strong>Duration:</strong>
+                                            <%= song.duration %>
+                                        </p>
+                                        <% } %>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Tips</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">🎸 <strong>Chords:</strong> Include chord progressions, structure markers</li>
+                        <li class="mb-2">🎸 <strong>Tabs:</strong> Add finger positions and techniques</li>
+                        <li class="mb-2">🎤 <strong>Lyrics:</strong> Use proper indentation for sections</li>
+                        <li class="mb-0">📝 <strong>Format:</strong> Design for single-page printing</li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Quill.js CSS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+<!-- Quill.js JavaScript -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const bandSelect = document.getElementById('bandId');
-    const setlistSelect = document.getElementById('setlistId');
-    
-    // Filter setlists based on selected band
-    bandSelect.addEventListener('change', function() {
-        const selectedBandId = this.value;
-        
-        // Reset setlist selection
-        setlistSelect.value = '';
-        
-        // Show/hide setlists based on band
-        Array.from(setlistSelect.options).forEach(option => {
-            if (option.value === '') {
-                option.style.display = 'block'; // Always show "Start from scratch"
-            } else {
-                // For now, show all setlists. In a full implementation, you'd filter by band
-                option.style.display = 'block';
-            }
-        });
+    // Initialize Quill editor
+    var quill = new Quill('#editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'indent': '-1' }, { 'indent': '+1' }],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'font': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['clean']
+            ]
+        },
+        placeholder: 'Start typing your gig document content here...'
     });
-});
+
+    // Update hidden input before form submission
+    document.querySelector('form[action*="/docs"]').addEventListener('submit', function () {
+        console.log('=== FORM SUBMISSION DEBUG ===');
+        console.log('Form submit event triggered');
+
+        var quillContent = quill.root.innerHTML;
+        console.log('Quill content:', quillContent);
+        console.log('Quill content length:', quillContent.length);
+
+        var hiddenInput = document.getElementById('content');
+        console.log('Hidden input found:', !!hiddenInput);
+        console.log('Hidden input current value:', hiddenInput.value);
+
+        hiddenInput.value = quillContent;
+        console.log('Hidden input value after update:', hiddenInput.value);
+
+        console.log('Form submission proceeding...');
+    });
 </script>

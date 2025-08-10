@@ -1,0 +1,159 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-pencil"></i> Edit Gig Document</h1>
+                <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>"
+                    class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Document
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <form action="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>?_method=PUT"
+                                method="POST">
+                                <div class="mb-3">
+                                    <label class="form-label">Document Type</label>
+                                    <input type="text" class="form-control"
+                                        value="<%= gigDocument.getTypeDisplayName() %> (v<%= gigDocument.version %>)"
+                                        readonly>
+                                    <div class="form-text">Document type and version cannot be changed</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="content" class="form-label">Content</label>
+                                    <div id="editor" style="height: 400px;"></div>
+                                    <input type="hidden" name="content" id="content-input">
+                                    <div class="form-text">Use the rich text editor above to edit your content</div>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>"
+                                        class="btn btn-outline-secondary">Cancel</a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-save"></i> Save Changes
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-info-circle"></i> Document Info
+                                    </h6>
+
+                                    <p class="small">
+                                        <strong>Song:</strong>
+                                        <%= gigDocument.Song.title %>
+                                            <% if (gigDocument.Song.Artists && gigDocument.Song.Artists.length> 0) { %>
+                                                - <%= gigDocument.Song.Artists[0].name %>
+                                                    <% } %>
+                                    </p>
+
+                                    <p class="small">
+                                        <strong>Type:</strong>
+                                        <%= gigDocument.getTypeDisplayName() %>
+                                    </p>
+
+                                    <p class="small">
+                                        <strong>Version:</strong> v<%= gigDocument.version %>
+                                    </p>
+
+                                    <p class="small">
+                                        <strong>Created:</strong>
+                                        <%= new Date(gigDocument.createdAt).toLocaleDateString() %>
+                                    </p>
+
+                                    <div class="alert alert-info">
+                                        <h6><i class="bi bi-lightbulb"></i> Tips</h6>
+                                        <ul class="small mb-0">
+                                            <li>Use headings for sections</li>
+                                            <li>Use indentation for structure</li>
+                                            <li>Format chords in bold</li>
+                                            <li>Use lists for lyrics</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quill CSS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+<!-- Quill JS -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('=== DOM LOADED - JAVASCRIPT INITIALIZING ===');
+
+        // Initialize Quill editor
+        var quill = new Quill('#editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    [{ 'indent': '-1' }, { 'indent': '+1' }],
+                    ['link'],
+                    ['clean']
+                ]
+            },
+            placeholder: 'Start typing your chords, tabs, or lyrics here...'
+        });
+
+        console.log('Quill editor initialized');
+
+        // Set existing content
+        <% if (gigDocument.content && gigDocument.content.length > 0) { %>
+            quill.root.innerHTML = `<%- gigDocument.content %>`;
+            console.log('Existing content loaded into Quill');
+        <% } %>
+
+        // Test if we can find the form
+        var form = document.querySelector('form[action*="/docs"]');
+        console.log('Gig document form found:', !!form);
+        console.log('Form action:', form ? form.action : 'N/A');
+
+        // Update hidden input before form submission
+        form.addEventListener('submit', function (e) {
+            console.log('=== FORM SUBMISSION DEBUG ===');
+            console.log('Form submit event triggered');
+
+            // Get the Quill content
+            var quillContent = quill.root.innerHTML;
+            console.log('Quill content:', quillContent);
+            console.log('Quill content length:', quillContent.length);
+
+            // Get the hidden input element
+            var hiddenInput = document.getElementById('content-input');
+            console.log('Hidden input element found:', !!hiddenInput);
+            console.log('Hidden input current value:', hiddenInput.value);
+
+            // Update the hidden input
+            hiddenInput.value = quillContent;
+            console.log('Hidden input value after update:', hiddenInput.value);
+
+            // Verify the update worked
+            console.log('Final hidden input value:', document.getElementById('content-input').value);
+
+            // Don't prevent default - let the form submit
+            console.log('Allowing form submission to proceed');
+        });
+
+        console.log('Form submit event listener attached');
+        console.log('=== JAVASCRIPT INITIALIZATION COMPLETE ===');
+    });
+</script>

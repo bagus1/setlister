@@ -256,7 +256,7 @@ router.post('/', requireAuth, [
 router.get('/:id', async (req, res) => {
     try {
         const song = await Song.findByPk(req.params.id, {
-            include: ['Artists', 'Vocalist', 'Links']
+            include: ['Artists', 'Vocalist', 'Links', 'GigDocuments']
         });
 
         if (!song) {
@@ -315,12 +315,35 @@ router.get('/:id', async (req, res) => {
             return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
         };
 
+        // Helper functions for gig document type display
+        const getTypeIcon = (type) => {
+            const icons = {
+                'chords': 'music-note-list',
+                'bass-tab': 'music-note-beamed',
+                'guitar-tab': 'music-note',
+                'lyrics': 'file-text'
+            };
+            return icons[type] || 'file-earmark-text';
+        };
+
+        const getTypeDisplayName = (type) => {
+            const names = {
+                'chords': 'Chords',
+                'bass-tab': 'Bass Tab',
+                'guitar-tab': 'Guitar Tab',
+                'lyrics': 'Lyrics'
+            };
+            return names[type] || type;
+        };
+
         res.render('songs/show', {
             title: song.title,
             song,
             loggedIn: !!req.session.user,
             getLinkIcon,
-            getLinkDisplayText
+            getLinkDisplayText,
+            getTypeIcon,
+            getTypeDisplayName
         });
     } catch (error) {
         console.error('Song show error:', error);
@@ -517,14 +540,6 @@ router.delete('/:id', requireAuth, async (req, res) => {
 
 
 
-// Debug route to catch all unmatched requests
-router.use('*', (req, res, next) => {
-    console.log('=== UNMATCHED ROUTE IN SONGS ===');
-    console.log('URL:', req.url);
-    console.log('Method:', req.method);
-    console.log('Original Method:', req.originalMethod);
-    console.log('Body:', req.body);
-    next();
-});
+// Debug route to catch all unmatched requests - REMOVED to fix route conflicts
 
 module.exports = router; 

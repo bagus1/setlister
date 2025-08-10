@@ -240,3 +240,85 @@
             </div>
         </div>
         <% } %>
+
+            <!-- Gig Documents Section - Only visible to logged in users -->
+            <% if (loggedIn) { %>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-file-earmark-text"></i> Gig Documents
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <% if (song.GigDocuments && song.GigDocuments.length> 0) { %>
+                                    <!-- Group by type -->
+                                    <% const groupedDocs={}; song.GigDocuments.forEach(doc=> {
+                                        if (!groupedDocs[doc.type]) groupedDocs[doc.type] = [];
+                                        groupedDocs[doc.type].push(doc);
+                                        });
+                                        %>
+
+                                        <% Object.keys(groupedDocs).sort().forEach(type=> { %>
+                                            <% const docs=groupedDocs[type]; %>
+                                                <div class="mb-4">
+                                                    <h6 class="text-primary">
+                                                        <i class="bi bi-<%= getTypeIcon(type) %>"></i>
+                                                        <%= getTypeDisplayName(type) %>
+                                                            <span class="badge bg-secondary ms-2">
+                                                                <%= docs.length %> version<%= docs.length> 1 ? 's' : ''
+                                                                        %>
+                                                            </span>
+                                                    </h6>
+                                                    <div class="list-group">
+                                                        <% docs.forEach(function(doc) { %>
+                                                            <a href="/songs/<%= song.id %>/docs/<%= doc.id %>"
+                                                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                                                <div>
+                                                                    <i class="bi bi-file-earmark-text"></i>
+                                                                    <%= doc.title %>
+                                                                </div>
+                                                                <div>
+                                                                    <small class="text-muted">Created: <%= new
+                                                                            Date(doc.createdAt).toLocaleDateString() %>
+                                                                    </small>
+                                                                </div>
+                                                            </a>
+                                                            <% }); %>
+                                                    </div>
+                                                </div>
+                                                <% }); %>
+                                                    <% } else { %>
+                                                        <p class="text-muted mb-4">No gig documents created yet.</p>
+                                                        <% } %>
+
+                                                            <!-- Add New Gig Document -->
+                                                            <div>
+                                                                <h6>Add New Gig Document:</h6>
+                                                                <a href="/songs/<%= song.id %>/docs/new"
+                                                                    class="btn btn-primary btn-sm">
+                                                                    <i class="bi bi-plus-circle"></i> Create New
+                                                                    Document
+                                                                </a>
+                                                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <% } else { %>
+                    <!-- Login prompt for non-authenticated users -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-earmark-text fs-1 text-muted mb-3"></i>
+                                    <h5>Gig Documents</h5>
+                                    <p class="text-muted">
+                                        <a href="/auth/login">Login</a> to view and manage gig documents for this song.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <% } %>

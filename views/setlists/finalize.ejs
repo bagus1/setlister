@@ -70,10 +70,30 @@
                                                 </div>
                                             </div>
                                             <div class="d-flex align-items-center gap-2">
+                                                <!-- Song metadata (vocalist, key, time) -->
+                                                <div class="d-flex align-items-center gap-2 me-3">
+                                                    <% if (setlistSong.Song.Vocalist) { %>
+                                                        <span class="badge bg-info">
+                                                            <%= setlistSong.Song.Vocalist.name %>
+                                                        </span>
+                                                        <% } %>
+                                                            <% if (setlistSong.Song.key) { %>
+                                                                <span class="badge bg-warning text-dark">
+                                                                    <%= setlistSong.Song.key %>
+                                                                </span>
+                                                                <% } %>
+                                                                    <% if (setlistSong.Song.time) { %>
+                                                                        <span class="text-muted small">
+                                                                            <%= Math.floor(setlistSong.Song.time / 60)
+                                                                                %>:<%= (setlistSong.Song.time %
+                                                                                    60).toString().padStart(2, '0' ) %>
+                                                                        </span>
+                                                                        <% } %>
+                                                </div>
+
                                                 <!-- Gig Document Selection -->
                                                 <div class="me-3">
                                                     <div class="d-flex align-items-center">
-                                                        <small class="text-muted me-2">Gig Doc:</small>
                                                         <div class="dropdown">
                                                             <button
                                                                 class="btn btn-sm btn-outline-secondary dropdown-toggle"
@@ -150,24 +170,6 @@
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                <% if (setlistSong.Song.Vocalist) { %>
-                                                    <span class="badge bg-info">
-                                                        <%= setlistSong.Song.Vocalist.name %>
-                                                    </span>
-                                                    <% } %>
-                                                        <% if (setlistSong.Song.key) { %>
-                                                            <span class="badge bg-warning text-dark">
-                                                                <%= setlistSong.Song.key %>
-                                                            </span>
-                                                            <% } %>
-                                                                <% if (setlistSong.Song.time) { %>
-                                                                    <span class="text-muted small">
-                                                                        <%= Math.floor(setlistSong.Song.time / 60) %>:
-                                                                            <%= (setlistSong.Song.time %
-                                                                                60).toString().padStart(2, '0' ) %>
-                                                                    </span>
-                                                                    <% } %>
                                             </div>
                                         </div>
                                         <% }); %>

@@ -109,12 +109,62 @@
                 [{ 'indent': '-1' }, { 'indent': '+1' }],
                 [{ 'color': [] }, { 'background': [] }],
                 [{ 'font': [] }],
-                [{ 'size': ['small', false, 'large', 'huge'] }],
+                [{ 'size': ['5px', '6px', '7px', '8px', '9px', '10px', '11px', '12px', '13px', '14px', '15px', '16px', '17px', '18px', '19px', '20px', '21px', '22px', '23px', '24px', '25px', '26px', '27px', '28px', '29px', '30px', '31px', '32px', '33px', '34px', '35px', '36px', '37px', '38px', '39px', '40px', '41px', '42px', '43px', '44px', '45px', '46px', '47px', '48px'] }],
                 ['clean']
             ]
         },
         placeholder: 'Start typing your gig document content here...'
     });
+
+    // Custom CSS to show font size values
+    const style = document.createElement('style');
+    style.textContent = `
+        .ql-size .ql-picker-item[data-value="5px"]::before { content: "5px"; }
+        .ql-size .ql-picker-item[data-value="6px"]::before { content: "6px"; }
+        .ql-size .ql-picker-item[data-value="7px"]::before { content: "7px"; }
+        .ql-size .ql-picker-item[data-value="8px"]::before { content: "8px"; }
+        .ql-size .ql-picker-item[data-value="9px"]::before { content: "9px"; }
+        .ql-size .ql-picker-item[data-value="10px"]::before { content: "10px"; }
+        .ql-size .ql-picker-item[data-value="11px"]::before { content: "11px"; }
+        .ql-size .ql-picker-item[data-value="12px"]::before { content: "12px"; }
+        .ql-size .ql-picker-item[data-value="13px"]::before { content: "13px"; }
+        .ql-size .ql-picker-item[data-value="14px"]::before { content: "14px"; }
+        .ql-size .ql-picker-item[data-value="15px"]::before { content: "15px"; }
+        .ql-size .ql-picker-item[data-value="16px"]::before { content: "16px"; }
+        .ql-size .ql-picker-item[data-value="17px"]::before { content: "17px"; }
+        .ql-size .ql-picker-item[data-value="18px"]::before { content: "18px"; }
+        .ql-size .ql-picker-item[data-value="19px"]::before { content: "19px"; }
+        .ql-size .ql-picker-item[data-value="20px"]::before { content: "20px"; }
+        .ql-size .ql-picker-item[data-value="21px"]::before { content: "21px"; }
+        .ql-size .ql-picker-item[data-value="22px"]::before { content: "22px"; }
+        .ql-size .ql-picker-item[data-value="23px"]::before { content: "23px"; }
+        .ql-size .ql-picker-item[data-value="24px"]::before { content: "24px"; }
+        .ql-size .ql-picker-item[data-value="25px"]::before { content: "25px"; }
+        .ql-size .ql-picker-item[data-value="26px"]::before { content: "26px"; }
+        .ql-size .ql-picker-item[data-value="27px"]::before { content: "27px"; }
+        .ql-size .ql-picker-item[data-value="28px"]::before { content: "28px"; }
+        .ql-size .ql-picker-item[data-value="29px"]::before { content: "29px"; }
+        .ql-size .ql-picker-item[data-value="30px"]::before { content: "30px"; }
+        .ql-size .ql-picker-item[data-value="31px"]::before { content: "31px"; }
+        .ql-size .ql-picker-item[data-value="32px"]::before { content: "32px"; }
+        .ql-size .ql-picker-item[data-value="33px"]::before { content: "33px"; }
+        .ql-size .ql-picker-item[data-value="34px"]::before { content: "34px"; }
+        .ql-size .ql-picker-item[data-value="35px"]::before { content: "35px"; }
+        .ql-size .ql-picker-item[data-value="36px"]::before { content: "36px"; }
+        .ql-size .ql-picker-item[data-value="37px"]::before { content: "37px"; }
+        .ql-size .ql-picker-item[data-value="38px"]::before { content: "38px"; }
+        .ql-size .ql-picker-item[data-value="39px"]::before { content: "39px"; }
+        .ql-size .ql-picker-item[data-value="40px"]::before { content: "40px"; }
+        .ql-size .ql-picker-item[data-value="41px"]::before { content: "41px"; }
+        .ql-size .ql-picker-item[data-value="42px"]::before { content: "42px"; }
+        .ql-size .ql-picker-item[data-value="43px"]::before { content: "43px"; }
+        .ql-size .ql-picker-item[data-value="44px"]::before { content: "44px"; }
+        .ql-size .ql-picker-item[data-value="45px"]::before { content: "45px"; }
+        .ql-size .ql-picker-item[data-value="46px"]::before { content: "46px"; }
+        .ql-size .ql-picker-item[data-value="47px"]::before { content: "47px"; }
+        .ql-size .ql-picker-item[data-value="48px"]::before { content: "48px"; }
+    `;
+    document.head.appendChild(style);
 
     // Update hidden input before form submission
     document.querySelector('form[action*="/docs"]').addEventListener('submit', function () {

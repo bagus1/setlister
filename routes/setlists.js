@@ -571,6 +571,53 @@ router.get('/:id/finalize', async (req, res) => {
             gigDocumentsBySong: gigDocumentsBySong
         });
 
+        // Auto-assign missing gig document preferences
+        console.log(`[FINALIZE] Starting auto-assignment of missing gig document preferences...`);
+        let autoAssignedCount = 0;
+
+        for (const songId of songIds) {
+            const bandSong = bandSongMap[songId];
+            const availableDocs = gigDocumentsBySong[songId];
+
+            // Skip if no gig documents available for this song
+            if (!availableDocs || availableDocs.length === 0) {
+                continue;
+            }
+
+            // Skip if BandSong already has a preference set
+            if (bandSong && bandSong.gigDocumentId) {
+                continue;
+            }
+
+            // Auto-assign the highest version (first in the list since we ordered by version DESC)
+            const preferredDocId = availableDocs[0].id;
+
+            if (bandSong) {
+                // Update existing BandSong record
+                await bandSong.update({ gigDocumentId: preferredDocId });
+                console.log(`[FINALIZE] Auto-assigned gig document ${preferredDocId} (${availableDocs[0].getTypeDisplayName()} v${availableDocs[0].version}) to existing BandSong for song ${songId}`);
+            } else {
+                // Create new BandSong record
+                await BandSong.create({
+                    bandId: setlist.Band.id,
+                    songId: songId,
+                    gigDocumentId: preferredDocId
+                });
+                console.log(`[FINALIZE] Created new BandSong with auto-assigned gig document ${preferredDocId} (${availableDocs[0].getTypeDisplayName()} v${availableDocs[0].version}) for song ${songId}`);
+            }
+
+            autoAssignedCount++;
+
+            // Update the bandSongMap to reflect the new assignment
+            if (!bandSongMap[songId]) {
+                bandSongMap[songId] = { songId, bandId: setlist.Band.id, gigDocumentId: preferredDocId };
+            } else {
+                bandSongMap[songId].gigDocumentId = preferredDocId;
+            }
+        }
+
+        console.log(`[FINALIZE] Auto-assignment complete. ${autoAssignedCount} songs had preferences set.`);
+
         console.log(`[FINALIZE] Setlist found: ${setlist.title}`);
         console.log(`[FINALIZE] Number of sets: ${setlist.SetlistSets ? setlist.SetlistSets.length : 0}`);
 

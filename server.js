@@ -71,11 +71,29 @@ app.use('/setlists', setlistRoutes);
 app.use('/invite', invitationRoutes);
 app.use('/bulk-add-songs', bulkAddSongsRoutes);
 app.use('/songs', linkRoutes);
+app.use('/songs', require('./routes/gig-documents'));
 
 // Test DELETE route
 app.delete('/test-delete', (req, res) => {
     console.log(`[${new Date().toISOString()}] Test DELETE route hit!`);
     res.json({ success: true, message: 'Test DELETE route works!' });
+});
+
+// TEMPORARY TEST ROUTE - Mock authentication for testing
+app.get('/test-auth', (req, res) => {
+    // Create a mock user session for testing
+    req.session.user = {
+        id: 7,
+        username: 'John',
+        email: 'john.g.haig@gmail.com'
+    };
+    req.session.currentBandId = 1; // Set a default band
+    res.json({ 
+        success: true, 
+        message: 'Mock authentication created', 
+        user: req.session.user,
+        currentBandId: req.session.currentBandId
+    });
 });
 
 // Simple DELETE route following web example pattern

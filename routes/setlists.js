@@ -1,11 +1,97 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { Setlist, SetlistSet, SetlistSong, Band, BandMember, Song, BandSong, Artist, Vocalist, User } = require('../models');
+const { Setlist, SetlistSet, SetlistSong, Band, BandMember, Song, BandSong, Artist, Vocalist, User, GigDocument } = require('../models');
 const { requireAuth } = require('./auth');
 
 const router = express.Router();
 
-// All setlist routes require authentication
+// Public gig view route (no authentication required)
+router.get('/:id/gig-view', async (req, res) => {
+    try {
+        const setlistId = req.params.id;
+
+        const setlist = await Setlist.findByPk(setlistId, {
+            include: [
+                {
+                    model: Band,
+                    attributes: ['id', 'name']
+                },
+                {
+                    model: SetlistSet,
+                    include: [{
+                        model: SetlistSong,
+                        include: [{
+                            model: Song,
+                            include: ['Artists', 'Vocalist']
+                        }],
+                        order: [['order', 'ASC']]
+                    }],
+                    order: [['order', 'ASC']]
+                }
+            ]
+        });
+
+        if (!setlist) {
+            return res.status(404).send('Setlist not found');
+        }
+
+        // Get BandSong preferences for this band
+        const bandSongs = await BandSong.findAll({
+            where: { bandId: setlist.Band.id },
+            raw: false
+        });
+
+        // Create a map of songId to preferred gig document
+        const preferredGigDocuments = {};
+        bandSongs.forEach(bandSong => {
+            if (bandSong.gigDocumentId) {
+                preferredGigDocuments[bandSong.songId] = bandSong.gigDocumentId;
+            }
+        });
+
+        // Get all preferred gig documents
+        const gigDocumentIds = Object.values(preferredGigDocuments);
+        console.log('[GIG-VIEW] Preferred gig document IDs:', gigDocumentIds);
+
+        const gigDocuments = await GigDocument.findAll({
+            where: { id: gigDocumentIds },
+            include: [{
+                model: Song,
+                attributes: ['id', 'title', 'key', 'time']
+            }]
+        });
+
+        console.log('[GIG-VIEW] Found gig documents:', gigDocuments.map(doc => ({
+            id: doc.id,
+            songId: doc.Song?.id,
+            songTitle: doc.Song?.title,
+            hasContent: !!doc.content,
+            contentLength: doc.content?.length || 0
+        })));
+
+        // Create a map of gig document ID to gig document
+        const gigDocumentMap = {};
+        gigDocuments.forEach(doc => {
+            gigDocumentMap[doc.id] = doc;
+        });
+
+        console.log('[GIG-VIEW] Gig document map keys:', Object.keys(gigDocumentMap));
+        console.log('[GIG-VIEW] Preferred gig documents mapping:', preferredGigDocuments);
+
+        res.render('setlists/gig-view', {
+            title: `Gig View - ${setlist.title}`,
+            setlist,
+            preferredGigDocuments,
+            gigDocumentMap,
+            layout: false // No layout for clean printing
+        });
+    } catch (error) {
+        console.error('Gig view error:', error);
+        res.status(500).send('Error loading gig view');
+    }
+});
+
+// All other setlist routes require authentication
 router.use(requireAuth);
 
 // Helper function to check if setlist is still editable (until one week after setlist date)
@@ -426,6 +512,112 @@ router.get('/:id/finalize', async (req, res) => {
             return res.redirect('/bands');
         }
 
+        // Get BandSong preferences for this band
+        console.log(`[FINALIZE] Looking for BandSong records with bandId: ${setlist.Band.id}`);
+        const bandSongs = await BandSong.findAll({
+            where: { bandId: setlist.Band.id },
+            include: [{
+                model: Song,
+                attributes: ['id', 'title']
+            }],
+            raw: false
+        });
+
+        console.log(`[FINALIZE] BandSong.findAll result:`, bandSongs);
+
+        // Create a map of songId to BandSong for quick lookup
+        const bandSongMap = {};
+        bandSongs.forEach(bandSong => {
+            bandSongMap[bandSong.songId] = bandSong;
+        });
+
+        console.log(`[FINALIZE] BandSong data:`, {
+            bandSongsCount: bandSongs.length,
+            bandSongMapKeys: Object.keys(bandSongMap),
+            bandSongMap: bandSongMap
+        });
+
+        // Get all gig documents for songs in this setlist
+        const songIds = [];
+        setlist.SetlistSets.forEach(set => {
+            if (set.SetlistSongs) {
+                set.SetlistSongs.forEach(setlistSong => {
+                    songIds.push(setlistSong.Song.id);
+                });
+            }
+        });
+
+        const gigDocuments = await GigDocument.findAll({
+            where: { songId: songIds },
+            include: [{
+                model: Song,
+                attributes: ['id', 'title']
+            }],
+            order: [['version', 'DESC']]
+        });
+
+        // Group gig documents by songId
+        const gigDocumentsBySong = {};
+        gigDocuments.forEach(doc => {
+            if (!gigDocumentsBySong[doc.songId]) {
+                gigDocumentsBySong[doc.songId] = [];
+            }
+            gigDocumentsBySong[doc.songId].push(doc);
+        });
+
+        console.log(`[FINALIZE] GigDocument data:`, {
+            gigDocumentsCount: gigDocuments.length,
+            gigDocumentsBySongKeys: Object.keys(gigDocumentsBySong),
+            gigDocumentsBySong: gigDocumentsBySong
+        });
+
+        // Auto-assign missing gig document preferences
+        console.log(`[FINALIZE] Starting auto-assignment of missing gig document preferences...`);
+        let autoAssignedCount = 0;
+
+        for (const songId of songIds) {
+            const bandSong = bandSongMap[songId];
+            const availableDocs = gigDocumentsBySong[songId];
+
+            // Skip if no gig documents available for this song
+            if (!availableDocs || availableDocs.length === 0) {
+                continue;
+            }
+
+            // Skip if BandSong already has a preference set
+            if (bandSong && bandSong.gigDocumentId) {
+                continue;
+            }
+
+            // Auto-assign the highest version (first in the list since we ordered by version DESC)
+            const preferredDocId = availableDocs[0].id;
+
+            if (bandSong) {
+                // Update existing BandSong record
+                await bandSong.update({ gigDocumentId: preferredDocId });
+                console.log(`[FINALIZE] Auto-assigned gig document ${preferredDocId} (${availableDocs[0].getTypeDisplayName()} v${availableDocs[0].version}) to existing BandSong for song ${songId}`);
+            } else {
+                // Create new BandSong record
+                await BandSong.create({
+                    bandId: setlist.Band.id,
+                    songId: songId,
+                    gigDocumentId: preferredDocId
+                });
+                console.log(`[FINALIZE] Created new BandSong with auto-assigned gig document ${preferredDocId} (${availableDocs[0].getTypeDisplayName()} v${availableDocs[0].version}) for song ${songId}`);
+            }
+
+            autoAssignedCount++;
+
+            // Update the bandSongMap to reflect the new assignment
+            if (!bandSongMap[songId]) {
+                bandSongMap[songId] = { songId, bandId: setlist.Band.id, gigDocumentId: preferredDocId };
+            } else {
+                bandSongMap[songId].gigDocumentId = preferredDocId;
+            }
+        }
+
+        console.log(`[FINALIZE] Auto-assignment complete. ${autoAssignedCount} songs had preferences set.`);
+
         console.log(`[FINALIZE] Setlist found: ${setlist.title}`);
         console.log(`[FINALIZE] Number of sets: ${setlist.SetlistSets ? setlist.SetlistSets.length : 0}`);
 
@@ -453,13 +645,26 @@ router.get('/:id/finalize', async (req, res) => {
         // Calculate if setlist is still editable (until end of setlist date)
         const isEditable = isSetlistEditable(setlist);
 
-        res.render('setlists/finalize', {
+        const renderData = {
             title: `Finalize ${setlist.title}`,
             setlist,
             setTimes,
             totalTime,
-            isEditable
+            isEditable,
+            bandSongMap,
+            gigDocumentsBySong
+        };
+
+        console.log(`[FINALIZE] Rendering template with data:`, {
+            title: renderData.title,
+            setlistTitle: renderData.setlist.title,
+            bandSongMapKeys: Object.keys(renderData.bandSongMap || {}),
+            gigDocumentsBySongKeys: Object.keys(renderData.gigDocumentsBySong || {}),
+            hasBandSongMap: !!renderData.bandSongMap,
+            hasGigDocumentsBySong: !!renderData.gigDocumentsBySong
         });
+
+        res.render('setlists/finalize', renderData);
     } catch (error) {
         console.error('Finalize setlist error:', error);
         req.flash('error', 'An error occurred loading the finalize page');
@@ -499,6 +704,45 @@ router.post('/:id/finalize', async (req, res) => {
         res.redirect(`/setlists/${req.params.id}/finalize`);
     }
 });
+
+// POST /setlists/:id/preferred-gig-document - Update preferred gig document for a song
+router.post('/:id/preferred-gig-document', async (req, res) => {
+    try {
+        const { songId, gigDocumentId } = req.body;
+        const setlistId = req.params.id;
+        const userId = req.session.user.id;
+
+        // Verify user has access to this setlist
+        const setlist = await Setlist.findByPk(setlistId, {
+            include: [{
+                model: Band,
+                include: [{
+                    model: User,
+                    where: { id: userId },
+                    through: { attributes: [] }
+                }]
+            }]
+        });
+
+        if (!setlist) {
+            return res.status(404).json({ error: 'Setlist not found' });
+        }
+
+        // Update or create BandSong preference
+        await BandSong.upsert({
+            bandId: setlist.Band.id,
+            songId: songId,
+            gigDocumentId: gigDocumentId || null
+        });
+
+        res.json({ success: true, message: 'Preferred gig document updated' });
+    } catch (error) {
+        console.error('Update preferred gig document error:', error);
+        res.status(500).json({ error: 'Failed to update preferred gig document' });
+    }
+});
+
+
 
 // GET /setlists/:id/print - Show print page with export options
 router.get('/:id/print', async (req, res) => {

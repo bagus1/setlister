@@ -50,23 +50,107 @@
                                     <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) =>
                                         { %>
                                         <div class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
+                                            <div class="d-flex align-items-center">
                                                 <span class="badge bg-light text-dark me-2">
                                                     <%= index + 1 %>
                                                 </span>
-                                                <strong>
-                                                    <a href="/songs/<%= setlistSong.Song.id %>"
-                                                        class="text-decoration-none">
-                                                        <%= setlistSong.Song.title %>
-                                                    </a>
-                                                </strong>
-                                                <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) {
-                                                    %>
-                                                    <span class="text-muted">by <%= setlistSong.Song.Artists[0].name %>
-                                                            </span>
-                                                    <% } %>
+                                                <div>
+                                                    <strong>
+                                                        <a href="/songs/<%= setlistSong.Song.id %>"
+                                                            class="text-decoration-none">
+                                                            <%= setlistSong.Song.title %>
+                                                        </a>
+                                                    </strong>
+                                                    <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length>
+                                                        0) { %>
+                                                        <span class="text-muted">by <%= setlistSong.Song.Artists[0].name
+                                                                %>
+                                                        </span>
+                                                        <% } %>
+                                                </div>
                                             </div>
                                             <div class="d-flex align-items-center gap-2">
+                                                <!-- Gig Document Selection -->
+                                                <div class="me-3">
+                                                    <div class="d-flex align-items-center">
+                                                        <small class="text-muted me-2">Gig Doc:</small>
+                                                        <div class="dropdown">
+                                                            <button
+                                                                class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                                                type="button" data-bs-toggle="dropdown"
+                                                                aria-expanded="false"
+                                                                data-song-id="<%= setlistSong.Song.id %>">
+                                                                <% const bandSong=(bandSongMap &&
+                                                                    bandSongMap[setlistSong.Song.id]) || null; const
+                                                                    preferredDocId=bandSong && bandSong.gigDocumentId;
+                                                                    const availableDocs=(gigDocumentsBySong &&
+                                                                    gigDocumentsBySong[setlistSong.Song.id]) || [];
+                                                                    const preferredDoc=preferredDocId ?
+                                                                    availableDocs.find(d=> d.id === preferredDocId) :
+                                                                    null;
+                                                                    %>
+                                                                    <% if (preferredDoc) { %>
+                                                                        <%= preferredDoc.getTypeDisplayName() %> v<%=
+                                                                                preferredDoc.version %>
+                                                                                <% } else if (availableDocs.length> 0) {
+                                                                                    %>
+                                                                                    <%= availableDocs[0].getTypeDisplayName()
+                                                                                        %> v<%= availableDocs[0].version
+                                                                                            %>
+                                                                                            <% } else { %>
+                                                                                                No docs
+                                                                                                <% } %>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <% if (availableDocs.length> 0) { %>
+                                                                    <% availableDocs.forEach(doc=> { %>
+                                                                        <li>
+                                                                            <a class="dropdown-item <%= preferredDocId === doc.id ? 'active' : '' %>"
+                                                                                href="#"
+                                                                                onclick="setPreferredGigDocument(<%= setlistSong.Song.id %>, <%= doc.id %>)">
+                                                                                <%= doc.getTypeDisplayName() %> v<%=
+                                                                                        doc.version %>
+                                                                                        <% if (preferredDocId===doc.id)
+                                                                                            { %>
+                                                                                            <i
+                                                                                                class="bi bi-check text-success ms-2"></i>
+                                                                                            <% } %>
+                                                                            </a>
+                                                                        </li>
+                                                                        <% }); %>
+                                                                            <li>
+                                                                                <hr class="dropdown-divider">
+                                                                            </li>
+                                                                            <li>
+                                                                                <a class="dropdown-item text-muted"
+                                                                                    href="#"
+                                                                                    onclick="setPreferredGigDocument(<%= setlistSong.Song.id %>, null)">
+                                                                                    <i class="bi bi-x-circle"></i> Clear
+                                                                                    preference
+                                                                                </a>
+                                                                            </li>
+                                                                            <% } else { %>
+                                                                                <li><span
+                                                                                        class="dropdown-item-text text-muted">No
+                                                                                        gig documents available</span>
+                                                                                </li>
+                                                                                <% } %>
+                                                                                    <li>
+                                                                                        <hr class="dropdown-divider">
+                                                                                    </li>
+                                                                                    <li>
+                                                                                        <a class="dropdown-item"
+                                                                                            href="/songs/<%= setlistSong.Song.id %>/docs/new">
+                                                                                            <i
+                                                                                                class="bi bi-plus-circle"></i>
+                                                                                            Create new gig document
+                                                                                        </a>
+                                                                                    </li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                                 <% if (setlistSong.Song.Vocalist) { %>
                                                     <span class="badge bg-info">
                                                         <%= setlistSong.Song.Vocalist.name %>
@@ -86,11 +170,11 @@
                                                                     <% } %>
                                             </div>
                                         </div>
-                                        <% }) %>
+                                        <% }); %>
                                 </div>
                             </div>
                             <% } %>
-                                <% }) %>
+                                <% }); %>
                                     <% } else { %>
                                         <div class="text-center py-5">
                                             <i class="bi bi-music-note text-muted" style="font-size: 3rem;"></i>
@@ -131,6 +215,10 @@
                         <% } %>
 
                             <div class="d-grid gap-2">
+                                <a href="/setlists/<%= setlist.id %>/gig-view" target="_blank" class="btn btn-success">
+                                    <i class="bi bi-music-note-beamed"></i> Gig View
+                                </a>
+
                                 <a href="/setlists/<%= setlist.id %>/print" class="btn btn-outline-primary">
                                     <i class="bi bi-printer"></i> Print View
                                 </a>
@@ -173,7 +261,8 @@
                         }
                         });
                         }
-                        }); %>
+                        });
+                        %>
 
                         <div class="row text-center">
                             <div class="col-6">
@@ -201,6 +290,32 @@
 </div>
 
 <script>
+    function setPreferredGigDocument(songId, gigDocumentId) {
+        fetch(`/setlists/<%= setlist.id %>/preferred-gig-document`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                songId: songId,
+                gigDocumentId: gigDocumentId
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show updated preferences
+                    location.reload();
+                } else {
+                    alert('Error updating preferred gig document: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating preferred gig document');
+            });
+    }
+
     function copyTitlesToClipboard() {
         try {
             let output = [];

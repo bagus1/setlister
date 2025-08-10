@@ -117,7 +117,7 @@
                     [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                     [{ 'indent': '-1' }, { 'indent': '+1' }],
                     [{ 'color': [] }, { 'background': [] }],
-                    [{ 'font': [] }],
+                    [{ 'font': ['serif', 'sans', 'monospace'] }],
                     [{ 'size': fontSizeArr }],
                     ['link'],
                     ['clean']
@@ -132,12 +132,43 @@
 
         console.log('Quill editor initialized');
 
-        // Custom CSS to show actual font size values in dropdown
+        // Custom CSS to show actual font size values in dropdown and override font weights
         const style = document.createElement('style');
         style.textContent = `
             .ql-snow .ql-picker.ql-size .ql-picker-label::before,
             .ql-snow .ql-picker.ql-size .ql-picker-item::before {
                 content: attr(data-value) !important;
+            }
+            
+            /* Override Quill's default font weights - more specific targeting */
+            #editor .ql-editor,
+            .ql-snow .ql-editor {
+                font-weight: 600 !important; /* Normal text = 600 */
+            }
+            
+            #editor .ql-editor strong,
+            #editor .ql-editor b,
+            .ql-snow .ql-editor strong,
+            .ql-snow .ql-editor b {
+                font-weight: 800 !important; /* Bold text = 800 */
+            }
+            
+            /* Also target Quill's internal bold styling */
+            .ql-editor .ql-bold {
+                font-weight: 800 !important;
+            }
+            
+            /* Quill font family classes */
+            .ql-font-serif {
+                font-family: "Times New Roman", Times, serif !important;
+            }
+            
+            .ql-font-sans {
+                font-family: Arial, Helvetica, sans-serif !important;
+            }
+            
+            .ql-font-monospace {
+                font-family: "Courier New", Courier, monospace !important;
             }
         `;
         document.head.appendChild(style);

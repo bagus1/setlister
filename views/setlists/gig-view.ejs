@@ -41,6 +41,41 @@
             color: #888;
         }
 
+        .song-list-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .song-list-section h3 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 8px;
+        }
+
+        .set-songs {
+            margin-bottom: 15px;
+        }
+
+        .set-songs:last-child {
+            margin-bottom: 0;
+        }
+
+        .set-songs strong {
+            color: #555;
+            font-size: 14px;
+        }
+
+        .song-list-item {
+            margin: 5px 0 5px 20px;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
         .song-section {
             page-break-inside: avoid;
             margin-bottom: 40px;
@@ -72,6 +107,19 @@
             font-family: 'Courier New', monospace;
             font-size: 11px;
             line-height: 1.3;
+        }
+
+        /* Tight line spacing for song content paragraphs */
+        .song-content p {
+            margin: 0.2em 0;
+            /* Very tight paragraph spacing */
+            line-height: 1.2;
+            /* Compact line height */
+        }
+
+        .song-content {
+            line-height: 1.3;
+            /* Overall content spacing */
         }
 
         .set-divider {
@@ -118,6 +166,56 @@
                     month: 'long' , day: 'numeric' }) %>
             </div>
             <% } %>
+    </div>
+
+    <!-- Song List Section -->
+    <div class="song-list-section">
+        <h3>Setlist</h3>
+        <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
+            <% setlist.SetlistSets.sort((a, b)=> a.order - b.order).forEach((set, setIndex) => { %>
+                <% if (set.name !=='Maybe' && set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+                    <div class="set-songs">
+                        <strong>
+                            <%= set.name %>:
+                        </strong>
+                        <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, songIndex) => { %>
+                            <div class="song-list-item">
+                                <%= songIndex + 1 %>. <%= setlistSong.Song.title %>
+                                        <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) { %>
+                                            - <%= setlistSong.Song.Artists[0].name %>
+                                                <% } %>
+                                                    <% if (setlistSong.Song.key) { %>
+                                                        [<%= setlistSong.Song.key %>]
+                                                            <% } %>
+                                                                <% if (setlistSong.Song.time) { %>
+                                                                    (<%= Math.floor(setlistSong.Song.time / 60) %>:<%=
+                                                                            (setlistSong.Song.time %
+                                                                            60).toString().padStart(2, '0' ) %>)
+                                                                            <% } %>
+                            </div>
+                            <% }); %>
+                    </div>
+                    <% } %>
+                        <% }); %>
+
+                            <!-- Maybe list -->
+                            <% const maybeSet=setlist.SetlistSets.find(set=> set.name === 'Maybe'); %>
+                                <% if (maybeSet && maybeSet.SetlistSongs && maybeSet.SetlistSongs.length> 0) { %>
+                                    <div class="set-songs">
+                                        <strong>Maybe:</strong>
+                                        <% maybeSet.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong,
+                                            songIndex) => { %>
+                                            <div class="song-list-item">
+                                                <%= songIndex + 1 %>. <%= setlistSong.Song.title %>
+                                                        <% if (setlistSong.Song.Artists &&
+                                                            setlistSong.Song.Artists.length> 0) { %>
+                                                            - <%= setlistSong.Song.Artists[0].name %>
+                                                                <% } %>
+                                            </div>
+                                            <% }); %>
+                                    </div>
+                                    <% } %>
+                                        <% } %>
     </div>
 
     <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>

@@ -76,6 +76,8 @@
                                             <li>Use indentation for structure</li>
                                             <li>Format chords in bold</li>
                                             <li>Use lists for lyrics</li>
+                                            <li>Control font sizes precisely (8px to 100px)</li>
+                                            <li>Use smaller fonts to fit more content on one page</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -98,6 +100,13 @@
     document.addEventListener('DOMContentLoaded', function () {
         console.log('=== DOM LOADED - JAVASCRIPT INITIALIZING ===');
 
+        // Custom font size configuration
+        const fontSizeArr = ['5px', '6px', '7px', '8px', '9px', '10px', '11px', '12px', '13px', '14px', '15px', '16px', '17px', '18px', '19px', '20px', '21px', '22px', '23px', '24px'];
+
+        var Size = Quill.import('attributors/style/size');
+        Size.whitelist = fontSizeArr;
+        Quill.register(Size, true);
+
         // Initialize Quill editor
         var quill = new Quill('#editor', {
             theme: 'snow',
@@ -107,6 +116,9 @@
                     ['bold', 'italic', 'underline'],
                     [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                     [{ 'indent': '-1' }, { 'indent': '+1' }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'font': [] }],
+                    [{ 'size': fontSizeArr }],
                     ['link'],
                     ['clean']
                 ]
@@ -114,7 +126,23 @@
             placeholder: 'Start typing your chords, tabs, or lyrics here...'
         });
 
+
+
+
+
         console.log('Quill editor initialized');
+
+        // Custom CSS to show actual font size values in dropdown
+        const style = document.createElement('style');
+        style.textContent = `
+            .ql-snow .ql-picker.ql-size .ql-picker-label::before,
+            .ql-snow .ql-picker.ql-size .ql-picker-item::before {
+                content: attr(data-value) !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+
 
         // Set existing content
         <% if (gigDocument.content && gigDocument.content.length > 0) { %>

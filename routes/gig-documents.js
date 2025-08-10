@@ -147,11 +147,25 @@ router.get('/:songId/docs/:id', requireAuth, async (req, res) => {
             return res.redirect(`/songs/${songId}/docs`);
         }
 
-        res.render('gig-documents/show', {
-            title: `${gigDocument.title} - ${gigDocument.Song.title}`,
-            gigDocument,
-            song: gigDocument.Song
-        });
+        // Check if this is a print request
+        const isPrintRequest = req.query.print === 'true';
+
+        if (isPrintRequest) {
+            // For print requests, render without any layout and with minimal content
+            res.render('gig-documents/print', {
+                title: `${gigDocument.title} - ${gigDocument.Song.title}`,
+                gigDocument,
+                song: gigDocument.Song,
+                layout: false
+            });
+        } else {
+            // For normal viewing, render with layout
+            res.render('gig-documents/show', {
+                title: `${gigDocument.title} - ${gigDocument.Song.title}`,
+                gigDocument,
+                song: gigDocument.Song
+            });
+        }
     } catch (error) {
         console.error('Show gig document error:', error);
         req.flash('error', 'Error loading gig document');

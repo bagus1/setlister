@@ -91,7 +91,6 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        console.log('=== DOM LOADED - GIG DOCUMENT EDITOR INITIALIZING ===');
 
         // Initialize the shared editor
         const editor = new GigDocumentEditor('editor', {
@@ -100,21 +99,13 @@
 
         // Update hidden input before form submission
         document.querySelector('form[action*="/docs"]').addEventListener('submit', function () {
-            console.log('=== FORM SUBMISSION DEBUG ===');
-            console.log('Form submit event triggered');
-
+    
             var content = tinymce.get('editor').getContent();
-            console.log('TinyMCE content:', content);
-            console.log('TinyMCE content length:', content.length);
-
+     
             var hiddenInput = document.getElementById('content');
-            console.log('Hidden input found:', !!hiddenInput);
-            console.log('Hidden input current value:', hiddenInput.value);
-
+     
             hiddenInput.value = content;
-            console.log('Hidden input value after update:', hiddenInput.value);
-
-            console.log('Form submission proceeding...');
+          
         });
     });
 </script>

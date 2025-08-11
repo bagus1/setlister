@@ -233,9 +233,6 @@ class SetlistEditor {
             removeBtn.innerHTML = '<i class="bi bi-x"></i>';
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                console.log('[X BUTTON] Clicked, calling removeSongFromSet with:', { clone, setName });
-                console.log('[X BUTTON] clone is:', clone);
-                console.log('[X BUTTON] clone.dataset.songId:', clone.dataset.songId);
                 this.removeSongFromSet(clone, setName);
             });
 
@@ -275,11 +272,9 @@ class SetlistEditor {
         // Handle different removal logic based on set
         if (setName === 'Maybe') {
             // Remove completely from maybe and restore to band songs
-            console.log('[REMOVE] Removing from Maybe, restoring to band songs');
             songElement.remove();
             // Call restore after removing from DOM so the check works correctly
             setTimeout(() => {
-                console.log('[REMOVE] Calling restoreToBandSongs after DOM removal');
                 this.restoreToBandSongs(songId, songTime);
             }, 0);
         } else {
@@ -289,21 +284,17 @@ class SetlistEditor {
             if (maybeZone) {
                 maybeZone.appendChild(songElement);
                 maybeZone.classList.add('has-songs');
-                console.log('[REMOVE] Song moved to Maybe zone');
 
                 // Update the remove button's event listener to use "Maybe" as the setName
                 const removeBtn = songElement.querySelector('.btn-outline-danger');
                 if (removeBtn) {
-                    console.log('[REMOVE] Found remove button, updating event listener');
                     // Remove the old event listener and add a new one
                     const newRemoveBtn = removeBtn.cloneNode(true);
                     removeBtn.parentNode.replaceChild(newRemoveBtn, removeBtn);
                     newRemoveBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        console.log('[X BUTTON] Clicked, calling removeSongFromSet with:', { songElement, setName: 'Maybe' });
                         this.removeSongFromSet(songElement, 'Maybe');
                     });
-                    console.log('[REMOVE] Event listener updated successfully');
                 } else {
                     console.error('[REMOVE] Could not find remove button in song element');
                 }
@@ -328,13 +319,11 @@ class SetlistEditor {
         });
 
         // Auto-save
-        console.log('[REMOVE] Calling autoSave');
         this.hasCriticalChanges = true;
         this.autoSave();
     }
 
     restoreToBandSongs(songId, songTime) {
-        console.log('[RESTORE] restoreToBandSongs called for song ID:', songId);
 
         // Check if song is already visible in band songs area
         const bandSongsContainer = document.querySelector('.col-md-4 .card-body');
@@ -346,22 +335,17 @@ class SetlistEditor {
 
         // Check if song is still in any other set (should be 0 since we removed it from Maybe)
         const songInOtherSets = document.querySelectorAll(`.setlist-song[data-song-id="${songId}"]`);
-        console.log('[RESTORE] Songs found in other sets:', songInOtherSets.length);
         if (songInOtherSets.length > 0) {
-            console.log('[RESTORE] Song still in other sets, not restoring:', songInOtherSets.length);
             return; // Still in use elsewhere, don't restore
         }
 
-        console.log('[RESTORE] Proceeding with restoration for song ID:', songId);
         // Fetch song details from server and recreate band song element
         this.fetchAndRestoreSong(songId);
     }
 
     async fetchAndRestoreSong(songId) {
         try {
-            console.log('[RESTORE] Fetching song details for ID:', songId);
             const response = await fetch(`/songs/api/song/${songId}`);
-            console.log('[RESTORE] API response status:', response.status);
 
             if (!response.ok) {
                 console.error('[RESTORE] API request failed:', response.status, response.statusText);
@@ -369,7 +353,6 @@ class SetlistEditor {
             }
 
             const song = await response.json();
-            console.log('[RESTORE] Song data received:', song.title);
 
             // Create band song element
             const bandSongElement = this.createBandSongElement(song);
@@ -377,7 +360,6 @@ class SetlistEditor {
             // Add to band songs area - use more specific selector
             const bandSongsContainer = document.querySelector('.col-md-4 .card-body');
             if (bandSongsContainer) {
-                console.log('[RESTORE] Found band songs container');
                 // Insert in alphabetical order
                 const existingSongs = Array.from(bandSongsContainer.querySelectorAll('.band-song'));
                 let insertPosition = existingSongs.length;
@@ -398,7 +380,6 @@ class SetlistEditor {
 
                 // Make it draggable
                 this.makeDraggable(bandSongElement);
-                console.log('[RESTORE] Song successfully restored to band songs list');
             } else {
                 console.error('[RESTORE] Could not find band songs container');
             }
@@ -492,7 +473,6 @@ class SetlistEditor {
 
     handleRemoteUpdate(updateData) {
         // Handle updates from other users
-        console.log('Remote update received:', updateData);
 
         const { action, data } = updateData;
 
@@ -575,11 +555,9 @@ class SetlistEditor {
     handleRemoteSongRemoved(data) {
         const { songId, fromSet } = data;
 
-        console.log(`[REMOTE REMOVE] Song ${songId} removed from ${fromSet}`);
 
         // Debug: Check all songs with this ID in the DOM
         const allSongsWithId = document.querySelectorAll(`[data-song-id="${songId}"]`);
-        console.log(`[REMOTE REMOVE] Found ${allSongsWithId.length} elements with song ID ${songId}:`,
             Array.from(allSongsWithId).map(el => ({
                 className: el.className,
                 parentSet: el.parentElement?.dataset?.setName || 'unknown'
@@ -588,8 +566,6 @@ class SetlistEditor {
 
         const songElement = document.querySelector(`.setlist-song[data-song-id="${songId}"]`);
         if (!songElement) {
-            console.log(`[REMOTE REMOVE] Song element not found for ID ${songId}`);
-            console.log(`[REMOTE REMOVE] Available setlist songs:`,
                 Array.from(document.querySelectorAll('.setlist-song')).map(el => ({
                     id: el.dataset.songId,
                     set: el.parentElement?.dataset?.setName || 'unknown'
@@ -598,23 +574,17 @@ class SetlistEditor {
             return;
         }
 
-        console.log(`[REMOTE REMOVE] Found song element in set: ${songElement.parentElement?.dataset?.setName}`);
-
         // Handle different removal logic based on set
         if (fromSet === 'Maybe') {
             // Remove completely and restore to band songs
-            console.log(`[REMOTE REMOVE] Removing from Maybe, restoring to band songs`);
             songElement.remove();
             this.restoreToBandSongs(songId, songElement.dataset.songTime);
         } else {
             // Move to maybe if removing from regular set
-            console.log(`[REMOTE REMOVE] Moving from ${fromSet} to Maybe`);
             const maybeZone = document.querySelector('.drop-zone[data-set-name="Maybe"]');
             if (maybeZone) {
-                console.log(`[REMOTE REMOVE] Moving song to Maybe zone`);
                 maybeZone.appendChild(songElement);
                 maybeZone.classList.add('has-songs');
-                console.log(`[REMOTE REMOVE] Song moved to Maybe, has-songs class added`);
             } else {
                 console.log(`[REMOTE REMOVE] Maybe zone not found`);
             }
@@ -632,8 +602,6 @@ class SetlistEditor {
             originalZone.classList.remove('has-songs');
         }
 
-        console.log(`[REMOTE REMOVE] Remove completed successfully`);
-
         // Auto-save the changes
         this.autoSave();
     }
@@ -641,36 +609,30 @@ class SetlistEditor {
     handleRemoteSongMoved(data) {
         const { songId, fromSet, toSet, position } = data;
 
-        console.log(`[REMOTE MOVE] Song ${songId} from ${fromSet} to ${toSet} at position ${position}`);
 
         const songElement = document.querySelector(`.setlist-song[data-song-id="${songId}"]`);
         if (!songElement) {
-            console.log(`[REMOTE MOVE] Song element not found for ID ${songId}`);
             return;
         }
 
         const targetZone = document.querySelector(`.drop-zone[data-set-name="${toSet}"]`);
         if (!targetZone) {
-            console.log(`[REMOTE MOVE] Target zone not found for set ${toSet}`);
             return;
         }
 
         // For moves within the same set, we need to handle the position calculation differently
         if (fromSet === toSet) {
-            console.log(`[REMOTE MOVE] Same-set reorder: ${fromSet} -> ${toSet} at position ${position}`);
 
             // Get all songs in the target zone (excluding the one being moved)
             const allSongs = Array.from(targetZone.querySelectorAll('.setlist-song'));
             const currentIndex = allSongs.indexOf(songElement);
 
-            console.log(`[REMOTE MOVE] Current index: ${currentIndex}, Target position: ${position}`);
 
             // Remove the song temporarily to calculate the correct position
             songElement.remove();
 
             // Re-insert at the correct position
             const remainingSongs = targetZone.querySelectorAll('.setlist-song');
-            console.log(`[REMOTE MOVE] Remaining songs count: ${remainingSongs.length}`);
 
             if (position === 0) {
                 targetZone.insertBefore(songElement, targetZone.firstChild);
@@ -680,7 +642,6 @@ class SetlistEditor {
                 targetZone.insertBefore(songElement, remainingSongs[position]);
             }
         } else {
-            console.log(`[REMOTE MOVE] Cross-set move: ${fromSet} -> ${toSet} at position ${position}`);
 
             // Moving between different sets
             // Remove from source set first
@@ -697,7 +658,6 @@ class SetlistEditor {
 
             // Insert into target set
             const songs = targetZone.querySelectorAll('.setlist-song');
-            console.log(`[REMOTE MOVE] Target songs count: ${songs.length}`);
 
             if (position === 0) {
                 targetZone.insertBefore(songElement, targetZone.firstChild);
@@ -715,7 +675,6 @@ class SetlistEditor {
         // Visual feedback
         this.highlightElement(songElement);
 
-        console.log(`[REMOTE MOVE] Move completed successfully`);
 
         // Auto-save the changes
         this.autoSave();
@@ -733,7 +692,6 @@ class SetlistEditor {
     }
 
     autoSave() {
-        console.log('[AUTOSAVE] Auto-save triggered');
         // Clear any existing timeout
         if (this.saveTimeout) {
             clearTimeout(this.saveTimeout);
@@ -744,12 +702,10 @@ class SetlistEditor {
         this.hasCriticalChanges = false;
 
         if (shouldSaveImmediately) {
-            console.log('[AUTOSAVE] Executing immediate save for critical changes');
             this.saveSetlist();
         } else {
             // Debounce auto-save for minor changes
             this.saveTimeout = setTimeout(() => {
-                console.log('[AUTOSAVE] Executing save after debounce');
                 this.saveSetlist();
             }, 1000); // Reduced from 2000ms to 1000ms for faster saves
         }
@@ -766,8 +722,6 @@ class SetlistEditor {
             sets[setName] = songs;
         });
 
-        console.log('[SAVE] Sending sets data:', sets);
-
         fetch(`/setlists/${this.setlistId}/save`, {
             method: 'POST',
             headers: {
@@ -777,10 +731,8 @@ class SetlistEditor {
         })
             .then(response => response.json())
             .then(data => {
-                console.log('[SAVE] Server response:', data);
                 if (data.success) {
                     this.showSaveStatus('saved');
-                    console.log('[SAVE] Setlist saved successfully');
                 } else {
                     this.showSaveStatus('error');
                     console.error('[SAVE] Server returned error:', data.error);
@@ -889,7 +841,6 @@ class SetlistEditor {
                 const songElement = button.closest('.setlist-song');
                 const setName = songElement.parentElement.dataset.setName;
                 const songId = songElement.dataset.songId;
-                console.log('[EXISTING X BUTTON] Clicked, calling removeSongFromSet with:', { songElement, setName });
                 this.removeSongFromSet(songElement, setName);
             });
         });

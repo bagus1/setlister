@@ -8,7 +8,6 @@ class GigDocumentEditor {
   }
 
   init() {
-    console.log("=== TINYMCE INITIALIZING ===");
 
     // Initialize TinyMCE editor
     tinymce.init({
@@ -56,17 +55,11 @@ class GigDocumentEditor {
   }
 
   setupEditor(editor) {
-    console.log("=== SETUP EDITOR CALLED ===");
-    console.log("Options:", this.options);
-    console.log("Existing content:", this.options.existingContent);
 
     // Set existing content after editor is ready
     editor.on("init", () => {
-      console.log("=== EDITOR INIT EVENT ===");
       if (this.options.existingContent) {
-        console.log("Setting content:", this.options.existingContent);
         editor.setContent(this.options.existingContent);
-        console.log("Existing content loaded into TinyMCE");
       } else {
         console.log("No existing content to load");
       }
@@ -114,7 +107,6 @@ class GigDocumentEditor {
       const formInput = document.querySelector(this.options.formSelector);
       if (formInput) {
         formInput.value = content;
-        console.log("Content updated in form input");
       }
     });
   }

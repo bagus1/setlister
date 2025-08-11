@@ -117,7 +117,6 @@ router.get('/:id', async (req, res) => {
         // Get pending invitations (not used, not expired)
         let pendingInvitations = [];
         try {
-            console.log(`[${new Date().toISOString()}] Attempting to load pending invitations with association...`);
             pendingInvitations = await BandInvitation.findAll({
                 where: {
                     bandId,
@@ -131,7 +130,6 @@ router.get('/:id', async (req, res) => {
                 }],
                 order: [['createdAt', 'DESC']]
             });
-            console.log(`[${new Date().toISOString()}] Successfully loaded ${pendingInvitations.length} pending invitations with association`);
         } catch (associationError) {
             console.error(`[${new Date().toISOString()}] Association error, falling back to basic query:`, associationError);
             // Fallback: get invitations without the association

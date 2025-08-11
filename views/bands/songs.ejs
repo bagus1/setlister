@@ -227,7 +227,6 @@
             card.addEventListener('click', function () {
                 // Prevent multiple rapid clicks
                 if (isLoading) {
-                    console.log('Card is loading, ignoring click');
                     return;
                 }
 
@@ -236,7 +235,6 @@
                 const isChecked = checkbox.checked;
                 const bandId = <%= band.id %>;
 
-                console.log(`BEFORE: Song ${songId}, isChecked: ${isChecked}, checkbox.checked: ${checkbox.checked}`);
 
                 // Set loading state with spinner
                 isLoading = true;
@@ -249,7 +247,6 @@
 
                 // Toggle the checkbox state optimistically
                 checkbox.checked = !isChecked;
-                console.log(`AFTER TOGGLE: checkbox.checked: ${checkbox.checked}`);
 
                 // Update visual state optimistically
                 if (!isChecked) {
@@ -265,8 +262,6 @@
                     `/bands/${bandId}/songs/${songId}` :
                     `/bands/${bandId}/songs/${songId}/remove`;
 
-                console.log(`${operation}ing song ${songId} to/from band ${bandId}`);
-
                 fetch(url, {
                     method: method,
                     headers: {
@@ -274,7 +269,6 @@
                     }
                 })
                     .then(response => {
-                        console.log(`Response status: ${response.status}`);
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
@@ -282,7 +276,6 @@
                     })
                     .then(data => {
                         if (data.success) {
-                            console.log(`Song ${operation}ed successfully`);
 
                             // SUCCESS: Ensure visual state matches the operation that just succeeded
                             if (operation === 'add') {
@@ -294,8 +287,6 @@
                                 checkbox.checked = false;
                                 this.classList.remove('border-primary', 'bg-light');
                             }
-
-                            console.log(`SUCCESS: Final state - checkbox.checked: ${checkbox.checked}`);
 
                             // Success animation
                             this.classList.add('success-flash');
@@ -353,8 +344,6 @@
                         if (currentSpinner) {
                             currentSpinner.remove();
                         }
-
-                        console.log(`${operation} operation completed for song ${songId}`);
                     });
             });
         });

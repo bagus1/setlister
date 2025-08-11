@@ -7,8 +7,6 @@ if (process.env.SENDGRID_API_KEY) {
 
 const sendEmail = async (to, subject, content) => {
     const fromEmail = process.env.FROM_EMAIL || 'noreply@setlistmanager.com';
-    console.log('DEBUG: FROM_EMAIL environment variable:', process.env.FROM_EMAIL);
-    console.log('DEBUG: Using from email:', fromEmail);
 
     const msg = {
         to,
@@ -38,8 +36,6 @@ const sendBandInvitation = async (invitation, band, inviterName) => {
     const invitationUrl = `${baseUrl}/invite/${invitation.token}`;
 
     const fromEmail = process.env.FROM_EMAIL || 'noreply@setlistmanager.com';
-    console.log('DEBUG: FROM_EMAIL environment variable:', process.env.FROM_EMAIL);
-    console.log('DEBUG: Using from email:', fromEmail);
 
     const msg = {
         to: invitation.email,

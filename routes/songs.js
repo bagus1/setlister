@@ -231,7 +231,8 @@ router.post(
       }
 
       // Calculate total time in seconds
-      const totalTime = parseInt(minutes) * 60 + parseInt(seconds);
+      const totalTime =
+        (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
 
       // Handle vocalist
       let vocalistId = null;
@@ -452,20 +453,14 @@ router.post(
     body("artist").optional().trim(),
     body("vocalist").optional().trim(),
     body("key").optional(),
-    body("time")
+    body("minutes")
       .optional()
-      .custom((value) => {
-        // Allow completely empty values
-        if (!value || value === "" || value === null || value === undefined) {
-          return true;
-        }
-        // If a value is provided, validate it
-        const numValue = Number(value);
-        if (isNaN(numValue) || numValue < 0) {
-          throw new Error("Time must be a positive number");
-        }
-        return true;
-      }),
+      .isInt({ min: 0 })
+      .withMessage("Minutes must be a positive number"),
+    body("seconds")
+      .optional()
+      .isInt({ min: 0, max: 59 })
+      .withMessage("Seconds must be between 0 and 59"),
     body("bpm")
       .optional()
       .custom((value) => {
@@ -513,7 +508,15 @@ router.post(
         return res.redirect("/songs");
       }
 
-      const { title, artist, vocalist, key, time, bpm } = req.body;
+      const {
+        title,
+        artist,
+        vocalist,
+        key,
+        minutes = 0,
+        seconds = 0,
+        bpm,
+      } = req.body;
 
       console.log("=== SONG EDIT DEBUG ===");
       console.log("Form data received:", {
@@ -521,7 +524,8 @@ router.post(
         artist,
         vocalist,
         key,
-        time,
+        minutes,
+        seconds,
         bpm,
       });
       console.log(
@@ -533,7 +537,8 @@ router.post(
       console.log("Artist trimmed:", artist ? artist.trim() : "undefined");
 
       // Calculate total time in seconds
-      const totalTime = time ? parseInt(time) : null;
+      const totalTime =
+        (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
 
       // Convert BPM to proper value
       let bpmValue = null;

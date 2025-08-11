@@ -93,28 +93,82 @@
             toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | indent outdent | link table | removeformat',
             menubar: false,
             content_style: `
-                body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
-                .mce-content-body { font-weight: 600; }
-                .mce-content-body strong, .mce-content-body b { font-weight: 800; }
-                .mce-content-body .font-serif { font-family: "Times New Roman", Times, serif; }
-                .mce-content-body .font-monospace { font-family: "Courier New", Courier, monospace; }
+                body { 
+                    font-family: Arial, Helvetica, sans-serif !important; 
+                    font-size: 14px !important; 
+                    font-weight: 600 !important; 
+                    line-height: 1.3 !important; 
+                }
+                p { 
+                    margin: 0.2em 0 !important; 
+                    line-height: 1.2 !important; 
+                    font-weight: 600 !important;
+                }
+                p:empty { 
+                    margin: 0.1em 0 !important; 
+                    height: 0.1em !important; 
+                    min-height: 0.1em !important;
+                }
+                strong, b { 
+                    font-weight: 800 !important; 
+                }
+                .font-serif { 
+                    font-family: "Times New Roman", Times, serif !important; 
+                }
+                .font-sans { 
+                    font-family: Arial, Helvetica, sans-serif !important; 
+                }
+                .font-monospace { 
+                    font-family: "Courier New", Courier, monospace !important; 
+                }
             `,
             setup: function (editor) {
-                // Set existing content
-                <% if (gigDocument.content && gigDocument.content.length > 0) { %>
-                    editor.setContent(`<%- gigDocument.content %>`);
-                    console.log('Existing content loaded into TinyMCE');
-                <% } %>
+                // Set existing content after editor is ready
+                editor.on('init', function () {
+                    <% if (gigDocument.content && gigDocument.content.length > 0) { %>
+                        editor.setContent(`<%- gigDocument.content %>`);
+                        console.log('Existing content loaded into TinyMCE');
+                    <% } %>
+                });
 
-                    // Update hidden input before form submission
-                    editor.on('submit', function () {
-                        var content = editor.getContent();
-                        var hiddenInput = document.getElementById('content-input');
-                        if (hiddenInput) {
-                            hiddenInput.value = content;
-                            console.log('Content updated in hidden input');
-                        }
-                    });
+                // Clean up pasted content from Google Docs
+                editor.on('PastePreProcess', function (e) {
+                    // Remove bogus br tags and empty paragraphs
+                    e.content = e.content.replace(/<br[^>]*data-mce-bogus="1"[^>]*>/gi, '');
+                    e.content = e.content.replace(/<p>\s*<\/p>/gi, '<p>&nbsp;</p>');
+                });
+
+                // Custom keyboard shortcuts - using keydown events for better control
+                editor.on('keydown', function (e) {
+                    // Mac: Cmd+] for indent, Cmd+[ for outdent
+                    if (e.metaKey && e.key === ']') {
+                        e.preventDefault();
+                        editor.execCommand('Indent');
+                    }
+                    if (e.metaKey && e.key === '[') {
+                        e.preventDefault();
+                        editor.execCommand('Outdent');
+                    }
+                    // Windows/Linux: Ctrl+] for indent, Ctrl+[ for outdent
+                    if (e.ctrlKey && e.key === ']') {
+                        e.preventDefault();
+                        editor.execCommand('Indent');
+                    }
+                    if (e.ctrlKey && e.key === '[') {
+                        e.preventDefault();
+                        editor.execCommand('Outdent');
+                    }
+                });
+
+                // Update textarea before form submission
+                editor.on('submit', function () {
+                    var content = editor.getContent();
+                    var textarea = document.getElementById('editor');
+                    if (textarea) {
+                        textarea.value = content;
+                        console.log('Content updated in textarea');
+                    }
+                });
             }
         });
 
@@ -123,7 +177,7 @@
         console.log('Gig document form found:', !!form);
         console.log('Form action:', form ? form.action : 'N/A');
 
-        // Update hidden input before form submission
+        // Update textarea before form submission
         form.addEventListener('submit', function (e) {
             console.log('=== FORM SUBMISSION DEBUG ===');
             console.log('Form submit event triggered');
@@ -133,17 +187,12 @@
             console.log('TinyMCE content:', content);
             console.log('TinyMCE content length:', content.length);
 
-            // Get the hidden input element
-            var hiddenInput = document.getElementById('content-input');
-            console.log('Hidden input element found:', !!hiddenInput);
-            console.log('Hidden input current value:', hiddenInput.value);
-
-            // Update the hidden input
-            hiddenInput.value = content;
-            console.log('Hidden input value after update:', hiddenInput.value);
-
-            // Verify the update worked
-            console.log('Final hidden input value:', document.getElementById('content-input').value);
+            // Update the textarea with TinyMCE content
+            var textarea = document.getElementById('editor');
+            if (textarea) {
+                textarea.value = content;
+                console.log('Textarea updated with TinyMCE content');
+            }
 
             // Don't prevent default - let the form submit
             console.log('Allowing form submission to proceed');

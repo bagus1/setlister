@@ -11,6 +11,7 @@ const {
 const { Op } = require("sequelize");
 const crypto = require("crypto");
 const { sendEmail } = require("../utils/emailService");
+const logger = require("../utils/logger");
 
 const router = express.Router();
 
@@ -111,9 +112,6 @@ router.post(
       });
 
       // Check for pending invitations for this email (case insensitive)
-      console.log(
-        `[${new Date().toISOString()}] REGISTER: Checking for pending invitations for email: ${emailLower}`
-      );
       const pendingInvitations = await BandInvitation.findAll({
         where: {
           email: { [Op.like]: emailLower }, // Case insensitive search
@@ -122,9 +120,6 @@ router.post(
         },
         include: [{ model: Band, as: "Band" }],
       });
-      console.log(
-        `[${new Date().toISOString()}] REGISTER: Found ${pendingInvitations.length} pending invitations for ${emailLower}`
-      );
 
       // Automatically add user to bands they have pending invitations for
       if (pendingInvitations.length > 0) {
@@ -155,10 +150,6 @@ router.post(
             { where: { id: { [Op.in]: usedInvitations } } }
           );
         }
-
-        console.log(
-          `[${new Date().toISOString()}] User ${user.email} automatically added to ${pendingInvitations.length} bands during registration`
-        );
       }
 
       req.session.user = {
@@ -166,6 +157,9 @@ router.post(
         username: user.username,
         email: user.email,
       };
+
+      // Log successful registration
+      logger.logAuthEvent("registration successful", user.id);
 
       if (pendingInvitations.length > 0) {
         req.flash(
@@ -238,9 +232,6 @@ router.post(
       }
 
       // Check for pending invitations for this email (case insensitive)
-      console.log(
-        `[${new Date().toISOString()}] LOGIN: Checking for pending invitations for email: ${emailLower}`
-      );
       let pendingInvitations = [];
       try {
         pendingInvitations = await BandInvitation.findAll({
@@ -250,9 +241,6 @@ router.post(
             expiresAt: { [Op.gt]: new Date() },
           },
         });
-        console.log(
-          `[${new Date().toISOString()}] LOGIN: Found ${pendingInvitations.length} pending invitations for ${emailLower}`
-        );
 
         if (pendingInvitations.length > 0) {
           console.log(
@@ -317,6 +305,9 @@ router.post(
         email: user.email,
       };
 
+      // Log successful login
+      logger.logAuthEvent("login successful", user.id);
+
       if (pendingInvitations.length > 0) {
         req.flash(
           "success",
@@ -339,10 +330,14 @@ router.post(
 
 // GET /auth/logout - Handle logout (for links)
 router.get("/logout", (req, res) => {
+  const userId = req.session.user ? req.session.user.id : null;
+
   if (req.session) {
     req.session.destroy((err) => {
       if (err) {
-        console.error("Logout error:", err);
+        logger.logError("Logout error", err);
+      } else if (userId) {
+        logger.logAuthEvent("logout", userId);
       }
       res.redirect("/");
     });
@@ -353,10 +348,14 @@ router.get("/logout", (req, res) => {
 
 // POST /auth/logout - Handle logout (for forms)
 router.post("/logout", (req, res) => {
+  const userId = req.session.user ? req.session.user.id : null;
+
   if (req.session) {
     req.session.destroy((err) => {
       if (err) {
-        console.error("Logout error:", err);
+        logger.logError("Logout error", err);
+      } else if (userId) {
+        logger.logAuthEvent("logout", userId);
       }
       res.redirect("/");
     });
@@ -379,17 +378,8 @@ router.post(
   "/forgot-password",
   [body("email").isEmail().withMessage("Please enter a valid email address")],
   async (req, res) => {
-    console.log(
-      `[${new Date().toISOString()}] Forgot password POST request received:`,
-      req.body
-    );
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log(
-        `[${new Date().toISOString()}] Validation errors:`,
-        errors.array()
-      );
       return res.render("auth/forgot-password", {
         title: "Forgot Password",
         errors: errors.array(),
@@ -400,16 +390,10 @@ router.post(
     try {
       const { email } = req.body;
       const emailLower = email.toLowerCase();
-      console.log(
-        `[${new Date().toISOString()}] Processing password reset for email: ${emailLower}`
-      );
 
       // Check if user exists (case insensitive)
       const user = await User.findOne({ where: { email: emailLower } });
       if (!user) {
-        console.log(
-          `[${new Date().toISOString()}] User not found for email: ${emailLower}`
-        );
         // Don't reveal if email exists or not for security
         req.flash(
           "success",
@@ -417,10 +401,6 @@ router.post(
         );
         return res.redirect("/auth/forgot-password");
       }
-
-      console.log(
-        `[${new Date().toISOString()}] User found, generating reset token for: ${emailLower}`
-      );
 
       // Generate secure token
       const token = crypto.randomBytes(32).toString("hex");
@@ -432,10 +412,6 @@ router.post(
         token,
         expiresAt,
       });
-
-      console.log(
-        `[${new Date().toISOString()}] Reset token created for: ${emailLower}`
-      );
 
       // Send email
       const baseUrl =
@@ -454,9 +430,6 @@ router.post(
 
       try {
         await sendEmail(emailLower, "Password Reset Request", emailContent);
-        console.log(
-          `[${new Date().toISOString()}] Password reset email sent to: ${emailLower}`
-        );
       } catch (emailError) {
         console.error(
           `[${new Date().toISOString()}] Failed to send password reset email:`,
@@ -585,9 +558,6 @@ router.post(
         },
       });
 
-      console.log(
-        `[${new Date().toISOString()}] Password reset successful for user: ${emailLower}`
-      );
       req.flash(
         "success",
         "Your password has been reset successfully. You can now log in with your new password."

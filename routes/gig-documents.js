@@ -52,6 +52,7 @@ router.get("/:songId/docs", async (req, res) => {
       gigDocuments,
       getTypeIcon,
       getTypeDisplayName,
+      currentUrl: req.originalUrl,
     });
   } catch (error) {
     console.error("List gig documents error:", error);

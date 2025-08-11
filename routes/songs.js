@@ -384,6 +384,7 @@ router.get("/:id", async (req, res) => {
       getLinkDisplayText,
       getTypeIcon,
       getTypeDisplayName,
+      currentUrl: req.originalUrl,
     });
   } catch (error) {
     console.error("Song show error:", error);

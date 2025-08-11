@@ -87,88 +87,15 @@
 
 <!-- TinyMCE -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
+<script src="/js/gig-document-editor.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        console.log('=== DOM LOADED - TINYMCE INITIALIZING ===');
+        console.log('=== DOM LOADED - GIG DOCUMENT EDITOR INITIALIZING ===');
 
-        // Initialize TinyMCE editor
-        tinymce.init({
-            selector: '#editor',
-            height: 400,
-            plugins: 'table lists link',
-            toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | indent outdent | link table | removeformat',
-            menubar: false,
-            content_style: `
-                body { 
-                    font-family: Arial, Helvetica, sans-serif !important; 
-                    font-size: 14px !important; 
-                    font-weight: 600 !important; 
-                    line-height: 1.3 !important; 
-                }
-                p { 
-                    margin: 0.2em 0 !important; 
-                    line-height: 1.2 !important; 
-                    font-weight: 600 !important;
-                }
-                p:empty { 
-                    margin: 0.1em 0 !important; 
-                    height: 0.1em !important; 
-                    min-height: 0.1em !important;
-                }
-                strong, b { 
-                    font-weight: 800 !important; 
-                }
-                .font-serif { 
-                    font-family: "Times New Roman", Times, serif !important; 
-                }
-                .font-sans { 
-                    font-family: Arial, Helvetica, sans-serif !important; 
-                }
-                .font-monospace { 
-                    font-family: "Courier New", Courier, monospace !important; 
-                }
-            `,
-            setup: function (editor) {
-                // Clean up pasted content from Google Docs
-                editor.on('PastePreProcess', function (e) {
-                    // Remove bogus br tags and empty paragraphs
-                    e.content = e.content.replace(/<br[^>]*data-mce-bogus="1"[^>]*>/gi, '');
-                    e.content = e.content.replace(/<p>\s*<\/p>/gi, '<p>&nbsp;</p>');
-                });
-
-                // Custom keyboard shortcuts - using keydown events for better control
-                editor.on('keydown', function (e) {
-                    // Mac: Cmd+] for indent, Cmd+[ for outdent
-                    if (e.metaKey && e.key === ']') {
-                        e.preventDefault();
-                        editor.execCommand('Indent');
-                    }
-                    if (e.metaKey && e.key === '[') {
-                        e.preventDefault();
-                        editor.execCommand('Outdent');
-                    }
-                    // Windows/Linux: Ctrl+] for indent, Ctrl+[ for outdent
-                    if (e.ctrlKey && e.key === ']') {
-                        e.preventDefault();
-                        editor.execCommand('Indent');
-                    }
-                    if (e.ctrlKey && e.key === '[') {
-                        e.preventDefault();
-                        editor.execCommand('Outdent');
-                    }
-                });
-
-                // Update hidden input before form submission
-                editor.on('submit', function () {
-                    var content = editor.getContent();
-                    var hiddenInput = document.getElementById('content');
-                    if (hiddenInput) {
-                        hiddenInput.value = content;
-                        console.log('Content updated in hidden input');
-                    }
-                });
-            }
+        // Initialize the shared editor
+        const editor = new GigDocumentEditor('editor', {
+            formSelector: '#content'
         });
 
         // Update hidden input before form submission

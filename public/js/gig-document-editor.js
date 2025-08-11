@@ -12,9 +12,13 @@ class GigDocumentEditor {
     tinymce.init({
       selector: `#${this.editorId}`,
       height: 400,
-      plugins: "table lists link",
+      plugins: "table lists link lineheight",
       toolbar:
-        "undo redo | formatselect fontsize fontfamily | bold italic underline | forecolor backcolor | alignleft aligncenter alignright | bullist numlist | indent outdent | link table | removeformat",
+        "undo redo | formatselect fontsize fontfamily | indent outdent | bold italic underline strikethrough | forecolor backcolor | lineheight | alignleft aligncenter alignright | bullist numlist | link table | removeformat",
+      line_height_formats:
+        "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 1.2 1.4 1.6 1.8 2 2.5 3",
+      extended_valid_elements: "span[style]",
+      custom_elements: "~span",
       menubar: false,
       font_size_formats:
         "5px 6px 7px 8px 9px 10px 11px 12px 13px 14px 15px 16px 17px 18px 19px 20px 21px 22px 23px 24px",
@@ -24,13 +28,12 @@ class GigDocumentEditor {
                 body { 
                     font-family: Arial, Helvetica, sans-serif !important; 
                     font-size: 14px !important; 
-                    font-weight: 600 !important; 
-                    line-height: 1.3 !important; 
+                    font-weight: 500 !important; 
+                    /* Allow line-height to be controlled by editor options */
                 }
                 p { 
                     margin: 0.2em 0 !important; 
-                    line-height: 1.2 !important; 
-                    font-weight: 600 !important;
+                    font-weight: 500 !important;
                 }
                 p:empty { 
                     margin: 0.1em 0 !important; 
@@ -38,7 +41,7 @@ class GigDocumentEditor {
                     min-height: 0.1em !important;
                 }
                 strong, b { 
-                    font-weight: 800 !important; 
+                    font-weight: 700 !important; 
                 }
                 .font-serif { 
                     font-family: "Times New Roman", Times, serif !important; 
@@ -49,6 +52,7 @@ class GigDocumentEditor {
                 .font-monospace { 
                     font-family: "Courier New", Courier, monospace !important; 
                 }
+  
             `,
       setup: (editor) => {
         this.editor = editor;

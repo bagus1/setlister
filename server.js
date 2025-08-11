@@ -141,7 +141,7 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 
 // Sync database and start server
-db.sequelize.sync({ alter: true }).then(() => {
+db.sequelize.sync().then(() => {
     console.log(`[${new Date().toISOString()}] Database synced successfully`);
     server.listen(PORT, () => {
         console.log(`[${new Date().toISOString()}] Server running on port ${PORT}`);

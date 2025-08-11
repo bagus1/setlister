@@ -16,7 +16,7 @@ class GigDocumentEditor {
       toolbar:
         "undo redo | formatselect fontsize fontfamily | indent outdent | bold italic underline strikethrough | forecolor backcolor | lineheight | alignleft aligncenter alignright | bullist numlist | link table | removeformat",
       line_height_formats:
-        "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 1.2 1.4 1.6 1.8 2 2.5 3",
+        "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 1.05 1.1 1.15 1.2 1.4 1.6 1.8 2 2.5 3",
       extended_valid_elements: "span[style]",
       custom_elements: "~span",
       menubar: false,

@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 const { Song, Artist, Vocalist, sequelize } = require("../models");
 const { requireAuth } = require("./auth");
 const { Op } = require("sequelize");
+const logger = require("../utils/logger");
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.get("/api/artists/search", async (req, res) => {
       }))
     );
   } catch (error) {
-    console.error("Artist search error:", error);
+    logger.logError("Artist search error", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -55,7 +56,7 @@ router.get("/api/vocalists/search", async (req, res) => {
       }))
     );
   } catch (error) {
-    console.error("Vocalist search error:", error);
+    logger.logError("Vocalist search error", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -73,7 +74,7 @@ router.get("/api/song/:id", async (req, res) => {
 
     res.json(song);
   } catch (error) {
-    console.error("Get song error:", error);
+    logger.logError("Get song error", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -102,7 +103,7 @@ router.get("/", async (req, res) => {
       loggedIn: !!req.session.user,
     });
   } catch (error) {
-    console.error("Songs index error:", error);
+    logger.logError("Songs index error", error);
     req.flash("error", "Error loading songs");
     res.redirect("/");
   }
@@ -125,7 +126,7 @@ router.get("/new", requireAuth, async (req, res) => {
       vocalists,
     });
   } catch (error) {
-    console.error("New song form error:", error);
+    logger.logError("New song form error", error);
     req.flash("error", "Error loading form");
     res.redirect("/songs");
   }
@@ -176,24 +177,6 @@ router.post(
         bpm,
       } = req.body;
 
-      console.log("=== SONG CREATION DEBUG ===");
-      console.log("Form data received:", {
-        title,
-        artist,
-        vocalist,
-        key,
-        minutes,
-        seconds,
-        bpm,
-      });
-      console.log("BPM value type:", typeof bpm, "BPM value:", bpm);
-      console.log(
-        "Artist value:",
-        artist,
-        "length:",
-        artist ? artist.length : "undefined"
-      );
-
       // Check for duplicate song (case-insensitive)
       const { Sequelize } = require("sequelize");
       const existingSong = await Song.findOne({
@@ -209,9 +192,6 @@ router.post(
         : null;
 
       if (!errors.isEmpty() || duplicateWarning) {
-        console.log("Validation errors:", errors.array());
-        console.log("Duplicate warning:", duplicateWarning);
-
         const artists = await Artist.findAll({
           order: [["name", "ASC"]],
         });
@@ -237,13 +217,11 @@ router.post(
       // Handle vocalist
       let vocalistId = null;
       if (vocalist && vocalist.trim()) {
-        console.log("Creating/finding vocalist:", vocalist);
         const [vocalistRecord] = await Vocalist.findOrCreate({
           where: { name: vocalist.trim() },
           defaults: { name: vocalist.trim() },
         });
         vocalistId = vocalistRecord.id;
-        console.log("Vocalist ID:", vocalistId);
       }
 
       // Convert BPM to proper value
@@ -253,7 +231,6 @@ router.post(
       } else if (bpm && typeof bpm === "number") {
         bpmValue = bpm;
       }
-      console.log("Processed BPM value:", bpmValue);
 
       // Create song
       const song = await Song.create({
@@ -264,11 +241,8 @@ router.post(
         vocalistId,
       });
 
-      console.log("Song created:", song.id);
-
       // Handle artist
       if (artist && artist.trim()) {
-        console.log("Creating/finding artist:", artist);
         const [artistRecord] = await Artist.findOrCreate({
           where: Sequelize.where(
             Sequelize.fn("LOWER", Sequelize.col("name")),
@@ -276,15 +250,13 @@ router.post(
           ),
           defaults: { name: artist.trim() },
         });
-        console.log("Artist record:", artistRecord.id, artistRecord.name);
         await song.addArtist(artistRecord);
-        console.log("Artist added to song");
       }
 
       req.flash("success", "Song added successfully");
       res.redirect(`/songs/${song.id}`);
     } catch (error) {
-      console.error("Create song error:", error);
+      logger.logError("Create song error", error);
       req.flash("error", "Error creating song");
       res.redirect("/songs/new");
     }
@@ -388,7 +360,7 @@ router.get("/:id", async (req, res) => {
       currentUrl: req.originalUrl,
     });
   } catch (error) {
-    console.error("Song show error:", error);
+    logger.logError("Song show error", error);
     req.flash("error", "Error loading song");
     res.redirect("/songs");
   }
@@ -396,11 +368,6 @@ router.get("/:id", async (req, res) => {
 
 // GET /songs/:id/edit - Show edit song form
 router.get("/:id/edit", requireAuth, async (req, res) => {
-  console.log("=== GET EDIT FORM ROUTE HIT ===");
-  console.log("URL:", req.url);
-  console.log("Method:", req.method);
-  console.log("Params:", req.params);
-  console.log("User:", req.session.user);
   try {
     const song = await Song.findByPk(req.params.id, {
       include: ["Artists", "Vocalist"],
@@ -419,10 +386,6 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       order: [["name", "ASC"]],
     });
 
-    console.log("=== RENDERING EDIT FORM ===");
-    console.log("Song found:", song.title, "ID:", song.id);
-    console.log("Artists count:", artists.length);
-    console.log("Vocalists count:", vocalists.length);
     res.render("songs/edit", {
       title: `Edit ${song.title}`,
       song,
@@ -430,9 +393,8 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       vocalists,
     });
   } catch (error) {
-    console.error("Edit song form error:", error);
-    req.flash("error", "Error loading song");
-    res.redirect("/songs");
+    logger.logError("Edit song form error", error);
+    req.redirect("/songs");
   }
 });
 
@@ -440,14 +402,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
 router.post(
   "/:id/update",
   requireAuth,
-  (req, res, next) => {
-    console.log("=== POST UPDATE ROUTE HIT ===");
-    console.log("URL:", req.url);
-    console.log("Method:", req.method);
-    console.log("Params:", req.params);
-    console.log("User:", req.session.user);
-    next();
-  },
+
   [
     body("title").notEmpty().withMessage("Song title is required"),
     body("artist").optional().trim(),
@@ -518,24 +473,6 @@ router.post(
         bpm,
       } = req.body;
 
-      console.log("=== SONG EDIT DEBUG ===");
-      console.log("Form data received:", {
-        title,
-        artist,
-        vocalist,
-        key,
-        minutes,
-        seconds,
-        bpm,
-      });
-      console.log(
-        "Artist value:",
-        artist,
-        "length:",
-        artist ? artist.length : "undefined"
-      );
-      console.log("Artist trimmed:", artist ? artist.trim() : "undefined");
-
       // Calculate total time in seconds
       const totalTime =
         (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
@@ -551,13 +488,11 @@ router.post(
       // Handle vocalist
       let vocalistId = null;
       if (vocalist && vocalist.trim()) {
-        console.log("Creating/finding vocalist for edit:", vocalist);
         const [vocalistRecord] = await Vocalist.findOrCreate({
           where: { name: vocalist.trim() },
           defaults: { name: vocalist.trim() },
         });
         vocalistId = vocalistRecord.id;
-        console.log("Vocalist ID for edit:", vocalistId);
       }
 
       // Update song (excluding title and artist which are now read-only)
@@ -574,7 +509,7 @@ router.post(
       req.flash("success", "Song updated successfully");
       res.redirect(`/songs/${song.id}`);
     } catch (error) {
-      console.error("Update song error:", error);
+      logger.logError("Update song error", error);
       req.flash("error", "Error updating song");
       res.redirect(`/songs/${req.params.id}/edit`);
     }
@@ -585,29 +520,18 @@ router.post(
 
 // DELETE /songs/:id - Delete song
 router.delete("/:id", requireAuth, async (req, res) => {
-  console.log(
-    `[${new Date().toISOString()}] DELETE song route hit:`,
-    req.params
-  );
   try {
     const song = await Song.findByPk(req.params.id);
     if (!song) {
-      console.log(
-        `[${new Date().toISOString()}] Song ${req.params.id} not found`
-      );
       req.flash("error", "Song not found");
       return res.redirect("/songs");
     }
 
-    console.log(`[${new Date().toISOString()}] Deleting song:`, song.title);
     await song.destroy();
-    console.log(
-      `[${new Date().toISOString()}] Successfully deleted song ${req.params.id}`
-    );
     req.flash("success", "Song deleted successfully");
     res.redirect("/songs");
   } catch (error) {
-    console.error("Delete song error:", error);
+    logger.logError("Delete song error", error);
     req.flash("error", "Error deleting song");
     res.redirect("/songs");
   }

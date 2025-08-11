@@ -6,6 +6,7 @@ const expressLayouts = require("express-ejs-layouts");
 const http = require("http");
 const socketIo = require("socket.io");
 const path = require("path");
+const requestLogger = require("./middleware/logging");
 
 // Load environment variables from .env file
 require("dotenv").config();
@@ -45,6 +46,9 @@ app.use(
     cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 }, // 7 days
   })
 );
+
+// Request logging middleware (must come after session middleware)
+app.use(requestLogger);
 
 app.use(flash());
 

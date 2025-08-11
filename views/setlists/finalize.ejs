@@ -217,9 +217,16 @@
                         <% } %>
 
                             <div class="d-grid gap-2">
-                                <a href="/setlists/<%= setlist.id %>/gig-view" target="_blank" class="btn btn-success">
-                                    <i class="bi bi-music-note-beamed"></i> Gig View
-                                </a>
+                                <div class="d-flex gap-2">
+                                    <a href="/setlists/<%= setlist.id %>/gig-view" target="_blank"
+                                        class="btn btn-success flex-fill">
+                                        <i class="bi bi-music-note-beamed"></i> Gig View
+                                    </a>
+                                    <button onclick="copyGigViewLink()" class="btn btn-outline-success"
+                                        title="Copy gig view link">
+                                        <i class="bi bi-link-45deg"></i> Copy Link
+                                    </button>
+                                </div>
 
                                 <a href="/setlists/<%= setlist.id %>/print" class="btn btn-outline-primary">
                                     <i class="bi bi-printer"></i> Print View
@@ -388,5 +395,33 @@
         }
 
         document.body.removeChild(textArea);
+    }
+
+    function copyGigViewLink() {
+        const gigViewUrl = `${window.location.origin}/setlists/<%= setlist.id %>/gig-view`;
+
+        if (navigator.clipboard && window.isSecureContext) {
+            // Modern approach
+            navigator.clipboard.writeText(gigViewUrl).then(() => {
+                // Show success feedback
+                const button = event.target.closest('button');
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                button.classList.remove('btn-outline-success');
+                button.classList.add('btn-success');
+
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-outline-success');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                fallbackCopyTextToClipboard(gigViewUrl);
+            });
+        } else {
+            // Fallback for older browsers
+            fallbackCopyTextToClipboard(gigViewUrl);
+        }
     }
 </script>

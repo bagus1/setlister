@@ -71,7 +71,10 @@
                                                 </span>
                                                 <div>
                                                     <h6 class="mb-1">
-                                                        <%= setlistSong.Song.title %>
+                                                        <a href="/songs/<%= setlistSong.Song.id %>"
+                                                            class="text-decoration-none text-dark">
+                                                            <%= setlistSong.Song.title %>
+                                                        </a>
                                                     </h6>
                                                     <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length>
                                                         0) { %>
@@ -232,7 +235,7 @@
                                             </div>
                                             <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) { %>
                                                 <small class="text-muted">by <%= setlistSong.Song.Artists[0].name %>
-                                                        </small>
+                                                </small>
                                                 <% } %>
                                         </div>
                                         <% if (setlistSong.Song.key) { %>

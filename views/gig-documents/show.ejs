@@ -159,17 +159,13 @@
         href="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.css">
 
     <style>
-        /* Tight line spacing for gig document content */
+        /* Line height styles - allow inline styles to override */
         .gig-document-content p {
             margin: 0.2em 0;
-            /* Very tight paragraph spacing */
-            line-height: 1.2;
-            /* Compact line height */
         }
 
         .gig-document-content {
-            line-height: 1.3;
-            /* Overall content spacing */
+            /* Allow inline line-height styles to take precedence */
         }
 
         /* Quill indentation classes */
@@ -328,7 +324,7 @@
             /* Focus only on the document content */
             .gig-document-content {
                 font-size: 11pt !important;
-                line-height: 1.2 !important;
+                /* Allow inline line-height styles to take precedence */
                 margin: 0 !important;
                 padding: 0 !important;
             }

@@ -8,15 +8,18 @@ class GigDocumentEditor {
   }
 
   init() {
-
     // Initialize TinyMCE editor
     tinymce.init({
       selector: `#${this.editorId}`,
       height: 400,
       plugins: "table lists link",
       toolbar:
-        "undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | indent outdent | link table | removeformat",
+        "undo redo | formatselect fontsize fontfamily | bold italic underline | forecolor backcolor | alignleft aligncenter alignright | bullist numlist | indent outdent | link table | removeformat",
       menubar: false,
+      font_size_formats:
+        "5px 6px 7px 8px 9px 10px 11px 12px 13px 14px 15px 16px 17px 18px 19px 20px 21px 22px 23px 24px",
+      font_family_formats:
+        "Andale Mono=andale mono,times; Arial=arial,helvetica,sans-serif; Arial Black=arial black,avant garde; Book Antiqua=book antiqua,palatino; Comic Sans MS=comic sans ms,sans-serif; Courier New=courier new,courier; Georgia=georgia,palatino; Helvetica=helvetica; Impact=impact,chicago; Symbol=symbol; Tahoma=tahoma,arial,helvetica,sans-serif; Terminal=terminal,monaco; Times New Roman=times new roman,times; Trebuchet MS=trebuchet ms,geneva; Verdana=verdana,geneva; Webdings=webdings; Wingdings=wingdings,zapf dingbats",
       content_style: `
                 body { 
                     font-family: Arial, Helvetica, sans-serif !important; 
@@ -55,7 +58,6 @@ class GigDocumentEditor {
   }
 
   setupEditor(editor) {
-
     // Set existing content after editor is ready
     editor.on("init", () => {
       if (this.options.existingContent) {

@@ -132,7 +132,7 @@
                     </div>
                     <% } else { %>
                         <p class="text-muted">
-                            <a href="/auth/login">Login</a> to edit songs or add new ones.
+                            <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a> to edit songs or add new ones.
                         </p>
                         <% } %>
             </div>
@@ -224,7 +224,7 @@
                 <% } else { %>
                     <div class="text-center">
                         <p class="text-muted mb-0">
-                            <a href="/auth/login">Login</a> to add new links for this song.
+                            <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a> to add new links for this song.
                         </p>
                     </div>
                 <% } %>
@@ -297,9 +297,9 @@
                                                             </div>
                                                         <% } else { %>
                                                             <div class="text-center">
-                                                                <p class="text-muted mb-0">
-                                                                    <a href="/auth/login">Login</a> to add new gig documents for this song.
-                                                                </p>
+                                                                                            <p class="text-muted mb-0">
+                                <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a> to add new gig documents for this song.
+                            </p>
                                                             </div>
                                                         <% } %>
                         </div>

@@ -140,7 +140,7 @@
                                     <div class="text-center">
                                         <small class="text-muted">
                                             Already have an account?
-                                            <a href="/auth/login" class="text-decoration-none">Log in here</a>
+                                            <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>" class="text-decoration-none">Log in here</a>
                                         </small>
                                     </div>
                                     <% } %>

@@ -88,9 +88,9 @@ app.get('/test-auth', (req, res) => {
         email: 'john.g.haig@gmail.com'
     };
     req.session.currentBandId = 1; // Set a default band
-    res.json({ 
-        success: true, 
-        message: 'Mock authentication created', 
+    res.json({
+        success: true,
+        message: 'Mock authentication created',
         user: req.session.user,
         currentBandId: req.session.currentBandId
     });
@@ -141,7 +141,7 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 
 // Sync database and start server
-db.sequelize.sync().then(() => {
+db.sequelize.sync({ alter: true }).then(() => {
     console.log(`[${new Date().toISOString()}] Database synced successfully`);
     server.listen(PORT, () => {
         console.log(`[${new Date().toISOString()}] Server running on port ${PORT}`);

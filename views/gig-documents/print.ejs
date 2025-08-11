@@ -7,6 +7,11 @@
     <title>
         <%= gigDocument.title %> - <%= gigDocument.Song.title %>
     </title>
+
+    <!-- Quill Better Table CSS for displaying tables -->
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.css">
+
     <style>
         body {
             margin: 0;
@@ -79,15 +84,15 @@
         }
 
         /* Quill font family classes */
-        .ql-font-serif {
+        .font-serif {
             font-family: "Times New Roman", Times, serif !important;
         }
 
-        .ql-font-sans {
+        .font-sans {
             font-family: Arial, Helvetica, sans-serif !important;
         }
 
-        .ql-font-monospace {
+        .font-monospace {
             font-family: "Courier New", Courier, monospace !important;
         }
 

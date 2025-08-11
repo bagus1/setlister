@@ -132,7 +132,7 @@
                     </div>
                     <% } else { %>
                         <p class="text-muted">
-                            <a href="/auth/login">Login</a> to edit songs or add new ones.
+                            <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a> to edit songs or add new ones.
                         </p>
                         <% } %>
             </div>
@@ -140,160 +140,153 @@
     </div>
 </div>
 
-<!-- Links Section - Only visible to logged in users -->
-<% if (loggedIn) { %>
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-link-45deg"></i> Links
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <!-- Existing Links -->
-                    <% if (song.Links && song.Links.length> 0) { %>
-                        <div class="mb-4">
-                            <div class="list-group">
-                                <% song.Links.forEach(link=> { %>
-                                    <a href="<%= link.url %>" target="_blank"
-                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
-                                        <div>
-                                            <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
-                                            <%= getLinkDisplayText(link) %>
-                                        </div>
-                                    </a>
-                                    <% }) %>
-                            </div>
+<!-- Links Section - Visible to all users, but add form only for logged in users -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-link-45deg"></i> Links
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Existing Links - Visible to all users -->
+                <% if (song.Links && song.Links.length> 0) { %>
+                    <div class="mb-4">
+                        <div class="list-group">
+                            <% song.Links.forEach(link=> { %>
+                                <a href="<%= link.url %>" target="_blank"
+                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                    <div>
+                                        <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                        <%= getLinkDisplayText(link) %>
+                                    </div>
+                                </a>
+                                <% }) %>
                         </div>
-                        <% } else { %>
-                            <p class="text-muted mb-4">No links added yet.</p>
-                            <% } %>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted mb-4">No links added yet.</p>
+                <% } %>
 
-                                <!-- Add New Link Form -->
-                                <div>
-                                    <h6>Add New Link:</h6>
-                                    <form action="/songs/<%= song.id %>/links" method="POST">
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <label for="type" class="form-label">Type</label>
-                                                <select class="form-select" id="type" name="type" required>
-                                                    <option value="">Select type...</option>
-                                                    <option value="youtube">YouTube</option>
-                                                    <option value="spotify">Spotify</option>
-                                                    <option value="apple-music">Apple Music</option>
-                                                    <option value="soundcloud">SoundCloud</option>
-                                                    <option value="bandcamp">Bandcamp</option>
-                                                    <option value="lyrics">Lyrics</option>
-                                                    <option value="tab">Tab</option>
-                                                    <option value="bass tab">Bass Tab</option>
-                                                    <option value="chords">Chords</option>
-                                                    <option value="guitar tutorial">Guitar Tutorial</option>
-                                                    <option value="bass tutorial">Bass Tutorial</option>
-                                                    <option value="keyboard tutorial">Keyboard Tutorial</option>
-                                                    <option value="audio">Audio File</option>
-                                                    <option value="sheet-music">Sheet Music</option>
-                                                    <option value="backing-track">Backing Track</option>
-                                                    <option value="karaoke">Karaoke</option>
-                                                    <option value="horn chart">Horn Chart</option>
-                                                    <option value="other">Other</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label for="description" class="form-label">Description
-                                                    (Optional)</label>
-                                                <input type="text" class="form-control" id="description"
-                                                    name="description"
-                                                    placeholder="e.g., Official video, Live version, etc.">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label for="url" class="form-label">URL</label>
-                                                <input type="url" class="form-control" id="url" name="url"
-                                                    placeholder="https://..." required>
-                                            </div>
-                                            <div class="col-md-1">
-                                                <label class="form-label">&nbsp;</label>
-                                                <button type="submit" class="btn btn-primary w-100">
-                                                    <i class="bi bi-plus"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </form>
+                <!-- Add New Link Form - Only for logged in users -->
+                <% if (loggedIn) { %>
+                    <div>
+                        <h6>Add New Link:</h6>
+                        <form action="/songs/<%= song.id %>/links" method="POST">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label for="type" class="form-label">Type</label>
+                                    <select class="form-select" id="type" name="type" required>
+                                        <option value="">Select type...</option>
+                                        <option value="youtube">YouTube</option>
+                                        <option value="video">Video</option>
+                                        <option value="spotify">Spotify</option>
+                                        <option value="apple-music">Apple Music</option>
+                                        <option value="soundcloud">SoundCloud</option>
+                                        <option value="bandcamp">Bandcamp</option>
+                                        <option value="lyrics">Lyrics</option>
+                                        <option value="tab">Tab</option>
+                                        <option value="bass tab">Bass Tab</option>
+                                        <option value="chords">Chords</option>
+                                        <option value="guitar tutorial">Guitar Tutorial</option>
+                                        <option value="bass tutorial">Bass Tutorial</option>
+                                        <option value="keyboard tutorial">Keyboard Tutorial</option>
+                                        <option value="audio">Audio File</option>
+                                        <option value="sheet-music">Sheet Music</option>
+                                        <option value="backing-track">Backing Track</option>
+                                        <option value="karaoke">Karaoke</option>
+                                        <option value="horn chart">Horn Chart</option>
+                                        <option value="other">Other</option>
+                                    </select>
                                 </div>
-                </div>
+                                <div class="col-md-4">
+                                    <label for="description" class="form-label">Description
+                                        (Optional)</label>
+                                    <input type="text" class="form-control" id="description"
+                                        name="description"
+                                        placeholder="e.g., Official video, Live version, etc.">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="url" class="form-label">URL</label>
+                                    <input type="url" class="form-control" id="url" name="url"
+                                        placeholder="https://..." required>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                <% } else { %>
+                    <div class="text-center">
+                        <p class="text-muted mb-0">
+                            <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a> to add new links for this song.
+                        </p>
+                    </div>
+                <% } %>
             </div>
         </div>
     </div>
-    <% } else { %>
-        <!-- Login prompt for non-authenticated users -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <i class="bi bi-link-45deg fs-1 text-muted mb-3"></i>
-                        <h5>Song Links</h5>
-                        <p class="text-muted">
-                            <a href="/auth/login">Login</a> to view and manage links for this song.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <% } %>
+</div>
 
-            <!-- Gig Documents Section - Only visible to logged in users -->
-            <% if (loggedIn) { %>
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">
-                                    <i class="bi bi-file-earmark-text"></i> Gig Documents
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <% if (song.GigDocuments && song.GigDocuments.length> 0) { %>
-                                    <!-- Group by type -->
-                                    <% const groupedDocs={}; song.GigDocuments.forEach(doc=> {
-                                        if (!groupedDocs[doc.type]) groupedDocs[doc.type] = [];
-                                        groupedDocs[doc.type].push(doc);
-                                        });
-                                        %>
+            <!-- Gig Documents Section - Visible to all users, but add form only for logged in users -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-file-earmark-text"></i> Gig Documents
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Existing Gig Documents - Visible to all users -->
+                            <% if (song.GigDocuments && song.GigDocuments.length> 0) { %>
+                                <!-- Group by type -->
+                                <% const groupedDocs={}; song.GigDocuments.forEach(doc=> {
+                                    if (!groupedDocs[doc.type]) groupedDocs[doc.type] = [];
+                                    groupedDocs[doc.type].push(doc);
+                                    });
+                                    %>
 
-                                        <% Object.keys(groupedDocs).sort().forEach(type=> { %>
-                                            <% const docs=groupedDocs[type]; %>
-                                                <div class="mb-4">
-                                                    <h6 class="text-primary">
-                                                        <i class="bi bi-<%= getTypeIcon(type) %>"></i>
-                                                        <%= getTypeDisplayName(type) %>
-                                                            <span class="badge bg-secondary ms-2">
-                                                                <%= docs.length %> version<%= docs.length> 1 ? 's' : ''
-                                                                        %>
-                                                            </span>
-                                                    </h6>
-                                                    <div class="list-group">
-                                                        <% docs.forEach(function(doc) { %>
-                                                            <a href="/songs/<%= song.id %>/docs/<%= doc.id %>"
-                                                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
-                                                                <div>
-                                                                    <i class="bi bi-file-earmark-text"></i>
-                                                                    <%= doc.title %>
-                                                                </div>
-                                                                <div>
-                                                                    <small class="text-muted">Created: <%= new
-                                                                            Date(doc.createdAt).toLocaleDateString() %>
-                                                                    </small>
-                                                                </div>
-                                                            </a>
-                                                            <% }); %>
-                                                    </div>
+                                    <% Object.keys(groupedDocs).sort().forEach(type=> { %>
+                                        <% const docs=groupedDocs[type]; %>
+                                            <div class="mb-4">
+                                                <h6 class="text-primary">
+                                                    <i class="bi bi-<%= getTypeIcon(type) %>"></i>
+                                                    <%= getTypeDisplayName(type) %>
+                                                        <span class="badge bg-secondary ms-2">
+                                                            <%= docs.length %> version<%= docs.length> 1 ? 's' : ''
+                                                                    %>
+                                                        </span>
+                                                </h6>
+                                                <div class="list-group">
+                                                    <% docs.forEach(function(doc) { %>
+                                                        <a href="/songs/<%= song.id %>/docs/<%= doc.id %>"
+                                                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                                            <div>
+                                                                <i class="bi bi-file-earmark-text"></i>
+                                                                <%= doc.title %>
+                                                            </div>
+                                                            <div>
+                                                                <small class="text-muted">Created: <%= new
+                                                                        Date(doc.createdAt).toLocaleDateString() %>
+                                                                </small>
+                                                            </div>
+                                                        </a>
+                                                        <% }); %>
                                                 </div>
-                                                <% }); %>
-                                                    <% } else { %>
-                                                        <p class="text-muted mb-4">No gig documents created yet.</p>
-                                                        <% } %>
+                                            </div>
+                                            <% }); %>
+                                                <% } else { %>
+                                                    <p class="text-muted mb-4">No gig documents created yet.</p>
+                                                    <% } %>
 
-                                                            <!-- Add New Gig Document -->
+                                                        <!-- Add New Gig Document - Only for logged in users -->
+                                                        <% if (loggedIn) { %>
                                                             <div>
                                                                 <h6>Add New Gig Document:</h6>
                                                                 <a href="/songs/<%= song.id %>/docs/new"
@@ -302,23 +295,14 @@
                                                                     Document
                                                                 </a>
                                                             </div>
-                            </div>
+                                                        <% } else { %>
+                                                            <div class="text-center">
+                                                                                            <p class="text-muted mb-0">
+                                <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a> to add new gig documents for this song.
+                            </p>
+                                                            </div>
+                                                        <% } %>
                         </div>
                     </div>
                 </div>
-                <% } else { %>
-                    <!-- Login prompt for non-authenticated users -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <i class="bi bi-file-earmark-text fs-1 text-muted mb-3"></i>
-                                    <h5>Gig Documents</h5>
-                                    <p class="text-muted">
-                                        <a href="/auth/login">Login</a> to view and manage gig documents for this song.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <% } %>
+            </div>

@@ -20,6 +20,9 @@
                     <% } %>
 
                         <form action="/auth/login" method="POST">
+                            <!-- Hidden field to preserve returnTo URL -->
+                            <input type="hidden" name="returnTo" value="<%= returnTo %>">
+                            
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
                                 <input type="email" class="form-control" id="email" name="email"

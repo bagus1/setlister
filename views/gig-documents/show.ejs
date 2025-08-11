@@ -21,10 +21,12 @@
                 <button onclick="window.open('?print=true', '_blank')" class="btn btn-primary">
                     <i class="bi bi-printer"></i> Print
                 </button>
+                <% if (loggedIn) { %>
                 <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>/edit"
                     class="btn btn-outline-secondary">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
+                <% } %>
                 <a href="/songs/<%= gigDocument.Song.id %>" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Back to Song
                 </a>
@@ -136,13 +138,12 @@
                     </div>
                     <div class="card-body">
                         <div class="d-grid gap-2">
+                            <% if (loggedIn) { %>
                             <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>/edit"
                                 class="btn btn-outline-primary btn-sm">
                                 <i class="bi bi-pencil"></i> Edit Content
                             </a>
-                            <a href="/songs/<%= gigDocument.Song.id %>/docs" class="btn btn-outline-secondary btn-sm">
-                                <i class="bi bi-list"></i> View All Documents
-                            </a>
+                            <% } %>
                             <a href="/songs/<%= gigDocument.Song.id %>" class="btn btn-outline-info btn-sm">
                                 <i class="bi bi-music-note"></i> View Song
                             </a>
@@ -152,6 +153,10 @@
             </div>
         </div>
     </div>
+
+    <!-- Quill Better Table CSS for displaying tables -->
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.css">
 
     <style>
         /* Tight line spacing for gig document content */
@@ -213,15 +218,15 @@
         }
 
         /* Quill font family classes */
-        .ql-font-serif {
+        .font-serif {
             font-family: "Times New Roman", Times, serif !important;
         }
 
-        .ql-font-sans {
+        .font-sans {
             font-family: Arial, Helvetica, sans-serif !important;
         }
 
-        .ql-font-monospace {
+        .font-monospace {
             font-family: "Courier New", Courier, monospace !important;
         }
 

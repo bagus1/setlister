@@ -25,8 +25,7 @@
 
                                 <div class="mb-3">
                                     <label for="content" class="form-label">Content</label>
-                                    <div id="editor" style="height: 400px;"></div>
-                                    <input type="hidden" name="content" id="content-input">
+                                    <textarea id="editor" name="content" style="height: 400px;"></textarea>
                                     <div class="form-text">Use the rich text editor above to edit your content</div>
                                 </div>
 
@@ -49,37 +48,26 @@
 
                                     <p class="small">
                                         <strong>Song:</strong>
-                                        <%= gigDocument.Song.title %>
-                                            <% if (gigDocument.Song.Artists && gigDocument.Song.Artists.length> 0) { %>
-                                                - <%= gigDocument.Song.Artists[0].name %>
-                                                    <% } %>
+                                        <%= gigDocument.Song.title %><br>
+                                            <strong>Type:</strong>
+                                            <%= gigDocument.getTypeDisplayName() %><br>
+                                                <strong>Version:</strong>
+                                                <%= gigDocument.version %><br>
+                                                    <strong>Created:</strong>
+                                                    <%= gigDocument.createdAt.toLocaleDateString() %><br>
+                                                        <strong>Updated:</strong>
+                                                        <%= gigDocument.updatedAt.toLocaleDateString() %>
                                     </p>
 
-                                    <p class="small">
-                                        <strong>Type:</strong>
-                                        <%= gigDocument.getTypeDisplayName() %>
-                                    </p>
-
-                                    <p class="small">
-                                        <strong>Version:</strong> v<%= gigDocument.version %>
-                                    </p>
-
-                                    <p class="small">
-                                        <strong>Created:</strong>
-                                        <%= new Date(gigDocument.createdAt).toLocaleDateString() %>
-                                    </p>
-
-                                    <div class="alert alert-info">
-                                        <h6><i class="bi bi-lightbulb"></i> Tips</h6>
-                                        <ul class="small mb-0">
-                                            <li>Use headings for sections</li>
-                                            <li>Use indentation for structure</li>
-                                            <li>Format chords in bold</li>
-                                            <li>Use lists for lyrics</li>
-                                            <li>Control font sizes precisely (8px to 100px)</li>
-                                            <li>Use smaller fonts to fit more content on one page</li>
-                                        </ul>
-                                    </div>
+                                    <h6 class="card-title">
+                                        <i class="bi bi-lightbulb"></i> Tips
+                                    </h6>
+                                    <ul class="small">
+                                        <li>Use the table button to create structured layouts</li>
+                                        <li>Apply monospace font to preserve spacing in tables</li>
+                                        <li>Use headers to organize your content</li>
+                                        <li>Save frequently to avoid losing changes</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -90,96 +78,45 @@
     </div>
 </div>
 
-<!-- Quill CSS -->
-<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-
-<!-- Quill JS -->
-<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<!-- TinyMCE -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        console.log('=== DOM LOADED - JAVASCRIPT INITIALIZING ===');
+        console.log('=== DOM LOADED - TINYMCE INITIALIZING ===');
 
-        // Custom font size configuration
-        const fontSizeArr = ['5px', '6px', '7px', '8px', '9px', '10px', '11px', '12px', '13px', '14px', '15px', '16px', '17px', '18px', '19px', '20px', '21px', '22px', '23px', '24px'];
+        // Initialize TinyMCE editor
+        tinymce.init({
+            selector: '#editor',
+            height: 400,
+            plugins: 'table lists link',
+            toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | indent outdent | link table | removeformat',
+            menubar: false,
+            content_style: `
+                body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
+                .mce-content-body { font-weight: 600; }
+                .mce-content-body strong, .mce-content-body b { font-weight: 800; }
+                .mce-content-body .font-serif { font-family: "Times New Roman", Times, serif; }
+                .mce-content-body .font-monospace { font-family: "Courier New", Courier, monospace; }
+            `,
+            setup: function (editor) {
+                // Set existing content
+                <% if (gigDocument.content && gigDocument.content.length > 0) { %>
+                    editor.setContent(`<%- gigDocument.content %>`);
+                    console.log('Existing content loaded into TinyMCE');
+                <% } %>
 
-        var Size = Quill.import('attributors/style/size');
-        Size.whitelist = fontSizeArr;
-        Quill.register(Size, true);
-
-        // Initialize Quill editor
-        var quill = new Quill('#editor', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline'],
-                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                    [{ 'indent': '-1' }, { 'indent': '+1' }],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'font': ['serif', 'sans', 'monospace'] }],
-                    [{ 'size': fontSizeArr }],
-                    ['link'],
-                    ['clean']
-                ]
-            },
-            placeholder: 'Start typing your chords, tabs, or lyrics here...'
+                    // Update hidden input before form submission
+                    editor.on('submit', function () {
+                        var content = editor.getContent();
+                        var hiddenInput = document.getElementById('content-input');
+                        if (hiddenInput) {
+                            hiddenInput.value = content;
+                            console.log('Content updated in hidden input');
+                        }
+                    });
+            }
         });
-
-
-
-
-
-        console.log('Quill editor initialized');
-
-        // Custom CSS to show actual font size values in dropdown and override font weights
-        const style = document.createElement('style');
-        style.textContent = `
-            .ql-snow .ql-picker.ql-size .ql-picker-label::before,
-            .ql-snow .ql-picker.ql-size .ql-picker-item::before {
-                content: attr(data-value) !important;
-            }
-            
-            /* Override Quill's default font weights - more specific targeting */
-            #editor .ql-editor,
-            .ql-snow .ql-editor {
-                font-weight: 600 !important; /* Normal text = 600 */
-            }
-            
-            #editor .ql-editor strong,
-            #editor .ql-editor b,
-            .ql-snow .ql-editor strong,
-            .ql-snow .ql-editor b {
-                font-weight: 800 !important; /* Bold text = 800 */
-            }
-            
-            /* Also target Quill's internal bold styling */
-            .ql-editor .ql-bold {
-                font-weight: 800 !important;
-            }
-            
-            /* Quill font family classes */
-            .ql-font-serif {
-                font-family: "Times New Roman", Times, serif !important;
-            }
-            
-            .ql-font-sans {
-                font-family: Arial, Helvetica, sans-serif !important;
-            }
-            
-            .ql-font-monospace {
-                font-family: "Courier New", Courier, monospace !important;
-            }
-        `;
-        document.head.appendChild(style);
-
-
-
-        // Set existing content
-        <% if (gigDocument.content && gigDocument.content.length > 0) { %>
-            quill.root.innerHTML = `<%- gigDocument.content %>`;
-            console.log('Existing content loaded into Quill');
-        <% } %>
 
         // Test if we can find the form
         var form = document.querySelector('form[action*="/docs"]');
@@ -191,10 +128,10 @@
             console.log('=== FORM SUBMISSION DEBUG ===');
             console.log('Form submit event triggered');
 
-            // Get the Quill content
-            var quillContent = quill.root.innerHTML;
-            console.log('Quill content:', quillContent);
-            console.log('Quill content length:', quillContent.length);
+            // Get the TinyMCE content
+            var content = tinymce.get('editor').getContent();
+            console.log('TinyMCE content:', content);
+            console.log('TinyMCE content length:', content.length);
 
             // Get the hidden input element
             var hiddenInput = document.getElementById('content-input');
@@ -202,7 +139,7 @@
             console.log('Hidden input current value:', hiddenInput.value);
 
             // Update the hidden input
-            hiddenInput.value = quillContent;
+            hiddenInput.value = content;
             console.log('Hidden input value after update:', hiddenInput.value);
 
             // Verify the update worked

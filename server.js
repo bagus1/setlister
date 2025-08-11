@@ -7,6 +7,7 @@ const http = require("http");
 const socketIo = require("socket.io");
 const path = require("path");
 const requestLogger = require("./middleware/logging");
+const logger = require("./utils/logger");
 
 // Load environment variables from .env file
 require("dotenv").config();
@@ -80,46 +81,9 @@ app.use("/bulk-add-songs", bulkAddSongsRoutes);
 app.use("/songs", linkRoutes);
 app.use("/songs", require("./routes/gig-documents"));
 
-// Test DELETE route
-app.delete("/test-delete", (req, res) => {
-  console.log(`[${new Date().toISOString()}] Test DELETE route hit!`);
-  res.json({ success: true, message: "Test DELETE route works!" });
-});
-
-// TEMPORARY TEST ROUTE - Mock authentication for testing
-app.get("/test-auth", (req, res) => {
-  // Create a mock user session for testing
-  req.session.user = {
-    id: 7,
-    username: "John",
-    email: "john.g.haig@gmail.com",
-  };
-  req.session.currentBandId = 1; // Set a default band
-  res.json({
-    success: true,
-    message: "Mock authentication created",
-    user: req.session.user,
-    currentBandId: req.session.currentBandId,
-  });
-});
-
-// Simple DELETE route following web example pattern
-app.delete("/items/:id", (req, res) => {
-  console.log(
-    `[${new Date().toISOString()}] DELETE items route hit:`,
-    req.params
-  );
-  const itemId = parseInt(req.params.id);
-  console.log(
-    `[${new Date().toISOString()}] Attempting to delete item:`,
-    itemId
-  );
-  res.status(204).send(); // Send a 204 No Content status for successful deletion
-});
-
 // Socket.io for real-time collaboration
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+  logger.logInfo("Socket connected", null);
 
   socket.on("join-setlist", (setlistId) => {
     socket.join(`setlist-${setlistId}`);
@@ -138,13 +102,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    logger.logInfo("Socket disconnected", null);
   });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.logError("Unhandled error", err);
   res.status(500).render("error", { message: "Something went wrong!" });
 });
 
@@ -159,16 +123,11 @@ const PORT = process.env.PORT || 3000;
 db.sequelize
   .sync()
   .then(() => {
-    console.log(`[${new Date().toISOString()}] Database synced successfully`);
+    logger.logInfo("Database synced successfully");
     server.listen(PORT, () => {
-      console.log(
-        `[${new Date().toISOString()}] Server running on port ${PORT}`
-      );
+      logger.logInfo(`Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error(
-      `[${new Date().toISOString()}] Unable to connect to database:`,
-      err
-    );
+    logger.logError("Unable to connect to database", err);
   });

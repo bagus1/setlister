@@ -1,204 +1,142 @@
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1><i class="bi bi-pencil"></i> Edit Gig Document</h1>
-                <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>"
-                    class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Document
-                </a>
-            </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-pencil"></i> Edit Gig Document</h1>
+        <a
+          href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>"
+          class="btn btn-outline-secondary"
+        >
+          <i class="bi bi-arrow-left"></i> Back to Document
+        </a>
+      </div>
 
-            <div class="card">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <form action="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>?_method=PUT"
-                                method="POST">
-                                <div class="mb-3">
-                                    <label class="form-label">Document Type</label>
-                                    <input type="text" class="form-control"
-                                        value="<%= gigDocument.getTypeDisplayName() %> (v<%= gigDocument.version %>)"
-                                        readonly>
-                                    <div class="form-text">Document type and version cannot be changed</div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="content" class="form-label">Content</label>
-                                    <textarea id="editor" name="content" style="height: 400px;"></textarea>
-                                    <div class="form-text">Use the rich text editor above to edit your content</div>
-                                </div>
-
-                                <div class="d-flex justify-content-between">
-                                    <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>"
-                                        class="btn btn-outline-secondary">Cancel</a>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-save"></i> Save Changes
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h6 class="card-title">
-                                        <i class="bi bi-info-circle"></i> Document Info
-                                    </h6>
-
-                                    <p class="small">
-                                        <strong>Song:</strong>
-                                        <%= gigDocument.Song.title %><br>
-                                            <strong>Type:</strong>
-                                            <%= gigDocument.getTypeDisplayName() %><br>
-                                                <strong>Version:</strong>
-                                                <%= gigDocument.version %><br>
-                                                    <strong>Created:</strong>
-                                                    <%= gigDocument.createdAt.toLocaleDateString() %><br>
-                                                        <strong>Updated:</strong>
-                                                        <%= gigDocument.updatedAt.toLocaleDateString() %>
-                                    </p>
-
-                                    <h6 class="card-title">
-                                        <i class="bi bi-lightbulb"></i> Tips
-                                    </h6>
-                                    <ul class="small">
-                                        <li>Use the table button to create structured layouts</li>
-                                        <li>Apply monospace font to preserve spacing in tables</li>
-                                        <li>Use headers to organize your content</li>
-                                        <li>Save frequently to avoid losing changes</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-8">
+              <form
+                action="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>?_method=PUT"
+                method="POST"
+              >
+                <div class="mb-3">
+                  <label class="form-label">Document Type</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    value="<%= gigDocument.getTypeDisplayName() %> (v<%= gigDocument.version %>)"
+                    readonly
+                  />
+                  <div class="form-text">
+                    Document type and version cannot be changed
+                  </div>
                 </div>
+
+                <div class="mb-3">
+                  <label for="content" class="form-label">Content</label>
+                  <textarea id="editor" name="content" style="height: 400px">
+<%- gigDocument.content || '' %></textarea
+                  >
+                  <div class="form-text">
+                    Use the rich text editor above to edit your content
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                  <a
+                    href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>"
+                    class="btn btn-outline-secondary"
+                    >Cancel</a
+                  >
+                  <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Changes
+                  </button>
+                </div>
+              </form>
             </div>
+
+            <div class="col-md-4">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h6 class="card-title">
+                    <i class="bi bi-info-circle"></i> Document Info
+                  </h6>
+
+                  <p class="small">
+                    <strong>Song:</strong>
+                    <%= gigDocument.Song.title %><br />
+                    <strong>Type:</strong>
+                    <%= gigDocument.getTypeDisplayName() %><br />
+                    <strong>Version:</strong>
+                    <%= gigDocument.version %><br />
+                    <strong>Created:</strong>
+                    <%= gigDocument.createdAt.toLocaleDateString() %><br />
+                    <strong>Updated:</strong>
+                    <%= gigDocument.updatedAt.toLocaleDateString() %>
+                  </p>
+
+                  <h6 class="card-title">
+                    <i class="bi bi-lightbulb"></i> Tips
+                  </h6>
+                  <ul class="small">
+                    <li>Use the table button to create structured layouts</li>
+                    <li>Apply monospace font to preserve spacing in tables</li>
+                    <li>Use headers to organize your content</li>
+                    <li>Save frequently to avoid losing changes</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- TinyMCE -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
+<script src="/js/gig-document-editor.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        console.log('=== DOM LOADED - TINYMCE INITIALIZING ===');
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("=== DOM LOADED - GIG DOCUMENT EDITOR INITIALIZING ===");
 
-        // Initialize TinyMCE editor
-        tinymce.init({
-            selector: '#editor',
-            height: 400,
-            plugins: 'table lists link',
-            toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | indent outdent | link table | removeformat',
-            menubar: false,
-            content_style: `
-                body { 
-                    font-family: Arial, Helvetica, sans-serif !important; 
-                    font-size: 14px !important; 
-                    font-weight: 600 !important; 
-                    line-height: 1.3 !important; 
-                }
-                p { 
-                    margin: 0.2em 0 !important; 
-                    line-height: 1.2 !important; 
-                    font-weight: 600 !important;
-                }
-                p:empty { 
-                    margin: 0.1em 0 !important; 
-                    height: 0.1em !important; 
-                    min-height: 0.1em !important;
-                }
-                strong, b { 
-                    font-weight: 800 !important; 
-                }
-                .font-serif { 
-                    font-family: "Times New Roman", Times, serif !important; 
-                }
-                .font-sans { 
-                    font-family: Arial, Helvetica, sans-serif !important; 
-                }
-                .font-monospace { 
-                    font-family: "Courier New", Courier, monospace !important; 
-                }
-            `,
-            setup: function (editor) {
-                // Set existing content after editor is ready
-                editor.on('init', function () {
-                    <% if (gigDocument.content && gigDocument.content.length > 0) { %>
-                        editor.setContent(`<%- gigDocument.content %>`);
-                        console.log('Existing content loaded into TinyMCE');
-                    <% } %>
-                });
+    // Get existing content from textarea value
+    var textarea = document.getElementById("editor");
+    var existingContent = textarea.value || null;
 
-                // Clean up pasted content from Google Docs
-                editor.on('PastePreProcess', function (e) {
-                    // Remove bogus br tags and empty paragraphs
-                    e.content = e.content.replace(/<br[^>]*data-mce-bogus="1"[^>]*>/gi, '');
-                    e.content = e.content.replace(/<p>\s*<\/p>/gi, '<p>&nbsp;</p>');
-                });
+    console.log("Textarea found:", !!textarea);
+    console.log("Existing content from textarea:", existingContent);
+    console.log(
+      "Content length:",
+      existingContent ? existingContent.length : 0
+    );
 
-                // Custom keyboard shortcuts - using keydown events for better control
-                editor.on('keydown', function (e) {
-                    // Mac: Cmd+] for indent, Cmd+[ for outdent
-                    if (e.metaKey && e.key === ']') {
-                        e.preventDefault();
-                        editor.execCommand('Indent');
-                    }
-                    if (e.metaKey && e.key === '[') {
-                        e.preventDefault();
-                        editor.execCommand('Outdent');
-                    }
-                    // Windows/Linux: Ctrl+] for indent, Ctrl+[ for outdent
-                    if (e.ctrlKey && e.key === ']') {
-                        e.preventDefault();
-                        editor.execCommand('Indent');
-                    }
-                    if (e.ctrlKey && e.key === '[') {
-                        e.preventDefault();
-                        editor.execCommand('Outdent');
-                    }
-                });
-
-                // Update textarea before form submission
-                editor.on('submit', function () {
-                    var content = editor.getContent();
-                    var textarea = document.getElementById('editor');
-                    if (textarea) {
-                        textarea.value = content;
-                        console.log('Content updated in textarea');
-                    }
-                });
-            }
-        });
-
-        // Test if we can find the form
-        var form = document.querySelector('form[action*="/docs"]');
-        console.log('Gig document form found:', !!form);
-        console.log('Form action:', form ? form.action : 'N/A');
-
-        // Update textarea before form submission
-        form.addEventListener('submit', function (e) {
-            console.log('=== FORM SUBMISSION DEBUG ===');
-            console.log('Form submit event triggered');
-
-            // Get the TinyMCE content
-            var content = tinymce.get('editor').getContent();
-            console.log('TinyMCE content:', content);
-            console.log('TinyMCE content length:', content.length);
-
-            // Update the textarea with TinyMCE content
-            var textarea = document.getElementById('editor');
-            if (textarea) {
-                textarea.value = content;
-                console.log('Textarea updated with TinyMCE content');
-            }
-
-            // Don't prevent default - let the form submit
-            console.log('Allowing form submission to proceed');
-        });
-
-        console.log('Form submit event listener attached');
-        console.log('=== JAVASCRIPT INITIALIZATION COMPLETE ===');
+    // Initialize the shared editor with existing content
+    const editor = new GigDocumentEditor("editor", {
+      existingContent: existingContent,
+      formSelector: "#editor",
     });
+
+    // Update textarea before form submission
+    document
+      .querySelector('form[action*="/docs"]')
+      .addEventListener("submit", function () {
+        console.log("=== FORM SUBMISSION DEBUG ===");
+        console.log("Form submit event triggered");
+
+        var content = tinymce.get("editor").getContent();
+        console.log("TinyMCE content:", content);
+        console.log("TinyMCE content length:", content.length);
+
+        var textarea = document.getElementById("editor");
+        if (textarea) {
+          textarea.value = content;
+          console.log("Textarea updated with TinyMCE content");
+        }
+
+        console.log("Form submission proceeding...");
+      });
+  });
 </script>

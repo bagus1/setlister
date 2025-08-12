@@ -112,7 +112,8 @@
                                 <% if (currentSet && currentSet.SetlistSongs) { %>
                                     <% currentSet.SetlistSongs.forEach(setlistSong=> { %>
                                         <div class="song-card setlist-song" data-song-id="<%= setlistSong.Song.id %>"
-                                            data-song-time="<%= setlistSong.Song.time || 0 %>">
+                                            data-song-time="<%= setlistSong.Song.time || 0 %>"
+                                            draggable="true">
                                             <div class="d-flex align-items-center" style="min-height: 1.2em;">
                                                 <div class="song-title-text"
                                                     style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
@@ -172,19 +173,20 @@
                                 <% const maybeSet=setlist.SetlistSets.find(s=> s.name === 'Maybe'); %>
                                     <% if (maybeSet && maybeSet.SetlistSongs) { %>
                                         <% maybeSet.SetlistSongs.forEach(setlistSong=> { %>
-                                            <div class="song-card setlist-song"
-                                                data-song-id="<%= setlistSong.Song.id %>"
-                                                data-song-time="<%= setlistSong.Song.time || 0 %>">
-                                                <div class="d-flex align-items-center" style="min-height: 1.2em;">
-                                                    <div class="song-title-text"
-                                                        style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
-                                                        <%= setlistSong.Song.title %>
-                                                    </div>
-                                                    <button class="btn btn-sm btn-outline-danger ms-2"
-                                                        style="font-size: 0.7rem; padding: 0.1rem 0.3rem; line-height: 1;">
-                                                        <i class="bi bi-x"></i>
-                                                    </button>
+                                                                                    <div class="song-card setlist-song"
+                                            data-song-id="<%= setlistSong.Song.id %>"
+                                            data-song-time="<%= setlistSong.Song.time || 0 %>"
+                                            draggable="true">
+                                            <div class="d-flex align-items-center" style="min-height: 1.2em;">
+                                                <div class="song-title-text"
+                                                    style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+                                                    <%= setlistSong.Song.title %>
                                                 </div>
+                                                <button class="btn btn-sm btn-outline-danger ms-2"
+                                                    style="font-size: 0.7rem; padding: 0.1rem 0.3rem; line-height: 1;">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
+                                            </div>
                                                 <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) {
                                                     %>
                                                     <div class="song-artist">by <%= setlistSong.Song.Artists[0].name %>
@@ -227,6 +229,28 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Drag and drop styles */
+    .drag-over {
+        background-color: rgba(0, 123, 255, 0.1) !important;
+        border: 2px dashed #007bff !important;
+    }
+
+    .dragging {
+        opacity: 0.5;
+        transform: rotate(5deg);
+    }
+
+    /* Make setlist songs show they're draggable */
+    .setlist-song {
+        cursor: grab;
+    }
+
+    .setlist-song:active {
+        cursor: grabbing;
+    }
+</style>
 
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>

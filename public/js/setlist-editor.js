@@ -44,6 +44,12 @@ class SetlistEditor {
       this.setupDropZone(zone);
     });
 
+    // Setup band songs container as a drop zone for songs coming from sets
+    const bandSongsContainer = document.querySelector("#band-songs-container");
+    if (bandSongsContainer) {
+      this.setupBandSongsDropZone(bandSongsContainer);
+    }
+
     // Make existing setlist songs draggable
     document.querySelectorAll(".setlist-song").forEach((song) => {
       this.makeDraggable(song);
@@ -93,6 +99,32 @@ class SetlistEditor {
         // Calculate drop position
         const dropPosition = this.calculateDropPosition(zone, e.clientY);
         this.handleDrop(zone, dropPosition);
+      }
+    });
+  }
+
+  setupBandSongsDropZone(bandSongsContainer) {
+    bandSongsContainer.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      bandSongsContainer.classList.add("drag-over");
+    });
+
+    bandSongsContainer.addEventListener("dragleave", (e) => {
+      if (!bandSongsContainer.contains(e.relatedTarget)) {
+        bandSongsContainer.classList.remove("drag-over");
+      }
+    });
+
+    bandSongsContainer.addEventListener("drop", (e) => {
+      e.preventDefault();
+      bandSongsContainer.classList.remove("drag-over");
+
+      if (
+        this.draggedElement &&
+        this.draggedElement.classList.contains("setlist-song")
+      ) {
+        this.handleSongReturnToBandSongs();
       }
     });
   }
@@ -201,6 +233,46 @@ class SetlistEditor {
       songId,
       setName,
       position: actualPosition,
+    });
+
+    // Mark as critical change and auto-save
+    this.hasCriticalChanges = true;
+    this.autoSave();
+  }
+
+  handleSongReturnToBandSongs() {
+    if (
+      !this.draggedElement ||
+      !this.draggedElement.classList.contains("setlist-song")
+    ) {
+      return;
+    }
+
+    const songId = this.draggedElement.dataset.songId;
+    const originalSetName = this.draggedElement.parentElement?.dataset.setName;
+
+    // Remove the song from the set
+    this.draggedElement.remove();
+
+    // Update the original set display
+    if (originalSetName) {
+      this.updateSetDisplay(originalSetName);
+      const originalDropZone = document.querySelector(
+        `[data-set-name="${originalSetName}"]`
+      );
+      if (originalDropZone && originalDropZone.children.length === 0) {
+        originalDropZone.classList.remove("has-songs");
+      }
+    }
+
+    // Create a new band song element and add it back to the band songs list
+    // The fetchAndRestoreSong function already handles proper sorting
+    this.fetchAndRestoreSong(songId);
+
+    // Broadcast the update
+    this.broadcastUpdate("song-removed", {
+      songId,
+      setName: originalSetName,
     });
 
     // Mark as critical change and auto-save
@@ -383,8 +455,10 @@ class SetlistEditor {
       // Create band song element
       const bandSongElement = this.createBandSongElement(song);
 
-      // Add to band songs area - use more specific selector
-      const bandSongsContainer = document.querySelector(".col-md-4 .card-body");
+      // Add to band songs area - use the scrollable container
+      const bandSongsContainer = document.querySelector(
+        "#band-songs-container"
+      );
       if (bandSongsContainer) {
         // Insert in alphabetical order
         const existingSongs = Array.from(

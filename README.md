@@ -13,7 +13,7 @@ A real-time collaborative setlist management system for bands. Multiple band mem
 - **Bulk Song Import** - Add multiple songs via text or CSV format
 - **Gig Documents** - Rich text editor for song lyrics, chords, and notes
 - **Gig View** - Clean, print-friendly view for performance use
-- **Audio Playlist** - Listen to all songs with audio files before gigs
+- **Audio Playlist** - Listen to all songs in a setlist with audio files before gigs
 
 ## Core Features
 
@@ -36,7 +36,7 @@ A real-time collaborative setlist management system for bands. Multiple band mem
 
 ### Audio Playlist
 
-- **Pre-Gig Rehearsal** - Listen to all songs with audio files before performances
+- **Pre-Gig Rehearsal** - Listen to all songs with audio files for a setlist before performances
 - **Smart Filtering** - Only shows songs that have audio links attached
 - **Player Controls** - Previous, restart, and next song navigation
 - **Auto-Advance** - Automatically plays next song when current one ends

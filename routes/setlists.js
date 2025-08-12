@@ -160,7 +160,9 @@ router.get("/:id/playlist", async (req, res) => {
       title: `Playlist - ${setlist.title}`,
       setlist,
       audioSongs,
-      layout: false, // No layout for clean display
+      user: req.session.user,
+      currentUrl: req.originalUrl,
+      layout: "layout",
     });
   } catch (error) {
     logger.logError("Playlist view error", error);

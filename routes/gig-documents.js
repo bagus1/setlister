@@ -260,11 +260,11 @@ router.put(
       const { content } = req.body;
 
       // Debug logging
-      console.log("=== UPDATE GIG DOCUMENT DEBUG ===");
-      console.log("Request body:", req.body);
-      console.log("Content:", content);
-      console.log("Content length:", content ? content.length : 0);
-      console.log("Content type:", typeof content);
+      // console.log("=== UPDATE GIG DOCUMENT DEBUG ===");
+      // console.log("Request body:", req.body);
+      // console.log("Content:", content);
+      // console.log("Content length:", content ? content.length : 0);
+      // console.log("Content type:", typeof content);
 
       const gigDocument = await GigDocument.findOne({
         where: { id: id, songId: songId },

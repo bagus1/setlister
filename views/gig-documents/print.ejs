@@ -126,21 +126,17 @@
 </head>
 
 <body>
-    <div class="song-title">
-        <%= gigDocument.Song.title %>
-            <% if (gigDocument.Song.Artists && gigDocument.Song.Artists.length> 0) { %>
-                - <%= gigDocument.Song.Artists.map(a=> a.name).join(', ') %>
-                    <% } %>
-    </div>
 
-    <div style="text-align: center; margin-bottom: 15px;">
-        <button onclick="window.print()"
+    <div class="document-content">
+        <div style="font-size: 14pt; font-weight: bold; margin-bottom: 10px;">
+        <%= gigDocument.Song.title %>
+        </div>
+        <div>
+            <button onclick="window.print()"
             style="padding: 8px 16px; font-size: 12pt; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
             Print
         </button>
-    </div>
-
-    <div class="document-content">
+        </div>
         <% if (gigDocument.content && gigDocument.content.trim()) { %>
             <%- gigDocument.content %>
                 <% } else { %>

@@ -11,6 +11,37 @@ A real-time collaborative setlist management system for bands. Multiple band mem
 - **Drag & Drop Interface** - Intuitive setlist creation with 4 sets + "Maybe" list
 - **Export & Print** - Finalize setlists with export options
 - **Bulk Song Import** - Add multiple songs via text or CSV format
+- **Gig Documents** - Rich text editor for song lyrics, chords, and notes
+- **Gig View** - Clean, print-friendly view for performance use
+- **Audio Playlist** - Listen to all songs with audio files before gigs
+
+## Core Features
+
+### Gig Documents
+
+- **Rich Text Editor** - TinyMCE WYSIWYG editor with advanced formatting
+- **Song-Specific Content** - Each song can have multiple document versions
+- **Formatting Options** - Font sizes (5px-24px), weights, colors, line heights
+- **Advanced Features** - Tables, indentation, paste cleanup, keyboard shortcuts
+- **Version Control** - Track different versions of song documents
+- **Public Access** - View documents without logging in
+
+### Gig View
+
+- **Performance-Ready** - Clean, legible view for on-stage use
+- **Print Optimized** - Proper margins and formatting for printing
+- **Song Metadata** - Shows song titles, keys, and timing
+- **Compact Layout** - Minimal spacing for maximum content visibility
+- **Font Consistency** - Matches WYSIWYG editor styling
+
+### Audio Playlist
+
+- **Pre-Gig Rehearsal** - Listen to all songs with audio files before performances
+- **Smart Filtering** - Only shows songs that have audio links attached
+- **Player Controls** - Previous, restart, and next song navigation
+- **Auto-Advance** - Automatically plays next song when current one ends
+- **Set Organization** - Shows which set each song belongs to
+- **Mobile Friendly** - Responsive design for all devices
 
 ## Prerequisites
 
@@ -21,29 +52,33 @@ A real-time collaborative setlist management system for bands. Multiple band mem
 ## Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/bagus1/setlister.git
    cd setlister
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables** (optional)
    Create a `.env` file for production configuration:
+
    ```bash
    # Required for production
    NODE_ENV=production
    SESSION_SECRET=generate-a-very-long-random-secure-string-at-least-a-billion-characters-long
    FROM_EMAIL=noreply@yourdomain.com
    BASE_URL=https://yourdomain.com
-   
+
    # Optional - for email invitations
    SENDGRID_API_KEY=your_sendgrid_api_key_here
    ```
-   *Note: Email invitations will be disabled if no SendGrid API key is provided*
+
+   _Note: Email invitations will be disabled if no SendGrid API key is provided_
 
 ## Database Setup
 
@@ -60,9 +95,10 @@ When you start the application for the first time:
 ### Database Schema
 
 The following tables will be created automatically:
+
 - `users` - User accounts and authentication
 - `bands` - Band information
-- `band_members` - User-band relationships  
+- `band_members` - User-band relationships
 - `songs` - Song database with title, key, time, BPM, etc.
 - `artists` & `vocalists` - Auto-created from song entries
 - `band_songs` - Songs associated with each band
@@ -76,6 +112,7 @@ The following tables will be created automatically:
 ### Resetting the Database
 
 To start with a fresh database:
+
 ```bash
 # Stop the server first
 pkill -f "node server.js"
@@ -90,11 +127,13 @@ npm start
 ## Running the Application
 
 ### Development Mode
+
 ```bash
 npm run dev
 ```
 
-### Production Mode  
+### Production Mode
+
 ```bash
 npm start
 ```
@@ -108,18 +147,22 @@ The application will be available at: **http://localhost:3000**
 This application is configured to run on cPanel with Passenger. The deployment uses a Git-based workflow with automatic dependency management.
 
 #### Prerequisites
+
 - cPanel hosting with Node.js support
 - Git repository (GitHub, GitLab, etc.)
 - SSH access to your server
 
 #### Server Configuration
+
 1. **Create a Git repository** in cPanel's Git Version Control
 2. **Set up the repository path**: `/home/username/repositories/setlister`
 3. **Configure Passenger** via `.htaccess` file (automatically handled)
 4. **Set environment variables** in cPanel's Node.js app settings
 
 #### Environment Variables (Production)
+
 Configure these in your cPanel Node.js app settings:
+
 ```
 NODE_ENV=production
 SESSION_SECRET=your-very-long-random-secret-string
@@ -137,6 +180,7 @@ The project includes `deploy.sh` for automated deployment and server management.
 ### 🎯 Quick Reference
 
 **Most Common Commands:**
+
 ```bash
 ./deploy.sh quick     # Fast updates (UI/templates) - no restart
 ./deploy.sh deploy    # Full deployment with restart
@@ -145,6 +189,7 @@ The project includes `deploy.sh` for automated deployment and server management.
 ```
 
 **Emergency Commands:**
+
 ```bash
 ./deploy.sh rollback  # Revert to previous commit
 ./deploy.sh backup    # Create backup before changes
@@ -155,6 +200,7 @@ The project includes `deploy.sh` for automated deployment and server management.
 ### Setup
 
 1. **Make the script executable**:
+
    ```bash
    chmod +x deploy.sh
    ```
@@ -172,49 +218,56 @@ The script provides multiple deployment modes for different scenarios:
 
 #### **📋 Deployment Modes Reference Table**
 
-| Mode | **Local Git Operations** | **Server Git Operations** | **Server Restart** | **Use Case** |
-|------|-------------------------|---------------------------|-------------------|--------------|
-| **`deploy`** | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull` | ✅ Yes | Full deployment with new changes |
-| **`update`** | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull` | ✅ Yes | Quick deploy (push and pull with restart) |
-| **`quick`** | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull` | ❌ No | Fast file updates (UI/templates) |
-| **`restart`** | ❌ None | ❌ None | ✅ Yes | Just restart the server |
-| **`stop`** | ❌ None | ❌ None | ❌ Kills process | Stop the server |
-| **`start`** | ❌ None | ❌ None | ✅ Touch restart.txt | Start the server |
-| **`deps`** | ❌ None | ❌ None | ❌ No | Update npm dependencies |
-| **`status`** | ❌ None | ❌ None | ❌ No | Show deployment status |
-| **`backup`** | ❌ None | ❌ None | ❌ No | Create server backup |
-| **`rollback`** | ✅ `git reset --hard`<br>✅ `git push --force` | ✅ `git reset --hard` | ✅ Yes | Rollback to previous commit |
+| Mode           | **Local Git Operations**                           | **Server Git Operations** | **Server Restart**   | **Use Case**                              |
+| -------------- | -------------------------------------------------- | ------------------------- | -------------------- | ----------------------------------------- |
+| **`deploy`**   | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ✅ Yes               | Full deployment with new changes          |
+| **`update`**   | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ✅ Yes               | Quick deploy (push and pull with restart) |
+| **`quick`**    | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ❌ No                | Fast file updates (UI/templates)          |
+| **`restart`**  | ❌ None                                            | ❌ None                   | ✅ Yes               | Just restart the server                   |
+| **`stop`**     | ❌ None                                            | ❌ None                   | ❌ Kills process     | Stop the server                           |
+| **`start`**    | ❌ None                                            | ❌ None                   | ✅ Touch restart.txt | Start the server                          |
+| **`deps`**     | ❌ None                                            | ❌ None                   | ❌ No                | Update npm dependencies                   |
+| **`status`**   | ❌ None                                            | ❌ None                   | ❌ No                | Show deployment status                    |
+| **`backup`**   | ❌ None                                            | ❌ None                   | ❌ No                | Create server backup                      |
+| **`rollback`** | ✅ `git reset --hard`<br>✅ `git push --force`     | ✅ `git reset --hard`     | ✅ Yes               | Rollback to previous commit               |
 
 #### **🚀 Primary Deployment Modes**
 
 #### **Quick Updates** (Most Common)
+
 ```bash
 ./deploy.sh quick
 ```
+
 - Commits and pushes changes
 - Updates files on server
 - **No server restart** (fastest!)
 - Perfect for: UI changes, templates, CSS, JavaScript
 
 #### **Full Deployment**
+
 ```bash
 ./deploy.sh deploy
 ```
+
 - Commits and pushes changes
 - Updates files on server
 - **Restarts server**
 - Use for: major changes, server.js updates, dependencies
 
 #### **Quick Deploy with Restart**
+
 ```bash
 ./deploy.sh update
 ```
+
 - Commits and pushes changes
 - Updates files on server
 - **Restarts server**
 - Use for: quick deployments that need server restart
 
 #### **Server Management**
+
 ```bash
 ./deploy.sh restart    # Restart server
 ./deploy.sh stop       # Stop server
@@ -223,11 +276,13 @@ The script provides multiple deployment modes for different scenarios:
 ```
 
 #### **Dependencies**
+
 ```bash
 ./deploy.sh deps       # Update dependencies on server
 ```
 
 #### **Backup & Recovery**
+
 ```bash
 ./deploy.sh backup     # Create backup
 ./deploy.sh rollback   # Rollback to previous commit
@@ -243,6 +298,7 @@ The script provides multiple deployment modes for different scenarios:
 ### Production Deployment
 
 1. **Initial Setup**:
+
    ```bash
    ./deploy.sh deps
    ```
@@ -274,40 +330,50 @@ The script provides multiple deployment modes for different scenarios:
 ### Dependency Management
 
 #### Automatic Dependency Updates
+
 The deployment script automatically detects when `package.json` changes and installs dependencies:
+
 - **`deploy`** mode: Full deployment with auto-dependency install
 - **`quick`** mode: Quick deploy with auto-dependency install
 
 #### Manual Dependency Updates
+
 If you need to update dependencies manually:
+
 ```bash
 ./deploy.sh deps
 ```
 
 #### Adding New Dependencies
+
 1. **Add locally**: `npm install package-name`
 2. **Commit changes**: `git add package.json package-lock.json && git commit -m "Add new dependency"`
 3. **Deploy**: `./deploy.sh deploy` (automatically installs on server)
 
 #### Updating Existing Dependencies
+
 1. **Update locally**: `npm update` or `npm install package@version`
 2. **Commit changes**: `git add package.json package-lock.json && git commit -m "Update dependencies"`
 3. **Deploy**: `./deploy.sh deploy`
 
 #### Troubleshooting Dependencies
+
 If you encounter dependency issues:
 
 1. **Check Passenger logs**:
+
    ```bash
    ssh username@server.com "tail -20 /home/username/logs/setlist-passenger.log"
    ```
 
 2. **Force reinstall dependencies**:
+
    ```bash
    ./deploy.sh deps
    ```
 
 3. **Check if node_modules exists**:
+
    ```bash
    ssh username@server.com "ls -la /home/username/repositories/setlister/node_modules"
    ```
@@ -320,20 +386,24 @@ If you encounter dependency issues:
 ### Production Considerations
 
 #### Database
+
 - **SQLite file**: Located at `/home/username/repositories/setlister/database.sqlite`
 - **Backup regularly**: Use `./deploy.sh backup` to create backups
 - **File permissions**: Ensure the database file is writable by the web server
 
 #### Logs
+
 - **Passenger logs**: `/home/username/logs/setlist-passenger.log`
 - **Application logs**: Check server console output in cPanel Node.js manager
 
 #### Performance
+
 - **Static assets**: Served directly by Apache/Passenger
 - **Database**: SQLite is suitable for small to medium-sized applications
 - **Memory**: Monitor memory usage in cPanel
 
 #### Security
+
 - **Environment variables**: Never commit sensitive data to Git
 - **Session secret**: Use a strong, random string for `SESSION_SECRET`
 - **HTTPS**: Configure SSL certificate for production domain
@@ -342,6 +412,7 @@ If you encounter dependency issues:
 ### Deployment Workflow
 
 #### Typical Development Cycle
+
 1. **Make changes locally**
 2. **Test thoroughly** on local development server
 3. **Commit changes**: `git add . && git commit -m "Description of changes"`
@@ -349,13 +420,17 @@ If you encounter dependency issues:
 5. **Verify**: Check the production site
 
 #### Emergency Rollback
+
 If a deployment causes issues:
+
 ```bash
 ./deploy.sh rollback
 ```
 
 #### Creating Backups
+
 Before major changes:
+
 ```bash
 ./deploy.sh backup
 ```
@@ -363,21 +438,25 @@ Before major changes:
 ### Monitoring & Maintenance
 
 #### Check Server Status
+
 ```bash
 ./deploy.sh status
 ```
 
 #### View Recent Logs
+
 ```bash
 ssh username@server.com "tail -f /home/username/logs/setlist-passenger.log"
 ```
 
 #### Monitor Process
+
 ```bash
 ssh username@server.com "ps aux | grep -E '(server|setlist|node)'"
 ```
 
 #### Restart After Configuration Changes
+
 ```bash
 ./deploy.sh restart
 ```
@@ -394,31 +473,61 @@ ssh username@server.com "ps aux | grep -E '(server|setlist|node)'"
 ## Usage
 
 ### Adding Songs
+
 - Use the "Add New Song" form with artist and vocalist auto-complete
 - Optionally add key, duration (minutes:seconds), and BPM
 - Use "Bulk Add Songs" for importing multiple songs at once
 
 ### Managing Band Songs
+
 - Go to "Manage Songs" for your band
 - Click song cards to add/remove them from your band's repertoire
 - Visual feedback shows selected songs with borders
 
 ### Creating Setlists
+
 - Create a new setlist from your band dashboard
 - Drag songs from "Band Songs" into Set 1, Set 2, Set 3, Set 4, or Maybe
 - Changes sync in real-time with other band members
 - Reorder songs within sets by dragging
 
 ### Collaboration
+
 - Multiple band members can edit the same setlist simultaneously
 - All changes appear instantly via Socket.io
 - No need to refresh or coordinate - just start editing
 
 ### Finalizing Setlists
+
 - Review total time and song counts (excluding "Maybe" songs)
 - Use "Copy Titles" to copy set lists to clipboard
 - Export setlist as CSV with song details (Set, Order, Title, Artist, Vocalist, Key, Time, BPM)
 - Print view available for physical setlists
+
+### Gig Documents
+
+- Create detailed song documents with lyrics, chords, and notes
+- Use the rich text editor for advanced formatting and styling
+- Set preferred gig documents for each song in your band's repertoire
+- Access documents publicly without logging in
+- Print optimized views for on-stage use
+
+### Gig View
+
+- View finalized setlists in a clean, performance-ready format
+- Optimized for printing with proper margins and spacing
+- Shows song titles, keys, and timing information
+- Compact layout maximizes content visibility
+- Perfect for on-stage reference during performances
+
+### Audio Playlist
+
+- Access playlist view from the finalize page
+- Listen to all songs with audio files before gigs
+- Navigate between songs with previous, restart, and next controls
+- Auto-advance to next song when current one finishes
+- See set organization and song metadata
+- Mobile-friendly interface for rehearsal anywhere
 
 ## Administrative Tools
 
@@ -429,17 +538,19 @@ Certain administrative functions are only available through the command-line int
 #### Available Commands
 
 **Local Database Management:**
+
 ```bash
 npm run manage
 ```
 
 **Server Database Management:**
+
 ```bash
 # Interactive mode
 ssh bagus1@bagus.org "/home/bagus1/repositories/setlister/manage-server.sh"
 # Note: if your environmental variables are set properly your command will be
-#       printed out properly when you run npm run manage locally to make 
-#       it easy to connect to the cli on your server.  
+#       printed out properly when you run npm run manage locally to make
+#       it easy to connect to the cli on your server.
 
 # Command line mode
 npm run manage server list-bands
@@ -543,8 +654,10 @@ setlister/
 │   ├── Medley.js            # Medley model
 │   ├── MedleySong.js        # Medley song associations
 │   ├── BandInvitation.js    # Email invitation model
-│   └── PasswordReset.js     # Password reset model
-├── routes/                   # Express route handlers  
+│   ├── PasswordReset.js     # Password reset model
+│   ├── GigDocument.js       # Song documents and lyrics
+│   └── Link.js              # Song links (audio, video, etc.)
+├── routes/                   # Express route handlers
 │   ├── auth.js              # Authentication routes
 │   ├── dashboard.js         # Dashboard routes
 │   ├── bands.js             # Band management
@@ -553,7 +666,9 @@ setlister/
 │   ├── bulk-add-songs.js    # Bulk song import
 │   ├── invitations.js       # Invitation management
 │   ├── medleys.js           # Medley management
-│   └── artists.js           # Artist management
+│   ├── artists.js           # Artist management
+│   ├── gig-documents.js     # Gig document management
+│   └── links.js             # Song link management
 ├── views/                    # EJS templates
 │   ├── layout.ejs           # Main layout template
 │   ├── error.ejs            # Error page template
@@ -563,10 +678,13 @@ setlister/
 │   ├── songs/               # Song forms and lists
 │   ├── setlists/            # Setlist editor and export
 │   ├── invitations/         # Invitation pages
-│   └── artists/             # Artist management pages
+│   ├── artists/             # Artist management pages
+│   ├── gig-documents/       # Gig document editor and views
+│   └── links/               # Song link management
 ├── public/                   # Static assets
 │   └── js/
-│       └── setlist-editor.js # Client-side drag & drop
+│       ├── setlist-editor.js # Client-side drag & drop
+│       └── gig-document-editor.js # WYSIWYG editor functionality
 ├── utils/                    # Utility functions
 │   └── emailService.js       # SendGrid email integration
 └── docs/                     # Documentation
@@ -576,13 +694,17 @@ setlister/
 ## Troubleshooting
 
 ### Port Already in Use
+
 If port 3000 is busy, kill existing processes:
+
 ```bash
 pkill -f "node server.js"
 ```
 
 ### Database Connection Issues
+
 If you encounter database connection errors:
+
 1. Ensure the project directory is writable
 2. Try deleting `database.sqlite` and restarting (creates fresh database)
 3. Check that no other processes are using the database file
@@ -590,13 +712,16 @@ If you encounter database connection errors:
 ## Development
 
 ### Adding New Features
+
 1. Create/modify Sequelize models in `models/`
 2. Add routes in appropriate files under `routes/`
 3. Create EJS templates in `views/`
 4. Update client-side JavaScript if needed
 
 ### Database Changes
+
 For schema changes, either:
+
 - Delete `database.sqlite` to recreate (loses data)
 - Manually alter tables with SQL commands
 - Use Sequelize migrations (not currently configured)
@@ -615,4 +740,4 @@ This project is open source and available under the MIT License.
 
 ## Support
 
-For issues or questions, please create an issue on the GitHub repository. 
+For issues or questions, please create an issue on the GitHub repository.

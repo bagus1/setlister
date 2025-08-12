@@ -83,7 +83,7 @@ router.get("/api/song/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const songs = await Song.findAll({
-      include: ["Artists", "Vocalist"],
+      include: ["Artists", "Vocalist", "Links", "GigDocuments"],
       order: [["title", "ASC"]],
     });
 

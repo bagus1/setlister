@@ -98,6 +98,76 @@ router.get("/:id/gig-view", async (req, res) => {
   }
 });
 
+// Public playlist view route (no authentication required)
+router.get("/:id/playlist", async (req, res) => {
+  try {
+    const setlistId = req.params.id;
+
+    const setlist = await Setlist.findByPk(setlistId, {
+      include: [
+        {
+          model: Band,
+          attributes: ["id", "name"],
+        },
+        {
+          model: SetlistSet,
+          include: [
+            {
+              model: SetlistSong,
+              include: [
+                {
+                  model: Song,
+                  include: [
+                    "Artists",
+                    "Vocalist",
+                    {
+                      model: require("../models").Link,
+                      where: { type: "audio" },
+                      required: false,
+                    },
+                  ],
+                },
+              ],
+              order: [["order", "ASC"]],
+            },
+          ],
+          order: [["order", "ASC"]],
+        },
+      ],
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Collect all songs with audio links
+    const audioSongs = [];
+    setlist.SetlistSets.forEach((set) => {
+      if (set.SetlistSongs) {
+        set.SetlistSongs.forEach((setlistSong) => {
+          if (setlistSong.Song.Links && setlistSong.Song.Links.length > 0) {
+            audioSongs.push({
+              song: setlistSong.Song,
+              set: set.name,
+              order: setlistSong.order,
+            });
+          }
+        });
+      }
+    });
+
+    res.render("setlists/playlist", {
+      title: `Playlist - ${setlist.title}`,
+      setlist,
+      audioSongs,
+      layout: false, // No layout for clean display
+    });
+  } catch (error) {
+    logger.logError("Playlist view error", error);
+    res.status(500).send("Error loading playlist view");
+  }
+});
+
 // All other setlist routes require authentication
 router.use(requireAuth);
 
@@ -442,12 +512,10 @@ router.post("/:id/save", async (req, res) => {
 
     // Check if setlist date has passed (allow editing until one week after setlist date)
     if (!isSetlistEditable(setlist)) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "This setlist cannot be edited as it has been more than one week since the performance date",
-        });
+      return res.status(403).json({
+        error:
+          "This setlist cannot be edited as it has been more than one week since the performance date",
+      });
     }
 
     // Clear existing setlist songs
@@ -1247,12 +1315,10 @@ router.delete("/:id", async (req, res) => {
 
     // Check if setlist is finalized and date has passed
     if (setlist.isFinalized && !isSetlistEditable(setlist)) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Cannot delete a finalized setlist after one week from the performance date",
-        });
+      return res.status(400).json({
+        error:
+          "Cannot delete a finalized setlist after one week from the performance date",
+      });
     }
 
     // Delete the setlist (cascade will handle related records)

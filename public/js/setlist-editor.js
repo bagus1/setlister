@@ -392,21 +392,35 @@ class SetlistEditor {
         );
         let insertPosition = existingSongs.length;
 
-        for (let i = 0; i < existingSongs.length; i++) {
-          const existingTitle = existingSongs[i]
+        // Validate that all existing songs are still valid DOM nodes
+        const validExistingSongs = existingSongs.filter(
+          (song) =>
+            song && song.parentNode && song.parentNode === bandSongsContainer
+        );
+
+        for (let i = 0; i < validExistingSongs.length; i++) {
+          const existingTitle = validExistingSongs[i]
             .querySelector(".song-title")
-            .textContent.trim();
-          if (song.title.localeCompare(existingTitle) < 0) {
+            ?.textContent?.trim();
+          if (existingTitle && song.title.localeCompare(existingTitle) < 0) {
             insertPosition = i;
             break;
           }
         }
 
-        if (insertPosition < existingSongs.length) {
-          bandSongsContainer.insertBefore(
-            bandSongElement,
-            existingSongs[insertPosition]
-          );
+        if (insertPosition < validExistingSongs.length) {
+          try {
+            bandSongsContainer.insertBefore(
+              bandSongElement,
+              validExistingSongs[insertPosition]
+            );
+          } catch (insertError) {
+            console.warn(
+              "[RESTORE] Insert before failed, appending to end:",
+              insertError
+            );
+            bandSongsContainer.appendChild(bandSongElement);
+          }
         } else {
           bandSongsContainer.appendChild(bandSongElement);
         }
@@ -442,6 +456,16 @@ class SetlistEditor {
       keyHtml = `<span class="song-key">${song.key}</span>`;
     }
 
+    let linksHtml = "";
+    if (song.Links && song.Links.length > 0) {
+      linksHtml = `<i class="bi bi-link-45deg text-primary" title="Has links"></i>`;
+    }
+
+    let docsHtml = "";
+    if (song.GigDocuments && song.GigDocuments.length > 0) {
+      docsHtml = `<i class="bi bi-file-earmark-text text-success" title="Has gig documents"></i>`;
+    }
+
     let timeHtml = "";
     if (song.time) {
       const minutes = Math.floor(song.time / 60);
@@ -453,9 +477,11 @@ class SetlistEditor {
             <div class="song-title">${song.title}</div>
             ${artistHtml}
             <div class="d-flex justify-content-between align-items-center mt-2">
-                <div>
+                <div class="d-flex align-items-center gap-2">
                     ${vocalistHtml}
                     ${keyHtml}
+                    ${linksHtml}
+                    ${docsHtml}
                 </div>
                 ${timeHtml}
             </div>

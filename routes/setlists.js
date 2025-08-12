@@ -265,7 +265,12 @@ router.get("/:id/edit", async (req, res) => {
           include: [
             {
               model: SetlistSong,
-              include: [{ model: Song, include: ["Artists", "Vocalist"] }],
+              include: [
+                {
+                  model: Song,
+                  include: ["Artists", "Vocalist", "Links", "GigDocuments"],
+                },
+              ],
               order: [["order", "ASC"]],
             },
           ],
@@ -293,6 +298,8 @@ router.get("/:id/edit", async (req, res) => {
       include: [
         "Artists",
         "Vocalist",
+        "Links",
+        "GigDocuments",
         {
           model: Band,
           where: { id: setlist.bandId },

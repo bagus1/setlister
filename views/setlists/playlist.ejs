@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .playlist-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .playlist-header {
+            background: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .playlist-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .playlist-header h2 {
+            margin: 5px 0 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .audio-player {
+            background: #666;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .audio-player audio {
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .player-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .control-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .control-btn:hover {
+            background: #0056b3;
+        }
+        
+        .control-btn:active {
+            background: #004085;
+        }
+        
+        .control-btn i {
+            font-size: large;
+        }
+        
+        .playlist {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        
+        .playlist li {
+            padding: 10px 20px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .playlist li:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .playlist li.active {
+            background-color: #007bff !important;
+            color: white;
+        }
+        
+        .playlist li.active a {
+            color: white;
+        }
+        
+        .playlist li.active .song-title {
+            color: white;
+            font-weight: bold;
+        }
+        
+        .playlist li.active .song-details {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .playlist li.active .set-label {
+            background: #ffffff;
+            color: #007bff;
+        }
+        
+        .playlist li:nth-child(odd) {
+            background-color: #f8f9fa;
+        }
+        
+        .playlist li:nth-child(even) {
+            background-color: white;
+        }
+        
+        .playlist li a {
+            color: #333;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .song-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .song-title {
+            font-weight: bold;
+        }
+        
+        .song-details {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        .set-label {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .no-audio {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="playlist-container">
+        <div class="playlist-header">
+            <h1><%= setlist.title %></h1>
+            <h2><%= setlist.Band.name %></h2>
+        </div>
+        
+        <% if (audioSongs.length > 0) { %>
+            <div class="audio-player">
+                <audio id="audio" controls preload="auto">
+                    <source src="<%= audioSongs[0].song.Links[0].url %>" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+                <div class="player-controls">
+                    <button id="prevBtn" class="control-btn" onclick="playPreviousSong()">
+                        ⏮
+                    </button>
+                    <button id="restartBtn" class="control-btn" onclick="restartCurrentSong()">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                    <button id="nextBtn" class="control-btn" onclick="playNextSong()">
+                        ⏭
+                    </button>
+                </div>
+            </div>
+            
+            <ul id="playlist" class="playlist">
+                <% audioSongs.forEach((audioSong, index) => { %>
+                    <li class="<%= index === 0 ? 'active' : '' %>" data-url="<%= audioSong.song.Links[0].url %>">
+                        <a href="#" onclick="playSong(this.parentElement, event)">
+                            <div class="song-info">
+                                <div>
+                                    <div class="song-title"><%= audioSong.song.title %></div>
+                                    <div class="song-details">
+                                        <% if (audioSong.song.Artists && audioSong.song.Artists.length > 0) { %>
+                                            by <%= audioSong.song.Artists[0].name %>
+                                        <% } %>
+                                        <% if (audioSong.song.key) { %>
+                                            • Key: <%= audioSong.song.key %>
+                                        <% } %>
+                                        <% if (audioSong.song.time) { %>
+                                            • <%= Math.floor(audioSong.song.time / 60) %>:<%= (audioSong.song.time % 60).toString().padStart(2, '0') %>
+                                        <% } %>
+                                    </div>
+                                </div>
+                                <span class="set-label"><%= audioSong.set %></span>
+                            </div>
+                        </a>
+                    </li>
+                <% }); %>
+            </ul>
+        <% } else { %>
+            <div class="no-audio">
+                <h3>No Audio Files Found</h3>
+                <p>This setlist doesn't contain any songs with audio links.</p>
+            </div>
+        <% } %>
+    </div>
+
+    <script>
+        let currentSong = 0;
+        const audio = document.getElementById('audio');
+        const playlist = document.getElementById('playlist');
+        const tracks = playlist ? playlist.querySelectorAll('li') : [];
+
+        if (audio && tracks.length > 0) {
+            // Set initial volume
+            audio.volume = 0.5;
+
+            // Auto-play next song when current one ends
+            audio.addEventListener('ended', function() {
+                currentSong++;
+                if (currentSong >= tracks.length) {
+                    currentSong = 0; // Loop back to first song
+                }
+                playSong(tracks[currentSong]);
+            });
+        }
+
+        function playSong(songElement, event) {
+            if (event) {
+                event.preventDefault();
+            }
+            
+            if (!songElement || !audio) return;
+
+            // Update active state
+            document.querySelectorAll('#playlist li').forEach(li => li.classList.remove('active'));
+            songElement.classList.add('active');
+
+            // Get song URL and play
+            const songUrl = songElement.dataset.url;
+            if (songUrl) {
+                audio.src = songUrl;
+                audio.load();
+                audio.play();
+                
+                // Update current song index
+                currentSong = Array.from(tracks).indexOf(songElement);
+            }
+        }
+        
+        function restartCurrentSong() {
+            if (audio) {
+                audio.currentTime = 0;
+                audio.play();
+            }
+        }
+        
+        function playNextSong() {
+            if (tracks.length === 0) return;
+            
+            currentSong++;
+            if (currentSong >= tracks.length) {
+                currentSong = 0; // Loop back to first song
+            }
+            playSong(tracks[currentSong]);
+        }
+        
+        function playPreviousSong() {
+            if (tracks.length === 0) return;
+            
+            currentSong--;
+            if (currentSong < 0) {
+                currentSong = tracks.length - 1; // Loop to last song
+            }
+            playSong(tracks[currentSong]);
+        }
+    </script>
+</body>
+</html>

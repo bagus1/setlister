@@ -42,9 +42,15 @@ app.use(express.static("public"));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "setlist-manager-secret-key",
-    resave: false,
+    resave: true,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 }, // 7 days
+    cookie: {
+      secure: false,
+      httpOnly: true,
+      sameSite: "lax",
+    },
+    // Sessions will persist until browser is closed or server restarts
+    // No maxAge means they won't expire automatically
   })
 );
 

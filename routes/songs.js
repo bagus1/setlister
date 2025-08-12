@@ -141,14 +141,8 @@ router.post(
     body("artist").optional().trim(),
     body("vocalist").optional().trim(),
     body("key").optional(),
-    body("minutes")
-      .optional()
-      .isInt({ min: 0 })
-      .withMessage("Minutes must be a positive number"),
-    body("seconds")
-      .optional()
-      .isInt({ min: 0, max: 59 })
-      .withMessage("Seconds must be between 0 and 59"),
+    body("minutes").optional(),
+    body("seconds").optional(),
     body("bpm")
       .optional()
       .custom((value) => {
@@ -408,14 +402,8 @@ router.post(
     body("artist").optional().trim(),
     body("vocalist").optional().trim(),
     body("key").optional(),
-    body("minutes")
-      .optional()
-      .isInt({ min: 0 })
-      .withMessage("Minutes must be a positive number"),
-    body("seconds")
-      .optional()
-      .isInt({ min: 0, max: 59 })
-      .withMessage("Seconds must be between 0 and 59"),
+    body("minutes").optional(),
+    body("seconds").optional(),
     body("bpm")
       .optional()
       .custom((value) => {

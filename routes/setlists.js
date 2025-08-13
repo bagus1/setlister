@@ -98,6 +98,178 @@ router.get("/:id/gig-view", async (req, res) => {
   }
 });
 
+// Public listen route (no authentication required)
+router.get("/:id/listen", async (req, res) => {
+  try {
+    const setlistId = req.params.id;
+    const { url } = req.query;
+
+    if (!url) {
+      return res.status(400).send("URL parameter is required");
+    }
+
+    const setlist = await Setlist.findByPk(setlistId, {
+      include: [
+        {
+          model: Band,
+          attributes: ["id", "name"],
+        },
+        {
+          model: SetlistSet,
+          include: [
+            {
+              model: SetlistSong,
+              include: [
+                {
+                  model: Song,
+                  include: ["Artists", "Vocalist"],
+                },
+              ],
+              order: [["order", "ASC"]],
+            },
+          ],
+          order: [["order", "ASC"]],
+        },
+      ],
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Fetch the external playlist
+    let playlistData;
+    try {
+      const response = await fetch(url);
+      const contentType = response.headers.get("content-type");
+
+      if (contentType && contentType.includes("application/json")) {
+        playlistData = await response.json();
+      } else {
+        // Handle HTML content - try to extract audio links
+        const html = await response.text();
+        const audioLinks = [];
+
+        // Create a base URL for resolving relative paths
+        const baseUrl = new URL(url);
+
+        // Debug: Log a sample of the HTML to see the actual format
+        console.log("HTML sample:", html.substring(0, 1000));
+
+        // Extract total summary information
+        let totalSummary = "";
+        const summaryMatch = html.match(
+          /Total Length: ([^(]+) \((\d+) songs\)/
+        );
+        if (summaryMatch) {
+          totalSummary = {
+            duration: summaryMatch[1].trim(),
+            songCount: parseInt(summaryMatch[2]),
+          };
+        }
+
+        // Site-specific scraping logic
+        let linkRegex;
+        let match;
+
+        // Determine the site and use appropriate scraping logic
+        const hostname = baseUrl.hostname.toLowerCase();
+        console.log("Detected hostname:", hostname);
+
+        switch (hostname) {
+          case "www.bagus.org":
+          case "bagus.org":
+            // Bagus.org format: href="/path/file.wav">Song Title</a><span class="duration">(duration)
+            linkRegex =
+              /href=["']([^"']+\.(?:mp3|wav|ogg|m4a|flac))["'][^>]*>([^<]+)<\/a><span class="duration">\(([^)]+)\)/gi;
+            console.log("Using bagus.org scraping pattern");
+            break;
+
+          case "www.example.com":
+          case "example.com":
+            // Example site format (placeholder for future)
+            linkRegex = /placeholder-regex-for-example-site/gi;
+            console.log("Using example.com scraping pattern");
+            break;
+
+          default:
+            // Default/fallback pattern for unknown sites
+            linkRegex =
+              /href=["']([^"']+\.(?:mp3|wav|ogg|m4a|flac))["'][^>]*>([^<]+)<\/a>/gi;
+            console.log(
+              "Using default scraping pattern for unknown site:",
+              hostname
+            );
+            break;
+        }
+
+        while ((match = linkRegex.exec(html)) !== null) {
+          let audioUrl, title, duration;
+
+          if (hostname.includes("bagus.org")) {
+            // Bagus.org specific parsing
+            audioUrl = match[1];
+            title = match[2].trim();
+            duration = match[3].trim();
+          } else if (hostname.includes("example.com")) {
+            // Example site specific parsing (placeholder)
+            audioUrl = match[1];
+            title = match[2].trim();
+            duration = null; // No duration info for this site
+          } else {
+            // Default parsing for unknown sites
+            audioUrl = match[1];
+            title = match[2].trim();
+            duration = null; // No duration info for unknown sites
+          }
+
+          console.log("Found track:", { title, audioUrl, duration });
+
+          // Convert relative URLs to absolute URLs
+          let fullUrl = audioUrl;
+          if (audioUrl.startsWith("/")) {
+            fullUrl = `${baseUrl.protocol}//${baseUrl.host}${audioUrl}`;
+          } else if (audioUrl.startsWith("./")) {
+            fullUrl = `${baseUrl.protocol}//${baseUrl.host}${baseUrl.pathname.replace(/\/[^\/]*$/, "")}${audioUrl.substring(1)}`;
+          } else if (!audioUrl.startsWith("http")) {
+            fullUrl = `${baseUrl.protocol}//${baseUrl.host}${baseUrl.pathname.replace(/\/[^\/]*$/, "")}/${audioUrl}`;
+          }
+
+          audioLinks.push({
+            url: fullUrl,
+            title: title,
+            duration: duration,
+          });
+        }
+
+        console.log("Audio links found:", audioLinks.length);
+        console.log("First few links:", audioLinks.slice(0, 3));
+
+        playlistData = {
+          tracks: audioLinks,
+          summary: totalSummary,
+        };
+      }
+    } catch (fetchError) {
+      logger.logError("Failed to fetch external playlist", fetchError);
+      return res
+        .status(500)
+        .send("Failed to fetch or parse the external recordings playlist");
+    }
+
+    res.render("setlists/listen", {
+      title: `Listen to Set - ${setlist.title}`,
+      setlist,
+      playlistData,
+      externalUrl: url,
+      layout: "layout",
+    });
+  } catch (error) {
+    logger.logError("Listen route error", error);
+    res.status(500).send("Error loading listen view");
+  }
+});
+
 // Public playlist view route (no authentication required)
 router.get("/:id/playlist", async (req, res) => {
   try {
@@ -586,10 +758,6 @@ router.get("/:id/finalize", async (req, res) => {
     const setlistId = req.params.id;
     const userId = req.session.user.id;
 
-    console.log(
-      `[FINALIZE] Loading finalize page for setlist ${setlistId} by user ${userId}`
-    );
-
     // Add a small delay to ensure any pending saves are completed
     await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -620,15 +788,12 @@ router.get("/:id/finalize", async (req, res) => {
     });
 
     if (!setlist) {
-      console.log(`[FINALIZE] Setlist not found: ${setlistId}`);
       req.flash("error", "Setlist not found");
       return res.redirect("/bands");
     }
 
     // Get BandSong preferences for this band
-    console.log(
-      `[FINALIZE] Looking for BandSong records with bandId: ${setlist.Band.id}`
-    );
+
     const bandSongs = await BandSong.findAll({
       where: { bandId: setlist.Band.id },
       include: [
@@ -640,18 +805,10 @@ router.get("/:id/finalize", async (req, res) => {
       raw: false,
     });
 
-    console.log(`[FINALIZE] BandSong.findAll result:`, bandSongs);
-
     // Create a map of songId to BandSong for quick lookup
     const bandSongMap = {};
     bandSongs.forEach((bandSong) => {
       bandSongMap[bandSong.songId] = bandSong;
-    });
-
-    console.log(`[FINALIZE] BandSong data:`, {
-      bandSongsCount: bandSongs.length,
-      bandSongMapKeys: Object.keys(bandSongMap),
-      bandSongMap: bandSongMap,
     });
 
     // Get all gig documents for songs in this setlist
@@ -684,16 +841,6 @@ router.get("/:id/finalize", async (req, res) => {
       gigDocumentsBySong[doc.songId].push(doc);
     });
 
-    console.log(`[FINALIZE] GigDocument data:`, {
-      gigDocumentsCount: gigDocuments.length,
-      gigDocumentsBySongKeys: Object.keys(gigDocumentsBySong),
-      gigDocumentsBySong: gigDocumentsBySong,
-    });
-
-    // Auto-assign missing gig document preferences
-    console.log(
-      `[FINALIZE] Starting auto-assignment of missing gig document preferences...`
-    );
     let autoAssignedCount = 0;
 
     for (const songId of songIds) {
@@ -716,9 +863,6 @@ router.get("/:id/finalize", async (req, res) => {
       if (bandSong) {
         // Update existing BandSong record
         await bandSong.update({ gigDocumentId: preferredDocId });
-        console.log(
-          `[FINALIZE] Auto-assigned gig document ${preferredDocId} (${availableDocs[0].getTypeDisplayName()} v${availableDocs[0].version}) to existing BandSong for song ${songId}`
-        );
       } else {
         // Create new BandSong record
         await BandSong.create({
@@ -726,9 +870,6 @@ router.get("/:id/finalize", async (req, res) => {
           songId: songId,
           gigDocumentId: preferredDocId,
         });
-        console.log(
-          `[FINALIZE] Created new BandSong with auto-assigned gig document ${preferredDocId} (${availableDocs[0].getTypeDisplayName()} v${availableDocs[0].version}) for song ${songId}`
-        );
       }
 
       autoAssignedCount++;
@@ -745,15 +886,6 @@ router.get("/:id/finalize", async (req, res) => {
       }
     }
 
-    console.log(
-      `[FINALIZE] Auto-assignment complete. ${autoAssignedCount} songs had preferences set.`
-    );
-
-    console.log(`[FINALIZE] Setlist found: ${setlist.title}`);
-    console.log(
-      `[FINALIZE] Number of sets: ${setlist.SetlistSets ? setlist.SetlistSets.length : 0}`
-    );
-
     // Calculate set times
     const setTimes = {};
     let totalTime = 0;
@@ -761,9 +893,7 @@ router.get("/:id/finalize", async (req, res) => {
     setlist.SetlistSets.forEach((set) => {
       if (set.name !== "Maybe") {
         let setTime = 0;
-        console.log(
-          `[FINALIZE] Processing set "${set.name}" with ${set.SetlistSongs ? set.SetlistSongs.length : 0} songs`
-        );
+
         set.SetlistSongs.forEach((setlistSong) => {
           if (setlistSong.Song.time) {
             setTime += setlistSong.Song.time;
@@ -771,11 +901,8 @@ router.get("/:id/finalize", async (req, res) => {
         });
         setTimes[set.name] = setTime;
         totalTime += setTime;
-        console.log(`[FINALIZE] Set "${set.name}" time: ${setTime} seconds`);
       }
     });
-
-    console.log(`[FINALIZE] Total time: ${totalTime} seconds`);
 
     // Calculate if setlist is still editable (until end of setlist date)
     const isEditable = isSetlistEditable(setlist);
@@ -789,15 +916,6 @@ router.get("/:id/finalize", async (req, res) => {
       bandSongMap,
       gigDocumentsBySong,
     };
-
-    console.log(`[FINALIZE] Rendering template with data:`, {
-      title: renderData.title,
-      setlistTitle: renderData.setlist.title,
-      bandSongMapKeys: Object.keys(renderData.bandSongMap || {}),
-      gigDocumentsBySongKeys: Object.keys(renderData.gigDocumentsBySong || {}),
-      hasBandSongMap: !!renderData.bandSongMap,
-      hasGigDocumentsBySong: !!renderData.gigDocumentsBySong,
-    });
 
     res.render("setlists/finalize", renderData);
   } catch (error) {
@@ -1290,6 +1408,50 @@ router.post("/:id/update", async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error("Update setlist error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /setlists/:id/save-recordings-url - Save recordings URL for a setlist
+router.post("/:id/save-recordings-url", requireAuth, async (req, res) => {
+  try {
+    const setlistId = req.params.id;
+    const userId = req.session.user.id;
+    const { recordingsUrl } = req.body;
+
+    // Validate input
+    if (!recordingsUrl) {
+      return res.status(400).json({ error: "Recordings URL is required" });
+    }
+
+    // Find setlist and verify user has access
+    const setlist = await Setlist.findByPk(setlistId, {
+      include: [
+        {
+          model: Band,
+          include: [
+            {
+              model: User,
+              where: { id: userId },
+              through: { attributes: [] },
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!setlist) {
+      return res
+        .status(404)
+        .json({ error: "Setlist not found or access denied" });
+    }
+
+    // Update the setlist with the recordings URL
+    await setlist.update({ recordingsUrl });
+
+    res.json({ success: true, message: "Recordings URL saved successfully" });
+  } catch (error) {
+    logger.logError("Save recordings URL error", error);
     res.status(500).json({ error: "Server error" });
   }
 });

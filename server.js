@@ -1,5 +1,6 @@
 const express = require("express");
 const session = require("express-session");
+const SQLiteStore = require("connect-sqlite3")(session);
 const methodOverride = require("method-override");
 const flash = require("connect-flash");
 const expressLayouts = require("express-ejs-layouts");
@@ -41,6 +42,11 @@ app.use(express.static("public"));
 // Session configuration
 app.use(
   session({
+    store: new SQLiteStore({
+      db: "sessions.db",
+      dir: "./",
+      table: "sessions",
+    }),
     secret: process.env.SESSION_SECRET || "setlist-manager-secret-key",
     resave: true,
     saveUninitialized: false,
@@ -48,9 +54,11 @@ app.use(
       secure: false,
       httpOnly: true,
       sameSite: "lax",
+      // Make cookies last for 1 year (effectively permanent)
+      maxAge: 365 * 24 * 60 * 60 * 1000,
     },
-    // Sessions will persist until browser is closed or server restarts
-    // No maxAge means they won't expire automatically
+    // Sessions will persist in SQLite database and survive server restarts
+    // 1 year maxAge ensures cookies don't expire in the browser
   })
 );
 

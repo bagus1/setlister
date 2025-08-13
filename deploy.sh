@@ -61,6 +61,7 @@ Modes:
   deploy   - Deploy current changes (push to git, pull on server, restart)
   update   - Quick deploy (push to git, pull on server, restart)
   quick    - Update files without restart (auto-commit, push to git, pull on server)
+  migrate  - Run database migrations on server
   restart  - Just restart the server
   stop     - Stop the server (kill Passenger process)
   start    - Start the server (touch restart.txt)
@@ -79,6 +80,7 @@ Examples:
   ./deploy.sh deploy    # Full deployment with restart
   ./deploy.sh update    # Quick deploy with restart
   ./deploy.sh quick     # Update files without restart
+  ./deploy.sh migrate   # Run database migrations
   ./deploy.sh restart   # Just restart server
   ./deploy.sh stop      # Stop server
   ./deploy.sh start     # Start server
@@ -282,6 +284,28 @@ update_dependencies() {
     restart_server
 }
 
+# Function to run database migrations
+run_migrations() {
+    print_status "Running database migrations on server..."
+    
+    # First ensure we have the latest code
+    print_status "Pulling latest code on server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
+        print_error "Failed to pull latest code on server"
+        return 1
+    }
+    
+    # Run the migration
+    print_status "Executing migrations..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node migrate.js" || {
+        print_error "Failed to run migrations on server"
+        return 1
+    }
+    
+    print_success "Database migrations completed successfully!"
+    print_warning "Note: You may need to restart the server if migrations affect running processes."
+}
+
 # Function to show status
 show_status() {
     print_status "Checking deployment status..."
@@ -446,6 +470,9 @@ main() {
             ;;
         "deps")
             update_dependencies
+            ;;
+        "migrate")
+            run_migrations
             ;;
         *)
             print_error "Unknown mode: $MODE"

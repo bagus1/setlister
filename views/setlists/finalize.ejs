@@ -229,7 +229,7 @@
                                 </div>
 
                                 <div class="d-flex gap-2">
-                                    <a href="/setlists/<%= setlist.id %>/playlist" target="_blank" class="btn btn-info flex-fill">
+                                    <a href="/setlists/<%= setlist.id %>/playlist" class="btn btn-info flex-fill">
                                         <i class="bi bi-music-note-list"></i> View Playlist
                                     </a>
                                     <button onclick="copyPlaylistLink()" class="btn btn-outline-info" title="Copy playlist link">
@@ -240,7 +240,7 @@
                                 <% const savedUrl = setlist.recordingsUrl; %>
                                 <% if (savedUrl) { %>
                                 <div class="d-flex gap-2">
-                                    <a href="/setlists/<%= setlist.id %>/listen?url=<%= encodeURIComponent(savedUrl) %>" target="_blank" class="btn btn-primary flex-fill">
+                                    <a href="/setlists/<%= setlist.id %>/listen?url=<%= encodeURIComponent(savedUrl) %>" class="btn btn-primary flex-fill">
                                         <i class="bi bi-headphones"></i> Listen to the Set
                                     </a>
                                     <button onclick="copyListenLink()" class="btn btn-outline-primary" title="Copy listen link">

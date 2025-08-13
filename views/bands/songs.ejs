@@ -48,6 +48,17 @@
             background-color: transparent;
         }
     }
+
+    .no-audio {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+    
+    .song-icons {
+        position: relative;
+        top: 2px;
+    }
 </style>
 
 <div class="row">
@@ -187,6 +198,14 @@
                                                                                             class="bi bi-speedometer"></i>
                                                                                         <%= song.bpm %>
                                                                                     </span>
+                                                                                    <% } %>
+                                                                                    
+                                                                                    <!-- Gig Document and Audio Link Icons -->
+                                                                                    <% if (song.GigDocuments && song.GigDocuments.length > 0) { %>
+                                                                                        <i class="bi bi-file-earmark-text text-success me-1 song-icons" title="Has gig documents"></i>
+                                                                                    <% } %>
+                                                                                    <% if (song.Links && song.Links.length > 0) { %>
+                                                                                        <i class="bi bi-link-45deg text-primary me-1 song-icons" title="Has links"></i>
                                                                                     <% } %>
                                                             </div>
                                                             <div>

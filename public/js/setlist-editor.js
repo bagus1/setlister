@@ -22,6 +22,12 @@ class SetlistEditor {
   }
 
   setupSocketConnection() {
+    // Prevent duplicate initialization
+    if (this.socketInitialized) {
+      return;
+    }
+    this.socketInitialized = true;
+
     this.socket.emit("join-setlist", this.setlistId);
 
     this.socket.on("setlist-updated", (data) => {
@@ -34,6 +40,12 @@ class SetlistEditor {
   }
 
   setupDragAndDrop() {
+    // Prevent duplicate initialization
+    if (this.dragAndDropInitialized) {
+      return;
+    }
+    this.dragAndDropInitialized = true;
+
     // Make band songs draggable
     document.querySelectorAll(".band-song").forEach((song) => {
       this.makeDraggable(song);
@@ -57,6 +69,12 @@ class SetlistEditor {
   }
 
   makeDraggable(element) {
+    // Prevent duplicate event listeners
+    if (element.dataset.draggableInitialized === "true") {
+      return;
+    }
+    element.dataset.draggableInitialized = "true";
+
     element.draggable = true;
 
     element.addEventListener("dragstart", (e) => {
@@ -79,6 +97,12 @@ class SetlistEditor {
   }
 
   setupDropZone(zone) {
+    // Prevent duplicate event listeners
+    if (zone.dataset.dropZoneInitialized === "true") {
+      return;
+    }
+    zone.dataset.dropZoneInitialized = "true";
+
     zone.addEventListener("dragover", (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
@@ -104,6 +128,12 @@ class SetlistEditor {
   }
 
   setupBandSongsDropZone(bandSongsContainer) {
+    // Prevent duplicate event listeners
+    if (bandSongsContainer.dataset.bandSongsDropZoneInitialized === "true") {
+      return;
+    }
+    bandSongsContainer.dataset.bandSongsDropZoneInitialized = "true";
+
     bandSongsContainer.addEventListener("dragover", (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
@@ -917,6 +947,12 @@ class SetlistEditor {
   }
 
   setupEventListeners() {
+    // Prevent duplicate initialization
+    if (this.eventListenersInitialized) {
+      return;
+    }
+    this.eventListenersInitialized = true;
+
     // Manual save button
     const saveBtn = document.getElementById("save-setlist");
     if (saveBtn) {
@@ -998,6 +1034,12 @@ class SetlistEditor {
   }
 
   setupExistingRemoveButtons() {
+    // Prevent duplicate initialization
+    if (this.removeButtonsInitialized) {
+      return;
+    }
+    this.removeButtonsInitialized = true;
+
     document
       .querySelectorAll(".setlist-song .btn-outline-danger")
       .forEach((button) => {

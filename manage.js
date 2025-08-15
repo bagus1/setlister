@@ -218,6 +218,140 @@ async function listSongs() {
   log(`Total songs: ${songs.length}`, "green");
 }
 
+async function mergeArtists() {
+  log("\n=== Merge Artists ===", "yellow");
+
+  try {
+    // First, show all artists to help user choose
+    log("\nAvailable artists:", "blue");
+    const allArtists = await Artist.findAll({
+      include: [
+        {
+          model: Song,
+          attributes: ["id", "title"],
+        },
+      ],
+      order: [["name", "ASC"]],
+    });
+
+    if (allArtists.length < 2) {
+      log("Need at least 2 artists to perform a merge.", "red");
+      return;
+    }
+
+    allArtists.forEach((artist, index) => {
+      const songCount = artist.Songs ? artist.Songs.length : 0;
+      log(
+        `${index + 1}. ${artist.name} (ID: ${artist.id}) - ${songCount} songs`,
+        "white"
+      );
+    });
+
+    // Get source artist (the one to be merged)
+    const sourceChoice = await question(
+      "\nEnter the number of the artist to merge FROM (source): "
+    );
+    const sourceIndex = parseInt(sourceChoice) - 1;
+
+    if (
+      isNaN(sourceIndex) ||
+      sourceIndex < 0 ||
+      sourceIndex >= allArtists.length
+    ) {
+      log("Invalid choice.", "red");
+      return;
+    }
+
+    const sourceArtist = allArtists[sourceIndex];
+
+    // Get target artist (the one to merge into)
+    const targetChoice = await question(
+      "Enter the number of the artist to merge INTO (target): "
+    );
+    const targetIndex = parseInt(targetChoice) - 1;
+
+    if (
+      isNaN(targetIndex) ||
+      targetIndex < 0 ||
+      targetIndex >= allArtists.length
+    ) {
+      log("Invalid choice.", "red");
+      return;
+    }
+
+    if (sourceIndex === targetIndex) {
+      log("Cannot merge an artist into itself.", "red");
+      return;
+    }
+
+    const targetArtist = allArtists[targetIndex];
+
+    // Show what will happen
+    log(`\nMerge Summary:`, "cyan");
+    log(
+      `FROM: ${sourceArtist.name} (ID: ${sourceArtist.id}) - ${sourceArtist.Songs ? sourceArtist.Songs.length : 0} songs`,
+      "yellow"
+    );
+    log(
+      `INTO: ${targetArtist.name} (ID: ${targetArtist.id}) - ${targetArtist.Songs ? targetArtist.Songs.length : 0} songs`,
+      "green"
+    );
+
+    const confirmed = await confirmAction(
+      `merge "${sourceArtist.name}" into "${targetArtist.name}"? This will move all songs and delete the source artist.`
+    );
+
+    if (!confirmed) {
+      log("Merge cancelled.", "yellow");
+      return;
+    }
+
+    // Perform the merge
+    log("\nPerforming merge...", "blue");
+
+    // Update all songs from source artist to target artist
+    if (sourceArtist.Songs && sourceArtist.Songs.length > 0) {
+      for (const song of sourceArtist.Songs) {
+        // Remove the source artist association
+        await song.removeArtist(sourceArtist);
+        // Add the target artist association
+        await song.addArtist(targetArtist);
+        log(`Moved song: ${song.title}`, "white");
+      }
+    }
+
+    // Delete the source artist
+    await sourceArtist.destroy();
+    log(`Deleted source artist: ${sourceArtist.name}`, "yellow");
+
+    // Show final result
+    log(`\n✅ Merge completed successfully!`, "green");
+    log(`\nSongs now belonging to "${targetArtist.name}":`, "cyan");
+
+    const finalSongs = await Song.findAll({
+      include: [
+        {
+          model: Artist,
+          where: { id: targetArtist.id },
+          attributes: ["id", "name"],
+        },
+      ],
+      order: [["title", "ASC"]],
+    });
+
+    if (finalSongs.length > 0) {
+      finalSongs.forEach((song, index) => {
+        log(`  ${index + 1}. ${song.title}`, "white");
+      });
+      log(`\nTotal songs: ${finalSongs.length}`, "green");
+    } else {
+      log("  No songs found.", "yellow");
+    }
+  } catch (error) {
+    log(`Error during merge: ${error.message}`, "red");
+  }
+}
+
 async function listArtists() {
   log("\n=== Artists ===", "cyan");
   const artists = await Artist.findAll({
@@ -734,7 +868,8 @@ async function showMenu() {
   log("11. Edit song", "cyan");
   log("12. Cleanup orphaned data", "yellow");
   log("13. Show statistics", "cyan");
-  log("14. Exit (or type q/quit)", "reset");
+  log("14. Merge artists", "yellow");
+  log("15. Exit (or type q/quit)", "reset");
   log("=====================================", "magenta");
 }
 
@@ -748,7 +883,7 @@ async function main() {
 
     while (true) {
       await showMenu();
-      const choice = await question("Enter your choice (1-14, q to quit): ");
+      const choice = await question("Enter your choice (1-15, q to quit): ");
 
       switch (choice.toLowerCase()) {
         case "1":
@@ -791,6 +926,8 @@ async function main() {
           await showStats();
           break;
         case "14":
+          await mergeArtists();
+          break;
         case "q":
         case "quit":
           log("Goodbye!", "green");
@@ -868,10 +1005,13 @@ if (process.argv.length > 2) {
         case "stats":
           await showStats();
           break;
+        case "merge-artists":
+          await mergeArtists();
+          break;
         default:
           log(`Unknown command: ${command}`, "red");
           log(
-            "Available commands: list-users, list-bands, list-songs, delete-links, delete-gig-documents, edit-song, cleanup, stats",
+            "Available commands: list-users, list-bands, list-songs, delete-links, delete-gig-documents, edit-song, cleanup, stats, merge-artists",
             "yellow"
           );
           log("For server commands: npm run manage server <command>", "yellow");

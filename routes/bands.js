@@ -9,6 +9,10 @@ const {
   Setlist,
   SetlistSet,
   BandInvitation,
+  Artist,
+  Vocalist,
+  Link,
+  GigDocument,
 } = require("../models");
 const {
   sendBandInvitation,
@@ -135,6 +139,21 @@ router.get("/:id", async (req, res) => {
       order: [["updatedAt", "DESC"]],
     });
 
+    // Get band songs - simplified query to avoid complex includes
+    const bandSongs = await BandSong.findAll({
+      where: { bandId },
+      include: [
+        {
+          model: Song,
+          include: [
+            { model: Artist, through: { attributes: [] } },
+            { model: Vocalist },
+          ],
+        },
+      ],
+      order: [[Song, "title", "ASC"]],
+    });
+
     // Get pending invitations (not used, not expired)
     let pendingInvitations = [];
     try {
@@ -176,6 +195,7 @@ router.get("/:id", async (req, res) => {
       title: band.name,
       band,
       setlists,
+      bandSongs,
       pendingInvitations,
       userId,
     });

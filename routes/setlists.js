@@ -345,18 +345,9 @@ router.get("/:id/playlist", async (req, res) => {
 // All other setlist routes require authentication
 router.use(requireAuth);
 
-// Helper function to check if setlist is still editable (until one week after setlist date)
+// Helper function to check if setlist is still editable (always editable)
 function isSetlistEditable(setlist) {
-  if (!setlist.date) {
-    return true; // No date set, always editable
-  }
-
-  const setlistDate = new Date(setlist.date);
-  const oneWeekAfterSetlist = new Date(setlistDate);
-  oneWeekAfterSetlist.setDate(setlistDate.getDate() + 7); // Add 7 days
-  oneWeekAfterSetlist.setHours(23, 59, 59, 999); // End of the day
-
-  return new Date() <= oneWeekAfterSetlist;
+  return true; // Setlists are always editable
 }
 
 // GET /setlists/:id - Show setlist details
@@ -904,8 +895,8 @@ router.get("/:id/finalize", async (req, res) => {
       }
     });
 
-    // Calculate if setlist is still editable (until end of setlist date)
-    const isEditable = isSetlistEditable(setlist);
+    // Calculate if setlist is still editable (always editable)
+    const isEditable = true;
 
     const renderData = {
       title: `Finalize ${setlist.title}`,

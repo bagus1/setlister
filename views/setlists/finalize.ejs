@@ -15,11 +15,9 @@
                     <% } %>
             </div>
             <div>
-                <% if (isEditable) { %>
-                    <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Back to Editor
-                    </a>
-                    <% } %>
+                <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Editor
+                </a>
             </div>
         </div>
     </div>
@@ -201,22 +199,13 @@
                 </h6>
             </div>
             <div class="card-body">
-                <% if (!isEditable) { %>
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i>
-                        <strong>Show completed</strong><br>
-                        This setlist can no longer be edited as it has been more than one week since the performance
-                        date.
-                    </div>
-                    <% } else { %>
-                        <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle"></i>
-                            <strong>Editable</strong><br>
-                            This setlist can still be edited by band members until one week after the performance date.
-                        </div>
-                        <% } %>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Always Editable</strong><br>
+                    This setlist can be edited by band members at any time.
+                </div>
 
-                            <div class="d-grid gap-2">
+                <div class="d-grid gap-2">
                                 <div class="d-flex gap-2">
                                     <a href="/setlists/<%= setlist.id %>/gig-view" target="_blank"
                                         class="btn btn-success flex-fill">

@@ -218,23 +218,6 @@ router.post(
         vocalistId = vocalistRecord.id;
       }
 
-      // Convert BPM to proper value
-      let bpmValue = null;
-      if (bpm && typeof bpm === "string" && bpm.trim() !== "") {
-        bpmValue = parseInt(bpm.trim());
-      } else if (bpm && typeof bpm === "number") {
-        bpmValue = bpm;
-      }
-
-      // Create song
-      const song = await Song.create({
-        title: title.trim(),
-        key: key || null,
-        time: totalTime || null,
-        bpm: bpmValue,
-        vocalistId,
-      });
-
       // Handle artist
       if (artist && artist.trim()) {
         const [artistRecord] = await Artist.findOrCreate({
@@ -483,7 +466,21 @@ router.post(
         vocalistId = vocalistRecord.id;
       }
 
-      // Update song (excluding title and artist which are now read-only)
+      // Handle artist - only allow adding if currently blank
+      const currentArtist = await song.getArtists();
+      if (
+        artist &&
+        artist.trim() &&
+        (!currentArtist || currentArtist.length === 0)
+      ) {
+        const [artistRecord] = await Artist.findOrCreate({
+          where: { name: artist.trim() },
+          defaults: { name: artist.trim() },
+        });
+        await song.addArtist(artistRecord);
+      }
+
+      // Update song (excluding title which is read-only)
       await song.update({
         key: key || null,
         time: totalTime || null,
@@ -491,8 +488,8 @@ router.post(
         vocalistId,
       });
 
-      // Note: Title and artist are now read-only and cannot be changed
-      // The form sends these values but we ignore them for security
+      // Note: Title is read-only and cannot be changed
+      // Artist can only be added if currently blank
 
       req.flash("success", "Song updated successfully");
       res.redirect(`/songs/${song.id}`);

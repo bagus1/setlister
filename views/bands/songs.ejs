@@ -59,6 +59,13 @@
         position: relative;
         top: 2px;
     }
+    
+    /* Carousel navigation button active state */
+    .btn-group .btn.active {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
 </style>
 
 <div class="row">
@@ -91,55 +98,122 @@
     <div class="col-12">
         <div class="card mb-4">
             <div class="card-body">
-                <h5 class="card-title mb-3">
-                    <i class="bi bi-info-circle text-primary"></i> How to Manage Your Band's Songs
-                </h5>
-                <div class="row">
-                    <div class="col-md-2">
-                        <div class="text-center p-3 border rounded bg-light">
-                            <div class="h4 text-primary mb-2">1</div>
-                            <p class="mb-0 small">This is where you pick songs your band might play</p>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-center p-3 border rounded bg-light">
-                            <div class="h4 text-primary mb-2">2</div>
-                            <p class="mb-0 small">This list has all the songs in the whole system</p>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-center p-3 border rounded bg-light">
-                            <div class="h4 text-primary mb-2">3</div>
-                            <p class="mb-0 small">Select just the songs your band might play</p>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-center p-3 border rounded bg-light">
-                            <div class="h4 text-primary mb-2">4</div>
-                            <p class="mb-0 small">Use the filters to find specific artists or songs to select</p>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-center p-3 border rounded bg-light">
-                            <div class="h4 text-primary mb-2">5</div>
-                            <p class="mb-0 small">Use the Add Song or Bulk Add Songs buttons if the songs you want aren't listed here</p>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-center p-3 border rounded bg-light">
-                            <div class="h4 text-primary mb-2">6</div>
-                            <p class="mb-0 small">Then go back to your setlists and you'll be able to add them to your sets</p>
-                        </div>
-                    </div>
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle text-primary"></i> How to Manage Your Band's Songs
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hideCarousel()" title="Hide instructions">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
                 </div>
-                <div class="row mt-3">
-                    <div class="col-md-4 offset-md-2">
-                        <div class="text-center p-3 border rounded bg-light">
-                            <div class="h4 text-primary mb-2">7</div>
-                            <p class="mb-0 small">Come back here as often as you like to change which songs are available for your sets</p>
+                
+                <!-- Bootstrap Carousel for Steps -->
+                <div id="stepsCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+                    <!-- Carousel Indicators -->
+                    <div class="carousel-indicators">
+                        <button type="button" data-bs-target="#stepsCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Step 1"></button>
+                        <button type="button" data-bs-target="#stepsCarousel" data-bs-slide-to="1" aria-label="Step 2"></button>
+                        <button type="button" data-bs-target="#stepsCarousel" data-bs-slide-to="2" aria-label="Step 3"></button>
+                        <button type="button" data-bs-target="#stepsCarousel" data-bs-slide-to="3" aria-label="Step 4"></button>
+                        <button type="button" data-bs-target="#stepsCarousel" data-bs-slide-to="4" aria-label="Step 5"></button>
+                        <button type="button" data-bs-target="#stepsCarousel" data-bs-slide-to="5" aria-label="Step 6"></button>
+                    </div>
+                    
+                    <!-- Carousel Items -->
+                    <div class="carousel-inner">
+                        <!-- Step 1 (Combined with Step 2) -->
+                        <div class="carousel-item active">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <img src="/images/1-manage.png" class="d-block w-100 rounded" alt="Step 1: Manage Songs" style="height: 200px; object-fit: contain;">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="h4 text-primary mb-3">Step 1</div>
+                                    <p class="lead">This is where you pick songs your band might play</p>
+                                    <p class="text-muted">This list has all the songs in the whole system</p>
+                                    <p class="text-muted">Any band member can manage the band's songs.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 2 -->
+                        <div class="carousel-item">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <img src="/images/3-select-songs.png" class="d-block w-100 rounded" alt="Step 2: Select Songs" style="height: 200px; object-fit: contain;">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="h4 text-primary mb-3">Step 2</div>
+                                    <p class="lead">Select just the songs your band might want to add to a setlist</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 3 (was Step 4) -->
+                        <div class="carousel-item">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <img src="/images/4-filters.png" class="d-block w-100 rounded" alt="Step 3: Use Filters" style="height: 200px; object-fit: contain;">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="h4 text-primary mb-3">Step 3</div>
+                                    <p class="lead">Use the filters to find specific artists or songs to select</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 4 (was Step 5) -->
+                        <div class="carousel-item">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <img src="/images/5-add.png" class="d-block w-100 rounded" alt="Step 4: Add Songs" style="height: 200px; object-fit: contain;">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="h4 text-primary mb-3">Step 4</div>
+                                    <p class="lead">Use the Add Song or Bulk Add Songs buttons if the songs you want aren't listed here</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 5 (was Step 6) -->
+                        <div class="carousel-item">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <img src="/images/6-setlist.png" class="d-block w-100 rounded" alt="Step 5: Use in Setlists" style="height: 200px; object-fit: contain;">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="h4 text-primary mb-3">Step 5</div>
+                                    <p class="lead">Then go back to your setlists and you'll be able to add them to your sets</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 6 (was Step 7) -->
+                        <div class="carousel-item">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <img src="/images/7-manage-again.png" class="d-block w-100 rounded" alt="Step 6: Manage Again" style="height: 200px; object-fit: contain;">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="h4 text-primary mb-3">Step 6</div>
+                                    <p class="lead">Come back here as often as you like to change which songs are available for your sets</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    
+                    <!-- Carousel Controls -->
+                    <button class="carousel-control-prev" type="button" data-bs-target="#stepsCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#stepsCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
                 </div>
+                
+                
             </div>
         </div>
     </div>
@@ -485,5 +559,66 @@
         searchInput.addEventListener('input', filterSongs);
         artistFilter.addEventListener('change', filterSongs);
         keyFilter.addEventListener('change', filterSongs);
+        
+        // Carousel navigation function
+        function goToSlide(slideIndex) {
+            const carouselElement = document.getElementById('stepsCarousel');
+            if (carouselElement) {
+                const carousel = bootstrap.Carousel.getInstance(carouselElement) || new bootstrap.Carousel(carouselElement);
+                carousel.to(slideIndex);
+            }
+        }
+        
+        // Function to hide the carousel
+        function hideCarousel() {
+            const carouselCard = document.querySelector('.card.mb-4');
+            if (carouselCard) {
+                carouselCard.style.display = 'none';
+            }
+        }
+
+        // Function to go to a specific slide directly
+        function goToSlideDirect(slideIndex) {
+            const carouselElement = document.getElementById('stepsCarousel');
+            if (carouselElement) {
+                const carousel = bootstrap.Carousel.getInstance(carouselElement) || new bootstrap.Carousel(carouselElement);
+                carousel.to(slideIndex);
+            }
+        }
+        
+            // Initialize carousel when page loads
+            document.addEventListener('DOMContentLoaded', function() {
+                const carouselElement = document.getElementById('stepsCarousel');
+                if (carouselElement) {
+                    const carousel = new bootstrap.Carousel(carouselElement, {
+                        interval: 5000,
+                        wrap: true,
+                        keyboard: true
+                    });
+                    
+                    // Force start the carousel immediately
+                    carousel.cycle();
+                    
+                    // Handle focus/blur events to ensure carousel keeps running
+                    document.addEventListener('visibilitychange', function() {
+                        if (!document.hidden) {
+                            // Resume carousel when tab becomes visible
+                            carousel.cycle();
+                        }
+                    });
+                    
+                    // Resume carousel when window regains focus
+                    window.addEventListener('focus', function() {
+                        carousel.cycle();
+                    });
+                    
+                    // Update navigation button states when carousel slides
+                    carouselElement.addEventListener('slid.bs.carousel', function (event) {
+                        const activeIndex = event.to;
+                        // Logic to update active state of carousel indicators (dots)
+                        // This is handled by Bootstrap's default behavior for carousel-indicators
+                    });
+                }
+            });
     });
 </script>

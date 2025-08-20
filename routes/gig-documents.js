@@ -53,6 +53,7 @@ router.get("/:songId/docs", async (req, res) => {
       getTypeIcon,
       getTypeDisplayName,
       currentUrl: req.originalUrl,
+      currentUser: req.session.user,
     });
   } catch (error) {
     console.error("List gig documents error:", error);
@@ -107,6 +108,7 @@ router.post(
       }
 
       const songId = req.params.songId;
+      const userId = req.session.user.id;
       const song = await Song.findByPk(songId, {
         include: ["Artists", "Vocalist"],
       });
@@ -152,6 +154,7 @@ router.post(
         type,
         version: docVersion,
         content: content ? content.trim() : null,
+        createdById: userId,
       });
 
       req.flash(
@@ -200,6 +203,10 @@ router.get("/:songId/docs/:id", async (req, res) => {
         gigDocument,
         song: gigDocument.Song,
         loggedIn: !!req.session.user,
+        success: req.flash("success"),
+        error: req.flash("error"),
+        currentUrl: req.originalUrl,
+        user: req.session.user,
       });
     }
   } catch (error) {
@@ -213,6 +220,7 @@ router.get("/:songId/docs/:id", async (req, res) => {
 router.get("/:songId/docs/:id/edit", requireAuth, async (req, res) => {
   try {
     const { songId, id } = req.params;
+    const userId = req.session.user.id;
 
     const gigDocument = await GigDocument.findOne({
       where: { id: id, songId: songId },
@@ -222,6 +230,15 @@ router.get("/:songId/docs/:id/edit", requireAuth, async (req, res) => {
     if (!gigDocument) {
       req.flash("error", "Gig document not found");
       return res.redirect(`/songs/${songId}/docs`);
+    }
+
+    // Check if current user is the creator of this document
+    if (gigDocument.createdById !== userId) {
+      req.flash(
+        "error",
+        `You can only edit gig documents that you created, but you can create a new better one! <a href="/songs/${songId}/docs/new" class="alert-link">Create a new better one</a>`
+      );
+      return res.redirect(`/songs/${songId}/docs/${id}`);
     }
 
     res.render("gig-documents/edit", {
@@ -258,6 +275,7 @@ router.put(
 
       const { songId, id } = req.params;
       const { content } = req.body;
+      const userId = req.session.user.id;
 
       // Debug logging
       // console.log("=== UPDATE GIG DOCUMENT DEBUG ===");
@@ -273,6 +291,15 @@ router.put(
       if (!gigDocument) {
         req.flash("error", "Gig document not found");
         return res.redirect(`/songs/${songId}/docs`);
+      }
+
+      // Check if current user is the creator of this document
+      if (gigDocument.createdById !== userId) {
+        req.flash(
+          "error",
+          `You can only edit gig documents that you created, but you can create a new better one! <a href="/songs/${songId}/docs/new" class="alert-link">Create a new better one</a>`
+        );
+        return res.redirect(`/songs/${songId}/docs/${id}`);
       }
 
       await gigDocument.update({
@@ -293,6 +320,7 @@ router.put(
 router.delete("/:songId/docs/:id", requireAuth, async (req, res) => {
   try {
     const { songId, id } = req.params;
+    const userId = req.session.user.id;
 
     const gigDocument = await GigDocument.findOne({
       where: { id: id, songId: songId },
@@ -301,6 +329,15 @@ router.delete("/:songId/docs/:id", requireAuth, async (req, res) => {
     if (!gigDocument) {
       req.flash("error", "Gig document not found");
       return res.redirect(`/songs/${songId}/docs`);
+    }
+
+    // Check if current user is the creator of this document
+    if (gigDocument.createdById !== userId) {
+      req.flash(
+        "error",
+        `You can only delete gig documents that you created, but you can create a new better one! <a href="/songs/${songId}/docs/new" class="alert-link">Create a new better one</a>`
+      );
+      return res.redirect(`/songs/${songId}/docs/${id}`);
     }
 
     await gigDocument.destroy();

@@ -21,12 +21,6 @@
                 <button onclick="window.open('?print=true', '_blank')" class="btn btn-primary">
                     <i class="bi bi-printer"></i> Print
                 </button>
-                <% if (loggedIn) { %>
-                <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>/edit"
-                    class="btn btn-outline-secondary">
-                    <i class="bi bi-pencil"></i> Edit
-                </a>
-                <% } %>
                 <a href="/songs/<%= gigDocument.Song.id %>" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Back to Song
                 </a>
@@ -139,10 +133,17 @@
                     <div class="card-body">
                         <div class="d-grid gap-2">
                             <% if (loggedIn) { %>
-                            <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>/edit"
-                                class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-pencil"></i> Edit Content
-                            </a>
+                                <% if (gigDocument.createdById === user.id) { %>
+                                <a href="/songs/<%= gigDocument.Song.id %>/docs/<%= gigDocument.id %>/edit"
+                                    class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-pencil"></i> Edit Content
+                                </a>
+                                <% } else { %>
+                                <a href="/songs/<%= gigDocument.Song.id %>/docs/new"
+                                    class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-plus-circle"></i> Create Your Own
+                                </a>
+                                <% } %>
                             <% } %>
                             <a href="/songs/<%= gigDocument.Song.id %>" class="btn btn-outline-info btn-sm">
                                 <i class="bi bi-music-note"></i> View Song

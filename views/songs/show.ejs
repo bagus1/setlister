@@ -155,13 +155,14 @@
                     <div class="mb-4">
                         <div class="list-group">
                             <% song.Links.forEach(link=> { %>
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
-                                        <%= getLinkDisplayText(link) %>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <% if (link.type === 'audio') { %>
+                                <% if (link.type === 'audio') { %>
+                                    <!-- Audio Files - Non-clickable card with embedded player -->
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                            <%= getLinkDisplayText(link) %>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
                                             <!-- Audio Player for Audio Files -->
                                             <audio controls style="max-width: 200px; height: 35px;">
                                                 <source src="<%= link.url %>" type="audio/mpeg">
@@ -170,13 +171,25 @@
                                                 <source src="<%= link.url %>" type="audio/mp4">
                                                 Your browser does not support the audio element.
                                             </audio>
-                                        <% } %>
-                                        <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
-                                            <i class="bi bi-box-arrow-up-right"></i> Open
-                                        </a>
+                                            <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-box-arrow-up-right"></i> Open
+                                            </a>
+                                        </div>
                                     </div>
-                                </div>
-                                <% }) %>
+                                <% } else { %>
+                                    <!-- Non-audio links - Clickable card -->
+                                    <a href="<%= link.url %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                        <div>
+                                            <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                            <%= getLinkDisplayText(link) %>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-muted small">Click to open</span>
+                                            <i class="bi bi-box-arrow-up-right text-primary"></i>
+                                        </div>
+                                    </a>
+                                <% } %>
+                            <% }) %>
                         </div>
                     </div>
                 <% } else { %>

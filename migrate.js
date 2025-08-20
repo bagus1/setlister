@@ -67,25 +67,59 @@ async function runMigrations() {
       console.log("✅ gigDocumentId column already exists");
     }
 
-    // Check if recordingsUrl column exists in setlists
-    const setlistColumns = await sequelize.query(
-      "PRAGMA table_info(setlists)",
-      { type: Sequelize.QueryTypes.SELECT }
-    );
+    // Check and add recordingsUrl column to setlists table if it doesn't exist
+    try {
+      const setlistsTableInfo = await sequelize.query(
+        "PRAGMA table_info(setlists)",
+        { type: sequelize.QueryTypes.SELECT }
+      );
+      const hasRecordingsUrl = setlistsTableInfo.some(
+        (col) => col.name === "recordingsUrl"
+      );
 
-    const hasRecordingsUrl = setlistColumns.some(
-      (col) => col.name === "recordingsUrl"
-    );
+      if (!hasRecordingsUrl) {
+        console.log("Adding recordingsUrl column to setlists table...");
+        await sequelize.query(
+          "ALTER TABLE setlists ADD COLUMN recordingsUrl TEXT"
+        );
+        console.log("✅ recordingsUrl column added to setlists table");
+      } else {
+        console.log("✅ recordingsUrl column already exists in setlists table");
+      }
+    } catch (error) {
+      console.error("Error checking/adding recordingsUrl column:", error);
+    }
 
-    if (!hasRecordingsUrl) {
-      console.log("Adding recordingsUrl column to setlists table...");
-      await sequelize.query(`
-                ALTER TABLE setlists 
-                ADD COLUMN recordingsUrl TEXT
-            `);
-      console.log("✅ recordingsUrl column added successfully");
-    } else {
-      console.log("✅ recordingsUrl column already exists");
+    // Check and add createdById column to gig_documents table if it doesn't exist
+    try {
+      const gigDocumentsTableInfo = await sequelize.query(
+        "PRAGMA table_info(gig_documents)",
+        { type: sequelize.QueryTypes.SELECT }
+      );
+      const hasCreatedById = gigDocumentsTableInfo.some(
+        (col) => col.name === "createdById"
+      );
+
+      if (!hasCreatedById) {
+        console.log("Adding createdById column to gig_documents table...");
+        await sequelize.query(
+          "ALTER TABLE gig_documents ADD COLUMN createdById INTEGER REFERENCES users(id)"
+        );
+
+        // Set a default creator for existing documents (assuming user ID 1 as default)
+        console.log("Setting default creator for existing gig documents...");
+        await sequelize.query(
+          "UPDATE gig_documents SET createdById = 1 WHERE createdById IS NULL"
+        );
+
+        console.log("✅ createdById column added to gig_documents table");
+      } else {
+        console.log(
+          "✅ createdById column already exists in gig_documents table"
+        );
+      }
+    } catch (error) {
+      console.error("Error checking/adding createdById column:", error);
     }
 
     console.log("🎉 All migrations completed successfully!");

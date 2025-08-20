@@ -368,6 +368,14 @@
 </div>
 
 <script>
+    // Function to hide the carousel - defined globally so onclick can access it
+    function hideCarousel() {
+        const carouselCard = document.querySelector('.card.mb-4');
+        if (carouselCard) {
+            carouselCard.style.display = 'none';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         // Handle song selection via clicking on cards (since checkboxes are hidden)
         const songCards = document.querySelectorAll('.song-selection-card');
@@ -569,14 +577,6 @@
             }
         }
         
-        // Function to hide the carousel
-        function hideCarousel() {
-            const carouselCard = document.querySelector('.card.mb-4');
-            if (carouselCard) {
-                carouselCard.style.display = 'none';
-            }
-        }
-
         // Function to go to a specific slide directly
         function goToSlideDirect(slideIndex) {
             const carouselElement = document.getElementById('stepsCarousel');

@@ -181,6 +181,12 @@
 </style>
 
 <script>
+    // Prevent hideCarousel error if called from elsewhere
+    function hideCarousel() {
+        // This function is not used on the songs page, but defined to prevent errors
+        console.log('hideCarousel called on songs page - not applicable');
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         const searchInput = document.getElementById('searchSongs');
         const artistFilter = document.getElementById('filterArtist');

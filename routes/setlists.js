@@ -447,6 +447,14 @@ router.get("/:id/edit", async (req, res) => {
       return res.redirect("/bands");
     }
 
+    // Check if setlist date is in the past and show warning
+    if (setlist.date && new Date(setlist.date) < new Date()) {
+      req.flash(
+        "warning",
+        "The date for this setlist is in the past, are you sure you want to mess with history?"
+      );
+    }
+
     // Check if setlist date has passed (allow editing until one week after setlist date)
     if (!isSetlistEditable(setlist)) {
       req.flash(
@@ -502,6 +510,9 @@ router.get("/:id/edit", async (req, res) => {
       title: `Edit ${setlist.title}`,
       setlist,
       bandSongs,
+      success: req.flash("success"),
+      error: req.flash("error"),
+      warning: req.flash("warning"),
     });
   } catch (error) {
     console.error("Edit setlist error:", error);

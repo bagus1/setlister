@@ -12,6 +12,7 @@ const {
   Vocalist,
   User,
   GigDocument,
+  Link,
 } = require("../models");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
@@ -97,6 +98,99 @@ router.get("/:id/gig-view", async (req, res) => {
     res.status(500).send("Error loading gig view");
   }
 });
+
+// Public YouTube playlist route (no authentication required)
+router.get("/:id/youtube-playlist", async (req, res) => {
+  try {
+    const setlistId = req.params.id;
+
+    const setlist = await Setlist.findByPk(setlistId, {
+      include: [
+        {
+          model: Band,
+          attributes: ["id", "name"],
+        },
+        {
+          model: SetlistSet,
+          include: [
+            {
+              model: SetlistSong,
+              include: [
+                {
+                  model: Song,
+                  include: [
+                    "Artists",
+                    "Vocalist",
+                    {
+                      model: Link,
+                      where: { type: "youtube" },
+                      required: false,
+                    },
+                  ],
+                },
+              ],
+              order: [["order", "ASC"]],
+            },
+          ],
+          order: [["order", "ASC"]],
+        },
+      ],
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Collect all YouTube links from the setlist
+    const youtubeLinks = [];
+    setlist.SetlistSets.forEach((set) => {
+      if (set.SetlistSongs && set.name !== "Maybe") {
+        set.SetlistSongs.forEach((setlistSong) => {
+          if (
+            setlistSong.Song &&
+            setlistSong.Song.Links &&
+            setlistSong.Song.Links.length > 0
+          ) {
+            setlistSong.Song.Links.forEach((link) => {
+              if (link.type === "youtube") {
+                youtubeLinks.push({
+                  songTitle: setlistSong.Song.title,
+                  artist:
+                    setlistSong.Song.Artists &&
+                    setlistSong.Song.Artists.length > 0
+                      ? setlistSong.Song.Artists[0].name
+                      : null,
+                  set: set.name,
+                  order: setlistSong.order,
+                  url: link.url,
+                  videoId: extractYouTubeVideoId(link.url),
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    res.render("setlists/youtube-playlist", {
+      title: `YouTube Playlist - ${setlist.title}`,
+      setlist,
+      youtubeLinks,
+      layout: false, // No layout for clean printing
+    });
+  } catch (error) {
+    logger.logError("YouTube playlist error", error);
+    res.status(500).send("Error loading YouTube playlist");
+  }
+});
+
+// Helper function to extract YouTube video ID from URL
+function extractYouTubeVideoId(url) {
+  const regex =
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+}
 
 // Public listen route (no authentication required)
 router.get("/:id/listen", async (req, res) => {

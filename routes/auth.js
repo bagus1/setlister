@@ -397,9 +397,9 @@ router.post(
         // Don't reveal if email exists or not for security
         req.flash(
           "success",
-          "If an account with that email exists, a password reset link has been sent."
+          "Reset email sent and is valid for 1 hour. Check your spam!"
         );
-        return res.redirect("/auth/forgot-password");
+        return res.redirect("/");
       }
 
       // Generate secure token
@@ -440,16 +440,16 @@ router.post(
 
       req.flash(
         "success",
-        "If an account with that email exists, a password reset link has been sent."
+        "Reset email sent and is valid for 1 hour. Check your spam!"
       );
-      res.redirect("/auth/forgot-password");
+      res.redirect("/");
     } catch (error) {
       console.error(
         `[${new Date().toISOString()}] Password reset request error:`,
         error
       );
       req.flash("error", "An error occurred. Please try again.");
-      res.redirect("/auth/forgot-password");
+      res.redirect("/");
     }
   }
 );

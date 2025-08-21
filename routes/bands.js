@@ -214,7 +214,17 @@ router.post(
       .trim()
       .isLength({ min: 1 })
       .withMessage("Setlist title is required"),
-    body("date").optional().isISO8601().withMessage("Invalid date format"),
+    body("date")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) {
+          return true; // Allow empty/null values
+        }
+        // If a value is provided, validate it's a proper date
+        const date = new Date(value);
+        return !isNaN(date.getTime());
+      })
+      .withMessage("Invalid date format"),
   ],
   async (req, res) => {
     try {

@@ -49,6 +49,42 @@
         }
     }
 
+    .status-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 14px;
+        z-index: 20;
+        pointer-events: none;
+        opacity: 0;
+        animation: statusMessage 1s ease-out forwards;
+    }
+
+    @keyframes statusMessage {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+        }
+        20% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        80% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+    }
+
     .no-audio {
         text-align: center;
         padding: 40px;
@@ -448,11 +484,24 @@
                                 this.classList.remove('border-primary', 'bg-light');
                             }
 
-                            // Success animation
+                            // Success animation and status message
                             this.classList.add('success-flash');
                             setTimeout(() => {
                                 this.classList.remove('success-flash');
                             }, 600);
+
+                            // Show status message
+                            const statusMessage = document.createElement('div');
+                            statusMessage.className = 'status-message';
+                            statusMessage.textContent = operation === 'add' ? 'Added' : 'Removed';
+                            this.appendChild(statusMessage);
+
+                            // Remove status message after animation
+                            setTimeout(() => {
+                                if (statusMessage.parentNode) {
+                                    statusMessage.parentNode.removeChild(statusMessage);
+                                }
+                            }, 1000);
                         } else {
                             console.error(`Failed to ${operation} song:`, data);
 

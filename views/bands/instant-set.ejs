@@ -1,181 +1,210 @@
-<%- include('../layout', { title: title, user: user, currentUrl: currentUrl }) %>
-
-<% contentFor('body') %>
-<div class="container mt-4">
-    <div class="row">
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container mt-4">
+      <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h2 mb-1">
-                        <i class="bi bi-lightning text-warning"></i> Instant Set
-                    </h1>
-                    <p class="text-muted mb-0">Band: <%= band.name %></p>
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h1 class="h2 mb-1">
+                <i class="bi bi-lightning text-warning"></i> Instant Set
+              </h1>
+              <p class="text-muted mb-0">Band: <%= band.name %></p>
+            </div>
+            <div>
+              <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Band
+              </a>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-lg-8">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="bi bi-magic"></i> Create Your Set
+                  </h5>
                 </div>
-                <div>
-                    <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Back to Band
-                    </a>
+                <div class="card-body">
+                  <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>How it works:</strong>
+                    <ul class="mb-0 mt-2">
+                      <li>Paste your song list below (any format works)</li>
+                      <li>We'll match songs to existing ones in the system</li>
+                      <li>Create new songs for unmatched entries</li>
+                      <li>Add all songs to your band's song list</li>
+                      <li>Generate a setlist ready for editing</li>
+                    </ul>
+                  </div>
+
+                  <form id="instantSetForm" method="POST">
+                    <div class="mb-3">
+                      <label for="songList" class="form-label">
+                        <strong>Paste Your Song List</strong>
+                      </label>
+                      <textarea
+                        class="form-control"
+                        id="songList"
+                        name="songList"
+                        rows="12"
+                        placeholder="Paste your songs here...&#10;&#10;Examples:&#10;1. Sweet Home Alabama - Lynyrd Skynyrd&#10;2. Hotel California - Eagles&#10;3. Stairway to Heaven - Led Zeppelin&#10;&#10;Or just:&#10;Sweet Home Alabama&#10;Hotel California&#10;Stairway to Heaven&#10;&#10;Any format works - we'll figure it out!"
+                        required
+                      ></textarea>
+                      <div class="form-text">
+                        Paste songs in any format. Include artist names if you
+                        know them, or we'll help you find them.
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="setlistTitle" class="form-label">
+                        <strong>Setlist Title</strong>
+                      </label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="setlistTitle"
+                        name="setlistTitle"
+                        placeholder="e.g., Friday Night Set, Summer Festival, etc."
+                        required
+                      />
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="setlistDate" class="form-label">
+                        <strong>Date (Optional)</strong>
+                      </label>
+                      <input
+                        type="date"
+                        class="form-control"
+                        id="setlistDate"
+                        name="setlistDate"
+                      />
+                      <div class="form-text">
+                        Leave blank if this is just a practice setlist
+                      </div>
+                    </div>
+
+                    <div class="d-grid">
+                      <button type="submit" class="btn btn-warning btn-lg">
+                        <i class="bi bi-magic"></i> Create Instant Set
+                      </button>
+                    </div>
+                  </form>
                 </div>
+              </div>
             </div>
 
-            <div class="row">
-                <div class="col-lg-8">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="bi bi-magic"></i> Create Your Set
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle"></i>
-                                <strong>How it works:</strong>
-                                <ul class="mb-0 mt-2">
-                                    <li>Paste your song list below (any format works)</li>
-                                    <li>We'll match songs to existing ones in the system</li>
-                                    <li>Create new songs for unmatched entries</li>
-                                    <li>Add all songs to your band's song list</li>
-                                    <li>Generate a setlist ready for editing</li>
-                                </ul>
-                            </div>
-
-                            <form id="instantSetForm" method="POST">
-                                <div class="mb-3">
-                                    <label for="songList" class="form-label">
-                                        <strong>Paste Your Song List</strong>
-                                    </label>
-                                    <textarea 
-                                        class="form-control" 
-                                        id="songList" 
-                                        name="songList" 
-                                        rows="12" 
-                                        placeholder="Paste your songs here...&#10;&#10;Examples:&#10;1. Sweet Home Alabama - Lynyrd Skynyrd&#10;2. Hotel California - Eagles&#10;3. Stairway to Heaven - Led Zeppelin&#10;&#10;Or just:&#10;Sweet Home Alabama&#10;Hotel California&#10;Stairway to Heaven&#10;&#10;Any format works - we'll figure it out!"
-                                        required
-                                    ></textarea>
-                                    <div class="form-text">
-                                        Paste songs in any format. Include artist names if you know them, or we'll help you find them.
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="setlistTitle" class="form-label">
-                                        <strong>Setlist Title</strong>
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        class="form-control" 
-                                        id="setlistTitle" 
-                                        name="setlistTitle" 
-                                        placeholder="e.g., Friday Night Set, Summer Festival, etc."
-                                        required
-                                    >
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="setlistDate" class="form-label">
-                                        <strong>Date (Optional)</strong>
-                                    </label>
-                                    <input 
-                                        type="date" 
-                                        class="form-control" 
-                                        id="setlistDate" 
-                                        name="setlistDate"
-                                    >
-                                    <div class="form-text">
-                                        Leave blank if this is just a practice setlist
-                                    </div>
-                                </div>
-
-                                <div class="d-grid">
-                                    <button type="submit" class="btn btn-warning btn-lg">
-                                        <i class="bi bi-magic"></i> Create Instant Set
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+            <div class="col-lg-4">
+              <div class="card">
+                <div class="card-header">
+                  <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Tips</h6>
                 </div>
-
-                <div class="col-lg-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="bi bi-lightbulb"></i> Tips
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled mb-0">
-                                <li class="mb-2">
-                                    <i class="bi bi-check-circle text-success"></i>
-                                    <strong>Artist names help</strong> - Include them when you can
-                                </li>
-                                <li class="mb-2">
-                                    <i class="bi bi-check-circle text-success"></i>
-                                    <strong>Any format works</strong> - Numbered lists, comma-separated, etc.
-                                </li>
-                                <li class="mb-2">
-                                    <i class="bi bi-check-circle text-success"></i>
-                                    <strong>We'll match existing songs</strong> - No duplicates created
-                                </li>
-                                <li class="mb-2">
-                                    <i class="bi bi-check-circle text-success"></i>
-                                    <strong>New songs auto-created</strong> - You can fill in details later
-                                </li>
-                                <li class="mb-2">
-                                    <i class="bi bi-check-circle text-success"></i>
-                                    <strong>All songs added to band</strong> - Ready for future setlists
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="card mt-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="bi bi-clock-history"></i> Recent Setlists
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted small">
-                                Your recent setlists will appear here to help you avoid duplicates.
-                            </p>
-                            <!-- This will be populated with recent setlists -->
-                        </div>
-                    </div>
+                <div class="card-body">
+                  <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                      <i class="bi bi-check-circle text-success"></i>
+                      <strong>Artist names help</strong> - Include them when you
+                      can
+                    </li>
+                    <li class="mb-2">
+                      <i class="bi bi-check-circle text-success"></i>
+                      <strong>Any format works</strong> - Numbered lists,
+                      comma-separated, etc.
+                    </li>
+                    <li class="mb-2">
+                      <i class="bi bi-check-circle text-success"></i>
+                      <strong>We'll match existing songs</strong> - No
+                      duplicates created
+                    </li>
+                    <li class="mb-2">
+                      <i class="bi bi-check-circle text-success"></i>
+                      <strong>New songs auto-created</strong> - You can fill in
+                      details later
+                    </li>
+                    <li class="mb-2">
+                      <i class="bi bi-check-circle text-success"></i>
+                      <strong>All songs added to band</strong> - Ready for
+                      future setlists
+                    </li>
+                  </ul>
                 </div>
+              </div>
+
+              <div class="card mt-3">
+                <div class="card-header">
+                  <h6 class="mb-0">
+                    <i class="bi bi-clock-history"></i> Recent Setlists
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted small">
+                    Your recent setlists will appear here to help you avoid
+                    duplicates.
+                  </p>
+                  <!-- This will be populated with recent setlists -->
+                </div>
+              </div>
             </div>
+          </div>
         </div>
+      </div>
     </div>
-</div>
 
-<script>
-// Auto-resize textarea
-document.getElementById('songList').addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = Math.max(300, this.scrollHeight) + 'px';
-});
+    <script>
+      // Auto-resize textarea
+      document
+        .getElementById("songList")
+        .addEventListener("input", function () {
+          this.style.height = "auto";
+          this.style.height = Math.max(300, this.scrollHeight) + "px";
+        });
 
-// Form validation
-document.getElementById('instantSetForm').addEventListener('submit', function(e) {
-    const songList = document.getElementById('songList').value.trim();
-    const setlistTitle = document.getElementById('setlistTitle').value.trim();
-    
-    if (!songList || !setlistTitle) {
-        e.preventDefault();
-        alert('Please fill in both the song list and setlist title.');
-        return;
-    }
-    
-    // Show loading state
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
-    submitBtn.disabled = true;
-    
-    // Re-enable after a short delay in case of validation errors
-    setTimeout(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    }, 3000);
-});
-</script>
+      // Form validation
+      document
+        .getElementById("instantSetForm")
+        .addEventListener("submit", function (e) {
+          const songList = document.getElementById("songList").value.trim();
+          const setlistTitle = document
+            .getElementById("setlistTitle")
+            .value.trim();
+
+          if (!songList || !setlistTitle) {
+            e.preventDefault();
+            alert("Please fill in both the song list and setlist title.");
+            return;
+          }
+
+          // Show loading state
+          const submitBtn = this.querySelector('button[type="submit"]');
+          const originalText = submitBtn.innerHTML;
+          submitBtn.innerHTML =
+            '<i class="bi bi-hourglass-split"></i> Processing...';
+          submitBtn.disabled = true;
+
+          // Re-enable after a short delay in case of validation errors
+          setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+          }, 3000);
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

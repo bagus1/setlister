@@ -192,6 +192,106 @@ function extractYouTubeVideoId(url) {
   return match ? match[1] : null;
 }
 
+// Public rehearsal view route (no authentication required)
+router.get("/:id/rehearsal", async (req, res) => {
+  try {
+    const setlistId = req.params.id;
+
+    const setlist = await Setlist.findByPk(setlistId, {
+      include: [
+        {
+          model: Band,
+          attributes: ["id", "name"],
+        },
+        {
+          model: SetlistSet,
+          include: [
+            {
+              model: SetlistSong,
+              include: [
+                {
+                  model: Song,
+                  include: ["Artists", "Vocalist", "Links", "GigDocuments"],
+                },
+              ],
+              order: [["order", "ASC"]],
+            },
+          ],
+          order: [["order", "ASC"]],
+        },
+      ],
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Helper functions for link display
+    const getLinkIcon = (type) => {
+      const icons = {
+        youtube: "youtube",
+        video: "camera-video",
+        spotify: "spotify",
+        "apple-music": "music-note",
+        soundcloud: "cloud",
+        bandcamp: "music-note-beamed",
+        lyrics: "file-text",
+        tab: "music-note",
+        "bass tab": "music-note-beamed",
+        chords: "music-note-list",
+        "guitar tutorial": "play-circle",
+        "bass tutorial": "play-circle-fill",
+        "keyboard tutorial": "play-btn",
+        audio: "headphones",
+        "sheet-music": "file-earmark-music",
+        "backing-track": "music-player",
+        karaoke: "mic",
+        "horn chart": "file-earmark-music",
+        other: "link-45deg",
+      };
+      return icons[type] || "link-45deg";
+    };
+
+    const getLinkDisplayText = (link) => {
+      const typeLabels = {
+        youtube: "YouTube",
+        video: "Video",
+        spotify: "Spotify",
+        "apple-music": "Apple Music",
+        soundcloud: "SoundCloud",
+        bandcamp: "Bandcamp",
+        lyrics: "Lyrics",
+        tab: "Tab",
+        "bass tab": "Bass Tab",
+        chords: "Chords",
+        "guitar tutorial": "Guitar Tutorial",
+        "bass tutorial": "Bass Tutorial",
+        "keyboard tutorial": "Keyboard Tutorial",
+        audio: "Audio File",
+        "sheet-music": "Sheet Music",
+        "backing-track": "Backing Track",
+        karaoke: "Karaoke",
+        "horn chart": "Horn Chart",
+        other: "Other",
+      };
+
+      const typeLabel = typeLabels[link.type] || "Link";
+      return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
+    };
+
+    res.render("setlists/rehearsal", {
+      title: `Rehearsal View - ${setlist.title}`,
+      setlist,
+      getLinkIcon,
+      getLinkDisplayText,
+      layout: false, // No layout for clean printing
+    });
+  } catch (error) {
+    logger.logError("Rehearsal view error", error);
+    res.status(500).send("Error loading rehearsal view");
+  }
+});
+
 // Public listen route (no authentication required)
 router.get("/:id/listen", async (req, res) => {
   try {

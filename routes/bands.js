@@ -406,6 +406,98 @@ router.post(
   }
 );
 
+// GET /bands/:id/instant-set - Show instant set creation form
+router.get("/:id/instant-set", async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+
+    // Verify user has access to this band
+    const band = await Band.findByPk(bandId, {
+      include: [
+        {
+          model: User,
+          where: { id: userId },
+          through: { attributes: ["role"] },
+        },
+      ],
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or access denied");
+      return res.redirect("/bands");
+    }
+
+    res.render("bands/instant-set", {
+      title: `Instant Set - ${band.name}`,
+      band,
+    });
+  } catch (error) {
+    console.error("Instant set form error:", error);
+    req.flash("error", "An error occurred loading the instant set form");
+    res.redirect("/bands");
+  }
+});
+
+// POST /bands/:id/instant-set - Process instant set and show confirmation
+router.post("/:id/instant-set", async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+    const { songList, setlistTitle, setlistDate } = req.body;
+
+    // Verify user has access to this band
+    const band = await Band.findByPk(bandId, {
+      include: [
+        {
+          model: User,
+          where: { id: userId },
+          through: { attributes: ["role"] },
+        },
+      ],
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or access denied");
+      return res.redirect("/bands");
+    }
+
+    // Parse the song list
+    const { parseSongList, findSongMatches } = require("../utils/songParser");
+    const parsedSets = parseSongList(songList);
+
+    // Find matches for each song
+    const processedSets = [];
+    for (const set of parsedSets) {
+      const processedSongs = [];
+      for (const song of set.songs) {
+        const matchResult = await findSongMatches(song);
+        processedSongs.push({
+          ...song,
+          ...matchResult,
+        });
+      }
+      processedSets.push({
+        ...set,
+        songs: processedSongs,
+      });
+    }
+
+    res.render("bands/instant-set-confirm", {
+      title: `Confirm Instant Set - ${band.name}`,
+      band,
+      setlistTitle,
+      setlistDate,
+      sets: processedSets,
+      songList, // Pass original input for form resubmission if needed
+    });
+  } catch (error) {
+    console.error("Instant set processing error:", error);
+    req.flash("error", "An error occurred processing your song list");
+    res.redirect(`/bands/${req.params.id}/instant-set`);
+  }
+});
+
 // GET /bands/:id/songs - Show band's songs with checkboxes
 router.get("/:id/songs", async (req, res) => {
   try {

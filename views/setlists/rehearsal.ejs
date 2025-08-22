@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .rehearsal-header {
+            background: linear-gradient(135deg, #e91e63 0%, #ad1457 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .set-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .set-title {
+            color: #6f42c1;
+            border-bottom: 2px solid #6f42c1;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .song-card {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #28a745;
+        }
+        .song-title {
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 0.5rem;
+        }
+        .song-artist {
+            color: #6c757d;
+            font-style: italic;
+            margin-bottom: 0.5rem;
+        }
+        .song-metadata {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .metadata-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .resources-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+        }
+        .resource-item {
+            background: white;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #e9ecef;
+        }
+        .resource-title {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        .resource-type {
+            font-size: 0.75rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .no-resources {
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+            padding: 1rem;
+        }
+        .song-number {
+            background: #6f42c1;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.75rem;
+        }
+        .song-header {
+            display: flex;
+            align-items: center;
+        }
+        .print-button {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+        @media print {
+            .print-button {
+                display: none;
+            }
+            .rehearsal-header {
+                background: white !important;
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="rehearsal-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2">
+                        <i class="bi bi-music-note-beamed"></i> Rehearsal View
+                    </h1>
+                    <h2 class="h4 mb-1"><%= setlist.title %></h2>
+                    <p class="mb-0 opacity-75"><%= setlist.Band.name %></p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <a href="/setlists/<%= setlist.id %>/finalize" class="btn btn-outline-dark">
+                        <i class="bi bi-arrow-left"></i> Back to Setlist
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div class="container">
+        <% if (setlist.SetlistSets && setlist.SetlistSets.length > 0) { %>
+            <% setlist.SetlistSets.sort((a, b) => a.order - b.order).forEach(set => { %>
+                <% if (set.SetlistSongs && set.SetlistSongs.length > 0 && set.name !== 'Maybe') { %>
+                    <div class="set-section">
+                        <h3 class="set-title">
+                            <i class="bi bi-music-note-list"></i>
+                            <%= set.name %>
+                            <span class="badge bg-secondary ms-2">
+                                <%= set.SetlistSongs.length %> songs
+                            </span>
+                        </h3>
+
+                        <% set.SetlistSongs.sort((a, b) => a.order - b.order).forEach((setlistSong, index) => { %>
+                            <div class="song-card">
+                                <div class="song-header">
+                                    <div class="song-number"><%= index + 1 %></div>
+                                    <div class="flex-grow-1">
+                                        <div class="song-title"><%= setlistSong.Song.title %></div>
+                                        <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length > 0) { %>
+                                            <div class="song-artist">by <%= setlistSong.Song.Artists[0].name %></div>
+                                        <% } %>
+                                    </div>
+                                </div>
+
+                                <div class="song-metadata">
+                                    <% if (setlistSong.Song.Vocalist) { %>
+                                        <span class="badge bg-info metadata-badge">
+                                            <i class="bi bi-person"></i> <%= setlistSong.Song.Vocalist.name %>
+                                        </span>
+                                    <% } %>
+                                    <% if (setlistSong.Song.key) { %>
+                                        <span class="badge bg-warning text-dark metadata-badge">
+                                            <i class="bi bi-music-note"></i> <%= setlistSong.Song.key %>
+                                        </span>
+                                    <% } %>
+                                    <% if (setlistSong.Song.time) { %>
+                                        <span class="badge bg-secondary metadata-badge">
+                                            <i class="bi bi-clock"></i> <%= Math.floor(setlistSong.Song.time / 60) %>:<%= (setlistSong.Song.time % 60).toString().padStart(2, '0') %>
+                                        </span>
+                                    <% } %>
+                                    <% if (setlistSong.Song.bpm) { %>
+                                        <span class="badge bg-success metadata-badge">
+                                            <i class="bi bi-speedometer"></i> <%= setlistSong.Song.bpm %> BPM
+                                        </span>
+                                    <% } %>
+                                </div>
+
+                                <div class="resources-section">
+                                    
+                                    <% const hasLinks = setlistSong.Song.Links && setlistSong.Song.Links.length > 0; %>
+                                    <% const hasDocs = setlistSong.Song.GigDocuments && setlistSong.Song.GigDocuments.length > 0; %>
+                                    
+                                    <% if (!hasLinks && !hasDocs) { %>
+                                        <div class="no-resources">
+                                            <i class="bi bi-info-circle"></i>
+                                            No resources available for this song
+                                        </div>
+                                    <% } else { %>
+                                        <% if (hasLinks) { %>
+                                            <div class="list-group mb-3">
+                                                <% setlistSong.Song.Links.forEach(link => { %>
+                                                    <% if (link.type === 'audio') { %>
+                                                        <!-- Audio Files - Non-clickable card with embedded player -->
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                                                <%= getLinkDisplayText(link) %>
+                                                            </div>
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <!-- Audio Player for Audio Files -->
+                                                                <audio controls style="max-width: 200px; height: 35px;">
+                                                                    <source src="<%= link.url %>" type="audio/mpeg">
+                                                                    <source src="<%= link.url %>" type="audio/wav">
+                                                                    <source src="<%= link.url %>" type="audio/ogg">
+                                                                    <source src="<%= link.url %>" type="audio/mp4">
+                                                                    Your browser does not support the audio element.
+                                                                </audio>
+                                                                <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                                    <i class="bi bi-box-arrow-up-right"></i> Open
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    <% } else { %>
+                                                        <!-- Non-audio links - Clickable card -->
+                                                        <a href="<%= link.url %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                                            <div>
+                                                                <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                                                <%= getLinkDisplayText(link) %>
+                                                            </div>
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <span class="text-muted small">Click to open</span>
+                                                                <i class="bi bi-box-arrow-up-right text-primary"></i>
+                                                            </div>
+                                                        </a>
+                                                    <% } %>
+                                                <% }) %>
+                                            </div>
+                                        <% } %>
+                                        
+                                        <% if (hasDocs) { %>
+                                            <div class="list-group">
+                                                <% setlistSong.Song.GigDocuments.forEach(doc => { %>
+                                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <i class="bi bi-file-earmark-text text-success"></i>
+                                                            <%= doc.title %>
+                                                        </div>
+                                                        <div>
+                                                            <a href="/songs/<%= setlistSong.Song.id %>/docs/<%= doc.id %>" target="_blank" class="btn btn-outline-success btn-sm">
+                                                                <i class="bi bi-eye"></i> View
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                <% }) %>
+                                            </div>
+                                        <% } %>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } %>
+            <% }) %>
+        <% } else { %>
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i>
+                <h4>No Songs in Setlist</h4>
+                <p>This setlist doesn't have any songs yet.</p>
+            </div>
+        <% } %>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

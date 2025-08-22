@@ -218,6 +218,15 @@ router.post(
         vocalistId = vocalistRecord.id;
       }
 
+      // Create the song
+      const song = await Song.create({
+        title: title.trim(),
+        key: key || null,
+        time: totalTime,
+        bpm: bpm || null,
+        vocalistId: vocalistId,
+      });
+
       // Handle artist
       if (artist && artist.trim()) {
         const [artistRecord] = await Artist.findOrCreate({

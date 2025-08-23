@@ -87,7 +87,8 @@ dist/
 build/
 
 # SendGrid API keys (keep these secret!)
-sendgrid.env 
-.env.prod
+sendgrid.env
+
+# Environment files - NEVER commit these!
 .env.demo
-.env.prod
+.env.prod 

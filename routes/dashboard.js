@@ -30,7 +30,7 @@ router.get("/", async (req, res) => {
           },
         ],
         limit: 5,
-        order: [["updatedAt", "DESC"]],
+        order: [["updated_at", "DESC"]],
       });
 
       // Get latest band songs from user's bands
@@ -52,20 +52,20 @@ router.get("/", async (req, res) => {
           },
         ],
         limit: 8,
-        order: [["updatedAt", "DESC"]],
+        order: [["updated_at", "DESC"]],
       });
 
       // Get recent medleys
       const recentMedleys = await Medley.findAll({
         include: ["Vocalist"],
         limit: 5,
-        order: [["updatedAt", "DESC"]],
+        order: [["updated_at", "DESC"]],
       });
 
       // Get artists
       const artists = await Artist.findAll({
         limit: 13,
-        order: [["updatedAt", "DESC"]],
+        order: [["updated_at", "DESC"]],
       });
 
       res.render("dashboard/index", {
@@ -80,18 +80,18 @@ router.get("/", async (req, res) => {
       // Logged out dashboard
       const bands = await Band.findAll({
         limit: 10,
-        order: [["updatedAt", "DESC"]],
+        order: [["updated_at", "DESC"]],
       });
 
       const songs = await Song.findAll({
         include: ["Vocalist", "Artists"],
         limit: 10,
-        order: [["updatedAt", "DESC"]],
+        order: [["updated_at", "DESC"]],
       });
 
       const artists = await Artist.findAll({
         limit: 10,
-        order: [["updatedAt", "DESC"]],
+        order: [["updated_at", "DESC"]],
       });
 
       res.render("dashboard/index", {

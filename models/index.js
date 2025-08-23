@@ -1,12 +1,12 @@
 const { Sequelize } = require("sequelize");
 const path = require("path");
 
-// Initialize Sequelize with SQLite
-const sequelize = new Sequelize({
-  dialect: "sqlite",
-  storage: path.join(__dirname, "../database.sqlite"),
-  logging: false, // Set to console.log to see SQL queries
-});
+// Get database configuration based on environment
+const env = process.env.NODE_ENV || "development";
+const config = require("../config/database")[env];
+
+// Initialize Sequelize with configuration
+const sequelize = new Sequelize(config);
 
 // Import models
 const User = require("./User")(sequelize);
@@ -25,6 +25,7 @@ const BandInvitation = require("./BandInvitation")(sequelize);
 const PasswordReset = require("./PasswordReset")(sequelize);
 const Link = require("./Link")(sequelize);
 const GigDocument = require("./GigDocument")(sequelize);
+const SongArtist = require("./SongArtist")(sequelize);
 
 // Define associations
 // User-Band (many-to-many through BandMember)
@@ -36,8 +37,8 @@ Band.belongsToMany(Song, { through: BandSong, foreignKey: "bandId" });
 Song.belongsToMany(Band, { through: BandSong, foreignKey: "songId" });
 
 // Song-Artist (many-to-many)
-Song.belongsToMany(Artist, { through: "SongArtist", foreignKey: "songId" });
-Artist.belongsToMany(Song, { through: "SongArtist", foreignKey: "artistId" });
+Song.belongsToMany(Artist, { through: "song_artists", foreignKey: "songId" });
+Artist.belongsToMany(Song, { through: "song_artists", foreignKey: "artistId" });
 
 // Song-Vocalist (one-to-many)
 Song.belongsTo(Vocalist, { foreignKey: "vocalistId" });
@@ -122,4 +123,5 @@ module.exports = {
   PasswordReset,
   Link,
   GigDocument,
+  SongArtist,
 };

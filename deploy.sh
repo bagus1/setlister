@@ -29,6 +29,7 @@ NC='\033[0m' # No Color
 HOST_USER=${HOST_USER:-bagus1}
 HOST_DOMAIN=${HOST_DOMAIN:-bagus.org}
 SETLIST_PATH=${SETLIST_PATH:-/home/bagus1/repositories/setlister}
+DEMO_PATH=${DEMO_PATH:-/home/bagus/repositories/demoset}
 
 # Default mode - show help if no argument provided
 MODE=${1:-help}
@@ -61,6 +62,7 @@ Modes:
   deploy   - Deploy current changes (push to git, pull on server, restart)
   update   - Quick deploy (push to git, pull on server, restart)
   quick    - Update files without restart (auto-commit, push to git, pull on server)
+  deploy-demo - Deploy to demo environment with PostgreSQL migration
   migrate  - Run database migrations on server
   restart  - Just restart the server
   stop     - Stop the server (kill Passenger process)
@@ -75,17 +77,19 @@ Environment Variables:
   HOST_USER      - Username for server (default: bagus1)
   HOST_DOMAIN    - Server domain (default: bagus.org)
   SETLIST_PATH   - Path on server (default: /home/bagus1/repositories/setlister)
+  DEMO_PATH      - Path to demo environment (default: /home/bagus/repositories/demoset)
 
 Examples:
-  ./deploy.sh deploy    # Full deployment with restart
-  ./deploy.sh update    # Quick deploy with restart
-  ./deploy.sh quick     # Update files without restart
-  ./deploy.sh migrate   # Run database migrations
-  ./deploy.sh restart   # Just restart server
-  ./deploy.sh stop      # Stop server
-  ./deploy.sh start     # Start server
-  ./deploy.sh deps      # Update dependencies
-  ./deploy.sh status    # Show status
+  ./deploy.sh deploy       # Full deployment with restart
+  ./deploy.sh update       # Quick deploy with restart
+  ./deploy.sh quick        # Update files without restart
+  ./deploy.sh deploy-demo  # Deploy to demo with PostgreSQL migration
+  ./deploy.sh migrate      # Run database migrations
+  ./deploy.sh restart      # Just restart server
+  ./deploy.sh stop         # Stop server
+  ./deploy.sh start        # Start server
+  ./deploy.sh deps         # Update dependencies
+  ./deploy.sh status       # Show status
 
 EOF
 }
@@ -295,15 +299,99 @@ run_migrations() {
         return 1
     }
     
-    # Run the migration
-    print_status "Executing migrations..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node migrate.js" || {
-        print_error "Failed to run migrations on server"
-        return 1
-    }
+    # Check if this is a PostgreSQL environment
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && [ -f 'config/database.js' ] && grep -q 'dialect.*postgres' config/database.js"; then
+        print_status "PostgreSQL environment detected, using Sequelize CLI migrations..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx sequelize-cli db:migrate" || {
+            print_error "Failed to run PostgreSQL migrations on server"
+            return 1
+        }
+    else
+        print_status "SQLite environment detected, using legacy migration..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node migrate.js" || {
+            print_error "Failed to run SQLite migrations on server"
+            return 1
+        }
+    fi
     
     print_success "Database migrations completed successfully!"
     print_warning "Note: You may need to restart the server if migrations affect running processes."
+}
+
+# Function to deploy to demo environment with PostgreSQL migration
+deploy_to_demo() {
+    print_status "Deploying to demo environment with PostgreSQL migration..."
+    
+    # Check if we have changes to push
+    if [ "$(git rev-list HEAD...origin/main --count)" != "0" ]; then
+        print_status "Pushing changes to GitHub..."
+        git push origin main
+        print_success "Changes pushed to GitHub"
+    else
+        print_status "No changes to push"
+    fi
+    
+    # Pull on demo server
+    print_status "Pulling changes on demo server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && git pull origin main" || {
+        print_error "Failed to pull on demo server"
+        return 1
+    }
+    
+    # Install dependencies if package.json changed
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
+        print_status "Installing dependencies on demo server..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
+    fi
+    
+    # Check if PostgreSQL migration is needed
+    print_status "Checking if PostgreSQL migration is needed..."
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && [ ! -f 'migration-output' ]"; then
+        print_status "Generating PostgreSQL migration files..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node migrate-sqlite-to-postgres.js" || {
+            print_error "Failed to generate migration files on demo server"
+            return 1
+        }
+    else
+        print_status "Migration files already exist, skipping generation"
+    fi
+    
+    # Run PostgreSQL schema migration
+    print_status "Running PostgreSQL schema migration..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx sequelize-cli db:migrate" || {
+        print_error "Failed to run PostgreSQL migration on demo server"
+        return 1
+    }
+    
+    # Import data if tables are empty
+    print_status "Checking if data import is needed..."
+    USER_COUNT=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { sequelize } = require('./models'); sequelize.query('SELECT COUNT(*) FROM users').then(([results]) => { console.log(results[0].count); process.exit(0); }).catch(() => { console.log('0'); process.exit(0); });\"" 2>/dev/null || echo "0")
+    
+    if [ "$USER_COUNT" = "0" ] || [ "$USER_COUNT" = "" ]; then
+        print_status "Importing data from SQLite migration files..."
+        
+        # Import each table
+        for table in users bands artists vocalists band_members songs band_songs setlists setlist_sets setlist_songs medleys medley_songs band_invitations password_resets links gig_documents song_artists; do
+            print_status "Importing $table..."
+            ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && [ -f 'migration-output/$table.sql' ] && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U bagus1_setlists_app -d bagus1_setlists_demo -f 'migration-output/$table.sql' || echo 'No migration file for $table'" || {
+                print_warning "Failed to import $table, continuing..."
+            }
+        done
+        print_success "Data import completed"
+    else
+        print_status "Data already exists, skipping import"
+    fi
+    
+    # Test the demo application
+    print_status "Testing demo application..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { sequelize } = require('./models'); sequelize.authenticate().then(() => { console.log('✅ Demo database connection successful'); process.exit(0); }).catch(err => { console.error('❌ Demo database connection failed:', err.message); process.exit(1); });\"" || {
+        print_error "Demo database connection test failed"
+        return 1
+    }
+    
+    print_success "Demo deployment completed successfully!"
+    print_status "Demo environment available at: https://demoset.bagus.org/"
+    print_warning "Note: You may need to restart the demo server if using Passenger"
 }
 
 # Function to show status
@@ -467,6 +555,10 @@ main() {
             check_git_status
             check_branch_mismatch
             quick_deploy
+            ;;
+        "deploy-demo")
+            check_git_status
+            deploy_to_demo
             ;;
         "deps")
             update_dependencies

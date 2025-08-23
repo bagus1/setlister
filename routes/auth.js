@@ -205,6 +205,7 @@ router.post(
           title: "Login",
           errors: errors.array(),
           email: req.body.email,
+          returnTo: req.body.returnTo || "/",
         });
       }
 

@@ -19,6 +19,7 @@ module.exports = (sequelize) => {
       bandId: {
         type: DataTypes.INTEGER,
         allowNull: false,
+        field: "band_id",
         references: {
           model: "bands",
           key: "id",
@@ -29,16 +30,20 @@ module.exports = (sequelize) => {
       },
       isFinalized: {
         type: DataTypes.BOOLEAN,
+        field: "is_finalized",
         defaultValue: false,
       },
       recordingsUrl: {
         type: DataTypes.TEXT,
+        field: "recordings_url",
         allowNull: true,
       },
     },
     {
       tableName: "setlists",
       timestamps: true,
+      createdAt: "created_at",
+      updatedAt: "updated_at",
     }
   );
 

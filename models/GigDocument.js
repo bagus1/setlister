@@ -12,6 +12,7 @@ module.exports = (sequelize) => {
       songId: {
         type: DataTypes.INTEGER,
         allowNull: false,
+        field: "song_id",
         references: {
           model: "songs",
           key: "id",
@@ -20,6 +21,7 @@ module.exports = (sequelize) => {
       createdById: {
         type: DataTypes.INTEGER,
         allowNull: false,
+        field: "created_by_id",
         references: {
           model: "users",
           key: "id",
@@ -57,6 +59,7 @@ module.exports = (sequelize) => {
       },
       isActive: {
         type: DataTypes.BOOLEAN,
+        field: "is_active",
         defaultValue: true,
         comment: "Whether this document is active/current",
       },
@@ -64,10 +67,12 @@ module.exports = (sequelize) => {
     {
       tableName: "gig_documents",
       timestamps: true,
+      createdAt: "created_at",
+      updatedAt: "updated_at",
       indexes: [
         {
           unique: true,
-          fields: ["songId", "type", "version"],
+          fields: ["song_id", "type", "version"],
         },
       ],
     }

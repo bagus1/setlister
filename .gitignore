@@ -90,3 +90,4 @@ build/
 sendgrid.env 
 .env.prod
 .env.demo
+.env.prod

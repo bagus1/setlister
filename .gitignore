@@ -88,3 +88,5 @@ build/
 
 # SendGrid API keys (keep these secret!)
 sendgrid.env 
+.env.prod
+.env.demo

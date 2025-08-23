@@ -136,7 +136,7 @@ router.get("/:id", async (req, res) => {
     // Get setlists
     const setlists = await Setlist.findAll({
       where: { bandId },
-      order: [["updatedAt", "DESC"]],
+      order: [["updated_at", "DESC"]],
     });
 
     // Get band songs - simplified query to avoid complex includes
@@ -170,7 +170,7 @@ router.get("/:id", async (req, res) => {
             attributes: ["username"],
           },
         ],
-        order: [["createdAt", "DESC"]],
+        order: [["created_at", "DESC"]],
       });
     } catch (associationError) {
       console.error(
@@ -184,7 +184,7 @@ router.get("/:id", async (req, res) => {
           usedAt: null,
           expiresAt: { [require("sequelize").Op.gt]: new Date() },
         },
-        order: [["createdAt", "DESC"]],
+        order: [["created_at", "DESC"]],
       });
       console.log(
         `[${new Date().toISOString()}] Fallback query loaded ${pendingInvitations.length} pending invitations`

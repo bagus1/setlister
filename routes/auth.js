@@ -205,6 +205,7 @@ router.post(
           title: "Login",
           errors: errors.array(),
           email: req.body.email,
+          returnTo: req.body.returnTo || "/",
         });
       }
 
@@ -218,6 +219,7 @@ router.post(
           title: "Login",
           errors: [{ msg: "Invalid email or password" }],
           email,
+          returnTo: req.body.returnTo || "/",
         });
       }
 
@@ -228,6 +230,7 @@ router.post(
           title: "Login",
           errors: [{ msg: "Invalid email or password" }],
           email,
+          returnTo: req.body.returnTo || "/",
         });
       }
 

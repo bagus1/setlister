@@ -93,7 +93,7 @@ async function listUsers() {
         attributes: ["id", "name"],
       },
     ],
-    order: [["createdAt", "DESC"]],
+    order: [["created_at", "DESC"]],
   });
 
   users.forEach((user) => {
@@ -129,7 +129,7 @@ async function listBands() {
         attributes: ["id", "title"],
       },
     ],
-    order: [["createdAt", "DESC"]],
+    order: [["created_at", "DESC"]],
   });
 
   if (bands.length === 0) {

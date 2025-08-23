@@ -1,0 +1,48 @@
+-- Migration for setlist_sets
+-- 45 rows
+
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('41', '9', 'Set 1', '0', '2025-08-06 01:01:17.937 +00:00', '2025-08-06 01:01:17.937 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('42', '9', 'Set 2', '1', '2025-08-06 01:01:17.949 +00:00', '2025-08-06 01:01:17.949 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('43', '9', 'Set 3', '2', '2025-08-06 01:01:17.962 +00:00', '2025-08-06 01:01:17.962 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('44', '9', 'Set 4', '3', '2025-08-06 01:01:17.971 +00:00', '2025-08-06 01:01:17.971 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('45', '9', 'Maybe', '4', '2025-08-06 01:01:17.979 +00:00', '2025-08-06 01:01:17.979 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('51', '11', 'Set 1', '0', '2025-08-06 19:35:31.733 +00:00', '2025-08-06 19:35:31.733 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('52', '11', 'Set 2', '1', '2025-08-06 19:35:31.742 +00:00', '2025-08-06 19:35:31.742 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('53', '11', 'Set 3', '2', '2025-08-06 19:35:31.763 +00:00', '2025-08-06 19:35:31.763 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('54', '11', 'Set 4', '3', '2025-08-06 19:35:31.773 +00:00', '2025-08-06 19:35:31.773 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('55', '11', 'Maybe', '4', '2025-08-06 19:35:31.787 +00:00', '2025-08-06 19:35:31.787 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('71', '15', 'Set 1', '0', '2025-08-13 00:18:39.728 +00:00', '2025-08-13 00:18:39.728 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('72', '15', 'Set 2', '1', '2025-08-13 00:18:39.745 +00:00', '2025-08-13 00:18:39.745 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('73', '15', 'Set 3', '2', '2025-08-13 00:18:39.763 +00:00', '2025-08-13 00:18:39.763 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('74', '15', 'Set 4', '3', '2025-08-13 00:18:39.796 +00:00', '2025-08-13 00:18:39.796 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('75', '15', 'Maybe', '4', '2025-08-13 00:18:39.824 +00:00', '2025-08-13 00:18:39.824 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('81', '17', 'Set 1', '0', '2025-08-13 19:36:18.150 +00:00', '2025-08-13 19:36:18.150 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('82', '17', 'Set 2', '1', '2025-08-13 19:36:18.157 +00:00', '2025-08-13 19:36:18.157 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('83', '17', 'Set 3', '2', '2025-08-13 19:36:18.172 +00:00', '2025-08-13 19:36:18.172 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('84', '17', 'Set 4', '3', '2025-08-13 19:36:18.183 +00:00', '2025-08-13 19:36:18.183 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('85', '17', 'Maybe', '4', '2025-08-13 19:36:18.192 +00:00', '2025-08-13 19:36:18.192 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('86', '18', 'Set 1', '0', '2025-08-15 03:20:39.208 +00:00', '2025-08-15 03:20:39.208 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('87', '18', 'Set 2', '1', '2025-08-15 03:20:39.222 +00:00', '2025-08-15 03:20:39.222 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('88', '18', 'Set 3', '2', '2025-08-15 03:20:39.229 +00:00', '2025-08-15 03:20:39.229 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('89', '18', 'Set 4', '3', '2025-08-15 03:20:39.242 +00:00', '2025-08-15 03:20:39.242 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('90', '18', 'Maybe', '4', '2025-08-15 03:20:39.253 +00:00', '2025-08-15 03:20:39.253 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('91', '19', 'Set 1', '0', '2025-08-18 02:54:08.184 +00:00', '2025-08-18 02:54:08.184 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('92', '19', 'Set 2', '1', '2025-08-18 02:54:08.189 +00:00', '2025-08-18 02:54:08.189 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('93', '19', 'Set 3', '2', '2025-08-18 02:54:08.194 +00:00', '2025-08-18 02:54:08.194 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('94', '19', 'Set 4', '3', '2025-08-18 02:54:08.201 +00:00', '2025-08-18 02:54:08.201 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('95', '19', 'Maybe', '4', '2025-08-18 02:54:08.211 +00:00', '2025-08-18 02:54:08.211 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('96', '20', 'Set 1', '0', '2025-08-19 15:35:44.714 +00:00', '2025-08-19 15:35:44.714 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('97', '20', 'Set 2', '1', '2025-08-19 15:35:44.746 +00:00', '2025-08-19 15:35:44.746 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('98', '20', 'Set 3', '2', '2025-08-19 15:35:44.775 +00:00', '2025-08-19 15:35:44.775 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('99', '20', 'Set 4', '3', '2025-08-19 15:35:44.787 +00:00', '2025-08-19 15:35:44.787 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('100', '20', 'Maybe', '4', '2025-08-19 15:35:44.798 +00:00', '2025-08-19 15:35:44.798 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('101', '21', 'Set 1', '0', '2025-08-19 23:51:02.024 +00:00', '2025-08-19 23:51:02.024 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('102', '21', 'Set 2', '1', '2025-08-19 23:51:02.036 +00:00', '2025-08-19 23:51:02.036 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('103', '21', 'Set 3', '2', '2025-08-19 23:51:02.046 +00:00', '2025-08-19 23:51:02.046 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('104', '21', 'Set 4', '3', '2025-08-19 23:51:02.053 +00:00', '2025-08-19 23:51:02.053 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('105', '21', 'Maybe', '4', '2025-08-19 23:51:02.059 +00:00', '2025-08-19 23:51:02.059 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('106', '22', 'Set 1', '0', '2025-08-21 17:37:22.593 +00:00', '2025-08-21 17:37:22.593 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('107', '22', 'Set 2', '1', '2025-08-21 17:37:22.603 +00:00', '2025-08-21 17:37:22.603 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('108', '22', 'Set 3', '2', '2025-08-21 17:37:22.613 +00:00', '2025-08-21 17:37:22.613 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('109', '22', 'Set 4', '3', '2025-08-21 17:37:22.625 +00:00', '2025-08-21 17:37:22.625 +00:00');
+INSERT INTO setlist_sets (id, setlist_id, name, order, created_at, updated_at) VALUES ('110', '22', 'Maybe', '4', '2025-08-21 17:37:22.635 +00:00', '2025-08-21 17:37:22.635 +00:00');

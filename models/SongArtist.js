@@ -1,50 +1,40 @@
 const { DataTypes } = require("sequelize");
 
 module.exports = (sequelize) => {
-  const BandMember = sequelize.define(
-    "BandMember",
+  const SongArtist = sequelize.define(
+    "SongArtist",
     {
       id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
       },
-      userId: {
+      songId: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        field: "user_id",
+        field: "song_id",
         references: {
-          model: "users",
+          model: "songs",
           key: "id",
         },
       },
-      bandId: {
+      artistId: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        field: "band_id",
+        field: "artist_id",
         references: {
-          model: "bands",
+          model: "artists",
           key: "id",
         },
-      },
-      role: {
-        type: DataTypes.ENUM("owner", "member"),
-        defaultValue: "member",
       },
     },
     {
-      tableName: "band_members",
+      tableName: "song_artists",
       timestamps: true,
       createdAt: "created_at",
       updatedAt: "updated_at",
-      indexes: [
-        {
-          unique: true,
-          fields: ["user_id", "band_id"],
-        },
-      ],
     }
   );
 
-  return BandMember;
+  return SongArtist;
 };

@@ -173,6 +173,56 @@ SENDGRID_API_KEY=your_sendgrid_api_key_here
 
 **⚠️ Security Note**: Environment variables are managed via a `.env` file on the server (not in Git) for security. The `.htaccess` file only contains non-sensitive configuration.
 
+#### `.htaccess` Configuration
+
+The `.htaccess` file configures Passenger and environment variables for each deployment environment. **This file is NOT in the repository** and must be created manually on the server.
+
+**Production `.htaccess`** (`/home/username/repositories/setlister/.htaccess`):
+
+```apache
+### DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION BEGIN
+<IfModule Litespeed>
+SetEnv NODE_ENV production
+SetEnv FROM_EMAIL noreply@yourdomain.com
+SetEnv BASE_URL https://yourdomain.com
+</IfModule>
+### DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION END
+### Passenger configuration
+PassengerAppRoot /home/username/repositories/setlister
+PassengerBaseURI /
+PassengerNodejs /opt/alt/alt-nodejs20/root/usr/bin/node
+PassengerAppType node
+PassengerStartupFile server.js
+PassengerAppLogFile /home/username/logs/setlist-passenger.log
+```
+
+**Demo/Staging `.htaccess`** (if using separate demo environment):
+
+```apache
+### DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION BEGIN
+<IfModule Litespeed>
+SetEnv NODE_ENV demo
+SetEnv FROM_EMAIL noreply@yourdomain.com
+SetEnv BASE_URL https://demo.yourdomain.com
+</IfModule>
+### DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION END
+### Passenger configuration
+PassengerAppRoot /home/username/repositories/demoset
+PassengerBaseURI /
+PassengerNodejs /opt/alt/alt-nodejs20/root/usr/bin/node
+PassengerAppType node
+PassengerStartupFile server.js
+PassengerAppLogFile /home/username/logs/setlist-passenger.log
+```
+
+**Important Notes:**
+
+- Replace `username` with your actual cPanel username
+- Replace `yourdomain.com` with your actual domain
+- The `PassengerAppRoot` must point to the correct repository directory
+- `NODE_ENV` determines which database configuration is used
+- `.htaccess` is in `.gitignore` to prevent accidental commits
+
 ## Deployment
 
 The project includes `deploy.sh` for automated deployment and server management.

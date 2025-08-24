@@ -69,6 +69,7 @@ Modes:
   stop     - Stop the server (kill Passenger process)
   start    - Start the server (touch restart.txt)
   deps     - Update dependencies on server
+  deps-demo - Update dependencies on demo server
   status   - Show deployment status
   backup   - Create backup
   rollback - Rollback to previous commit
@@ -297,6 +298,19 @@ update_dependencies() {
     
     # Restart server to ensure new dependencies are loaded
     restart_server
+}
+
+# Function to update demo dependencies
+update_demo_dependencies() {
+    print_status "Updating demo dependencies..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production" || {
+        print_error "Failed to update demo dependencies"
+        return 1
+    }
+    print_success "Demo dependencies updated successfully"
+    
+    # Restart demo server to ensure new dependencies are loaded
+    restart_demo_server
 }
 
 # Function to run database migrations
@@ -586,6 +600,9 @@ main() {
             ;;
         "deps")
             update_dependencies
+            ;;
+        "deps-demo")
+            update_demo_dependencies
             ;;
         "migrate")
             run_migrations

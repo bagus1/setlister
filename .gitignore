@@ -91,4 +91,7 @@ sendgrid.env
 
 # Environment files - NEVER commit these!
 .env.demo
-.env.prod 
+.env.prod
+
+# Server configuration - environment specific
+.htaccess 

@@ -38,6 +38,12 @@ module.exports = {
     username: "bagus1_setlists_app",
     password: process.env.DB_PASSWORD || "",
     logging: false,
+    dialectOptions: {
+      ssl: {
+        require: false,
+        rejectUnauthorized: false,
+      },
+    },
     pool: {
       max: 5,
       min: 0,

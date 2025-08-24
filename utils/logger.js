@@ -1,3 +1,18 @@
+const fs = require("fs");
+const path = require("path");
+
+// Create logs directory if it doesn't exist
+const logsDir = path.join(__dirname, "..", "logs");
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Determine log file based on environment
+const getLogFile = () => {
+  const env = process.env.NODE_ENV || "development";
+  return path.join(logsDir, `app-${env}.log`);
+};
+
 const logger = {
   // Format: <timestamp> <message>
   formatMessage(message, userId = null) {
@@ -6,9 +21,21 @@ const logger = {
     return `${timestamp} ${message}${userInfo}`;
   },
 
+  // Write to environment-specific log file
+  writeToFile(message) {
+    try {
+      fs.appendFileSync(getLogFile(), message + "\n");
+    } catch (error) {
+      // Fallback to console if file write fails
+      console.error("Failed to write to log file:", error);
+    }
+  },
+
   // Log page access
   logPageAccess(path, userId = null) {
-    console.log(this.formatMessage(`${path} accessed`, userId));
+    const message = this.formatMessage(`${path} accessed`, userId);
+    console.log(message);
+    this.writeToFile(message);
   },
 
   // Log form submission
@@ -24,27 +51,40 @@ const logger = {
         ? ` with ${JSON.stringify(sanitizedData)}`
         : "";
 
-    console.log(this.formatMessage(`${path} ${action}${formDataStr}`, userId));
+    const message = this.formatMessage(
+      `${path} ${action}${formDataStr}`,
+      userId
+    );
+    console.log(message);
+    this.writeToFile(message);
   },
 
   // Log authentication events
   logAuthEvent(event, userId = null) {
-    console.log(this.formatMessage(event, userId));
+    const message = this.formatMessage(event, userId);
+    console.log(message);
+    this.writeToFile(message);
   },
 
   // Log errors (keep existing format for errors)
   logError(message, error = null) {
     const timestamp = new Date().toISOString();
+    let logMessage;
     if (error) {
+      logMessage = `${timestamp} ERROR: ${message} ${error.stack || error}`;
       console.error(`${timestamp} ERROR: ${message}`, error);
     } else {
-      console.error(`${timestamp} ERROR: ${message}`);
+      logMessage = `${timestamp} ERROR: ${message}`;
+      console.error(logMessage);
     }
+    this.writeToFile(logMessage);
   },
 
   // Log info messages
   logInfo(message, userId = null) {
-    console.log(this.formatMessage(message, userId));
+    const formattedMessage = this.formatMessage(message, userId);
+    console.log(formattedMessage);
+    this.writeToFile(formattedMessage);
   },
 };
 

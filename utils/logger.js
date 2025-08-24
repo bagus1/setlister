@@ -12,6 +12,8 @@ if (!fs.existsSync(logsDir)) {
 // Determine log file based on environment
 const getLogFile = () => {
   const env = process.env.NODE_ENV || "development";
+  // Debug: log what NODE_ENV we're actually seeing
+  console.log(`[LOGGER DEBUG] NODE_ENV: ${env}, LOG FILE: app-${env}.log`);
   return path.join(logsDir, `app-${env}.log`);
 };
 

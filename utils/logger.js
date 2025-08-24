@@ -1,8 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 
-// Create logs directory if it doesn't exist
-const logsDir = path.join(__dirname, "..", "logs");
+// Create logs directory outside of repo
+const logsDir =
+  process.env.LOG_DIR ||
+  path.join(process.env.HOME || "/tmp", "logs", "setlister");
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }

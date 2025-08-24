@@ -32,7 +32,7 @@ module.exports = {
   },
   demo: {
     dialect: "postgres",
-    host: "/var/run/postgresql",
+    host: "127.0.0.1",
     port: 5432,
     database: "bagus1_setlists_demo",
     username: "bagus1_setlists_app",

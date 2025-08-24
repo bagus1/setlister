@@ -29,7 +29,7 @@ NC='\033[0m' # No Color
 HOST_USER=${HOST_USER:-bagus1}
 HOST_DOMAIN=${HOST_DOMAIN:-bagus.org}
 SETLIST_PATH=${SETLIST_PATH:-/home/bagus1/repositories/setlister}
-DEMO_PATH=${DEMO_PATH:-/home/bagus/repositories/demoset}
+DEMO_PATH=${DEMO_PATH:-/home/bagus1/repositories/demoset}
 
 # Default mode - show help if no argument provided
 MODE=${1:-help}
@@ -78,7 +78,7 @@ Environment Variables:
   HOST_USER      - Username for server (default: bagus1)
   HOST_DOMAIN    - Server domain (default: bagus.org)
   SETLIST_PATH   - Path on server (default: /home/bagus1/repositories/setlister)
-  DEMO_PATH      - Path to demo environment (default: /home/bagus/repositories/demoset)
+  DEMO_PATH      - Path to demo environment (default: /home/bagus1/repositories/demoset)
 
 Examples:
   ./deploy.sh deploy       # Full deployment with restart

@@ -39,10 +39,7 @@ module.exports = {
     password: process.env.DB_PASSWORD || "",
     logging: false,
     dialectOptions: {
-      ssl: {
-        require: false,
-        rejectUnauthorized: false,
-      },
+      ssl: false,
     },
     pool: {
       max: 5,

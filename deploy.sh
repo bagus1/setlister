@@ -319,6 +319,8 @@ run_migrations() {
 }
 
 # Function to deploy to demo environment with PostgreSQL migration
+# Note: This function automatically fixes auto-increment sequences after data import
+# to prevent "duplicate key value violates unique constraint" errors when creating new records
 deploy_to_demo() {
     print_status "Deploying to demo environment with PostgreSQL migration..."
     
@@ -378,6 +380,13 @@ deploy_to_demo() {
             }
         done
         print_success "Data import completed"
+        
+        # Fix auto-increment sequences after data migration
+        print_status "Fixing auto-increment sequences..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U bagus1_setlists_app -d bagus1_setlists_demo -c \"SELECT setval('users_id_seq', (SELECT MAX(id) FROM users)); SELECT setval('bands_id_seq', (SELECT MAX(id) FROM bands)); SELECT setval('artists_id_seq', (SELECT MAX(id) FROM artists)); SELECT setval('vocalists_id_seq', (SELECT MAX(id) FROM vocalists)); SELECT setval('songs_id_seq', (SELECT MAX(id) FROM songs)); SELECT setval('gig_documents_id_seq', (SELECT MAX(id) FROM gig_documents)); SELECT setval('setlists_id_seq', (SELECT MAX(id) FROM setlists)); SELECT setval('band_members_id_seq', (SELECT MAX(id) FROM band_members)); SELECT setval('band_invitations_id_seq', (SELECT MAX(id) FROM band_invitations)); SELECT setval('password_resets_id_seq', (SELECT MAX(id) FROM password_resets)); SELECT setval('setlist_sets_id_seq', (SELECT MAX(id) FROM setlist_sets)); SELECT setval('setlist_songs_id_seq', (SELECT MAX(id) FROM setlist_songs)); SELECT setval('medleys_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('medley_songs_id_seq', (SELECT MAX(id) FROM medley_songs)); SELECT setval('band_songs_id_seq', (SELECT MAX(id) FROM band_songs)); SELECT setval('song_artists_id_seq', (SELECT MAX(id) FROM song_artists)); SELECT setval('links_id_seq', (SELECT MAX(id) FROM links));\"" || {
+            print_warning "Failed to fix sequences, continuing..."
+        }
+        print_success "Sequences fixed"
     else
         print_status "Data already exists, skipping import"
     fi

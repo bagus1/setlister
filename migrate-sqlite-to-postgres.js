@@ -225,9 +225,21 @@ function getPostgresType(sqliteType) {
   return typeMap[sqliteType.toUpperCase()] || "text";
 }
 
-function escapeValue(value, type) {
+function escapeValue(value, type, columnName, tableName, rowData) {
   if (value === null || value === undefined) {
     return "NULL";
+  }
+
+  // Special handling for links.type field - map "video" to "youtube" for YouTube URLs
+  if (tableName === "links" && columnName === "type" && value === "video") {
+    // Check if the URL in this row contains YouTube
+    const urlIndex = rowData.findIndex((col, idx) => rowData[idx] === "url");
+    if (urlIndex !== -1) {
+      const url = rowData[urlIndex + 1]; // Get the URL value
+      if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
+        return "'youtube'";
+      }
+    }
   }
 
   if (type === "boolean") {
@@ -261,7 +273,7 @@ function generateInsertStatement(tableName, columns, values) {
     const colName = columns[idx];
     const pgColName = mappedColumns[idx];
     const sqliteType = getPostgresType(typeof val);
-    return escapeValue(val, sqliteType);
+    return escapeValue(val, sqliteType, colName, tableName, values);
   });
 
   const postgresTableName = getPostgresTableName(tableName);

@@ -65,6 +65,7 @@ Modes:
   deploy-demo - Deploy to demo environment with PostgreSQL migration
   migrate  - Run database migrations on server
   restart  - Just restart the server
+  restart-demo - Just restart the demo server
   stop     - Stop the server (kill Passenger process)
   start    - Start the server (touch restart.txt)
   deps     - Update dependencies on server
@@ -253,6 +254,16 @@ restart_server() {
         return 1
     }
     print_success "Server restarted successfully"
+}
+
+# Function to restart demo server
+restart_demo_server() {
+    print_status "Restarting demo server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && touch tmp/restart.txt" || {
+        print_error "Failed to restart demo server"
+        return 1
+    }
+    print_success "Demo server restarted successfully"
 }
 
 # Function to stop server
@@ -531,6 +542,10 @@ main() {
             ;;
         "restart")
             restart_server
+            exit 0
+            ;;
+        "restart-demo")
+            restart_demo_server
             exit 0
             ;;
         "stop")

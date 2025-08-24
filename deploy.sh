@@ -370,8 +370,8 @@ deploy_to_demo() {
     if [ "$USER_COUNT" = "0" ] || [ "$USER_COUNT" = "" ]; then
         print_status "Importing data from SQLite migration files..."
         
-        # Import each table
-        for table in users bands artists vocalists band_members songs band_songs setlists setlist_sets setlist_songs medleys medley_songs band_invitations password_resets links gig_documents song_artists; do
+        # Import each table in dependency order
+        for table in users bands artists vocalists songs gig_documents setlists medleys band_members song_artists band_songs setlist_sets setlist_songs medley_songs band_invitations password_resets links; do
             print_status "Importing $table..."
             ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && [ -f 'migration-output/$table.sql' ] && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U bagus1_setlists_app -d bagus1_setlists_demo -f 'migration-output/$table.sql' || echo 'No migration file for $table'" || {
                 print_warning "Failed to import $table, continuing..."

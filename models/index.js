@@ -29,12 +29,12 @@ const SongArtist = require("./SongArtist")(sequelize);
 
 // Define associations
 // User-Band (many-to-many through BandMember)
-User.belongsToMany(Band, { through: "band_members", foreignKey: "user_id" });
-Band.belongsToMany(User, { through: "band_members", foreignKey: "band_id" });
+User.belongsToMany(Band, { through: BandMember, foreignKey: "user_id" });
+Band.belongsToMany(User, { through: BandMember, foreignKey: "band_id" });
 
 // Band-Song (many-to-many through BandSong)
-Band.belongsToMany(Song, { through: BandSong, foreignKey: "band_id" });
-Song.belongsToMany(Band, { through: BandSong, foreignKey: "song_id" });
+Band.belongsToMany(Song, { through: "band_songs", foreignKey: "band_id" });
+Song.belongsToMany(Band, { through: "band_songs", foreignKey: "song_id" });
 
 // Song-Artist (many-to-many)
 Song.belongsToMany(Artist, {
@@ -55,6 +55,12 @@ Vocalist.hasMany(Song, { foreignKey: "vocalist_id" });
 // Medley-Vocalist (one-to-many)
 Medley.belongsTo(Vocalist, { foreignKey: "vocalist_id" });
 Vocalist.hasMany(Medley, { foreignKey: "vocalist_id" });
+
+// BandMember junction table associations
+BandMember.belongsTo(User, { foreignKey: "user_id" });
+BandMember.belongsTo(Band, { foreignKey: "band_id" });
+User.hasMany(BandMember, { foreignKey: "user_id" });
+Band.hasMany(BandMember, { foreignKey: "band_id" });
 
 // BandSong junction table associations
 BandSong.belongsTo(Song, { foreignKey: "song_id" });
@@ -81,8 +87,11 @@ Song.hasMany(SetlistSong, { foreignKey: "song_id" });
 SetlistSong.belongsTo(Song, { foreignKey: "song_id" });
 
 // Medley-Song (many-to-many through MedleySong)
-Medley.belongsToMany(Song, { through: MedleySong, foreignKey: "medley_id" });
-Song.belongsToMany(Medley, { through: MedleySong, foreignKey: "song_id" });
+Medley.belongsToMany(Song, {
+  through: "medley_songs",
+  foreignKey: "medley_id",
+});
+Song.belongsToMany(Medley, { through: "medley_songs", foreignKey: "song_id" });
 
 // BandInvitation associations
 BandInvitation.belongsTo(Band, { foreignKey: "band_id" });

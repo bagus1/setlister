@@ -30,11 +30,11 @@ const TABLES = [
   "setlist_songs",
   "medleys",
   "medley_songs",
-  "band_invitations",
+  "BandInvitations",
   "password_resets",
   "links",
   "gig_documents",
-  "song_artists",
+  "SongArtist",
 ];
 
 // Column name mappings (SQLite -> PostgreSQL)
@@ -180,6 +180,24 @@ const COLUMN_MAPPINGS = {
     createdAt: "created_at",
     updatedAt: "updated_at",
   },
+  BandInvitations: {
+    id: "id",
+    bandId: "band_id",
+    email: "email",
+    role: "role",
+    invitedBy: "invited_by",
+    expiresAt: "expires_at",
+    usedAt: "used_at",
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  },
+  SongArtist: {
+    id: "id",
+    songId: "song_id",
+    artistId: "artist_id",
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  },
 };
 
 // Data type conversions
@@ -227,6 +245,14 @@ function escapeValue(value, type) {
   return value;
 }
 
+function getPostgresTableName(sqliteTableName) {
+  const tableNameMap = {
+    BandInvitations: "band_invitations",
+    SongArtist: "song_artists",
+  };
+  return tableNameMap[sqliteTableName] || sqliteTableName;
+}
+
 function generateInsertStatement(tableName, columns, values) {
   const mappedColumns = columns.map(
     (col) => COLUMN_MAPPINGS[tableName][col] || col
@@ -238,7 +264,8 @@ function generateInsertStatement(tableName, columns, values) {
     return escapeValue(val, sqliteType);
   });
 
-  return `INSERT INTO ${tableName} (${mappedColumns.join(", ")}) VALUES (${escapedValues.join(", ")});`;
+  const postgresTableName = getPostgresTableName(tableName);
+  return `INSERT INTO ${postgresTableName} (${mappedColumns.join(", ")}) VALUES (${escapedValues.join(", ")});`;
 }
 
 function migrateTable(db, tableName) {

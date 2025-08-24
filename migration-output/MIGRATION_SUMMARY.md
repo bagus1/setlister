@@ -1,6 +1,6 @@
 # SQLite to PostgreSQL Migration Summary
 
-Generated on: 2025-08-23T20:03:49.741Z
+Generated on: 2025-08-23T23:11:22.512Z
 
 ## Tables Migrated
 - users
@@ -15,11 +15,11 @@ Generated on: 2025-08-23T20:03:49.741Z
 - setlist_songs
 - medleys
 - medley_songs
-- band_invitations
+- BandInvitations
 - password_resets
 - links
 - gig_documents
-- song_artists
+- SongArtist
 
 ## Next Steps
 

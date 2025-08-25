@@ -164,22 +164,22 @@
             <%= setlist.title %>
         </h1>
         <p class="band-name">
-            <%= setlist.Band.name %>
+            <%= setlist.band.name %>
         </p>
         <% if (setlist.isFinalized) { %>
             <p style="margin: 10px 0 0 0; color: #28a745; font-weight: bold;">✓ FINALIZED</p>
             <% } %>
     </div>
 
-    <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
-        <% setlist.SetlistSets.sort((a, b)=> a.order - b.order).forEach(set => { %>
-            <% if (set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+    <% if (setlist.sets && setlist.sets.length> 0) { %>
+        <% setlist.sets.sort((a, b)=> a.order - b.order).forEach(set => { %>
+            <% if (set.songs && set.songs.length> 0) { %>
                 <div class="set-section">
                     <div class="set-header">
                         <%= set.name %>
-                            <% let setTime=0; set.SetlistSongs.forEach(setlistSong=> {
-                                if (setlistSong.Song && setlistSong.Song.time) {
-                                setTime += setlistSong.Song.time;
+                            <% let setTime=0; set.songs.forEach(setlistSong=> {
+                                if (setlistSong.song && setlistSong.song.time) {
+                                setTime += setlistSong.song.time;
                                 }
                                 });
                                 %>
@@ -189,35 +189,35 @@
                     </div>
 
                     <ul class="song-list">
-                        <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) => { %>
+                        <% set.songs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) => { %>
                             <li class="song-item">
                                 <span class="song-number">
                                     <%= index + 1 %>.
                                 </span>
                                 <div class="song-details">
                                     <div class="song-title">
-                                        <%= setlistSong.Song.title %>
+                                        <%= setlistSong.song.title %>
                                     </div>
-                                    <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) { %>
-                                        <div class="song-artist">by <%= setlistSong.Song.Artists[0].name %>
+                                    <% if (setlistSong.song.artists && setlistSong.song.artists.length> 0) { %>
+                                        <div class="song-artist">by <%= setlistSong.song.artists[0].artist.name %>
                                         </div>
                                         <% } %>
                                 </div>
                                 <div class="song-info">
-                                    <% if (setlistSong.Song.Vocalist) { %>
+                                    <% if (setlistSong.song.vocalist) { %>
                                         <span class="vocalist">
-                                            <%= setlistSong.Song.Vocalist.name %>
+                                            <%= setlistSong.song.vocalist.name %>
                                         </span>
                                         <% } %>
-                                            <% if (setlistSong.Song.key) { %>
+                                            <% if (setlistSong.song.key) { %>
                                                 <span class="key">
-                                                    <%= setlistSong.Song.key %>
+                                                    <%= setlistSong.song.key %>
                                                 </span>
                                                 <% } %>
-                                                    <% if (setlistSong.Song.time) { %>
+                                                    <% if (setlistSong.song.time) { %>
                                                         <span class="time">
-                                                            <%= Math.floor(setlistSong.Song.time / 60) %>:<%=
-                                                                    (setlistSong.Song.time %
+                                                            <%= Math.floor(setlistSong.song.time / 60) %>:<%=
+                                                                    (setlistSong.song.time %
                                                                     60).toString().padStart(2, '0' ) %>
                                                         </span>
                                                         <% } %>
@@ -227,7 +227,7 @@
                     </ul>
 
                     <div class="set-stats">
-                        <%= set.SetlistSongs.length %> songs
+                        <%= set.songs.length %> songs
                             <% if (setTime> 0) { %>
                                 • <%= Math.floor(setTime / 60) %>:<%= (setTime % 60).toString().padStart(2, '0' ) %>
                                         estimated
@@ -243,13 +243,13 @@
                             <% } %>
 
                                 <div class="footer">
-                                    <% let totalSongs=0; let totalTime=0; if (setlist.SetlistSets) {
-                                        setlist.SetlistSets.forEach(set=> {
-                                        if (set.SetlistSongs && set.name !== 'Maybe') {
-                                        totalSongs += set.SetlistSongs.length;
-                                        set.SetlistSongs.forEach(setlistSong => {
-                                        if (setlistSong.Song && setlistSong.Song.time) {
-                                        totalTime += setlistSong.Song.time;
+                                    <% let totalSongs=0; let totalTime=0; if (setlist.sets) {
+                                        setlist.sets.forEach(set=> {
+                                        if (set.songs && set.name !== 'Maybe') {
+                                        totalSongs += set.songs.length;
+                                        set.songs.forEach(setlistSong => {
+                                        if (setlistSong.song && setlistSong.song.time) {
+                                        totalTime += setlistSong.song.time;
                                         }
                                         });
                                         }

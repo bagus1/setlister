@@ -4,7 +4,7 @@
             <div>
                 <h1>Finalize Setlist</h1>
                 <h2 class="h4 text-muted">
-                    <%= setlist.title %> - <%= setlist.Band.name %>
+                    <%= setlist.title %> - <%= setlist.band.name %>
                 </h2>
                 <% if (setlist.date) { %>
                     <h2 class="h5 text-primary">
@@ -32,20 +32,20 @@
                 </h5>
             </div>
             <div class="card-body">
-                <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
-                    <% setlist.SetlistSets.sort((a, b)=> a.order - b.order).forEach(set => { %>
-                        <% if (set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+                <% if (setlist.sets && setlist.sets.length> 0) { %>
+                    <% setlist.sets.sort((a, b)=> a.order - b.order).forEach(set => { %>
+                        <% if (set.songs && set.songs.length> 0) { %>
                             <div class="set-section mb-4">
                                 <h6 class="text-primary">
                                     <i class="bi bi-music-note-list"></i>
                                     <%= set.name %>
                                         <span class="badge bg-secondary ms-2">
-                                            <%= set.SetlistSongs.length %> songs
+                                            <%= set.songs.length %> songs
                                         </span>
                                 </h6>
 
                                 <div class="list-group list-group-flush">
-                                    <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) =>
+                                    <% set.songs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) =>
                                         { %>
                                         <div class="list-group-item d-flex justify-content-between align-items-center">
                                             <div class="d-flex align-items-center">
@@ -54,14 +54,14 @@
                                                 </span>
                                                 <div>
                                                     <strong>
-                                                        <a href="/songs/<%= setlistSong.Song.id %>"
+                                                        <a href="/songs/<%= setlistSong.song.id %>"
                                                             class="text-decoration-none">
-                                                            <%= setlistSong.Song.title %>
+                                                            <%= setlistSong.song.title %>
                                                         </a>
                                                     </strong>
-                                                    <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length>
+                                                    <% if (setlistSong.song.artists && setlistSong.song.artists.length>
                                                         0) { %>
-                                                        <span class="text-muted">by <%= setlistSong.Song.Artists[0].name
+                                                        <span class="text-muted">by <%= setlistSong.song.artists[0].artist.name
                                                                 %>
                                                         </span>
                                                         <% } %>
@@ -70,20 +70,20 @@
                                             <div class="d-flex align-items-center gap-2">
                                                 <!-- Song metadata (vocalist, key, time) -->
                                                 <div class="d-flex align-items-center gap-2 me-3">
-                                                    <% if (setlistSong.Song.Vocalist) { %>
+                                                    <% if (setlistSong.song.vocalist) { %>
                                                         <span class="badge bg-info">
-                                                            <%= setlistSong.Song.Vocalist.name %>
+                                                            <%= setlistSong.song.vocalist.name %>
                                                         </span>
                                                         <% } %>
-                                                            <% if (setlistSong.Song.key) { %>
+                                                            <% if (setlistSong.song.key) { %>
                                                                 <span class="badge bg-warning text-dark">
-                                                                    <%= setlistSong.Song.key %>
+                                                                    <%= setlistSong.song.key %>
                                                                 </span>
                                                                 <% } %>
-                                                                    <% if (setlistSong.Song.time) { %>
+                                                                    <% if (setlistSong.song.time) { %>
                                                                         <span class="text-muted small">
-                                                                            <%= Math.floor(setlistSong.Song.time / 60)
-                                                                                %>:<%= (setlistSong.Song.time %
+                                                                            <%= Math.floor(setlistSong.song.time / 60)
+                                                                                %>:<%= (setlistSong.song.time %
                                                                                     60).toString().padStart(2, '0' ) %>
                                                                         </span>
                                                                         <% } %>
@@ -97,22 +97,22 @@
                                                                 class="btn btn-sm btn-outline-secondary dropdown-toggle"
                                                                 type="button" data-bs-toggle="dropdown"
                                                                 aria-expanded="false"
-                                                                data-song-id="<%= setlistSong.Song.id %>">
+                                                                data-song-id="<%= setlistSong.song.id %>">
                                                                 <% const bandSong=(bandSongMap &&
-                                                                    bandSongMap[setlistSong.Song.id]) || null; const
+                                                                    bandSongMap[setlistSong.song.id]) || null; const
                                                                     preferredDocId=bandSong && bandSong.gigDocumentId;
                                                                     const availableDocs=(gigDocumentsBySong &&
-                                                                    gigDocumentsBySong[setlistSong.Song.id]) || [];
+                                                                    gigDocumentsBySong[setlistSong.song.id]) || [];
                                                                     const preferredDoc=preferredDocId ?
                                                                     availableDocs.find(d=> d.id === preferredDocId) :
                                                                     null;
                                                                     %>
                                                                     <% if (preferredDoc) { %>
-                                                                        <%= preferredDoc.getTypeDisplayName() %> v<%=
+                                                                        <%= getTypeDisplayName(preferredDoc.type) %> v<%=
                                                                                 preferredDoc.version %>
                                                                                 <% } else if (availableDocs.length> 0) {
                                                                                     %>
-                                                                                    <%= availableDocs[0].getTypeDisplayName()
+                                                                                    <%= getTypeDisplayName(availableDocs[0].type)
                                                                                         %> v<%= availableDocs[0].version
                                                                                             %>
                                                                                             <% } else { %>
@@ -125,8 +125,8 @@
                                                                         <li>
                                                                             <a class="dropdown-item <%= preferredDocId === doc.id ? 'active' : '' %>"
                                                                                 href="#"
-                                                                                onclick="setPreferredGigDocument(<%= setlistSong.Song.id %>, <%= doc.id %>)">
-                                                                                <%= doc.getTypeDisplayName() %> v<%=
+                                                                                onclick="setPreferredGigDocument(<%= setlistSong.song.id %>, <%= doc.id %>)">
+                                                                                <%= getTypeDisplayName(doc.type) %> v<%=
                                                                                         doc.version %>
                                                                                         <% if (preferredDocId===doc.id)
                                                                                             { %>
@@ -142,7 +142,7 @@
                                                                             <li>
                                                                                 <a class="dropdown-item text-muted"
                                                                                     href="#"
-                                                                                    onclick="setPreferredGigDocument(<%= setlistSong.Song.id %>, null)">
+                                                                                    onclick="setPreferredGigDocument(<%= setlistSong.song.id %>, null)">
                                                                                     <i class="bi bi-x-circle"></i> Clear
                                                                                     preference
                                                                                 </a>
@@ -158,7 +158,7 @@
                                                                                     </li>
                                                                                     <li>
                                                                                         <a class="dropdown-item"
-                                                                                            href="/songs/<%= setlistSong.Song.id %>/docs/new">
+                                                                                            href="/songs/<%= setlistSong.song.id %>/docs/new">
                                                                                             <i
                                                                                                 class="bi bi-plus-circle"></i>
                                                                                             Create new gig document
@@ -284,7 +284,7 @@
 
                                 <hr>
 
-                                <a href="/bands/<%= setlist.Band.id %>" class="btn btn-outline-info">
+                                <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-info">
                                     <i class="bi bi-people"></i> Back to Band
                                 </a>
                             </div>
@@ -299,12 +299,12 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <% let totalTime=0; let totalSongs=0; setlist.SetlistSets.forEach(set=> {
-                        if (set.SetlistSongs && set.name !== 'Maybe') {
-                        totalSongs += set.SetlistSongs.length;
-                        set.SetlistSongs.forEach(setlistSong => {
-                        if (setlistSong.Song && setlistSong.Song.time) {
-                        totalTime += setlistSong.Song.time;
+                    <% let totalTime=0; let totalSongs=0; setlist.sets.forEach(set=> {
+                        if (set.songs && set.name !== 'Maybe') {
+                        totalSongs += set.songs.length;
+                        set.songs.forEach(setlistSong => {
+                        if (setlistSong.song && setlistSong.song.time) {
+                        totalTime += setlistSong.song.time;
                         }
                         });
                         }

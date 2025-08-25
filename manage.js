@@ -1,18 +1,6 @@
 #!/usr/bin/env node
 
-const {
-  User,
-  Band,
-  Song,
-  Artist,
-  BandMember,
-  BandInvitation,
-  Setlist,
-  SetlistSet,
-  BandSong,
-  Link,
-  GigDocument,
-} = require("./models");
+const { prisma } = require("./lib/prisma");
 const readline = require("readline");
 
 // Environment variables for server connection
@@ -84,28 +72,37 @@ async function showServerInstructions() {
 
 async function listUsers() {
   log("\n=== Users ===", "cyan");
-  const users = await User.findAll({
-    attributes: ["id", "username", "email", "createdAt"],
-    include: [
-      {
-        model: Band,
-        through: { attributes: ["role"] },
-        attributes: ["id", "name"],
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      created_at: true,
+      members: {
+        select: {
+          role: true,
+          band: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       },
-    ],
-    order: [["created_at", "DESC"]],
+    },
+    orderBy: { created_at: "desc" },
   });
 
   users.forEach((user) => {
     const bands =
-      user.Bands && user.Bands.length > 0
-        ? user.Bands.map(
-            (band) => `${band.name}(${band.BandMember.role})`
-          ).join(", ")
+      user.members && user.members.length > 0
+        ? user.members
+            .map((member) => `${member.band.name}(${member.role})`)
+            .join(", ")
         : "No bands";
 
     log(
-      `ID: ${user.id} | ${user.username} | ${user.email} | Created: ${user.createdAt.toLocaleDateString()}`,
+      `ID: ${user.id} | ${user.username} | ${user.email} | Created: ${user.created_at.toLocaleDateString()}`,
       "blue"
     );
     log(`  Bands: ${bands}`, "white");
@@ -115,21 +112,41 @@ async function listUsers() {
 
 async function listBands() {
   log("\n=== Bands ===", "cyan");
-  const bands = await Band.findAll({
-    include: [
-      {
-        model: User,
-        through: { attributes: ["role"] },
-        attributes: ["id", "username", "email"],
+  const bands = await prisma.band.findMany({
+    include: {
+      members: {
+        select: {
+          role: true,
+          user: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+            },
+          },
+        },
       },
-      {
-        model: Song,
-        through: { attributes: [] },
-        include: ["Artists"],
-        attributes: ["id", "title"],
+      songs: {
+        select: {
+          song: {
+            select: {
+              id: true,
+              title: true,
+              artists: {
+                select: {
+                  artist: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
-    ],
-    order: [["created_at", "DESC"]],
+    },
+    orderBy: { created_at: "desc" },
   });
 
   if (bands.length === 0) {
@@ -139,10 +156,10 @@ async function listBands() {
 
   // Show simple list first
   bands.forEach((band, index) => {
-    const memberCount = band.Users ? band.Users.length : 0;
-    const songCount = band.Songs ? band.Songs.length : 0;
+    const memberCount = band.members ? band.members.length : 0;
+    const songCount = band.songs ? band.songs.length : 0;
     log(
-      `${index + 1}. ${band.name} (ID: ${band.id}) | Members: ${memberCount} | Songs: ${songCount} | Created: ${band.createdAt.toLocaleDateString()}`,
+      `${index + 1}. ${band.name} (ID: ${band.id}) | Members: ${memberCount} | Songs: ${songCount} | Created: ${band.created_at.toLocaleDateString()}`,
       "blue"
     );
   });
@@ -168,30 +185,36 @@ async function listBands() {
 
   log(`\n=== Detailed Info for "${selectedBand.name}" ===`, "cyan");
   log(
-    `ID: ${selectedBand.id} | Created: ${selectedBand.createdAt.toLocaleDateString()}`,
+    `ID: ${selectedBand.id} | Created: ${selectedBand.created_at.toLocaleDateString()}`,
     "blue"
   );
 
   // Show detailed members
-  if (selectedBand.Users && selectedBand.Users.length > 0) {
+  if (selectedBand.members && selectedBand.members.length > 0) {
     log("\nMembers:", "yellow");
-    selectedBand.Users.forEach((user) => {
-      const role = user.BandMember ? user.BandMember.role : "member";
-      log(`  - ${user.username} (${user.email}) - ${role}`, "white");
+    selectedBand.members.forEach((member) => {
+      const role = member.role || "member";
+      log(
+        `  - ${member.user.username} (${member.user.email}) - ${role}`,
+        "white"
+      );
     });
   } else {
     log("\nMembers: None", "yellow");
   }
 
   // Show detailed songs
-  if (selectedBand.Songs && selectedBand.Songs.length > 0) {
+  if (selectedBand.songs && selectedBand.songs.length > 0) {
     log("\nSongs:", "yellow");
-    selectedBand.Songs.forEach((song) => {
+    selectedBand.songs.forEach((bandSong) => {
       const artist =
-        song.Artists && song.Artists.length > 0
-          ? song.Artists[0].name
+        bandSong.song.artists && bandSong.song.artists.length > 0
+          ? bandSong.song.artists[0].artist.name
           : "Unknown Artist";
-      log(`  - ID: ${song.id} | "${song.title}" by ${artist}`, "white");
+      log(
+        `  - ID: ${bandSong.song.id} | "${bandSong.song.title}" by ${artist}`,
+        "white"
+      );
     });
   } else {
     log("\nSongs: None", "yellow");
@@ -200,18 +223,25 @@ async function listBands() {
 
 async function listSongs() {
   log("\n=== Songs ===", "cyan");
-  const songs = await Song.findAll({
-    include: ["Artists", "Vocalist"],
-    order: [["id", "ASC"]],
+  const songs = await prisma.song.findMany({
+    include: {
+      artists: {
+        include: {
+          artist: true,
+        },
+      },
+      vocalist: true,
+    },
+    orderBy: { id: "asc" },
   });
 
   songs.forEach((song) => {
     const artist =
-      song.Artists && song.Artists.length > 0
-        ? song.Artists[0].name
+      song.artists && song.artists.length > 0
+        ? song.artists[0].artist.name
         : "Unknown";
     log(
-      `ID: ${song.id} | ${song.title} | ${artist} | Created: ${song.createdAt.toLocaleDateString()}`,
+      `ID: ${song.id} | ${song.title} | ${artist} | Created: ${song.created_at.toLocaleDateString()}`,
       "blue"
     );
   });
@@ -224,14 +254,20 @@ async function mergeArtists() {
   try {
     // First, show all artists to help user choose
     log("\nAvailable artists:", "blue");
-    const allArtists = await Artist.findAll({
-      include: [
-        {
-          model: Song,
-          attributes: ["id", "title"],
+    const allArtists = await prisma.artist.findMany({
+      include: {
+        songs: {
+          select: {
+            song: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+          },
         },
-      ],
-      order: [["name", "ASC"]],
+      },
+      orderBy: { name: "asc" },
     });
 
     if (allArtists.length < 2) {
@@ -240,7 +276,7 @@ async function mergeArtists() {
     }
 
     allArtists.forEach((artist, index) => {
-      const songCount = artist.Songs ? artist.Songs.length : 0;
+      const songCount = artist.songs ? artist.songs.length : 0;
       log(
         `${index + 1}. ${artist.name} (ID: ${artist.id}) - ${songCount} songs`,
         "white"
@@ -289,11 +325,11 @@ async function mergeArtists() {
     // Show what will happen
     log(`\nMerge Summary:`, "cyan");
     log(
-      `FROM: ${sourceArtist.name} (ID: ${sourceArtist.id}) - ${sourceArtist.Songs ? sourceArtist.Songs.length : 0} songs`,
+      `FROM: ${sourceArtist.name} (ID: ${sourceArtist.id}) - ${sourceArtist.songs ? sourceArtist.songs.length : 0} songs`,
       "yellow"
     );
     log(
-      `INTO: ${targetArtist.name} (ID: ${targetArtist.id}) - ${targetArtist.Songs ? targetArtist.Songs.length : 0} songs`,
+      `INTO: ${targetArtist.name} (ID: ${targetArtist.id}) - ${targetArtist.songs ? targetArtist.songs.length : 0} songs`,
       "green"
     );
 
@@ -310,33 +346,42 @@ async function mergeArtists() {
     log("\nPerforming merge...", "blue");
 
     // Update all songs from source artist to target artist
-    if (sourceArtist.Songs && sourceArtist.Songs.length > 0) {
-      for (const song of sourceArtist.Songs) {
-        // Remove the source artist association
-        await song.removeArtist(sourceArtist);
-        // Add the target artist association
-        await song.addArtist(targetArtist);
-        log(`Moved song: ${song.title}`, "white");
+    if (sourceArtist.songs && sourceArtist.songs.length > 0) {
+      for (const songArtist of sourceArtist.songs) {
+        // Update the song artist relationship to point to target artist
+        await prisma.songArtist.update({
+          where: { id: songArtist.id },
+          data: { artistId: targetArtist.id },
+        });
+        log(`Moved song: ${songArtist.song.title}`, "white");
       }
     }
 
     // Delete the source artist
-    await sourceArtist.destroy();
+    await prisma.artist.delete({
+      where: { id: sourceArtist.id },
+    });
     log(`Deleted source artist: ${sourceArtist.name}`, "yellow");
 
     // Show final result
     log(`\n✅ Merge completed successfully!`, "green");
     log(`\nSongs now belonging to "${targetArtist.name}":`, "cyan");
 
-    const finalSongs = await Song.findAll({
-      include: [
-        {
-          model: Artist,
-          where: { id: targetArtist.id },
-          attributes: ["id", "name"],
+    const finalSongs = await prisma.song.findMany({
+      include: {
+        artists: {
+          where: { artistId: targetArtist.id },
+          select: {
+            artist: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
         },
-      ],
-      order: [["title", "ASC"]],
+      },
+      orderBy: { title: "asc" },
     });
 
     if (finalSongs.length > 0) {
@@ -354,18 +399,23 @@ async function mergeArtists() {
 
 async function listArtists() {
   log("\n=== Artists ===", "cyan");
-  const artists = await Artist.findAll({
-    include: [
-      {
-        model: Song,
-        attributes: ["id"],
+  const artists = await prisma.artist.findMany({
+    include: {
+      songs: {
+        select: {
+          song: {
+            select: {
+              id: true,
+            },
+          },
+        },
       },
-    ],
-    order: [["name", "ASC"]],
+    },
+    orderBy: { name: "asc" },
   });
 
   artists.forEach((artist) => {
-    const songCount = artist.Songs ? artist.Songs.length : 0;
+    const songCount = artist.songs ? artist.songs.length : 0;
     log(`ID: ${artist.id} | ${artist.name} | Songs: ${songCount}`, "blue");
   });
   log(`Total artists: ${artists.length}`, "green");
@@ -373,7 +423,9 @@ async function listArtists() {
 
 async function deleteUser() {
   const userId = await question("Enter user ID to delete: ");
-  const user = await User.findByPk(userId);
+  const user = await prisma.user.findUnique({
+    where: { id: parseInt(userId) },
+  });
 
   if (!user) {
     log("User not found!", "red");
@@ -384,11 +436,15 @@ async function deleteUser() {
 
   if (await confirmAction(`delete user ${user.username}`)) {
     // Delete related data first
-    await BandInvitation.destroy({ where: { invitedBy: userId } });
-    await BandMember.destroy({ where: { userId } });
+    await prisma.bandInvitation.deleteMany({
+      where: { invitedBy: parseInt(userId) },
+    });
+    await prisma.bandMember.deleteMany({ where: { userId: parseInt(userId) } });
 
     // Delete user
-    await user.destroy();
+    await prisma.user.delete({
+      where: { id: parseInt(userId) },
+    });
     log(`User ${user.username} deleted successfully!`, "green");
   } else {
     log("Deletion cancelled.", "yellow");
@@ -397,7 +453,9 @@ async function deleteUser() {
 
 async function deleteBand() {
   const bandId = await question("Enter band ID to delete: ");
-  const band = await Band.findByPk(bandId);
+  const band = await prisma.band.findUnique({
+    where: { id: parseInt(bandId) },
+  });
 
   if (!band) {
     log("Band not found!", "red");
@@ -408,19 +466,25 @@ async function deleteBand() {
 
   if (await confirmAction(`delete band ${band.name}`)) {
     // Delete related data first
-    await BandInvitation.destroy({ where: { bandId } });
-    await BandMember.destroy({ where: { bandId } });
-    await BandSong.destroy({ where: { bandId } });
+    await prisma.bandInvitation.deleteMany({
+      where: { bandId: parseInt(bandId) },
+    });
+    await prisma.bandMember.deleteMany({ where: { bandId: parseInt(bandId) } });
+    await prisma.bandSong.deleteMany({ where: { bandId: parseInt(bandId) } });
 
     // Delete setlists and sets
-    const setlists = await Setlist.findAll({ where: { bandId } });
+    const setlists = await prisma.setlist.findMany({
+      where: { bandId: parseInt(bandId) },
+    });
     for (const setlist of setlists) {
-      await SetlistSet.destroy({ where: { setlistId: setlist.id } });
+      await prisma.setlistSet.deleteMany({ where: { setlistId: setlist.id } });
     }
-    await Setlist.destroy({ where: { bandId } });
+    await prisma.setlist.deleteMany({ where: { bandId: parseInt(bandId) } });
 
     // Delete band
-    await band.destroy();
+    await prisma.band.delete({
+      where: { id: parseInt(bandId) },
+    });
     log(`Band ${band.name} deleted successfully!`, "green");
   } else {
     log("Deletion cancelled.", "yellow");
@@ -432,8 +496,17 @@ async function deleteSong() {
   const songId = await question("Enter song ID to delete: ");
 
   try {
-    const song = await Song.findByPk(songId, {
-      include: ["Artists", "Vocalist", "Links"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(songId) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+        links: true,
+      },
     });
 
     if (!song) {
@@ -442,16 +515,16 @@ async function deleteSong() {
     }
 
     log(`\nSong: ${song.title}`, "blue");
-    if (song.Artists && song.Artists.length > 0) {
-      log(`Artist: ${song.Artists[0].name}`, "blue");
+    if (song.artists && song.artists.length > 0) {
+      log(`Artist: ${song.artists[0].artist.name}`, "blue");
     }
-    if (song.Vocalist) {
-      log(`Vocalist: ${song.Vocalist.name}`, "blue");
+    if (song.vocalist) {
+      log(`Vocalist: ${song.vocalist.name}`, "blue");
     }
 
-    if (song.Links && song.Links.length > 0) {
-      log(`\nLinks (${song.Links.length}):`, "yellow");
-      song.Links.forEach((link, index) => {
+    if (song.links && song.links.length > 0) {
+      log(`\nLinks (${song.links.length}):`, "yellow");
+      song.links.forEach((link, index) => {
         log(
           `  ${index + 1}. [${link.type}] ${link.description || "No description"} - ${link.url}`,
           "white"
@@ -463,7 +536,9 @@ async function deleteSong() {
 
     const confirmed = await confirmAction(`delete song "${song.title}"`);
     if (confirmed) {
-      await song.destroy();
+      await prisma.song.delete({
+        where: { id: parseInt(songId) },
+      });
       log("Song deleted successfully!", "green");
     } else {
       log("Deletion cancelled.", "yellow");
@@ -478,8 +553,16 @@ async function deleteLinks() {
   const songId = await question("Enter song ID: ");
 
   try {
-    const song = await Song.findByPk(songId, {
-      include: ["Artists", "Links"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(songId) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        links: true,
+      },
     });
 
     if (!song) {
@@ -488,17 +571,17 @@ async function deleteLinks() {
     }
 
     log(`\nSong: ${song.title}`, "blue");
-    if (song.Artists && song.Artists.length > 0) {
-      log(`Artist: ${song.Artists[0].name}`, "blue");
+    if (song.artists && song.artists.length > 0) {
+      log(`Artist: ${song.artists[0].artist.name}`, "blue");
     }
 
-    if (!song.Links || song.Links.length === 0) {
+    if (!song.links || song.links.length === 0) {
       log("\nNo links found for this song.", "yellow");
       return;
     }
 
-    log(`\nLinks (${song.Links.length}):`, "yellow");
-    song.Links.forEach((link, index) => {
+    log(`\nLinks (${song.links.length}):`, "yellow");
+    song.links.forEach((link, index) => {
       log(
         `  ${index + 1}. [${link.type}] ${link.description || "No description"} - ${link.url}`,
         "white"
@@ -507,7 +590,7 @@ async function deleteLinks() {
 
     log("\nOptions:", "cyan");
     log(
-      `- Enter a number (1-${song.Links.length}) to delete that specific link`,
+      `- Enter a number (1-${song.links.length}) to delete that specific link`,
       "white"
     );
     log('- Type "all" to delete all links', "white");
@@ -524,13 +607,13 @@ async function deleteLinks() {
 
     if (choice === "all") {
       const confirmed = await confirmAction(
-        `delete all ${song.Links.length} links from "${song.title}"`
+        `delete all ${song.links.length} links from "${song.title}"`
       );
       if (confirmed) {
-        await Link.destroy({
+        await prisma.link.deleteMany({
           where: { songId: song.id },
         });
-        log(`${song.Links.length} links deleted successfully!`, "green");
+        log(`${song.links.length} links deleted successfully!`, "green");
       } else {
         log("Deletion cancelled.", "yellow");
       }
@@ -538,18 +621,18 @@ async function deleteLinks() {
     }
 
     const linkIndex = parseInt(choice) - 1;
-    if (isNaN(linkIndex) || linkIndex < 0 || linkIndex >= song.Links.length) {
+    if (isNaN(linkIndex) || linkIndex < 0 || linkIndex >= song.links.length) {
       log('Invalid choice. Please enter a valid number or "all".', "red");
       return;
     }
 
-    const selectedLink = song.Links[linkIndex];
+    const selectedLink = song.links[linkIndex];
     const confirmed = await confirmAction(
       `delete link [${selectedLink.type}] ${selectedLink.description || "No description"} from "${song.title}"`
     );
 
     if (confirmed) {
-      await Link.destroy({
+      await prisma.link.delete({
         where: { id: selectedLink.id },
       });
       log("Link deleted successfully!", "green");
@@ -566,13 +649,20 @@ async function deleteArtist() {
   const artistId = await question("Enter artist ID to delete: ");
 
   try {
-    const artist = await Artist.findByPk(artistId, {
-      include: [
-        {
-          model: Song,
-          attributes: ["id", "title"],
+    const artist = await prisma.artist.findUnique({
+      where: { id: parseInt(artistId) },
+      include: {
+        songs: {
+          select: {
+            song: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+          },
         },
-      ],
+      },
     });
 
     if (!artist) {
@@ -582,13 +672,13 @@ async function deleteArtist() {
 
     log(`\nArtist: ${artist.name}`, "blue");
 
-    if (artist.Songs && artist.Songs.length > 0) {
+    if (artist.songs && artist.songs.length > 0) {
       log(
-        `\nThis artist has ${artist.Songs.length} song(s) that will also be deleted:`,
+        `\nThis artist has ${artist.songs.length} song(s) that will also be deleted:`,
         "yellow"
       );
-      artist.Songs.forEach((song, index) => {
-        log(`  ${index + 1}. ${song.title}`, "white");
+      artist.songs.forEach((songArtist, index) => {
+        log(`  ${index + 1}. ${songArtist.song.title}`, "white");
       });
 
       log(
@@ -600,20 +690,24 @@ async function deleteArtist() {
     }
 
     const confirmed = await confirmAction(
-      `delete artist "${artist.name}" and all ${artist.Songs ? artist.Songs.length : 0} associated songs`
+      `delete artist "${artist.name}" and all ${artist.songs ? artist.songs.length : 0} associated songs`
     );
 
     if (confirmed) {
       // Delete all songs by this artist first
-      if (artist.Songs && artist.Songs.length > 0) {
-        for (const song of artist.Songs) {
-          await song.destroy();
+      if (artist.songs && artist.songs.length > 0) {
+        for (const songArtist of artist.songs) {
+          await prisma.song.delete({
+            where: { id: songArtist.song.id },
+          });
         }
-        log(`${artist.Songs.length} songs deleted.`, "yellow");
+        log(`${artist.songs.length} songs deleted.`, "yellow");
       }
 
       // Delete the artist
-      await artist.destroy();
+      await prisma.artist.delete({
+        where: { id: parseInt(artistId) },
+      });
       log(`Artist "${artist.name}" deleted successfully!`, "green");
     } else {
       log("Deletion cancelled.", "yellow");
@@ -628,8 +722,16 @@ async function deleteGigDocuments() {
   const songId = await question("Enter song ID: ");
 
   try {
-    const song = await Song.findByPk(songId, {
-      include: ["Artists", "GigDocuments"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(songId) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        gigDocuments: true,
+      },
     });
 
     if (!song) {
@@ -638,17 +740,17 @@ async function deleteGigDocuments() {
     }
 
     log(`\nSong: ${song.title}`, "blue");
-    if (song.Artists && song.Artists.length > 0) {
-      log(`Artist: ${song.Artists[0].name}`, "blue");
+    if (song.artists && song.artists.length > 0) {
+      log(`Artist: ${song.artists[0].artist.name}`, "blue");
     }
 
-    if (!song.GigDocuments || song.GigDocuments.length === 0) {
+    if (!song.gigDocuments || song.gigDocuments.length === 0) {
       log("\nNo gig documents found for this song.", "yellow");
       return;
     }
 
-    log(`\nGig Documents (${song.GigDocuments.length}):`, "yellow");
-    song.GigDocuments.forEach((doc, index) => {
+    log(`\nGig Documents (${song.gigDocuments.length}):`, "yellow");
+    song.gigDocuments.forEach((doc, index) => {
       log(
         `  ${index + 1}. [${doc.type || "No type"}] ${doc.title || "No title"} - ${doc.content ? doc.content.substring(0, 100) + "..." : "No content"}`,
         "white"
@@ -656,63 +758,63 @@ async function deleteGigDocuments() {
     });
 
     log("\nOptions:", "cyan");
-    log(
-      `- Enter a number (1-${song.GigDocuments.length}) to delete that specific gig document`,
-      "white"
-    );
-    log('- Type "all" to delete all gig documents', "white");
-    log('- Type "cancel" to abort', "white");
-
-    const choice = (await question("\nEnter your choice: "))
-      .toLowerCase()
-      .trim();
-
-    if (choice === "cancel") {
-      log("Operation cancelled.", "yellow");
-      return;
-    }
-
-    if (choice === "all") {
-      const confirmed = await confirmAction(
-        `delete all ${song.GigDocuments.length} gig documents from "${song.title}"`
+          log(
+        `- Enter a number (1-${song.gigDocuments.length}) to delete that specific gig document`,
+        "white"
       );
-      if (confirmed) {
-        await GigDocument.destroy({
-          where: { songId: song.id },
-        });
-        log(
-          `${song.GigDocuments.length} gig documents deleted successfully!`,
-          "green"
+      log('- Type "all" to delete all gig documents', "white");
+      log('- Type "cancel" to abort', "white");
+
+      const choice = (await question("\nEnter your choice: "))
+        .toLowerCase()
+        .trim();
+
+      if (choice === "cancel") {
+        log("Operation cancelled.", "yellow");
+        return;
+      }
+
+      if (choice === "all") {
+        const confirmed = await confirmAction(
+          `delete all ${song.gigDocuments.length} gig documents from "${song.title}"`
         );
+        if (confirmed) {
+          await prisma.gigDocument.deleteMany({
+            where: { songId: song.id },
+          });
+          log(
+            `${song.gigDocuments.length} gig documents deleted successfully!`,
+            "green"
+          );
+        } else {
+          log("Deletion cancelled.", "yellow");
+        }
+        return;
+      }
+
+      const docIndex = parseInt(choice) - 1;
+      if (
+        isNaN(docIndex) ||
+        docIndex < 0 ||
+        docIndex >= song.gigDocuments.length
+      ) {
+        log('Invalid choice. Please enter a valid number or "all".', "red");
+        return;
+      }
+
+      const selectedDoc = song.gigDocuments[docIndex];
+      const confirmed = await confirmAction(
+        `delete gig document [${selectedDoc.type || "No type"}] ${selectedDoc.title || "No title"} from "${song.title}"`
+      );
+
+      if (confirmed) {
+        await prisma.gigDocument.delete({
+          where: { id: selectedDoc.id },
+        });
+        log("Gig document deleted successfully!", "green");
       } else {
         log("Deletion cancelled.", "yellow");
       }
-      return;
-    }
-
-    const docIndex = parseInt(choice) - 1;
-    if (
-      isNaN(docIndex) ||
-      docIndex < 0 ||
-      docIndex >= song.GigDocuments.length
-    ) {
-      log('Invalid choice. Please enter a valid number or "all".', "red");
-      return;
-    }
-
-    const selectedDoc = song.GigDocuments[docIndex];
-    const confirmed = await confirmAction(
-      `delete gig document [${selectedDoc.type || "No type"}] ${selectedDoc.title || "No title"} from "${song.title}"`
-    );
-
-    if (confirmed) {
-      await GigDocument.destroy({
-        where: { id: selectedDoc.id },
-      });
-      log("Gig document deleted successfully!", "green");
-    } else {
-      log("Deletion cancelled.", "yellow");
-    }
   } catch (error) {
     log(`Error: ${error.message}`, "red");
   }
@@ -723,8 +825,16 @@ async function editSong() {
   const songId = await question("Enter song ID: ");
 
   try {
-    const song = await Song.findByPk(songId, {
-      include: ["Artists", "Vocalist"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(songId) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+      },
     });
 
     if (!song) {
@@ -734,13 +844,13 @@ async function editSong() {
 
     log(`\nCurrent song details:`, "blue");
     log(`Title: ${song.title}`, "white");
-    if (song.Artists && song.Artists.length > 0) {
-      log(`Artist: ${song.Artists[0].name}`, "white");
+    if (song.artists && song.artists.length > 0) {
+      log(`Artist: ${song.artists[0].artist.name}`, "white");
     } else {
       log(`Artist: None assigned`, "white");
     }
-    if (song.Vocalist) {
-      log(`Vocalist: ${song.Vocalist.name}`, "white");
+    if (song.vocalist) {
+      log(`Vocalist: ${song.vocalist.name}`, "white");
     }
     if (song.key) {
       log(`Key: ${song.key}`, "white");
@@ -978,7 +1088,7 @@ if (process.argv.length > 2) {
         return;
       }
 
-      await require("./models").sequelize.sync();
+      // Prisma doesn't need sync - database is already set up
 
       switch (command) {
         case "list-users":

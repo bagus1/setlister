@@ -6,7 +6,7 @@
                     <%= setlist.title %>
                 </h1>
                 <h2 class="h4 text-muted">
-                    <%= setlist.Band.name %>
+                    <%= setlist.band.name %>
                 </h2>
             </div>
             <div>
@@ -19,7 +19,7 @@
                             <i class="bi bi-check-circle"></i>
                             <%= setlist.isFinalized ? 'View' : 'Finalize' %>
                         </a>
-                        <a href="/bands/<%= setlist.Band.id %>" class="btn btn-outline-secondary">
+                        <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Back to Band
                         </a>
             </div>
@@ -29,9 +29,9 @@
 
 <div class="row">
     <div class="col-md-8">
-        <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
-            <% setlist.SetlistSets.sort((a, b)=> a.order - b.order).forEach(set => { %>
-                <% if (set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+        <% if (setlist.sets && setlist.sets.length> 0) { %>
+            <% setlist.sets.sort((a, b)=> a.order - b.order).forEach(set => { %>
+                <% if (set.songs && set.songs.length> 0) { %>
                     <div class="card mb-4">
                         <div class="card-header">
                             <div class="d-flex justify-content-between align-items-center">
@@ -41,11 +41,11 @@
                                 </h5>
                                 <div>
                                     <span class="badge bg-primary">
-                                        <%= set.SetlistSongs.length %> songs
+                                        <%= set.songs.length %> songs
                                     </span>
-                                    <% let setTime=0; set.SetlistSongs.forEach(setlistSong=> {
-                                        if (setlistSong.Song && setlistSong.Song.time) {
-                                        setTime += setlistSong.Song.time;
+                                    <% let setTime=0; set.songs.forEach(setlistSong=> {
+                                        if (setlistSong.song && setlistSong.song.time) {
+                                        setTime += setlistSong.song.time;
                                         }
                                         });
                                         %>
@@ -60,7 +60,7 @@
                         </div>
                         <div class="card-body p-0">
                             <div class="list-group list-group-flush">
-                                <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) => {
+                                <% set.songs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) => {
                                     %>
                                     <div class="list-group-item">
                                         <div class="d-flex justify-content-between align-items-center">
@@ -71,36 +71,36 @@
                                                 </span>
                                                 <div>
                                                     <h6 class="mb-1">
-                                                        <a href="/songs/<%= setlistSong.Song.id %>"
+                                                        <a href="/songs/<%= setlistSong.song.id %>"
                                                             class="text-decoration-none text-dark">
-                                                            <%= setlistSong.Song.title %>
+                                                            <%= setlistSong.song.title %>
                                                         </a>
                                                     </h6>
-                                                    <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length>
+                                                    <% if (setlistSong.song.artists && setlistSong.song.artists.length>
                                                         0) { %>
                                                         <small class="text-muted">by <%=
-                                                                setlistSong.Song.Artists[0].name %></small>
+                                                                setlistSong.song.artists[0].artist.name %></small>
                                                         <% } %>
                                                 </div>
                                             </div>
                                             <div class="d-flex align-items-center gap-2">
-                                                <% if (setlistSong.Song.Vocalist) { %>
+                                                <% if (setlistSong.song.vocalist) { %>
                                                     <span class="badge bg-info text-dark">
                                                         <i class="bi bi-person"></i>
-                                                        <%= setlistSong.Song.Vocalist.name %>
+                                                        <%= setlistSong.song.vocalist.name %>
                                                     </span>
                                                     <% } %>
-                                                        <% if (setlistSong.Song.key) { %>
+                                                        <% if (setlistSong.song.key) { %>
                                                             <span class="badge bg-warning text-dark">
                                                                 <i class="bi bi-music-note"></i>
-                                                                <%= setlistSong.Song.key %>
+                                                                <%= setlistSong.song.key %>
                                                             </span>
                                                             <% } %>
-                                                                <% if (setlistSong.Song.time) { %>
+                                                                <% if (setlistSong.song.time) { %>
                                                                     <span class="text-muted small">
                                                                         <i class="bi bi-clock"></i>
-                                                                        <%= Math.floor(setlistSong.Song.time / 60) %>:
-                                                                            <%= (setlistSong.Song.time %
+                                                                        <%= Math.floor(setlistSong.song.time / 60) %>:
+                                                                            <%= (setlistSong.song.time %
                                                                                 60).toString().padStart(2, '0' ) %>
                                                                     </span>
                                                                     <% } %>
@@ -140,9 +140,9 @@
                 <div class="row text-center mb-3">
                     <div class="col-6">
                         <div class="h5 text-primary mb-0">
-                            <% let totalSongs=0; if (setlist.SetlistSets) { setlist.SetlistSets.forEach(set=> {
-                                if (set.SetlistSongs) {
-                                totalSongs += set.SetlistSongs.length;
+                            <% let totalSongs=0; if (setlist.sets) { setlist.sets.forEach(set=> {
+                                if (set.songs) {
+                                totalSongs += set.songs.length;
                                 }
                                 });
                                 }
@@ -153,11 +153,11 @@
                     </div>
                     <div class="col-6">
                         <div class="h5 text-primary mb-0">
-                            <% let totalTime=0; if (setlist.SetlistSets) { setlist.SetlistSets.forEach(set=> {
-                                if (set.SetlistSongs && set.name !== 'Maybe') {
-                                set.SetlistSongs.forEach(setlistSong => {
-                                if (setlistSong.Song && setlistSong.Song.time) {
-                                totalTime += setlistSong.Song.time;
+                            <% let totalTime=0; if (setlist.sets) { setlist.sets.forEach(set=> {
+                                if (set.songs && set.name !== 'Maybe') {
+                                set.songs.forEach(setlistSong => {
+                                if (setlistSong.song && setlistSong.song.time) {
+                                totalTime += setlistSong.song.time;
                                 }
                                 });
                                 }
@@ -213,8 +213,8 @@
             </div>
         </div>
 
-        <% if (setlist.SetlistSets && setlist.SetlistSets.some(set=> set.name === 'Maybe' && set.SetlistSongs &&
-            set.SetlistSongs.length > 0)) { %>
+        <% if (setlist.sets && setlist.sets.some(set=> set.name === 'Maybe' && set.songs &&
+            set.songs.length > 0)) { %>
             <div class="card mt-3">
                 <div class="card-header">
                     <h6 class="mb-0">
@@ -222,25 +222,25 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <% const maybeSet=setlist.SetlistSets.find(set=> set.name === 'Maybe');
-                        if (maybeSet && maybeSet.SetlistSongs) {
+                    <% const maybeSet=setlist.sets.find(set=> set.name === 'Maybe');
+                        if (maybeSet && maybeSet.songs) {
                         %>
                         <div class="list-group list-group-flush">
-                            <% maybeSet.SetlistSongs.forEach(setlistSong=> { %>
+                            <% maybeSet.songs.forEach(setlistSong=> { %>
                                 <div class="list-group-item px-0 py-2">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <div class="fw-bold">
-                                                <%= setlistSong.Song.title %>
+                                                <%= setlistSong.song.title %>
                                             </div>
-                                            <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) { %>
-                                                <small class="text-muted">by <%= setlistSong.Song.Artists[0].name %>
+                                            <% if (setlistSong.song.artists && setlistSong.song.artists.length> 0) { %>
+                                                <small class="text-muted">by <%= setlistSong.song.artists[0].artist.name %>
                                                 </small>
                                                 <% } %>
                                         </div>
-                                        <% if (setlistSong.Song.key) { %>
+                                        <% if (setlistSong.song.key) { %>
                                             <span class="badge bg-light text-dark">
-                                                <%= setlistSong.Song.key %>
+                                                <%= setlistSong.song.key %>
                                             </span>
                                             <% } %>
                                     </div>

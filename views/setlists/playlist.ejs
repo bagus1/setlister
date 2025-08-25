@@ -5,7 +5,7 @@
                 <div>
                     <h1>Playlist</h1>
                     <h2 class="h4 text-muted">
-                        <%= setlist.title %> - <%= setlist.Band.name %>
+                        <%= setlist.title %> - <%= setlist.band.name %>
                     </h2>
                 </div>
                 <div>
@@ -29,7 +29,7 @@
                     <% if (audioSongs.length > 0) { %>
                         <div class="audio-player mb-4">
                             <audio id="audio" controls preload="auto" class="w-100">
-                                <source src="<%= audioSongs[0].song.Links[0].url %>" type="audio/mpeg">
+                                <source src="<%= audioSongs[0].song.links[0].url %>" type="audio/mpeg">
                                 Your browser does not support the audio element.
                             </audio>
                             <div class="player-controls mt-3">
@@ -47,14 +47,14 @@
                         
                         <ul id="playlist" class="playlist">
                             <% audioSongs.forEach((audioSong, index) => { %>
-                                <li class="<%= index === 0 ? 'active' : '' %>" data-url="<%= audioSong.song.Links[0].url %>">
+                                <li class="<%= index === 0 ? 'active' : '' %>" data-url="<%= audioSong.song.links[0].url %>">
                                     <a href="#" onclick="playSong(this.parentElement, event)">
                                         <div class="song-info">
                                             <div>
                                                 <div class="song-title"><%= audioSong.song.title %></div>
                                                 <div class="song-details">
-                                                    <% if (audioSong.song.Artists && audioSong.song.Artists.length > 0) { %>
-                                                        by <%= audioSong.song.Artists[0].name %>
+                                                    <% if (audioSong.song.artists && audioSong.song.artists.length > 0) { %>
+                                                        by <%= audioSong.song.artists[0].artist.name %>
                                                     <% } %>
                                                     <% if (audioSong.song.key) { %>
                                                         • Key: <%= audioSong.song.key %>

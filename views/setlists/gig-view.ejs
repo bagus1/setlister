@@ -167,7 +167,7 @@
             <%= setlist.title %>
         </h1>
         <h2>
-            <%= setlist.Band.name %>
+            <%= setlist.band.name %>
         </h2>
         <% if (setlist.date) { %>
             <div class="date">
@@ -180,25 +180,25 @@
     <!-- Song List Section -->
     <div class="song-list-section">
         <h3>Setlist</h3>
-        <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
-            <% setlist.SetlistSets.sort((a, b)=> a.order - b.order).forEach((set, setIndex) => { %>
-                <% if (set.name !=='Maybe' && set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+        <% if (setlist.sets && setlist.sets.length> 0) { %>
+            <% setlist.sets.sort((a, b)=> a.order - b.order).forEach((set, setIndex) => { %>
+                <% if (set.name !=='Maybe' && set.songs && set.songs.length> 0) { %>
                     <div class="set-songs">
                         <strong>
                             <%= set.name %>:
                         </strong>
-                        <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, songIndex) => { %>
+                        <% set.songs.sort((a, b)=> a.order - b.order).forEach((setlistSong, songIndex) => { %>
                             <div class="song-list-item">
-                                <%= songIndex + 1 %>. <%= setlistSong.Song.title %>
-                                        <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length> 0) { %>
-                                            - <%= setlistSong.Song.Artists[0].name %>
+                                <%= songIndex + 1 %>. <%= setlistSong.song.title %>
+                                        <% if (setlistSong.song.artists && setlistSong.song.artists.length> 0) { %>
+                                            - <%= setlistSong.song.artists[0].artist.name %>
                                                 <% } %>
-                                                    <% if (setlistSong.Song.key) { %>
-                                                        [<%= setlistSong.Song.key %>]
+                                                    <% if (setlistSong.song.key) { %>
+                                                        [<%= setlistSong.song.key %>]
                                                             <% } %>
-                                                                <% if (setlistSong.Song.time) { %>
-                                                                    (<%= Math.floor(setlistSong.Song.time / 60) %>:<%=
-                                                                            (setlistSong.Song.time %
+                                                                <% if (setlistSong.song.time) { %>
+                                                                    (<%= Math.floor(setlistSong.song.time / 60) %>:<%=
+                                                                            (setlistSong.song.time %
                                                                             60).toString().padStart(2, '0' ) %>)
                                                                             <% } %>
                             </div>
@@ -208,17 +208,17 @@
                         <% }); %>
 
                             <!-- Maybe list -->
-                            <% const maybeSet=setlist.SetlistSets.find(set=> set.name === 'Maybe'); %>
-                                <% if (maybeSet && maybeSet.SetlistSongs && maybeSet.SetlistSongs.length> 0) { %>
+                            <% const maybeSet=setlist.sets.find(set=> set.name === 'Maybe'); %>
+                                <% if (maybeSet && maybeSet.songs && maybeSet.songs.length> 0) { %>
                                     <div class="set-songs">
                                         <strong>Maybe:</strong>
-                                        <% maybeSet.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong,
+                                        <% maybeSet.songs.sort((a, b)=> a.order - b.order).forEach((setlistSong,
                                             songIndex) => { %>
                                             <div class="song-list-item">
-                                                <%= songIndex + 1 %>. <%= setlistSong.Song.title %>
-                                                        <% if (setlistSong.Song.Artists &&
-                                                            setlistSong.Song.Artists.length> 0) { %>
-                                                            - <%= setlistSong.Song.Artists[0].name %>
+                                                <%= songIndex + 1 %>. <%= setlistSong.song.title %>
+                                                        <% if (setlistSong.song.artists &&
+                                                            setlistSong.song.artists.length> 0) { %>
+                                                            - <%= setlistSong.song.artists[0].artist.name %>
                                                                 <% } %>
                                             </div>
                                             <% }); %>
@@ -227,23 +227,23 @@
                                         <% } %>
     </div>
 
-    <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
-        <% setlist.SetlistSets.sort((a, b)=> a.order - b.order).forEach((set, setIndex) => { %>
-            <% if (set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+    <% if (setlist.sets && setlist.sets.length> 0) { %>
+        <% setlist.sets.sort((a, b)=> a.order - b.order).forEach((set, setIndex) => { %>
+            <% if (set.songs && set.songs.length> 0) { %>
                 <% if (setIndex> 0) { %>
                     <div class="set-divider">
                         --- <%= set.name %> ---
                     </div>
                     <% } %>
 
-                        <% set.SetlistSongs.sort((a, b)=> a.order - b.order).forEach((setlistSong, songIndex) => { %>
-                            <% const preferredDocId=preferredGigDocuments[setlistSong.Song.id]; const
+                        <% set.songs.sort((a, b)=> a.order - b.order).forEach((setlistSong, songIndex) => { %>
+                            <% const preferredDocId=preferredGigDocuments[setlistSong.song.id]; const
                                 gigDocument=preferredDocId ? gigDocumentMap[preferredDocId] : null; %>
 
                                 <div class="song-section">
                                     <div class="song-header">
                                         <div class="song-title">
-                                            <%= songIndex + 1 %>. <%= setlistSong.Song.title %>
+                                            <%= songIndex + 1 %>. <%= setlistSong.song.title %>
                                         </div>
                                     </div>
 

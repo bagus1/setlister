@@ -127,7 +127,7 @@
                         <i class="bi bi-music-note-beamed"></i> Rehearsal View
                     </h1>
                     <h2 class="h4 mb-1"><%= setlist.title %></h2>
-                    <p class="mb-0 opacity-75"><%= setlist.Band.name %></p>
+                                            <p class="mb-0 opacity-75"><%= setlist.band.name %></p>
                 </div>
                 <div class="col-md-4 text-md-end">
                     <a href="/setlists/<%= setlist.id %>/finalize" class="btn btn-outline-dark">
@@ -141,57 +141,57 @@
 
 
     <div class="container">
-        <% if (setlist.SetlistSets && setlist.SetlistSets.length > 0) { %>
-            <% setlist.SetlistSets.sort((a, b) => a.order - b.order).forEach(set => { %>
-                <% if (set.SetlistSongs && set.SetlistSongs.length > 0 && set.name !== 'Maybe') { %>
+        <% if (setlist.sets && setlist.sets.length > 0) { %>
+            <% setlist.sets.sort((a, b) => a.order - b.order).forEach(set => { %>
+                <% if (set.songs && set.songs.length > 0 && set.name !== 'Maybe') { %>
                     <div class="set-section">
                         <h3 class="set-title">
                             <i class="bi bi-music-note-list"></i>
                             <%= set.name %>
                             <span class="badge bg-secondary ms-2">
-                                <%= set.SetlistSongs.length %> songs
+                                <%= set.songs.length %> songs
                             </span>
                         </h3>
 
-                        <% set.SetlistSongs.sort((a, b) => a.order - b.order).forEach((setlistSong, index) => { %>
+                        <% set.songs.sort((a, b) => a.order - b.order).forEach((setlistSong, index) => { %>
                             <div class="song-card">
                                 <div class="song-header">
                                     <div class="song-number"><%= index + 1 %></div>
                                     <div class="flex-grow-1">
-                                        <div class="song-title"><%= setlistSong.Song.title %></div>
-                                        <% if (setlistSong.Song.Artists && setlistSong.Song.Artists.length > 0) { %>
-                                            <div class="song-artist">by <%= setlistSong.Song.Artists[0].name %></div>
+                                        <div class="song-title"><%= setlistSong.song.title %></div>
+                                        <% if (setlistSong.song.artists && setlistSong.song.artists.length > 0) { %>
+                                            <div class="song-artist">by <%= setlistSong.song.artists[0].artist.name %></div>
                                         <% } %>
                                     </div>
                                 </div>
 
                                 <div class="song-metadata">
-                                    <% if (setlistSong.Song.Vocalist) { %>
+                                    <% if (setlistSong.song.vocalist) { %>
                                         <span class="badge bg-info metadata-badge">
-                                            <i class="bi bi-person"></i> <%= setlistSong.Song.Vocalist.name %>
+                                            <i class="bi bi-person"></i> <%= setlistSong.song.vocalist.name %>
                                         </span>
                                     <% } %>
-                                    <% if (setlistSong.Song.key) { %>
+                                    <% if (setlistSong.song.key) { %>
                                         <span class="badge bg-warning text-dark metadata-badge">
-                                            <i class="bi bi-music-note"></i> <%= setlistSong.Song.key %>
+                                            <i class="bi bi-music-note"></i> <%= setlistSong.song.key %>
                                         </span>
                                     <% } %>
-                                    <% if (setlistSong.Song.time) { %>
+                                    <% if (setlistSong.song.time) { %>
                                         <span class="badge bg-secondary metadata-badge">
-                                            <i class="bi bi-clock"></i> <%= Math.floor(setlistSong.Song.time / 60) %>:<%= (setlistSong.Song.time % 60).toString().padStart(2, '0') %>
+                                            <i class="bi bi-clock"></i> <%= Math.floor(setlistSong.song.time / 60) %>:<%= (setlistSong.song.time % 60).toString().padStart(2, '0') %>
                                         </span>
                                     <% } %>
-                                    <% if (setlistSong.Song.bpm) { %>
+                                    <% if (setlistSong.song.bpm) { %>
                                         <span class="badge bg-success metadata-badge">
-                                            <i class="bi bi-speedometer"></i> <%= setlistSong.Song.bpm %> BPM
+                                            <i class="bi bi-speedometer"></i> <%= setlistSong.song.bpm %> BPM
                                         </span>
                                     <% } %>
                                 </div>
 
                                 <div class="resources-section">
                                     
-                                    <% const hasLinks = setlistSong.Song.Links && setlistSong.Song.Links.length > 0; %>
-                                    <% const hasDocs = setlistSong.Song.GigDocuments && setlistSong.Song.GigDocuments.length > 0; %>
+                                    <% const hasLinks = setlistSong.song.links && setlistSong.song.links.length > 0; %>
+                                    <% const hasDocs = setlistSong.song.gigDocuments && setlistSong.song.gigDocuments.length > 0; %>
                                     
                                     <% if (!hasLinks && !hasDocs) { %>
                                         <div class="no-resources">
@@ -201,7 +201,7 @@
                                     <% } else { %>
                                         <% if (hasLinks) { %>
                                             <div class="list-group mb-3">
-                                                <% setlistSong.Song.Links.forEach(link => { %>
+                                                <% setlistSong.song.links.forEach(link => { %>
                                                     <% if (link.type === 'audio') { %>
                                                         <!-- Audio Files - Non-clickable card with embedded player -->
                                                         <div class="list-group-item d-flex justify-content-between align-items-center">
@@ -242,14 +242,14 @@
                                         
                                         <% if (hasDocs) { %>
                                             <div class="list-group">
-                                                <% setlistSong.Song.GigDocuments.forEach(doc => { %>
+                                                <% setlistSong.song.gigDocuments.forEach(doc => { %>
                                                     <div class="list-group-item d-flex justify-content-between align-items-center">
                                                         <div>
                                                             <i class="bi bi-file-earmark-text text-success"></i>
-                                                            <%= doc.title %>
+                                                            <%= getTypeDisplayName(doc.type) %> - v<%= doc.version %>
                                                         </div>
                                                         <div>
-                                                            <a href="/songs/<%= setlistSong.Song.id %>/docs/<%= doc.id %>" target="_blank" class="btn btn-outline-success btn-sm">
+                                                            <a href="/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>" target="_blank" class="btn btn-outline-success btn-sm">
                                                                 <i class="bi bi-eye"></i> View
                                                             </a>
                                                         </div>

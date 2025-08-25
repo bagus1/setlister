@@ -3,9 +3,9 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1>Copy Setlist</h1>
-                <a href="/bands/<%= setlist.Band.id %>" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Band
-                </a>
+                        <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Band
+        </a>
             </div>
         </div>
     </div>
@@ -51,7 +51,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-files"></i> Create Copy
                             </button>
-                            <a href="/bands/<%= setlist.Band.id %>" class="btn btn-outline-secondary">Cancel</a>
+                            <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-secondary">Cancel</a>
                         </div>
                     </form>
                 </div>
@@ -76,21 +76,21 @@
                         </p>
                         <% } %>
 
-                            <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
-                                <% setlist.SetlistSets.forEach(set=> { %>
-                                    <% if (set.SetlistSongs && set.SetlistSongs.length> 0) { %>
+                            <% if (setlist.sets && setlist.sets.length> 0) { %>
+                                <% setlist.sets.forEach(set=> { %>
+                                    <% if (set.songs && set.songs.length> 0) { %>
                                         <div class="mb-3">
                                             <h6 class="text-primary">
                                                 <%= set.name %>
                                             </h6>
                                             <ul class="list-unstyled ms-3">
-                                                <% set.SetlistSongs.forEach(setlistSong=> { %>
+                                                <% set.songs.forEach(setlistSong=> { %>
                                                     <li class="text-muted">
                                                         <small>
-                                                            <%= setlistSong.Song.title %>
-                                                                <% if (setlistSong.Song.Artists &&
-                                                                    setlistSong.Song.Artists.length> 0) { %>
-                                                                    - <%= setlistSong.Song.Artists[0].name %>
+                                                            <%= setlistSong.song.title %>
+                                                                <% if (setlistSong.song.artists &&
+                                                                    setlistSong.song.artists.length> 0) { %>
+                                                                    - <%= setlistSong.song.artists[0].artist.name %>
                                                                         <% } %>
                                                         </small>
                                                     </li>

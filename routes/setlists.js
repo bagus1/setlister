@@ -1,19 +1,6 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
-const {
-  Setlist,
-  SetlistSet,
-  SetlistSong,
-  Band,
-  BandMember,
-  Song,
-  BandSong,
-  Artist,
-  Vocalist,
-  User,
-  GigDocument,
-  Link,
-} = require("../models");
+const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
 
@@ -22,31 +9,42 @@ const router = express.Router();
 // Public gig view route (no authentication required)
 router.get("/:id/gig-view", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          attributes: ["id", "name"],
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [
-                {
-                  model: Song,
-                  include: ["Artists", "Vocalist"],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
                 },
-              ],
-              order: [["order", "ASC"]],
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -54,9 +52,8 @@ router.get("/:id/gig-view", async (req, res) => {
     }
 
     // Get BandSong preferences for this band
-    const bandSongs = await BandSong.findAll({
-      where: { bandId: setlist.Band.id },
-      raw: false,
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
     });
 
     // Create a map of songId to preferred gig document
@@ -70,14 +67,18 @@ router.get("/:id/gig-view", async (req, res) => {
     // Get all preferred gig documents
     const gigDocumentIds = Object.values(preferredGigDocuments);
 
-    const gigDocuments = await GigDocument.findAll({
-      where: { id: gigDocumentIds },
-      include: [
-        {
-          model: Song,
-          attributes: ["id", "title", "key", "time"],
+    const gigDocuments = await prisma.gigDocument.findMany({
+      where: { id: { in: gigDocumentIds } },
+      include: {
+        song: {
+          select: {
+            id: true,
+            title: true,
+            key: true,
+            time: true,
+          },
         },
-      ],
+      },
     });
 
     // Create a map of gig document ID to gig document
@@ -102,39 +103,45 @@ router.get("/:id/gig-view", async (req, res) => {
 // Public YouTube playlist route (no authentication required)
 router.get("/:id/youtube-playlist", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          attributes: ["id", "name"],
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [
-                {
-                  model: Song,
-                  include: [
-                    "Artists",
-                    "Vocalist",
-                    {
-                      model: Link,
-                      where: { type: "youtube" },
-                      required: false,
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
                     },
-                  ],
+                    vocalist: true,
+                    links: {
+                      where: { type: "youtube" },
+                    },
+                  },
                 },
-              ],
-              order: [["order", "ASC"]],
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -143,22 +150,22 @@ router.get("/:id/youtube-playlist", async (req, res) => {
 
     // Collect all YouTube links from the setlist
     const youtubeLinks = [];
-    setlist.SetlistSets.forEach((set) => {
-      if (set.SetlistSongs && set.name !== "Maybe") {
-        set.SetlistSongs.forEach((setlistSong) => {
+    setlist.sets.forEach((set) => {
+      if (set.songs && set.name !== "Maybe") {
+        set.songs.forEach((setlistSong) => {
           if (
-            setlistSong.Song &&
-            setlistSong.Song.Links &&
-            setlistSong.Song.Links.length > 0
+            setlistSong.song &&
+            setlistSong.song.links &&
+            setlistSong.song.links.length > 0
           ) {
-            setlistSong.Song.Links.forEach((link) => {
+            setlistSong.song.links.forEach((link) => {
               if (link.type === "youtube") {
                 youtubeLinks.push({
-                  songTitle: setlistSong.Song.title,
+                  songTitle: setlistSong.song.title,
                   artist:
-                    setlistSong.Song.Artists &&
-                    setlistSong.Song.Artists.length > 0
-                      ? setlistSong.Song.Artists[0].name
+                    setlistSong.song.artists &&
+                    setlistSong.song.artists.length > 0
+                      ? setlistSong.song.artists[0].artist.name
                       : null,
                   set: set.name,
                   order: setlistSong.order,
@@ -195,31 +202,48 @@ function extractYouTubeVideoId(url) {
 // Public rehearsal view route (no authentication required)
 router.get("/:id/rehearsal", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          attributes: ["id", "name"],
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [
-                {
-                  model: Song,
-                  include: ["Artists", "Vocalist", "Links", "GigDocuments"],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                    links: true,
+                    gigDocuments: {
+                      orderBy: {
+                        version: "desc",
+                      },
+                    },
+                  },
                 },
-              ],
-              order: [["order", "ASC"]],
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -279,11 +303,34 @@ router.get("/:id/rehearsal", async (req, res) => {
       return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
     };
 
+    // Helper functions for gig document type display
+    const getTypeIcon = (type) => {
+      const icons = {
+        chords: "music-note-list",
+        "bass-tab": "music-note-beamed",
+        "guitar-tab": "music-note",
+        lyrics: "file-text",
+      };
+      return icons[type] || "file-earmark-text";
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
     res.render("setlists/rehearsal", {
       title: `Rehearsal View - ${setlist.title}`,
       setlist,
       getLinkIcon,
       getLinkDisplayText,
+      getTypeIcon,
+      getTypeDisplayName,
       layout: false, // No layout for clean printing
     });
   } catch (error) {
@@ -295,36 +342,47 @@ router.get("/:id/rehearsal", async (req, res) => {
 // Public listen route (no authentication required)
 router.get("/:id/listen", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const { url } = req.query;
 
     if (!url) {
       return res.status(400).send("URL parameter is required");
     }
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          attributes: ["id", "name"],
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [
-                {
-                  model: Song,
-                  include: ["Artists", "Vocalist"],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
                 },
-              ],
-              order: [["order", "ASC"]],
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -467,39 +525,45 @@ router.get("/:id/listen", async (req, res) => {
 // Public playlist view route (no authentication required)
 router.get("/:id/playlist", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          attributes: ["id", "name"],
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [
-                {
-                  model: Song,
-                  include: [
-                    "Artists",
-                    "Vocalist",
-                    {
-                      model: require("../models").Link,
-                      where: { type: "audio" },
-                      required: false,
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
                     },
-                  ],
+                    vocalist: true,
+                    links: {
+                      where: { type: "audio" },
+                    },
+                  },
                 },
-              ],
-              order: [["order", "ASC"]],
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -508,12 +572,12 @@ router.get("/:id/playlist", async (req, res) => {
 
     // Collect all songs with audio links
     const audioSongs = [];
-    setlist.SetlistSets.forEach((set) => {
-      if (set.SetlistSongs) {
-        set.SetlistSongs.forEach((setlistSong) => {
-          if (setlistSong.Song.Links && setlistSong.Song.Links.length > 0) {
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          if (setlistSong.song.links && setlistSong.song.links.length > 0) {
             audioSongs.push({
-              song: setlistSong.Song,
+              song: setlistSong.song,
               set: set.name,
               order: setlistSong.order,
             });
@@ -547,7 +611,7 @@ function isSetlistEditable(setlist) {
 // GET /setlists/:id - Show setlist details
 router.get("/:id", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
 
     // Check if user is authenticated
     if (!req.session.user || !req.session.user.id) {
@@ -557,30 +621,44 @@ router.get("/:id", async (req, res) => {
 
     const userId = req.session.user.id;
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [{ model: Song, include: ["Artists", "Vocalist"] }],
-              order: [["order", "ASC"]],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -602,38 +680,57 @@ router.get("/:id", async (req, res) => {
 // GET /setlists/:id/edit - Show setlist edit page with drag-drop
 router.get("/:id/edit", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [
-                {
-                  model: Song,
-                  include: ["Artists", "Vocalist", "Links", "GigDocuments"],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                    links: {
+                      include: {
+                        song: true,
+                      },
+                    },
+                    gigDocuments: {
+                      include: {
+                        song: true,
+                      },
+                    },
+                  },
                 },
-              ],
-              order: [["order", "ASC"]],
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -658,41 +755,54 @@ router.get("/:id/edit", async (req, res) => {
       return res.redirect(`/setlists/${setlist.id}/finalize`);
     }
 
-    // Get all band's songs
-    const allBandSongs = await Song.findAll({
-      include: [
-        "Artists",
-        "Vocalist",
-        "Links",
-        "GigDocuments",
-        {
-          model: Band,
-          where: { id: setlist.bandId },
-          through: { attributes: [] },
+    // Get all band's songs through BandSong relationship
+    const allBandSongs = await prisma.song.findMany({
+      where: {
+        bandSongs: {
+          some: {
+            bandId: setlist.bandId,
+          },
         },
-      ],
-      order: [["title", "ASC"]],
+      },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+        links: {
+          include: {
+            song: true,
+          },
+        },
+        gigDocuments: {
+          include: {
+            song: true,
+          },
+        },
+      },
+      orderBy: {
+        title: "asc",
+      },
     });
 
-    // Get songs already in this setlist through SetlistSets
-    const setlistSets = await SetlistSet.findAll({
-      where: { setlistId: setlist.id },
-      include: [
-        {
-          model: SetlistSong,
-          attributes: ["songId"],
+    // Get songs already in this setlist through SetlistSong relationships
+    const setlistSongs = await prisma.setlistSong.findMany({
+      where: {
+        setlistSet: {
+          setlistId: setlist.id,
         },
-      ],
+      },
+      select: {
+        songId: true,
+      },
     });
 
     // Extract used song IDs (from all sets including Maybe)
     const usedSongIds = [];
-    setlistSets.forEach((set) => {
-      if (set.SetlistSongs) {
-        set.SetlistSongs.forEach((setlistSong) => {
-          usedSongIds.push(setlistSong.songId);
-        });
-      }
+    setlistSongs.forEach((setlistSong) => {
+      usedSongIds.push(setlistSong.songId);
     });
 
     // Filter out songs already in any set (including Maybe)
@@ -718,33 +828,46 @@ router.get("/:id/edit", async (req, res) => {
 // GET /setlists/:id/copy - Show copy setlist form
 router.get("/:id/copy", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [{ model: Song, include: ["Artists", "Vocalist"] }],
-              order: [["order", "ASC"]],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -785,35 +908,34 @@ router.post(
   ],
   async (req, res) => {
     try {
-      const setlistId = req.params.id;
+      const setlistId = parseInt(req.params.id);
       const userId = req.session.user.id;
       const { title, date } = req.body;
 
       // Verify user has access to original setlist
-      const originalSetlist = await Setlist.findByPk(setlistId, {
-        include: [
-          {
-            model: Band,
-            include: [
-              {
-                model: User,
-                where: { id: userId },
-                through: { attributes: [] },
+      const originalSetlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                select: {
+                  id: true,
+                },
               },
-            ],
+            },
           },
-          {
-            model: SetlistSet,
-            include: [
-              {
-                model: SetlistSong,
-                include: [{ model: Song }],
-                order: [["order", "ASC"]],
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: true,
+                },
               },
-            ],
-            order: [["order", "ASC"]],
+            },
           },
-        ],
+        },
       });
 
       if (!originalSetlist) {
@@ -828,30 +950,36 @@ router.post(
       }
 
       // Create new setlist
-      const newSetlist = await Setlist.create({
-        title,
-        bandId: originalSetlist.bandId,
-        date: date || null,
-        isFinalized: false,
+      const newSetlist = await prisma.setlist.create({
+        data: {
+          title,
+          bandId: originalSetlist.bandId,
+          date: date || null,
+          isFinalized: false,
+        },
       });
 
       // Copy all sets and their songs
-      for (const originalSet of originalSetlist.SetlistSets) {
+      for (const originalSet of originalSetlist.sets) {
         // Create new set
-        const newSet = await SetlistSet.create({
-          setlistId: newSetlist.id,
-          name: originalSet.name,
-          order: originalSet.order,
+        const newSet = await prisma.setlistSet.create({
+          data: {
+            setlistId: newSetlist.id,
+            name: originalSet.name,
+            order: originalSet.order,
+          },
         });
 
         // Copy all songs in this set
-        if (originalSet.SetlistSongs && originalSet.SetlistSongs.length > 0) {
-          for (let i = 0; i < originalSet.SetlistSongs.length; i++) {
-            const originalSetlistSong = originalSet.SetlistSongs[i];
-            await SetlistSong.create({
-              setlistSetId: newSet.id,
-              songId: originalSetlistSong.songId,
-              order: originalSetlistSong.order,
+        if (originalSet.songs && originalSet.songs.length > 0) {
+          for (let i = 0; i < originalSet.songs.length; i++) {
+            const originalSetlistSong = originalSet.songs[i];
+            await prisma.setlistSong.create({
+              data: {
+                setlistSetId: newSet.id,
+                songId: originalSetlistSong.songId,
+                order: originalSetlistSong.order,
+              },
             });
           }
         }
@@ -873,24 +1001,25 @@ router.post(
 // POST /setlists/:id/save - Save setlist changes
 router.post("/:id/save", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
     const { sets } = req.body;
 
     // Verify user has access
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -907,23 +1036,25 @@ router.post("/:id/save", async (req, res) => {
 
     // Clear existing setlist songs
     // First get all SetlistSets for this setlist
-    const setlistSets = await SetlistSet.findAll({
+    const setlistSets = await prisma.setlistSet.findMany({
       where: { setlistId },
-      attributes: ["id"],
+      select: {
+        id: true,
+      },
     });
 
     if (setlistSets.length > 0) {
       const setlistSetIds = setlistSets.map((set) => set.id);
-      await SetlistSong.destroy({
+      await prisma.setlistSong.deleteMany({
         where: {
-          setlistSetId: setlistSetIds,
+          setlistSetId: { in: setlistSetIds },
         },
       });
     }
 
     // Update sets
     for (const [setName, songs] of Object.entries(sets)) {
-      let setlistSet = await SetlistSet.findOne({
+      let setlistSet = await prisma.setlistSet.findFirst({
         where: { setlistId, name: setName },
       });
 
@@ -932,20 +1063,24 @@ router.post("/:id/save", async (req, res) => {
         const setOrder = ["Set 1", "Set 2", "Set 3", "Set 4", "Maybe"].indexOf(
           setName
         );
-        setlistSet = await SetlistSet.create({
-          setlistId,
-          name: setName,
-          order: setOrder,
+        setlistSet = await prisma.setlistSet.create({
+          data: {
+            setlistId,
+            name: setName,
+            order: setOrder,
+          },
         });
       }
 
       if (setlistSet) {
         // Add songs to set
         for (let i = 0; i < songs.length; i++) {
-          await SetlistSong.create({
-            setlistSetId: setlistSet.id,
-            songId: songs[i],
-            order: i + 1,
+          await prisma.setlistSong.create({
+            data: {
+              setlistSetId: setlistSet.id,
+              songId: songs[i],
+              order: i + 1,
+            },
           });
         }
       }
@@ -961,36 +1096,50 @@ router.post("/:id/save", async (req, res) => {
 // GET /setlists/:id/finalize - Show finalize page
 router.get("/:id/finalize", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
 
     // Add a small delay to ensure any pending saves are completed
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [{ model: Song, include: ["Artists", "Vocalist"] }],
-              order: [["order", "ASC"]],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1000,15 +1149,16 @@ router.get("/:id/finalize", async (req, res) => {
 
     // Get BandSong preferences for this band
 
-    const bandSongs = await BandSong.findAll({
-      where: { bandId: setlist.Band.id },
-      include: [
-        {
-          model: Song,
-          attributes: ["id", "title"],
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
+      include: {
+        song: {
+          select: {
+            id: true,
+            title: true,
+          },
         },
-      ],
-      raw: false,
+      },
     });
 
     // Create a map of songId to BandSong for quick lookup
@@ -1019,23 +1169,27 @@ router.get("/:id/finalize", async (req, res) => {
 
     // Get all gig documents for songs in this setlist
     const songIds = [];
-    setlist.SetlistSets.forEach((set) => {
-      if (set.SetlistSongs) {
-        set.SetlistSongs.forEach((setlistSong) => {
-          songIds.push(setlistSong.Song.id);
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          songIds.push(setlistSong.song.id);
         });
       }
     });
 
-    const gigDocuments = await GigDocument.findAll({
-      where: { songId: songIds },
-      include: [
-        {
-          model: Song,
-          attributes: ["id", "title"],
+    const gigDocuments = await prisma.gigDocument.findMany({
+      where: { songId: { in: songIds } },
+      include: {
+        song: {
+          select: {
+            id: true,
+            title: true,
+          },
         },
-      ],
-      order: [["version", "DESC"]],
+      },
+      orderBy: {
+        version: "desc",
+      },
     });
 
     // Group gig documents by songId
@@ -1068,13 +1222,18 @@ router.get("/:id/finalize", async (req, res) => {
 
       if (bandSong) {
         // Update existing BandSong record
-        await bandSong.update({ gigDocumentId: preferredDocId });
+        await prisma.bandSong.update({
+          where: { id: bandSong.id },
+          data: { gigDocumentId: preferredDocId },
+        });
       } else {
         // Create new BandSong record
-        await BandSong.create({
-          bandId: setlist.Band.id,
-          songId: songId,
-          gigDocumentId: preferredDocId,
+        await prisma.bandSong.create({
+          data: {
+            bandId: setlist.band.id,
+            songId: songId,
+            gigDocumentId: preferredDocId,
+          },
         });
       }
 
@@ -1084,7 +1243,7 @@ router.get("/:id/finalize", async (req, res) => {
       if (!bandSongMap[songId]) {
         bandSongMap[songId] = {
           songId,
-          bandId: setlist.Band.id,
+          bandId: setlist.band.id,
           gigDocumentId: preferredDocId,
         };
       } else {
@@ -1096,13 +1255,13 @@ router.get("/:id/finalize", async (req, res) => {
     const setTimes = {};
     let totalTime = 0;
 
-    setlist.SetlistSets.forEach((set) => {
+    setlist.sets.forEach((set) => {
       if (set.name !== "Maybe") {
         let setTime = 0;
 
-        set.SetlistSongs.forEach((setlistSong) => {
-          if (setlistSong.Song.time) {
-            setTime += setlistSong.Song.time;
+        set.songs.forEach((setlistSong) => {
+          if (setlistSong.song.time) {
+            setTime += setlistSong.song.time;
           }
         });
         setTimes[set.name] = setTime;
@@ -1113,6 +1272,27 @@ router.get("/:id/finalize", async (req, res) => {
     // Calculate if setlist is still editable (always editable)
     const isEditable = true;
 
+    // Helper functions for gig document type display
+    const getTypeIcon = (type) => {
+      const icons = {
+        chords: "music-note-list",
+        "bass-tab": "music-note-beamed",
+        "guitar-tab": "music-note",
+        lyrics: "file-text",
+      };
+      return icons[type] || "file-earmark-text";
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
     const renderData = {
       title: `Finalize ${setlist.title}`,
       setlist,
@@ -1121,6 +1301,8 @@ router.get("/:id/finalize", async (req, res) => {
       isEditable,
       bandSongMap,
       gigDocumentsBySong,
+      getTypeIcon,
+      getTypeDisplayName,
     };
 
     res.render("setlists/finalize", renderData);
@@ -1134,30 +1316,34 @@ router.get("/:id/finalize", async (req, res) => {
 // POST /setlists/:id/finalize - Finalize the setlist
 router.post("/:id/finalize", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
 
     // Verify user has access
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
       return res.status(404).json({ error: "Setlist not found" });
     }
 
-    await setlist.update({ isFinalized: true });
+    await prisma.setlist.update({
+      where: { id: setlistId },
+      data: { isFinalized: true },
+    });
 
     req.flash("success", "Setlist finalized successfully!");
     res.redirect(`/setlists/${setlistId}/print`);
@@ -1172,23 +1358,24 @@ router.post("/:id/finalize", async (req, res) => {
 router.post("/:id/preferred-gig-document", async (req, res) => {
   try {
     const { songId, gigDocumentId } = req.body;
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
 
     // Verify user has access to this setlist
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1196,10 +1383,21 @@ router.post("/:id/preferred-gig-document", async (req, res) => {
     }
 
     // Update or create BandSong preference
-    await BandSong.upsert({
-      bandId: setlist.Band.id,
-      songId: songId,
-      gigDocumentId: gigDocumentId || null,
+    await prisma.bandSong.upsert({
+      where: {
+        bandId_songId: {
+          bandId: setlist.band.id,
+          songId: songId,
+        },
+      },
+      update: {
+        gigDocumentId: gigDocumentId || null,
+      },
+      create: {
+        bandId: setlist.band.id,
+        songId: songId,
+        gigDocumentId: gigDocumentId || null,
+      },
     });
 
     res.json({ success: true, message: "Preferred gig document updated" });
@@ -1212,33 +1410,47 @@ router.post("/:id/preferred-gig-document", async (req, res) => {
 // GET /setlists/:id/print - Show print page with export options
 router.get("/:id/print", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [{ model: Song, include: ["Artists", "Vocalist"] }],
-              order: [["order", "ASC"]],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1260,7 +1472,7 @@ router.get("/:id/print", async (req, res) => {
 // GET /setlists/:id/export - Export setlist as text (direct download)
 router.get("/:id/export", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
 
     // Check if user is authenticated
     if (!req.session.user || !req.session.user.id) {
@@ -1270,35 +1482,44 @@ router.get("/:id/export", async (req, res) => {
 
     const userId = req.session.user.id;
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [
-                {
-                  model: Song,
-                  include: ["Artists", "Vocalist"],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
                 },
-              ],
-              order: [["order", "ASC"]],
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1308,26 +1529,26 @@ router.get("/:id/export", async (req, res) => {
 
     // Generate text export with all details
     let exportText = `${setlist.title}\n`;
-    exportText += `Band: ${setlist.Band.name}\n`;
+    exportText += `Band: ${setlist.band.name}\n`;
     if (setlist.date) {
       exportText += `Date: ${new Date(setlist.date).toLocaleDateString()}\n`;
     }
     exportText += `\n`;
 
-    setlist.SetlistSets.forEach((set) => {
-      if (set.name !== "Maybe" && set.SetlistSongs.length > 0) {
+    setlist.sets.forEach((set) => {
+      if (set.name !== "Maybe" && set.songs.length > 0) {
         exportText += `${set.name}:\n`;
 
-        set.SetlistSongs.forEach((setlistSong, index) => {
-          const song = setlistSong.Song;
+        set.songs.forEach((setlistSong, index) => {
+          const song = setlistSong.song;
           let line = `  ${index + 1}. ${song.title}`;
 
-          if (song.Artists && song.Artists.length > 0) {
-            line += ` - ${song.Artists[0].name}`;
+          if (song.artists && song.artists.length > 0) {
+            line += ` - ${song.artists[0].artist.name}`;
           }
 
-          if (song.Vocalist) {
-            line += ` (${song.Vocalist.name})`;
+          if (song.vocalist) {
+            line += ` (${song.vocalist.name})`;
           }
 
           if (song.key) {
@@ -1348,14 +1569,14 @@ router.get("/:id/export", async (req, res) => {
     });
 
     // Include Maybe list if it has songs
-    const maybeSet = setlist.SetlistSets.find((set) => set.name === "Maybe");
-    if (maybeSet && maybeSet.SetlistSongs.length > 0) {
+    const maybeSet = setlist.sets.find((set) => set.name === "Maybe");
+    if (maybeSet && maybeSet.songs.length > 0) {
       exportText += "Maybe:\n";
-      maybeSet.SetlistSongs.forEach((setlistSong, index) => {
-        const song = setlistSong.Song;
+      maybeSet.songs.forEach((setlistSong, index) => {
+        const song = setlistSong.song;
         let line = `  ${index + 1}. ${song.title}`;
-        if (song.Artists && song.Artists.length > 0) {
-          line += ` - ${song.Artists[0].name}`;
+        if (song.artists && song.artists.length > 0) {
+          line += ` - ${song.artists[0].artist.name}`;
         }
         exportText += line + "\n";
       });
@@ -1377,35 +1598,49 @@ router.get("/:id/export", async (req, res) => {
 // POST /setlists/:id/export - Export setlist as text (with options)
 router.post("/:id/export", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
     const { includeArtist, includeVocalist, includeKey, includeTime } =
       req.body;
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [{ model: Song, include: ["Artists", "Vocalist"] }],
-              order: [["order", "ASC"]],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1419,20 +1654,20 @@ router.post("/:id/export", async (req, res) => {
     }
     exportText += `\n`;
 
-    setlist.SetlistSets.forEach((set) => {
-      if (set.name !== "Maybe" && set.SetlistSongs.length > 0) {
+    setlist.sets.forEach((set) => {
+      if (set.name !== "Maybe" && set.songs.length > 0) {
         exportText += `${set.name}:\n`;
 
-        set.SetlistSongs.forEach((setlistSong) => {
-          const song = setlistSong.Song;
+        set.songs.forEach((setlistSong) => {
+          const song = setlistSong.song;
           let line = `  ${song.title}`;
 
-          if (includeArtist && song.Artists.length > 0) {
-            line += ` - ${song.Artists[0].name}`;
+          if (includeArtist && song.artists.length > 0) {
+            line += ` - ${song.artists[0].artist.name}`;
           }
 
-          if (includeVocalist && song.Vocalist) {
-            line += ` (${song.Vocalist.name})`;
+          if (includeVocalist && song.vocalist) {
+            line += ` (${song.vocalist.name})`;
           }
 
           if (includeKey && song.key) {
@@ -1467,7 +1702,7 @@ router.post("/:id/export", async (req, res) => {
 // GET /setlists/:id/export-csv - Export setlist as CSV (direct download)
 router.get("/:id/export-csv", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
 
     // Check if user is authenticated
     if (!req.session.user || !req.session.user.id) {
@@ -1477,35 +1712,44 @@ router.get("/:id/export-csv", async (req, res) => {
 
     const userId = req.session.user.id;
 
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-        {
-          model: SetlistSet,
-          include: [
-            {
-              model: SetlistSong,
-              include: [
-                {
-                  model: Song,
-                  include: ["Artists", "Vocalist"],
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
                 },
-              ],
-              order: [["order", "ASC"]],
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
-          ],
-          order: [["order", "ASC"]],
+          },
+          orderBy: {
+            order: "asc",
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1531,19 +1775,19 @@ router.get("/:id/export-csv", async (req, res) => {
     // Generate CSV content
     let csvContent = "Set,Order,Title,Artist,Vocalist,Key,Time,BPM\n";
 
-    setlist.SetlistSets.forEach((set) => {
-      if (set.SetlistSongs.length > 0) {
-        set.SetlistSongs.forEach((setlistSong, index) => {
-          const song = setlistSong.Song;
+    setlist.sets.forEach((set) => {
+      if (set.songs.length > 0) {
+        set.songs.forEach((setlistSong, index) => {
+          const song = setlistSong.song;
 
           const setName = escapeCsv(set.name);
           const order = index + 1;
           const title = escapeCsv(song.title);
           const artist =
-            song.Artists && song.Artists.length > 0
-              ? escapeCsv(song.Artists[0].name)
+            song.artists && song.artists.length > 0
+              ? escapeCsv(song.artists[0].artist.name)
               : "";
-          const vocalist = song.Vocalist ? escapeCsv(song.Vocalist.name) : "";
+          const vocalist = song.vocalist ? escapeCsv(song.vocalist.name) : "";
           const key = song.key ? escapeCsv(song.key) : "";
 
           let time = "";
@@ -1576,24 +1820,25 @@ router.get("/:id/export-csv", async (req, res) => {
 // API endpoint to update setlist via Socket.io
 router.post("/:id/update", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
     const { action, data } = req.body;
 
     // Verify user has access
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1621,7 +1866,7 @@ router.post("/:id/update", async (req, res) => {
 // POST /setlists/:id/save-recordings-url - Save recordings URL for a setlist
 router.post("/:id/save-recordings-url", requireAuth, async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
     const { recordingsUrl } = req.body;
 
@@ -1631,19 +1876,20 @@ router.post("/:id/save-recordings-url", requireAuth, async (req, res) => {
     }
 
     // Find setlist and verify user has access
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1653,7 +1899,10 @@ router.post("/:id/save-recordings-url", requireAuth, async (req, res) => {
     }
 
     // Update the setlist with the recordings URL
-    await setlist.update({ recordingsUrl });
+    await prisma.setlist.update({
+      where: { id: setlistId },
+      data: { recordingsUrl },
+    });
 
     res.json({ success: true, message: "Recordings URL saved successfully" });
   } catch (error) {
@@ -1665,23 +1914,24 @@ router.post("/:id/save-recordings-url", requireAuth, async (req, res) => {
 // DELETE /setlists/:id - Delete a setlist
 router.delete("/:id", async (req, res) => {
   try {
-    const setlistId = req.params.id;
+    const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
 
     // Find setlist and verify user has access
-    const setlist = await Setlist.findByPk(setlistId, {
-      include: [
-        {
-          model: Band,
-          include: [
-            {
-              model: User,
-              where: { id: userId },
-              through: { attributes: [] },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
             },
-          ],
+          },
         },
-      ],
+      },
     });
 
     if (!setlist) {
@@ -1699,7 +1949,9 @@ router.delete("/:id", async (req, res) => {
     }
 
     // Delete the setlist (cascade will handle related records)
-    await setlist.destroy();
+    await prisma.setlist.delete({
+      where: { id: setlistId },
+    });
 
     res.json({ success: true, message: "Setlist deleted successfully" });
   } catch (error) {

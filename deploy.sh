@@ -158,18 +158,29 @@ check_branch_mismatch() {
 deploy_via_git() {
     print_status "Deploying via Git..."
     
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
     # Check if we have changes to push
-    if [ "$(git rev-list HEAD...origin/main --count)" != "0" ]; then
+    if [ "$(git rev-list HEAD...origin/$CURRENT_BRANCH --count)" != "0" ]; then
         print_status "Pushing changes to GitHub..."
-        git push origin main
+        git push origin "$CURRENT_BRANCH"
         print_success "Changes pushed to GitHub"
     else
         print_status "No changes to push"
     fi
     
+    # Ensure server is on the same branch
+    print_status "Ensuring server is on branch: $CURRENT_BRANCH"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $CURRENT_BRANCH" || {
+        print_error "Failed to checkout branch $CURRENT_BRANCH on server"
+        return 1
+    }
+    
     # Pull on server
     print_status "Pulling changes on server..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin $CURRENT_BRANCH" || {
         print_error "Failed to pull on server"
         return 1
     }
@@ -190,18 +201,29 @@ deploy_via_git() {
 update_via_git() {
     print_status "Quick deploy - pushing and pulling..."
     
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
     # Check if we have changes to push
-    if [ "$(git rev-list HEAD...origin/main --count)" != "0" ]; then
+    if [ "$(git rev-list HEAD...origin/$CURRENT_BRANCH --count)" != "0" ]; then
         print_status "Pushing changes to GitHub..."
-        git push origin main
+        git push origin "$CURRENT_BRANCH"
         print_success "Changes pushed to GitHub"
     else
         print_status "No changes to push"
     fi
     
+    # Ensure server is on the same branch
+    print_status "Ensuring server is on branch: $CURRENT_BRANCH"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $CURRENT_BRANCH" || {
+        print_error "Failed to checkout branch $CURRENT_BRANCH on server"
+        return 1
+    }
+    
     # Pull on server
     print_status "Pulling changes on server..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin $CURRENT_BRANCH" || {
         print_error "Failed to pull on server"
         return 1
     }
@@ -221,18 +243,29 @@ update_via_git() {
 quick_deploy() {
     print_status "Updating files via Git (no restart)..."
     
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
     # Check if we have changes to push
-    if [ "$(git rev-list HEAD...origin/main --count)" != "0" ]; then
+    if [ "$(git rev-list HEAD...origin/$CURRENT_BRANCH --count)" != "0" ]; then
         print_status "Pushing changes to GitHub..."
-        git push origin main
+        git push origin "$CURRENT_BRANCH"
         print_success "Changes pushed to GitHub"
     else
         print_status "No changes to push"
     fi
     
+    # Ensure server is on the same branch
+    print_status "Ensuring server is on branch: $CURRENT_BRANCH"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $CURRENT_BRANCH" || {
+        print_error "Failed to checkout branch $CURRENT_BRANCH on server"
+        return 1
+    }
+    
     # Pull on server
     print_status "Pulling changes on server..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin $CURRENT_BRANCH" || {
         print_error "Failed to pull on server"
         return 1
     }
@@ -317,9 +350,13 @@ update_demo_dependencies() {
 run_migrations() {
     print_status "Running database migrations on server..."
     
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
     # First ensure we have the latest code
     print_status "Pulling latest code on server..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin main" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $CURRENT_BRANCH && git pull origin $CURRENT_BRANCH" || {
         print_error "Failed to pull latest code on server"
         return 1
     }
@@ -349,18 +386,29 @@ run_migrations() {
 deploy_to_demo() {
     print_status "Deploying to demo environment with PostgreSQL migration..."
     
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
     # Check if we have changes to push
-    if [ "$(git rev-list HEAD...origin/main --count)" != "0" ]; then
+    if [ "$(git rev-list HEAD...origin/$CURRENT_BRANCH --count)" != "0" ]; then
         print_status "Pushing changes to GitHub..."
-        git push origin main
+        git push origin "$CURRENT_BRANCH"
         print_success "Changes pushed to GitHub"
     else
         print_status "No changes to push"
     fi
     
+    # Ensure demo server is on the same branch
+    print_status "Ensuring demo server is on branch: $CURRENT_BRANCH"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && git checkout $CURRENT_BRANCH" || {
+        print_error "Failed to checkout branch $CURRENT_BRANCH on demo server"
+        return 1
+    }
+    
     # Pull on demo server
     print_status "Pulling changes on demo server..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && git pull origin main" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && git pull origin $CURRENT_BRANCH" || {
         print_error "Failed to pull on demo server"
         return 1
     }
@@ -531,7 +579,8 @@ rollback() {
     git reset --hard $PREVIOUS_COMMIT
     
     # Force push to GitHub
-    git push --force origin main
+    CURRENT_BRANCH=$(git branch --show-current)
+    git push --force origin "$CURRENT_BRANCH"
     
     # Pull on server
     ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git reset --hard $PREVIOUS_COMMIT"

@@ -1,0 +1,125 @@
+<%- include('../layout', { title: title }) %>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Create New Medley</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/medleys">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Medley Name (optional)</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="<%= locals.formData ? formData.name : '' %>"
+                                           placeholder="Leave blank to auto-generate">
+                                    <div class="form-text">If left blank, a name will be generated from the song titles</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="key" class="form-label">Key</label>
+                                    <select class="form-select" id="key" name="key">
+                                        <option value="">No specific key</option>
+                                        <option value="C" <%= locals.formData && formData.key === 'C' ? 'selected' : '' %>>C</option>
+                                        <option value="C#" <%= locals.formData && formData.key === 'C#' ? 'selected' : '' %>>C#</option>
+                                        <option value="Db" <%= locals.formData && formData.key === 'Db' ? 'selected' : '' %>>Db</option>
+                                        <option value="D" <%= locals.formData && formData.key === 'D' ? 'selected' : '' %>>D</option>
+                                        <option value="D#" <%= locals.formData && formData.key === 'D#' ? 'selected' : '' %>>D#</option>
+                                        <option value="Eb" <%= locals.formData && formData.key === 'Eb' ? 'selected' : '' %>>Eb</option>
+                                        <option value="E" <%= locals.formData && formData.key === 'E' ? 'selected' : '' %>>E</option>
+                                        <option value="F" <%= locals.formData && formData.key === 'F' ? 'selected' : '' %>>F</option>
+                                        <option value="F#" <%= locals.formData && formData.key === 'F#' ? 'selected' : '' %>>F#</option>
+                                        <option value="Gb" <%= locals.formData && formData.key === 'Gb' ? 'selected' : '' %>>Gb</option>
+                                        <option value="G" <%= locals.formData && formData.key === 'G' ? 'selected' : '' %>>G</option>
+                                        <option value="G#" <%= locals.formData && formData.key === 'G#' ? 'selected' : '' %>>G#</option>
+                                        <option value="Ab" <%= locals.formData && formData.key === 'Ab' ? 'selected' : '' %>>Ab</option>
+                                        <option value="A" <%= locals.formData && formData.key === 'A' ? 'selected' : '' %>>A</option>
+                                        <option value="A#" <%= locals.formData && formData.key === 'A#' ? 'selected' : '' %>>A#</option>
+                                        <option value="Bb" <%= locals.formData && formData.key === 'Bb' ? 'selected' : '' %>>Bb</option>
+                                        <option value="B" <%= locals.formData && formData.key === 'B' ? 'selected' : '' %>>B</option>
+                                        <option value="Cm" <%= locals.formData && formData.key === 'Cm' ? 'selected' : '' %>>Cm</option>
+                                        <option value="C#m" <%= locals.formData && formData.key === 'C#m' ? 'selected' : '' %>>C#m</option>
+                                        <option value="Dbm" <%= locals.formData && formData.key === 'Dbm' ? 'selected' : '' %>>Dbm</option>
+                                        <option value="Dm" <%= locals.formData && formData.key === 'Dm' ? 'selected' : '' %>>Dm</option>
+                                        <option value="D#m" <%= locals.formData && formData.key === 'D#m' ? 'selected' : '' %>>D#m</option>
+                                        <option value="Ebm" <%= locals.formData && formData.key === 'Ebm' ? 'selected' : '' %>>Ebm</option>
+                                        <option value="Em" <%= locals.formData && formData.key === 'Em' ? 'selected' : '' %>>Em</option>
+                                        <option value="Fm" <%= locals.formData && formData.key === 'Fm' ? 'selected' : '' %>>Fm</option>
+                                        <option value="F#m" <%= locals.formData && formData.key === 'F#m' ? 'selected' : '' %>>F#m</option>
+                                        <option value="Gbm" <%= locals.formData && formData.key === 'Gbm' ? 'selected' : '' %>>Gbm</option>
+                                        <option value="Gm" <%= locals.formData && formData.key === 'Gm' ? 'selected' : '' %>>Gm</option>
+                                        <option value="G#m" <%= locals.formData && formData.key === 'G#m' ? 'selected' : '' %>>G#m</option>
+                                        <option value="Abm" <%= locals.formData && formData.key === 'Abm' ? 'selected' : '' %>>Abm</option>
+                                        <option value="Am" <%= locals.formData && formData.key === 'Am' ? 'selected' : '' %>>Am</option>
+                                        <option value="A#m" <%= locals.formData && formData.key === 'A#m' ? 'selected' : '' %>>A#m</option>
+                                        <option value="Bbm" <%= locals.formData && formData.key === 'Bbm' ? 'selected' : '' %>>Bbm</option>
+                                        <option value="Bm" <%= locals.formData && formData.key === 'Bm' ? 'selected' : '' %>>Bm</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="vocalistId" class="form-label">Vocalist (optional)</label>
+                            <select class="form-select" id="vocalistId" name="vocalistId">
+                                <option value="">No vocalist</option>
+                                <% vocalists.forEach(vocalist => { %>
+                                    <option value="<%= vocalist.id %>" 
+                                            <%= locals.formData && formData.vocalistId == vocalist.id ? 'selected' : '' %>>
+                                        <%= vocalist.name %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Songs (select at least 2)</label>
+                            <div class="row">
+                                <% songs.forEach(song => { %>
+                                    <div class="col-md-6 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   name="songIds[]" value="<%= song.id %>" 
+                                                   id="song<%= song.id %>"
+                                                   <%= locals.formData && locals.formData.songIds && formData.songIds.includes(song.id.toString()) ? 'checked' : '' %>>
+                                            <label class="form-check-label" for="song<%= song.id %>">
+                                                <strong><%= song.title %></strong>
+                                                <% if (song.vocalist) { %>
+                                                    <small class="text-muted">(<%= song.vocalist.name %>)</small>
+                                                <% } %>
+                                                <% if (song.artists && song.artists.length > 0) { %>
+                                                    <br><small class="text-muted">
+                                                        <%= song.artists.map(a => a.artist.name).join(', ') %>
+                                                    </small>
+                                                <% } %>
+                                            </label>
+                                        </div>
+                                    </div>
+                                <% }); %>
+                            </div>
+                        </div>
+
+                        <% if (locals.errors && errors.length > 0) { %>
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    <% errors.forEach(error => { %>
+                                        <li><%= error.msg %></li>
+                                    <% }); %>
+                                </ul>
+                            </div>
+                        <% } %>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="/medleys" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Medley</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

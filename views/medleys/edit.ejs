@@ -1,0 +1,105 @@
+<%- include('../layout', { title: title }) %>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Edit Medley: <%= medley.name %></h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/medleys/<%= medley.id %>">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Medley Name</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="<%= medley.name %>" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="key" class="form-label">Key</label>
+                                    <select class="form-select" id="key" name="key">
+                                        <option value="">No specific key</option>
+                                        <option value="C" <%= medley.key === 'C' ? 'selected' : '' %>>C</option>
+                                        <option value="C#" <%= medley.key === 'C_' ? 'selected' : '' %>>C#</option>
+                                        <option value="Db" <%= medley.key === 'Db' ? 'selected' : '' %>>Db</option>
+                                        <option value="D" <%= medley.key === 'D' ? 'selected' : '' %>>D</option>
+                                        <option value="D#" <%= medley.key === 'D_' ? 'selected' : '' %>>D#</option>
+                                        <option value="Eb" <%= medley.key === 'Eb' ? 'selected' : '' %>>Eb</option>
+                                        <option value="E" <%= medley.key === 'E' ? 'selected' : '' %>>E</option>
+                                        <option value="F" <%= medley.key === 'F' ? 'selected' : '' %>>F</option>
+                                        <option value="F#" <%= medley.key === 'F_' ? 'selected' : '' %>>F#</option>
+                                        <option value="Gb" <%= medley.key === 'Gb' ? 'selected' : '' %>>Gb</option>
+                                        <option value="G" <%= medley.key === 'G' ? 'selected' : '' %>>G</option>
+                                        <option value="G#" <%= medley.key === 'G_' ? 'selected' : '' %>>G#</option>
+                                        <option value="Ab" <%= medley.key === 'Ab' ? 'selected' : '' %>>Ab</option>
+                                        <option value="A" <%= medley.key === 'A' ? 'selected' : '' %>>A</option>
+                                        <option value="A#" <%= medley.key === 'A_' ? 'selected' : '' %>>A#</option>
+                                        <option value="Bb" <%= medley.key === 'Bb' ? 'selected' : '' %>>Bb</option>
+                                        <option value="B" <%= medley.key === 'B' ? 'selected' : '' %>>B</option>
+                                        <option value="Cm" <%= medley.key === 'Cm' ? 'selected' : '' %>>Cm</option>
+                                        <option value="C#m" <%= medley.key === 'C_m' ? 'selected' : '' %>>C#m</option>
+                                        <option value="Dbm" <%= medley.key === 'Dbm' ? 'selected' : '' %>>Dbm</option>
+                                        <option value="Dm" <%= medley.key === 'Dm' ? 'selected' : '' %>>Dm</option>
+                                        <option value="D#m" <%= medley.key === 'D_m' ? 'selected' : '' %>>D#m</option>
+                                        <option value="Ebm" <%= medley.key === 'Ebm' ? 'selected' : '' %>>Ebm</option>
+                                        <option value="Em" <%= medley.key === 'Em' ? 'selected' : '' %>>Em</option>
+                                        <option value="Fm" <%= medley.key === 'Fm' ? 'selected' : '' %>>Fm</option>
+                                        <option value="F#m" <%= medley.key === 'F_m' ? 'selected' : '' %>>F#m</option>
+                                        <option value="Gbm" <%= medley.key === 'Gbm' ? 'selected' : '' %>>Gbm</option>
+                                        <option value="Gm" <%= medley.key === 'Gm' ? 'selected' : '' %>>Gm</option>
+                                        <option value="G#m" <%= medley.key === 'G_m' ? 'selected' : '' %>>G#m</option>
+                                        <option value="Abm" <%= medley.key === 'Abm' ? 'selected' : '' %>>Abm</option>
+                                        <option value="Am" <%= medley.key === 'Am' ? 'selected' : '' %>>Am</option>
+                                        <option value="A#m" <%= medley.key === 'A_m' ? 'selected' : '' %>>A#m</option>
+                                        <option value="Bbm" <%= medley.key === 'Bbm' ? 'selected' : '' %>>Bbm</option>
+                                        <option value="Bm" <%= medley.key === 'Bm' ? 'selected' : '' %>>Bm</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="vocalistId" class="form-label">Vocalist</label>
+                            <select class="form-select" id="vocalistId" name="vocalistId">
+                                <option value="">No vocalist</option>
+                                <% vocalists.forEach(vocalist => { %>
+                                    <option value="<%= vocalist.id %>" 
+                                            <%= medley.vocalistId == vocalist.id ? 'selected' : '' %>>
+                                        <%= vocalist.name %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Current Songs</label>
+                            <div class="alert alert-info">
+                                <strong>Note:</strong> Song editing functionality is not yet implemented. 
+                                To change the songs in this medley, you'll need to delete and recreate it.
+                            </div>
+                            <div class="list-group">
+                                <% medley.songs.forEach(medleySong => { %>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong><%= medleySong.song.title %></strong>
+                                            <small class="text-muted ms-2">Order: <%= medleySong.order %></small>
+                                        </div>
+                                        <span class="badge bg-secondary">Current</span>
+                                    </div>
+                                <% }); %>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="/medleys/<%= medley.id %>" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Update Medley</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

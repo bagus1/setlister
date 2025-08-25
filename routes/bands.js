@@ -181,7 +181,7 @@ router.get("/:id", async (req, res) => {
 
     // Get pending invitations (not used, not expired)
     let pendingInvitations = [];
-    try {
+    try {0
       pendingInvitations = await prisma.bandInvitation.findMany({
         where: {
           bandId: parseInt(bandId),

@@ -12,11 +12,11 @@
                     <div class="text-center mb-4">
                         <h5>You're invited to join</h5>
                         <h2 class="text-primary">
-                            <%= invitation.Band.name %>
+                            <%= invitation.band.name %>
                         </h2>
-                        <% if (invitation.Band.description) { %>
+                        <% if (invitation.band.description) { %>
                             <p class="text-muted">
-                                <%= invitation.Band.description %>
+                                <%= invitation.band.description %>
                             </p>
                             <% } %>
                                 <p class="small text-muted">
@@ -149,7 +149,7 @@
                                             <small class="text-muted">
                                                 <i class="bi bi-clock"></i>
                                                 This invitation expires on <%= new
-                                                    Date(invitation.expiresAt).toLocaleDateString() %>
+                                                    Date(invitation.expires_at).toLocaleDateString() %>
                                             </small>
                                         </div>
                 </div>

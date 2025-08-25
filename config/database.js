@@ -35,7 +35,7 @@ module.exports = {
   },
   demo: {
     dialect: "postgres",
-    url: `postgres://${process.env.DB_USER || "bagus1_setlists_app"}:${process.env.DB_PASSWORD || ""}@localhost:5432/bagus1_setlists_demo`,
+    url: `postgres://${process.env.DB_USER || "bagus1_setlists_app"}:${process.env.DB_PASSWORD || ""}@localhost:5432/bagus1_setlists_demo?sslmode=disable`,
     logging: false,
     native: false,
     pool: {

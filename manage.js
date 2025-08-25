@@ -77,8 +77,8 @@ async function listUsers() {
       id: true,
       username: true,
       email: true,
-      created_at: true,
-      members: {
+      createdAt: true,
+      bands: {
         select: {
           role: true,
           band: {
@@ -90,19 +90,19 @@ async function listUsers() {
         },
       },
     },
-    orderBy: { created_at: "desc" },
+    orderBy: { id: "asc" },
   });
 
   users.forEach((user) => {
     const bands =
-      user.members && user.members.length > 0
-        ? user.members
+      user.bands && user.bands.length > 0
+        ? user.bands
             .map((member) => `${member.band.name}(${member.role})`)
             .join(", ")
         : "No bands";
 
     log(
-      `ID: ${user.id} | ${user.username} | ${user.email} | Created: ${user.created_at.toLocaleDateString()}`,
+      `ID: ${user.id} | ${user.username} | ${user.email} | Created: ${user.createdAt.toLocaleDateString()}`,
       "blue"
     );
     log(`  Bands: ${bands}`, "white");
@@ -146,7 +146,7 @@ async function listBands() {
         },
       },
     },
-    orderBy: { created_at: "desc" },
+    orderBy: { id: "asc" },
   });
 
   if (bands.length === 0) {
@@ -155,11 +155,11 @@ async function listBands() {
   }
 
   // Show simple list first
-  bands.forEach((band, index) => {
+  bands.forEach((band) => {
     const memberCount = band.members ? band.members.length : 0;
     const songCount = band.songs ? band.songs.length : 0;
     log(
-      `${index + 1}. ${band.name} (ID: ${band.id}) | Members: ${memberCount} | Songs: ${songCount} | Created: ${band.created_at.toLocaleDateString()}`,
+      `${band.id}. ${band.name} | Members: ${memberCount} | Songs: ${songCount} | Created: ${band.createdAt.toLocaleDateString()}`,
       "blue"
     );
   });
@@ -168,24 +168,28 @@ async function listBands() {
 
   // Prompt for detailed view
   const choice = await question(
-    "\nEnter band number for detailed info (or press Enter to skip): "
+    "\nEnter the ID of the band for detailed info (or press Enter to skip): "
   );
 
   if (!choice.trim()) {
     return; // User chose to skip
   }
 
-  const bandIndex = parseInt(choice) - 1;
-  if (isNaN(bandIndex) || bandIndex < 0 || bandIndex >= bands.length) {
-    log("Invalid band number.", "red");
+  const bandId = parseInt(choice);
+  if (isNaN(bandId)) {
+    log("Invalid band ID.", "red");
     return;
   }
 
-  const selectedBand = bands[bandIndex];
+  const selectedBand = bands.find((band) => band.id === bandId);
+  if (!selectedBand) {
+    log(`No band found with ID ${bandId}.`, "red");
+    return;
+  }
 
   log(`\n=== Detailed Info for "${selectedBand.name}" ===`, "cyan");
   log(
-    `ID: ${selectedBand.id} | Created: ${selectedBand.created_at.toLocaleDateString()}`,
+    `ID: ${selectedBand.id} | Created: ${selectedBand.createdAt.toLocaleDateString()}`,
     "blue"
   );
 
@@ -241,7 +245,7 @@ async function listSongs() {
         ? song.artists[0].artist.name
         : "Unknown";
     log(
-      `ID: ${song.id} | ${song.title} | ${artist} | Created: ${song.created_at.toLocaleDateString()}`,
+      `ID: ${song.id} | ${song.title} | ${artist} | Created: ${song.createdAt.toLocaleDateString()}`,
       "blue"
     );
   });
@@ -758,63 +762,63 @@ async function deleteGigDocuments() {
     });
 
     log("\nOptions:", "cyan");
-          log(
-        `- Enter a number (1-${song.gigDocuments.length}) to delete that specific gig document`,
-        "white"
-      );
-      log('- Type "all" to delete all gig documents', "white");
-      log('- Type "cancel" to abort', "white");
+    log(
+      `- Enter a number (1-${song.gigDocuments.length}) to delete that specific gig document`,
+      "white"
+    );
+    log('- Type "all" to delete all gig documents', "white");
+    log('- Type "cancel" to abort', "white");
 
-      const choice = (await question("\nEnter your choice: "))
-        .toLowerCase()
-        .trim();
+    const choice = (await question("\nEnter your choice: "))
+      .toLowerCase()
+      .trim();
 
-      if (choice === "cancel") {
-        log("Operation cancelled.", "yellow");
-        return;
-      }
+    if (choice === "cancel") {
+      log("Operation cancelled.", "yellow");
+      return;
+    }
 
-      if (choice === "all") {
-        const confirmed = await confirmAction(
-          `delete all ${song.gigDocuments.length} gig documents from "${song.title}"`
-        );
-        if (confirmed) {
-          await prisma.gigDocument.deleteMany({
-            where: { songId: song.id },
-          });
-          log(
-            `${song.gigDocuments.length} gig documents deleted successfully!`,
-            "green"
-          );
-        } else {
-          log("Deletion cancelled.", "yellow");
-        }
-        return;
-      }
-
-      const docIndex = parseInt(choice) - 1;
-      if (
-        isNaN(docIndex) ||
-        docIndex < 0 ||
-        docIndex >= song.gigDocuments.length
-      ) {
-        log('Invalid choice. Please enter a valid number or "all".', "red");
-        return;
-      }
-
-      const selectedDoc = song.gigDocuments[docIndex];
+    if (choice === "all") {
       const confirmed = await confirmAction(
-        `delete gig document [${selectedDoc.type || "No type"}] ${selectedDoc.title || "No title"} from "${song.title}"`
+        `delete all ${song.gigDocuments.length} gig documents from "${song.title}"`
       );
-
       if (confirmed) {
-        await prisma.gigDocument.delete({
-          where: { id: selectedDoc.id },
+        await prisma.gigDocument.deleteMany({
+          where: { songId: song.id },
         });
-        log("Gig document deleted successfully!", "green");
+        log(
+          `${song.gigDocuments.length} gig documents deleted successfully!`,
+          "green"
+        );
       } else {
         log("Deletion cancelled.", "yellow");
       }
+      return;
+    }
+
+    const docIndex = parseInt(choice) - 1;
+    if (
+      isNaN(docIndex) ||
+      docIndex < 0 ||
+      docIndex >= song.gigDocuments.length
+    ) {
+      log('Invalid choice. Please enter a valid number or "all".', "red");
+      return;
+    }
+
+    const selectedDoc = song.gigDocuments[docIndex];
+    const confirmed = await confirmAction(
+      `delete gig document [${selectedDoc.type || "No type"}] ${selectedDoc.title || "No title"} from "${song.title}"`
+    );
+
+    if (confirmed) {
+      await prisma.gigDocument.delete({
+        where: { id: selectedDoc.id },
+      });
+      log("Gig document deleted successfully!", "green");
+    } else {
+      log("Deletion cancelled.", "yellow");
+    }
   } catch (error) {
     log(`Error: ${error.message}`, "red");
   }
@@ -875,39 +879,71 @@ async function editSong() {
 
     // Edit artist
     const currentArtist =
-      song.Artists && song.Artists.length > 0 ? song.Artists[0].name : "";
+      song.artists && song.artists.length > 0
+        ? song.artists[0].artist.name
+        : "";
     const newArtist = await question(
       `Enter new artist (or press Enter to keep current: ${currentArtist}): `
     );
 
     if (newArtist.trim()) {
       // Find or create the artist
-      let artist = await Artist.findOne({
+      let artist = await prisma.artist.findFirst({
         where: { name: newArtist.trim() },
       });
 
       if (!artist) {
-        artist = await Artist.create({ name: newArtist.trim() });
+        artist = await prisma.artist.create({
+          data: {
+            name: newArtist.trim(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
         log(`Created new artist: ${artist.name}`, "green");
       }
 
       // Remove existing artist associations and add the new one
-      await song.setArtists([artist]);
+      await prisma.songArtist.deleteMany({
+        where: { songId: song.id },
+      });
+      await prisma.songArtist.create({
+        data: {
+          songId: song.id,
+          artistId: artist.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
       log(`Artist updated to: ${artist.name}`, "green");
     }
 
     // Save the song
-    await song.save();
+    await prisma.song.update({
+      where: { id: song.id },
+      data: {
+        title: song.title,
+        updatedAt: new Date(),
+      },
+    });
     log("\nSong updated successfully!", "green");
 
     // Show final result
     log("\nUpdated song details:", "blue");
     log(`Title: ${song.title}`, "white");
-    const updatedSong = await Song.findByPk(songId, {
-      include: ["Artists", "Vocalist"],
+    const updatedSong = await prisma.song.findUnique({
+      where: { id: parseInt(songId) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+      },
     });
-    if (updatedSong.Artists && updatedSong.Artists.length > 0) {
-      log(`Artist: ${updatedSong.Artists[0].name}`, "white");
+    if (updatedSong.artists && updatedSong.artists.length > 0) {
+      log(`Artist: ${updatedSong.artists[0].artist.name}`, "white");
     } else {
       log(`Artist: None assigned`, "white");
     }
@@ -920,18 +956,18 @@ async function cleanupOrphanedData() {
   log("\n=== Cleaning up orphaned data ===", "cyan");
 
   // Clean up orphaned band invitations
-  const orphanedInvitations = await BandInvitation.findAll({
+  const orphanedInvitations = await prisma.bandInvitation.findMany({
     where: {
-      expiresAt: { [require("sequelize").Op.lt]: new Date() },
+      expiresAt: { lt: new Date() },
     },
   });
 
   if (orphanedInvitations.length > 0) {
     log(`Found ${orphanedInvitations.length} expired invitations`, "yellow");
     if (await confirmAction("delete expired invitations")) {
-      await BandInvitation.destroy({
+      await prisma.bandInvitation.deleteMany({
         where: {
-          expiresAt: { [require("sequelize").Op.lt]: new Date() },
+          expiresAt: { lt: new Date() },
         },
       });
       log("Expired invitations cleaned up!", "green");
@@ -944,14 +980,14 @@ async function cleanupOrphanedData() {
 async function showStats() {
   log("\n=== Application Statistics ===", "cyan");
 
-  const userCount = await User.count();
-  const bandCount = await Band.count();
-  const songCount = await Song.count();
-  const setlistCount = await Setlist.count();
-  const invitationCount = await BandInvitation.count({
+  const userCount = await prisma.user.count();
+  const bandCount = await prisma.band.count();
+  const songCount = await prisma.song.count();
+  const setlistCount = await prisma.setlist.count();
+  const invitationCount = await prisma.bandInvitation.count({
     where: {
       usedAt: null,
-      expiresAt: { [require("sequelize").Op.gt]: new Date() },
+      expiresAt: { gt: new Date() },
     },
   });
 
@@ -987,8 +1023,7 @@ async function main() {
   try {
     await showServerInstructions();
 
-    // Sync database
-    await require("./models").sequelize.sync();
+    // Prisma doesn't need sync - database is already set up
     log("Database connected successfully!", "green");
 
     while (true) {

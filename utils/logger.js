@@ -14,7 +14,9 @@ const getLogFile = () => {
   // Use LOG_ENV first, then fall back to NODE_ENV
   const logEnv = process.env.LOG_ENV || process.env.NODE_ENV || "development";
   // Debug: log what environment variables we're seeing
-  console.log(`[LOGGER DEBUG] LOG_ENV: ${process.env.LOG_ENV}, NODE_ENV: ${process.env.NODE_ENV}, Using: ${logEnv}`);
+  console.log(
+    `[LOGGER DEBUG] LOG_ENV: ${process.env.LOG_ENV}, NODE_ENV: ${process.env.NODE_ENV}, Using: ${logEnv}`
+  );
   return path.join(logsDir, `app-${logEnv}.log`);
 };
 

@@ -35,7 +35,7 @@ module.exports = {
   },
   demo: {
     dialect: "postgres",
-    host: "localhost", // define host explicitly  
+    host: "localhost", // define host explicitly
     port: 5432, // define port explicitly
     database: "bagus1_setlists_demo",
     username: process.env.DB_USER || "bagus1_setlists_app",

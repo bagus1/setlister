@@ -35,16 +35,12 @@ module.exports = {
   },
   demo: {
     dialect: "postgres",
-    // Use individual connection params instead of URL to ensure SSL control
-    database: "bagus1_setlists_demo", 
-    username: process.env.DB_USER || "bagus1_setlists_app",
+    database: "bagus1_setlists_demo",
+    username: process.env.DB_USER || "bagus1_setlists_app", 
     password: process.env.DB_PASSWORD || "",
-    // No host/port forces Unix domain socket like working psql
+    // No host/port = Unix domain socket (like working psql and raw pg test)
     logging: false,
-    dialectOptions: {
-      // Force node-postgres to not use SSL
-      ssl: false
-    },
+    // Remove all SSL-related options - let it use defaults like raw pg
     native: false,
     pool: {
       max: 5,

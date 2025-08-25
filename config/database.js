@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 // Force disable SSL for PostgreSQL connections
-process.env.PGSSLMODE = 'disable';
+process.env.PGSSLMODE = "disable";
 
 module.exports = {
   development: {
@@ -34,8 +34,8 @@ module.exports = {
     logging: false,
   },
   demo: {
-    // Use connection string to explicitly disable SSL
-    url: `postgres://${process.env.DB_USER || "bagus1_setlists_app"}:${process.env.DB_PASSWORD || ""}@localhost/bagus1_setlists_demo?sslmode=disable`,
+    // Use Unix domain socket connection (no host) like working psql command  
+    url: `postgres://${process.env.DB_USER || "bagus1_setlists_app"}:${process.env.DB_PASSWORD || ""}@/bagus1_setlists_demo?sslmode=disable`,
     dialect: "postgres",
     logging: false,
     native: false,

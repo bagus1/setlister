@@ -32,12 +32,15 @@ module.exports = {
   },
   demo: {
     dialect: "postgres",
-    host: "localhost",
-    port: 5432,
+    // Remove host and port to use Unix domain sockets like psql
     database: "bagus1_setlists_demo",
     username: "bagus1_setlists_app",
     password: process.env.DB_PASSWORD || "",
     logging: false,
+    dialectOptions: {
+      // Force no SSL negotiation
+      ssl: false
+    },
     native: false,
     pool: {
       max: 5,

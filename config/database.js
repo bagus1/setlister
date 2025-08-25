@@ -34,10 +34,17 @@ module.exports = {
     logging: false,
   },
   demo: {
-    // Use Unix domain socket connection (no host) like working psql command  
-    url: `postgres://${process.env.DB_USER || "bagus1_setlists_app"}:${process.env.DB_PASSWORD || ""}@/bagus1_setlists_demo?sslmode=disable`,
     dialect: "postgres",
+    // Use individual connection params instead of URL to ensure SSL control
+    database: "bagus1_setlists_demo", 
+    username: process.env.DB_USER || "bagus1_setlists_app",
+    password: process.env.DB_PASSWORD || "",
+    // No host/port forces Unix domain socket like working psql
     logging: false,
+    dialectOptions: {
+      // Force node-postgres to not use SSL
+      ssl: false
+    },
     native: false,
     pool: {
       max: 5,

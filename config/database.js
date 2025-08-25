@@ -33,20 +33,21 @@ module.exports = {
     password: "",
     logging: false,
   },
-  demo: {
+    demo: {
     dialect: "postgres",
     database: "bagus1_setlists_demo",
     username: process.env.DB_USER || "bagus1_setlists_app", 
     password: process.env.DB_PASSWORD || "",
     // No host/port = Unix domain socket (like working psql and raw pg test)
     logging: false,
-    // Remove all SSL-related options - let it use defaults like raw pg
     native: false,
     pool: {
       max: 5,
       min: 0,
       acquire: 30000,
       idle: 10000,
+      // Explicitly disable SSL in pool like your example
+      ssl: false,
     },
   },
   production: {

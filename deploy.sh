@@ -433,7 +433,7 @@ deploy_to_demo() {
     
     # Run PostgreSQL schema migration
     print_status "Running PostgreSQL schema migration..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx sequelize-cli db:migrate" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && export \$(cat .env | xargs) && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx sequelize-cli db:migrate" || {
         print_error "Failed to run PostgreSQL migration on demo server"
         return 1
     }

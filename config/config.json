@@ -37,7 +37,10 @@
     "database": "bagus1_setlists_demo",
     "host": "127.0.0.1",
     "port": 5432,
-    "dialect": "postgres"
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": false
+    }
   },
   "production": {
     "username": "setlists_prod",

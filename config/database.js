@@ -32,15 +32,10 @@ module.exports = {
   },
   demo: {
     dialect: "postgres",
-    host: "127.0.0.1",
-    port: 5432,
     database: "bagus1_setlists_demo",
     username: "bagus1_setlists_app",
     password: process.env.DB_PASSWORD || "",
     logging: false,
-    dialectOptions: {
-      ssl: false,
-    },
     pool: {
       max: 5,
       min: 0,

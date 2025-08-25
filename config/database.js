@@ -33,20 +33,22 @@ module.exports = {
     password: "",
     logging: false,
   },
-    demo: {
+  demo: {
     dialect: "postgres",
     database: "bagus1_setlists_demo",
     username: process.env.DB_USER || "bagus1_setlists_app",
     password: process.env.DB_PASSWORD || "",
-    // No host/port = Unix domain socket
+    // No host/port = Unix domain socket (matches working raw pg connection)
     logging: false,
     ssl: false, // Explicit SSL disable like Strapi example
     dialectOptions: {
-      ssl: false // Double-ensure SSL is disabled
+      ssl: false, // Double-ensure SSL is disabled
+      // Additional options to match raw pg behavior
+      application_name: 'setlister-demo'
     },
     native: false,
     pool: {
-      max: 5,
+      max: 1, // Start with minimal pool to test
       min: 0,
       acquire: 30000,
       idle: 10000,

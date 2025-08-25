@@ -36,18 +36,20 @@ module.exports = {
     demo: {
     dialect: "postgres",
     database: "bagus1_setlists_demo",
-    username: process.env.DB_USER || "bagus1_setlists_app", 
+    username: process.env.DB_USER || "bagus1_setlists_app",
     password: process.env.DB_PASSWORD || "",
-    // No host/port = Unix domain socket (like working psql and raw pg test)
+    // No host/port = Unix domain socket
     logging: false,
+    ssl: false, // Explicit SSL disable like Strapi example
+    dialectOptions: {
+      ssl: false // Double-ensure SSL is disabled
+    },
     native: false,
     pool: {
       max: 5,
       min: 0,
       acquire: 30000,
       idle: 10000,
-      // Explicitly disable SSL in pool like your example
-      ssl: false,
     },
   },
   production: {

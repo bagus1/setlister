@@ -31,16 +31,10 @@ module.exports = {
     logging: false,
   },
   demo: {
+    // Use connection string to explicitly disable SSL
+    url: `postgres://${process.env.DB_USER || 'bagus1_setlists_app'}:${process.env.DB_PASSWORD || ''}@localhost/bagus1_setlists_demo?sslmode=disable`,
     dialect: "postgres",
-    // Remove host and port to use Unix domain sockets like psql
-    database: "bagus1_setlists_demo",
-    username: "bagus1_setlists_app",
-    password: process.env.DB_PASSWORD || "",
     logging: false,
-    dialectOptions: {
-      // Force no SSL negotiation
-      ssl: false
-    },
     native: false,
     pool: {
       max: 5,

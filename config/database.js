@@ -35,15 +35,13 @@ module.exports = {
   },
   demo: {
     dialect: "postgres",
-    host: "localhost", // define host explicitly
+    host: "localhost", // define host explicitly  
     port: 5432, // define port explicitly
     database: "bagus1_setlists_demo",
     username: process.env.DB_USER || "bagus1_setlists_app",
     password: process.env.DB_PASSWORD || "",
     logging: false,
-    dialectOptions: { 
-      ssl: false 
-    },
+    // Completely remove dialectOptions to prevent Sequelize SSL injection
     native: false,
     pool: {
       max: 1, // Start with minimal pool to test

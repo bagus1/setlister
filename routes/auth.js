@@ -1,14 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const { body, validationResult } = require("express-validator");
-const {
-  User,
-  BandInvitation,
-  BandMember,
-  Band,
-  PasswordReset,
-} = require("../models"); // Added PasswordReset
-const { Op } = require("sequelize");
+const { prisma } = require("../lib/prisma");
 const crypto = require("crypto");
 const { sendEmail } = require("../utils/emailService");
 const logger = require("../utils/logger");
@@ -86,9 +79,9 @@ router.post(
       const emailLower = email.toLowerCase();
 
       // Check if user already exists
-      const existingUser = await User.findOne({
+      const existingUser = await prisma.user.findFirst({
         where: {
-          [Op.or]: [{ email: emailLower }, { username }],
+          OR: [{ email: emailLower }, { username }],
         },
       });
 
@@ -105,20 +98,24 @@ router.post(
       const hashedPassword = await bcrypt.hash(password, 12);
 
       // Create user with lowercase email
-      const user = await User.create({
-        username,
-        email: emailLower,
-        password: hashedPassword,
+      const user = await prisma.user.create({
+        data: {
+          username,
+          email: emailLower,
+          password: hashedPassword,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       });
 
       // Check for pending invitations for this email (case insensitive)
-      const pendingInvitations = await BandInvitation.findAll({
+      const pendingInvitations = await prisma.bandInvitation.findMany({
         where: {
-          email: { [Op.like]: emailLower }, // Case insensitive search
-          usedAt: null,
-          expiresAt: { [Op.gt]: new Date() },
+          email: { contains: emailLower, mode: "insensitive" }, // Case insensitive search
+          used_at: null,
+          expires_at: { gt: new Date() },
         },
-        include: [{ model: Band, as: "Band" }],
+        include: { band: true },
       });
 
       // Automatically add user to bands they have pending invitations for
@@ -140,15 +137,21 @@ router.post(
 
         // Create band memberships
         if (bandMemberships.length > 0) {
-          await BandMember.bulkCreate(bandMemberships);
+          await prisma.bandMember.createMany({
+            data: bandMemberships.map((membership) => ({
+              ...membership,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })),
+          });
         }
 
         // Mark invitations as used
         if (usedInvitations.length > 0) {
-          await BandInvitation.update(
-            { usedAt: new Date() },
-            { where: { id: { [Op.in]: usedInvitations } } }
-          );
+          await prisma.bandInvitation.updateMany({
+            data: { used_at: new Date() },
+            where: { id: { in: usedInvitations } },
+          });
         }
       }
 
@@ -213,7 +216,9 @@ router.post(
       const emailLower = email.toLowerCase();
 
       // Find user (case insensitive)
-      const user = await User.findOne({ where: { email: emailLower } });
+      const user = await prisma.user.findFirst({
+        where: { email: emailLower },
+      });
       if (!user) {
         return res.render("auth/login", {
           title: "Login",
@@ -237,11 +242,11 @@ router.post(
       // Check for pending invitations for this email (case insensitive)
       let pendingInvitations = [];
       try {
-        pendingInvitations = await BandInvitation.findAll({
+        pendingInvitations = await prisma.bandInvitation.findMany({
           where: {
-            email: { [Op.like]: emailLower }, // Case insensitive search
-            usedAt: null,
-            expiresAt: { [Op.gt]: new Date() },
+            email: { contains: emailLower, mode: "insensitive" }, // Case insensitive search
+            used_at: null,
+            expires_at: { gt: new Date() },
           },
         });
 
@@ -264,7 +269,7 @@ router.post(
 
         for (const invitation of pendingInvitations) {
           // Check if user is already a member of this band
-          const existingMembership = await BandMember.findOne({
+          const existingMembership = await prisma.bandMember.findFirst({
             where: {
               bandId: invitation.bandId,
               userId: user.id,
@@ -286,15 +291,21 @@ router.post(
 
         // Create band memberships
         if (bandMemberships.length > 0) {
-          await BandMember.bulkCreate(bandMemberships);
+          await prisma.bandMember.createMany({
+            data: bandMemberships.map((membership) => ({
+              ...membership,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })),
+          });
         }
 
         // Mark invitations as used
         if (usedInvitations.length > 0) {
-          await BandInvitation.update(
-            { usedAt: new Date() },
-            { where: { id: { [Op.in]: usedInvitations } } }
-          );
+          await prisma.bandInvitation.updateMany({
+            data: { used_at: new Date() },
+            where: { id: { in: usedInvitations } },
+          });
         }
 
         console.log(
@@ -395,7 +406,9 @@ router.post(
       const emailLower = email.toLowerCase();
 
       // Check if user exists (case insensitive)
-      const user = await User.findOne({ where: { email: emailLower } });
+      const user = await prisma.user.findFirst({
+        where: { email: emailLower },
+      });
       if (!user) {
         // Don't reveal if email exists or not for security
         req.flash(
@@ -410,10 +423,14 @@ router.post(
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
       // Save reset token with lowercase email
-      await PasswordReset.create({
-        email: emailLower,
-        token,
-        expiresAt,
+      await prisma.passwordReset.create({
+        data: {
+          email: emailLower,
+          token,
+          expiresAt,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       });
 
       // Send email
@@ -463,10 +480,10 @@ router.get("/reset-password/:token", async (req, res) => {
     const { token } = req.params;
 
     // Find valid reset token
-    const resetRecord = await PasswordReset.findOne({
+    const resetRecord = await prisma.passwordReset.findFirst({
       where: {
         token,
-        expiresAt: { [Op.gt]: new Date() },
+        expiresAt: { gt: new Date() },
         usedAt: null,
       },
     });
@@ -523,11 +540,11 @@ router.post(
       const emailLower = email.toLowerCase();
 
       // Find valid reset token (case insensitive)
-      const resetRecord = await PasswordReset.findOne({
+      const resetRecord = await prisma.passwordReset.findFirst({
         where: {
           token,
           email: emailLower,
-          expiresAt: { [Op.gt]: new Date() },
+          expiresAt: { gt: new Date() },
           usedAt: null,
         },
       });
@@ -538,7 +555,9 @@ router.post(
       }
 
       // Find user (case insensitive)
-      const user = await User.findOne({ where: { email: emailLower } });
+      const user = await prisma.user.findFirst({
+        where: { email: emailLower },
+      });
       if (!user) {
         req.flash("error", "User not found.");
         return res.redirect("/auth/forgot-password");
@@ -548,13 +567,19 @@ router.post(
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // Update user password
-      await user.update({ password: hashedPassword });
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+      });
 
       // Mark reset token as used
-      await resetRecord.update({ usedAt: new Date() });
+      await prisma.passwordReset.update({
+        where: { id: resetRecord.id },
+        data: { usedAt: new Date() },
+      });
 
       // Delete any other unused reset tokens for this email (case insensitive)
-      await PasswordReset.destroy({
+      await prisma.passwordReset.deleteMany({
         where: {
           email: emailLower,
           usedAt: null,

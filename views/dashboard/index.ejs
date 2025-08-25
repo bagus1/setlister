@@ -73,15 +73,15 @@
                         <% latestBandSongs.forEach(bandSong=> { %>
                             <div class="mb-2 d-flex justify-content-between align-items-start">
                                 <div>
-                                    <a href="/songs/<%= bandSong.Song.id %>" class="text-decoration-none">
-                                        <strong><%= bandSong.Song.title %></strong>
-                                    </a>
-                                    <% if (bandSong.Song.Artists && bandSong.Song.Artists.length> 0) { %>
-                                        <br><small class="text-muted">by <%= bandSong.Song.Artists[0].name %></small>
-                                    <% } %>
-                                </div>
-                                <a href="/bands/<%= bandSong.Band.id %>" class="btn btn-outline-secondary btn-sm">
-                                    <%= bandSong.Band.name %>
+                                                                    <a href="/songs/<%= bandSong.song.id %>" class="text-decoration-none">
+                                    <strong><%= bandSong.song.title %></strong>
+                                </a>
+                                <% if (bandSong.song.artists && bandSong.song.artists.length> 0) { %>
+                                    <br><small class="text-muted">by <%= bandSong.song.artists[0].artist.name %></small>
+                                <% } %>
+                            </div>
+                            <a href="/bands/<%= bandSong.band.id %>" class="btn btn-outline-secondary btn-sm">
+                                <%= bandSong.band.name %>
                                 </a>
                             </div>
                         <% }) %>
@@ -169,8 +169,8 @@
                                     <a href="/songs/<%= song.id %>" class="text-decoration-none">
                                         <%= song.title %>
                                     </a>
-                                    <% if (song.Artists && song.Artists.length> 0) { %>
-                                        <small class="text-muted">by <%= song.Artists[0].name %></small>
+                                    <% if (song.artists && song.artists.length> 0) { %>
+                                        <small class="text-muted">by <%= song.artists[0].artist.name %></small>
                                         <% } %>
                                 </div>
                                 <% }) %>

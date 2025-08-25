@@ -17,11 +17,11 @@
                 <div class="card-body">
                     <h5 class="card-title">Song Details</h5>
                     <p><strong>Artist:</strong>
-                        <%= song.Artists.map(a=> a.name).join(', ') %>
+                        <%= song.artists.map(a=> a.artist.name).join(', ') %>
                     </p>
-                    <% if (song.Vocalist) { %>
+                    <% if (song.vocalist) { %>
                         <p><strong>Vocalist:</strong>
-                            <%= song.Vocalist.name %>
+                            <%= song.vocalist.name %>
                         </p>
                         <% } %>
                             <% if (song.key) { %>

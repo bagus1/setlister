@@ -1,8 +1,7 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
-const { Song, Artist, Vocalist, sequelize } = require("../models");
+const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
-const { Op } = require("sequelize");
 const logger = require("../utils/logger");
 
 const router = express.Router();
@@ -13,14 +12,15 @@ const router = express.Router();
 router.get("/api/artists/search", async (req, res) => {
   try {
     const { q } = req.query;
-    const artists = await Artist.findAll({
+    const artists = await prisma.artist.findMany({
       where: {
         name: {
-          [Op.iLike]: `%${q}%`,
+          contains: q,
+          mode: "insensitive",
         },
       },
-      limit: 10,
-      order: [["name", "ASC"]],
+      take: 10,
+      orderBy: { name: "asc" },
     });
 
     res.json(
@@ -39,14 +39,15 @@ router.get("/api/artists/search", async (req, res) => {
 router.get("/api/vocalists/search", async (req, res) => {
   try {
     const { q } = req.query;
-    const vocalists = await Vocalist.findAll({
+    const vocalists = await prisma.vocalist.findMany({
       where: {
         name: {
-          [Op.iLike]: `%${q}%`,
+          contains: q,
+          mode: "insensitive",
         },
       },
-      limit: 10,
-      order: [["name", "ASC"]],
+      take: 10,
+      orderBy: { name: "asc" },
     });
 
     res.json(
@@ -64,8 +65,16 @@ router.get("/api/vocalists/search", async (req, res) => {
 // GET /songs/api/song/:id - Get song details
 router.get("/api/song/:id", async (req, res) => {
   try {
-    const song = await Song.findByPk(req.params.id, {
-      include: ["Artists", "Vocalist"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+      },
     });
 
     if (!song) {
@@ -82,17 +91,26 @@ router.get("/api/song/:id", async (req, res) => {
 // GET /songs - Show all songs
 router.get("/", async (req, res) => {
   try {
-    const songs = await Song.findAll({
-      include: ["Artists", "Vocalist", "Links", "GigDocuments"],
-      order: [["title", "ASC"]],
+    const songs = await prisma.song.findMany({
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+        links: true,
+        gigDocuments: true,
+      },
+      orderBy: { title: "asc" },
     });
 
-    const artists = await Artist.findAll({
-      order: [["name", "ASC"]],
+    const artists = await prisma.artist.findMany({
+      orderBy: { name: "asc" },
     });
 
-    const vocalists = await Vocalist.findAll({
-      order: [["name", "ASC"]],
+    const vocalists = await prisma.vocalist.findMany({
+      orderBy: { name: "asc" },
     });
 
     res.render("songs/index", {
@@ -112,12 +130,12 @@ router.get("/", async (req, res) => {
 // GET /songs/new - Show new song form
 router.get("/new", requireAuth, async (req, res) => {
   try {
-    const artists = await Artist.findAll({
-      order: [["name", "ASC"]],
+    const artists = await prisma.artist.findMany({
+      orderBy: { name: "asc" },
     });
 
-    const vocalists = await Vocalist.findAll({
-      order: [["name", "ASC"]],
+    const vocalists = await prisma.vocalist.findMany({
+      orderBy: { name: "asc" },
     });
 
     res.render("songs/new", {
@@ -252,8 +270,18 @@ router.post(
 // GET /songs/:id - Show specific song
 router.get("/:id", async (req, res) => {
   try {
-    const song = await Song.findByPk(req.params.id, {
-      include: ["Artists", "Vocalist", "Links", "GigDocuments"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+        links: true,
+        gigDocuments: true,
+      },
     });
 
     if (!song) {

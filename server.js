@@ -13,8 +13,7 @@ const logger = require("./utils/logger");
 // Load environment variables from .env file
 require("dotenv").config();
 
-// Import models and routes
-const db = require("./models");
+// Import routes
 const { router: authRoutes } = require("./routes/auth");
 const dashboardRoutes = require("./routes/dashboard");
 const bandRoutes = require("./routes/bands");
@@ -84,9 +83,9 @@ app.set("layout", "layout");
 
 // Routes
 app.use("/auth", authRoutes);
+app.use("/routes", require("./routes/routes"));
 app.use("/", dashboardRoutes);
 app.use("/bands", bandRoutes);
-app.use("/songs", songRoutes);
 app.use("/artists", artistRoutes);
 app.use("/medleys", medleyRoutes);
 app.use("/setlists", setlistRoutes);
@@ -94,6 +93,7 @@ app.use("/invite", invitationRoutes);
 app.use("/bulk-add-songs", bulkAddSongsRoutes);
 app.use("/songs", linkRoutes);
 app.use("/songs", require("./routes/gig-documents"));
+app.use("/songs", songRoutes);
 
 // Socket.io for real-time collaboration
 io.on("connection", (socket) => {
@@ -133,15 +133,7 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-// Sync database and start server
-db.sequelize
-  .sync()
-  .then(() => {
-    logger.logInfo("Database synced successfully");
-    server.listen(PORT, () => {
-      logger.logInfo(`Server running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    logger.logError("Unable to connect to database", err);
-  });
+// Start server
+server.listen(PORT, () => {
+  logger.logInfo(`Server running on port ${PORT}`);
+});

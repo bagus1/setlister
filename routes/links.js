@@ -1,7 +1,7 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
 const router = express.Router();
-const { Link, Song } = require("../models");
+const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
 
 // POST /songs/:songId/links - Add a new link to a song
@@ -46,7 +46,9 @@ router.post(
         return res.redirect(`/songs/${req.params.songId}`);
       }
 
-      const song = await Song.findByPk(req.params.songId);
+      const song = await prisma.song.findUnique({
+        where: { id: parseInt(req.params.songId) },
+      });
       if (!song) {
         req.flash("error", "Song not found");
         return res.redirect("/songs");
@@ -54,11 +56,15 @@ router.post(
 
       const { type, url, description } = req.body;
 
-      await Link.create({
-        songId: song.id,
-        type,
-        url: url.trim(),
-        description: description ? description.trim() : null,
+      await prisma.link.create({
+        data: {
+          songId: song.id,
+          type,
+          url: url.trim(),
+          description: description ? description.trim() : null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       });
 
       req.flash("success", "Link added successfully");
@@ -74,19 +80,23 @@ router.post(
 // DELETE /songs/:songId/links/:linkId - Delete a link
 router.delete("/:songId/links/:linkId", requireAuth, async (req, res) => {
   try {
-    const link = await Link.findByPk(req.params.linkId);
+    const link = await prisma.link.findUnique({
+      where: { id: parseInt(req.params.linkId) },
+    });
     if (!link) {
       req.flash("error", "Link not found");
       return res.redirect(`/songs/${req.params.songId}`);
     }
 
     // Verify the link belongs to the specified song
-    if (link.songId != req.params.songId) {
+    if (link.songId != parseInt(req.params.songId)) {
       req.flash("error", "Link not found");
       return res.redirect(`/songs/${req.params.songId}`);
     }
 
-    await link.destroy();
+    await prisma.link.delete({
+      where: { id: parseInt(req.params.linkId) },
+    });
     req.flash("success", "Link deleted successfully");
     res.redirect(`/songs/${req.params.songId}`);
   } catch (error) {

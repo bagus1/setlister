@@ -151,10 +151,10 @@
             </div>
             <div class="card-body">
                 <!-- Existing Links - Visible to all users -->
-                <% if (song.Links && song.Links.length> 0) { %>
+                <% if (song.links && song.links.length> 0) { %>
                     <div class="mb-4">
                         <div class="list-group">
-                            <% song.Links.forEach(link=> { %>
+                            <% song.links.forEach(link=> { %>
                                 <% if (link.type === 'audio') { %>
                                     <!-- Audio Files - Non-clickable card with embedded player -->
                                     <div class="list-group-item d-flex justify-content-between align-items-center">
@@ -271,9 +271,9 @@
                         </div>
                         <div class="card-body">
                             <!-- Existing Gig Documents - Visible to all users -->
-                            <% if (song.GigDocuments && song.GigDocuments.length> 0) { %>
+                            <% if (song.gigDocuments && song.gigDocuments.length> 0) { %>
                                 <!-- Group by type -->
-                                <% const groupedDocs={}; song.GigDocuments.forEach(doc=> {
+                                <% const groupedDocs={}; song.gigDocuments.forEach(doc=> {
                                     if (!groupedDocs[doc.type]) groupedDocs[doc.type] = [];
                                     groupedDocs[doc.type].push(doc);
                                     });
@@ -296,7 +296,7 @@
                                                             class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
                                                             <div>
                                                                 <i class="bi bi-file-earmark-text"></i>
-                                                                <%= doc.title %>
+                                                                <%= getTypeDisplayName(doc.type) %> - v<%= doc.version %>
                                                             </div>
                                                             <div>
                                                                 <small class="text-muted">Created: <%= new

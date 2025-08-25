@@ -98,3 +98,5 @@ sendgrid.env
 
 # Migration output files - generated data, do not commit
 migration-output/ 
+
+/generated/prisma

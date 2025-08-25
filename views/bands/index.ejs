@@ -32,13 +32,13 @@
                             <% } %>
 
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <small class="text-muted">
-                                        <% const userRole=band.Users.find(u=> u.BandMember && u.BandMember.role); %>
-                                            <% if (userRole && userRole.BandMember.role==='owner' ) { %>
+                                                                        <small class="text-muted">
+                                        <% const userRole = band.members && band.members.length > 0 ? band.members[0].role : 'member'; %>
+                                            <% if (userRole === 'owner') { %>
                                                 <i class="bi bi-star-fill text-warning"></i> Owner
-                                                <% } else { %>
-                                                    <i class="bi bi-person"></i> Member
-                                                    <% } %>
+                                            <% } else { %>
+                                                <i class="bi bi-person"></i> Member
+                                            <% } %>
                                     </small>
                                     <small class="text-muted">
                                         Updated <%= new Date(band.updatedAt).toLocaleDateString() %>

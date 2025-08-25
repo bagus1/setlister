@@ -307,11 +307,11 @@
                 </h5>
             </div>
             <div class="card-body">
-                <% band.Users.forEach(user=> { %>
+                <% band.members.forEach(member => { %>
                     <div class="d-flex justify-content-between align-items-center py-2">
                         <div>
-                            <%= user.username %>
-                                <% if (user.BandMember.role==='owner' ) { %>
+                            <%= member.user.username %>
+                                <% if (member.role === 'owner') { %>
                                     <span class="badge bg-primary">Owner</span>
                                     <% } %>
                         </div>
@@ -319,8 +319,7 @@
                     <% }) %>
 
                         <!-- Invite Member Form -->
-                        <% const isOwner=band.Users.find(user=> user.id === userId && user.BandMember.role === 'owner');
-                            %>
+                        <% const isOwner = band.members.find(member => member.user.id === userId && member.role === 'owner'); %>
                             <% if (isOwner) { %>
                                 <hr>
                                 <h6>Invite New Member</h6>
@@ -347,14 +346,14 @@
                                                         <%= invitation.email %>
                                                     </div>
                                                     <small class="text-muted">
-                                                        Invited by <%= invitation.Inviter ? invitation.Inviter.username
+                                                        Invited by <%= invitation.inviter ? invitation.inviter.username
                                                             : 'Unknown' %>
                                                             on <%= new Date(invitation.createdAt).toLocaleDateString()
                                                                 %>
                                                     </small>
                                                     <br>
                                                     <small class="text-muted">
-                                                        Expires: <%= new Date(invitation.expiresAt).toLocaleDateString()
+                                                        Expires: <%= new Date(invitation.expires_at).toLocaleDateString()
                                                             %>
                                                     </small>
                                                 </div>
@@ -394,42 +393,42 @@
                     <div class="row">
                         <% bandSongs.forEach(song => { %>
                             <div class="col-md-4 mb-3">
-                                <a href="/songs/<%= song.Song.id %>" class="text-decoration-none">
+                                <a href="/songs/<%= song.song.id %>" class="text-decoration-none">
                                     <div class="card song-card h-100">
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <h6 class="card-title text-dark mb-0">
-                                                    <%= song.Song.title %>
+                                                    <%= song.song.title %>
                                                 </h6>
                                                 <div class="d-flex align-items-center gap-1">
                                                     <!-- Note: Links and GigDocuments not loaded in simplified query -->
                                                 </div>
                                             </div>
-                                            <% if (song.Song.Artists && song.Song.Artists.length > 0) { %>
-                                                <p class="text-muted mb-1 small">by <%= song.Song.Artists[0].name %></p>
+                                            <% if (song.song.artists && song.song.artists.length > 0) { %>
+                                                <p class="text-muted mb-1 small">by <%= song.song.artists[0].artist.name %></p>
                                             <% } %>
                                             <div class="d-flex flex-wrap gap-1">
-                                                <% if (song.Song.Vocalist) { %>
+                                                <% if (song.song.vocalist) { %>
                                                     <span class="badge bg-secondary">
                                                         <i class="bi bi-mic"></i>
-                                                        <%= song.Song.Vocalist.name %>
+                                                        <%= song.song.vocalist.name %>
                                                     </span>
                                                 <% } %>
-                                                <% if (song.Song.key) { %>
+                                                <% if (song.song.key) { %>
                                                     <span class="badge bg-primary">
-                                                        Key: <%= song.Song.key %>
+                                                        Key: <%= song.song.key %>
                                                     </span>
                                                 <% } %>
-                                                <% if (song.Song.bpm) { %>
+                                                <% if (song.song.bpm) { %>
                                                     <span class="badge bg-warning text-dark">
                                                         <i class="bi bi-speedometer"></i>
-                                                        <%= song.Song.bpm %> BPM
+                                                        <%= song.song.bpm %> BPM
                                                     </span>
                                                 <% } %>
-                                                <% if (song.Song.time) { %>
+                                                <% if (song.song.time) { %>
                                                     <span class="badge bg-info text-dark">
                                                         <i class="bi bi-clock"></i>
-                                                        <%= Math.floor(song.Song.time / 60) %>:<%= (song.Song.time % 60).toString().padStart(2, '0') %>
+                                                        <%= Math.floor(song.song.time / 60) %>:<%= (song.song.time % 60).toString().padStart(2, '0') %>
                                                     </span>
                                                 <% } %>
                                             </div>

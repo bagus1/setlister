@@ -1,15 +1,23 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
 const router = express.Router();
-const { GigDocument, Song, BandSong } = require("../models");
+const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
 
 // GET /songs/:songId/docs - List all gig documents for a song (public)
 router.get("/:songId/docs", async (req, res) => {
   try {
     const songId = req.params.songId;
-    const song = await Song.findByPk(songId, {
-      include: ["Artists", "Vocalist"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(songId) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+      },
     });
 
     if (!song) {
@@ -17,12 +25,9 @@ router.get("/:songId/docs", async (req, res) => {
       return res.redirect("/songs");
     }
 
-    const gigDocuments = await GigDocument.findAll({
-      where: { songId: songId },
-      order: [
-        ["version", "DESC"],
-        ["createdAt", "DESC"],
-      ],
+    const gigDocuments = await prisma.gigDocument.findMany({
+      where: { songId: parseInt(songId) },
+      orderBy: [{ version: "desc" }, { createdAt: "desc" }],
     });
 
     // Helper functions for gig document type display
@@ -66,8 +71,16 @@ router.get("/:songId/docs", async (req, res) => {
 router.get("/:songId/docs/new", requireAuth, async (req, res) => {
   try {
     const songId = req.params.songId;
-    const song = await Song.findByPk(songId, {
-      include: ["Artists", "Vocalist"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(songId) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+      },
     });
 
     if (!song) {
@@ -109,8 +122,16 @@ router.post(
 
       const songId = req.params.songId;
       const userId = req.session.user.id;
-      const song = await Song.findByPk(songId, {
-        include: ["Artists", "Vocalist"],
+      const song = await prisma.song.findUnique({
+        where: { id: parseInt(songId) },
+        include: {
+          artists: {
+            include: {
+              artist: true,
+            },
+          },
+          vocalist: true,
+        },
       });
 
       if (!song) {
@@ -130,10 +151,10 @@ router.post(
 
       // Auto-increment version if not provided
       let docVersion = 1;
-      const existingDocs = await GigDocument.findAll({
-        where: { songId: songId, type: type },
-        order: [["version", "DESC"]],
-        limit: 1,
+      const existingDocs = await prisma.gigDocument.findMany({
+        where: { songId: parseInt(songId), type: type },
+        orderBy: { version: "desc" },
+        take: 1,
       });
       if (existingDocs.length > 0) {
         docVersion = existingDocs[0].version + 1;
@@ -148,13 +169,17 @@ router.post(
       };
       const autoTitle = `${typeLabels[type]} - v${docVersion}`;
 
-      const gigDocument = await GigDocument.create({
-        songId: song.id,
-        title: autoTitle,
-        type,
-        version: docVersion,
-        content: content ? content.trim() : null,
-        createdById: userId,
+      const gigDocument = await prisma.gigDocument.create({
+        data: {
+          songId: song.id,
+          title: autoTitle,
+          type,
+          version: docVersion,
+          content: content ? content.trim() : null,
+          createdById: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       });
 
       req.flash(
@@ -175,9 +200,9 @@ router.get("/:songId/docs/:id", async (req, res) => {
   try {
     const { songId, id } = req.params;
 
-    const gigDocument = await GigDocument.findOne({
-      where: { id: id, songId: songId },
-      include: [{ model: Song, as: "Song" }],
+    const gigDocument = await prisma.gigDocument.findFirst({
+      where: { id: parseInt(id), songId: parseInt(songId) },
+      include: { song: true },
     });
 
     if (!gigDocument) {
@@ -188,25 +213,50 @@ router.get("/:songId/docs/:id", async (req, res) => {
     // Check if this is a print request
     const isPrintRequest = req.query.print === "true";
 
+    // Helper functions for gig document type display
+    const getTypeIcon = (type) => {
+      const icons = {
+        chords: "music-note-list",
+        "bass-tab": "music-note-beamed",
+        "guitar-tab": "music-note",
+        lyrics: "file-text",
+      };
+      return icons[type] || "file-earmark-text";
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
     if (isPrintRequest) {
       // For print requests, render without any layout and with minimal content
       res.render("gig-documents/print", {
-        title: `${gigDocument.title} - ${gigDocument.Song.title}`,
+        title: `${getTypeDisplayName(gigDocument.type)} - v${gigDocument.version} - ${gigDocument.song.title}`,
         gigDocument,
-        song: gigDocument.Song,
+        song: gigDocument.song,
         layout: false,
+        getTypeIcon,
+        getTypeDisplayName,
       });
     } else {
       // For normal viewing, render with layout
       res.render("gig-documents/show", {
-        title: `${gigDocument.title} - ${gigDocument.Song.title}`,
+        title: `${getTypeDisplayName(gigDocument.type)} - v${gigDocument.version} - ${gigDocument.song.title}`,
         gigDocument,
-        song: gigDocument.Song,
+        song: gigDocument.song,
         loggedIn: !!req.session.user,
         success: req.flash("success"),
         error: req.flash("error"),
         currentUrl: req.originalUrl,
         user: req.session.user,
+        getTypeIcon,
+        getTypeDisplayName,
       });
     }
   } catch (error) {
@@ -222,9 +272,9 @@ router.get("/:songId/docs/:id/edit", requireAuth, async (req, res) => {
     const { songId, id } = req.params;
     const userId = req.session.user.id;
 
-    const gigDocument = await GigDocument.findOne({
-      where: { id: id, songId: songId },
-      include: [{ model: Song, as: "Song" }],
+    const gigDocument = await prisma.gigDocument.findFirst({
+      where: { id: parseInt(id), songId: parseInt(songId) },
+      include: { song: true },
     });
 
     if (!gigDocument) {
@@ -241,10 +291,33 @@ router.get("/:songId/docs/:id/edit", requireAuth, async (req, res) => {
       return res.redirect(`/songs/${songId}/docs/${id}`);
     }
 
+    // Helper functions for gig document type display
+    const getTypeIcon = (type) => {
+      const icons = {
+        chords: "music-note-list",
+        "bass-tab": "music-note-beamed",
+        "guitar-tab": "music-note",
+        lyrics: "file-text",
+      };
+      return icons[type] || "file-earmark-text";
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
     res.render("gig-documents/edit", {
-      title: `Edit ${gigDocument.title} - ${gigDocument.Song.title}`,
+      title: `Edit ${getTypeDisplayName(gigDocument.type)} - v${gigDocument.version} - ${gigDocument.song.title}`,
       gigDocument,
-      song: gigDocument.Song,
+      song: gigDocument.song,
+      getTypeIcon,
+      getTypeDisplayName,
     });
   } catch (error) {
     console.error("Edit gig document form error:", error);
@@ -284,8 +357,8 @@ router.put(
       // console.log("Content length:", content ? content.length : 0);
       // console.log("Content type:", typeof content);
 
-      const gigDocument = await GigDocument.findOne({
-        where: { id: id, songId: songId },
+      const gigDocument = await prisma.gigDocument.findFirst({
+        where: { id: parseInt(id), songId: parseInt(songId) },
       });
 
       if (!gigDocument) {
@@ -297,13 +370,17 @@ router.put(
       if (gigDocument.createdById !== userId) {
         req.flash(
           "error",
-          `You can only edit gig documents that you created, but you can create a new better one! <a href="/songs/${songId}/docs/new" class="alert-link">Create a new better one</a>`
+          `You can only delete gig documents that you created, but you can create a new better one! <a href="/songs/${songId}/docs/new" class="alert-link">Create a new better one</a>`
         );
         return res.redirect(`/songs/${songId}/docs/${id}`);
       }
 
-      await gigDocument.update({
-        content: content ? content.trim() : null,
+      await prisma.gigDocument.update({
+        where: { id: parseInt(id) },
+        data: {
+          content: content ? content.trim() : null,
+          updatedAt: new Date(),
+        },
       });
 
       req.flash("success", "Gig document updated successfully");
@@ -322,8 +399,8 @@ router.delete("/:songId/docs/:id", requireAuth, async (req, res) => {
     const { songId, id } = req.params;
     const userId = req.session.user.id;
 
-    const gigDocument = await GigDocument.findOne({
-      where: { id: id, songId: songId },
+    const gigDocument = await prisma.gigDocument.findFirst({
+      where: { id: parseInt(id), songId: parseInt(songId) },
     });
 
     if (!gigDocument) {
@@ -335,12 +412,14 @@ router.delete("/:songId/docs/:id", requireAuth, async (req, res) => {
     if (gigDocument.createdById !== userId) {
       req.flash(
         "error",
-        `You can only delete gig documents that you created, but you can create a new better one! <a href="/songs/${songId}/docs/new" class="alert-link">Create a new better one</a>`
+        `You can only edit gig documents that you created, but you can create a new better one! <a href="/songs/${songId}/docs/new" class="alert-link">Create a new better one</a>`
       );
       return res.redirect(`/songs/${songId}/docs/${id}`);
     }
 
-    await gigDocument.destroy();
+    await prisma.gigDocument.delete({
+      where: { id: parseInt(id) },
+    });
     req.flash("success", "Gig document deleted successfully");
     res.redirect(`/songs/${songId}/docs`);
   } catch (error) {
@@ -365,8 +444,8 @@ router.post(
       }
 
       // Find the BandSong record and update its preferred gig document
-      const bandSong = await BandSong.findOne({
-        where: { bandId: bandId, songId: songId },
+      const bandSong = await prisma.bandSong.findFirst({
+        where: { bandId: parseInt(bandId), songId: parseInt(songId) },
       });
 
       if (!bandSong) {
@@ -374,7 +453,10 @@ router.post(
         return res.redirect(`/songs/${songId}/docs/${id}`);
       }
 
-      await bandSong.update({ gigDocumentId: id });
+      await prisma.bandSong.update({
+        where: { id: bandSong.id },
+        data: { gigDocumentId: parseInt(id) },
+      });
       req.flash("success", "Preferred gig document updated");
       res.redirect(`/songs/${songId}/docs/${id}`);
     } catch (error) {

@@ -1,13 +1,5 @@
 const express = require("express");
-const {
-  User,
-  Band,
-  Song,
-  Artist,
-  Medley,
-  BandMember,
-  BandSong,
-} = require("../models");
+const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
 
@@ -21,56 +13,82 @@ router.get("/", async (req, res) => {
       const userId = req.session.user.id;
 
       // Get user's bands
-      const userBands = await Band.findAll({
-        include: [
-          {
-            model: User,
-            where: { id: userId },
-            through: { attributes: [] },
+      const userBands = await prisma.band.findMany({
+        where: {
+          members: {
+            some: { userId: userId },
           },
-        ],
-        limit: 5,
-        order: [["updated_at", "DESC"]],
+        },
+        include: {
+          members: {
+            where: { userId: userId },
+            include: {
+              user: {
+                select: { id: true, username: true },
+              },
+            },
+          },
+        },
+        take: 5,
+        orderBy: { updatedAt: "desc" },
       });
 
       // Get latest band songs from user's bands
-      const latestBandSongs = await BandSong.findAll({
-        include: [
-          {
-            model: Song,
-            include: ["Vocalist", "Artists"],
+      const latestBandSongs = await prisma.bandSong.findMany({
+        where: {
+          band: {
+            members: {
+              some: { userId: userId },
+            },
           },
-          {
-            model: Band,
-            include: [
-              {
-                model: User,
-                where: { id: userId },
-                through: { attributes: [] },
+        },
+        include: {
+          song: {
+            include: {
+              vocalist: true,
+              artists: {
+                include: {
+                  artist: true,
+                },
               },
-            ],
+            },
           },
-        ],
-        limit: 8,
-        order: [["updated_at", "DESC"]],
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                include: {
+                  user: {
+                    select: { id: true, username: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+        take: 8,
+        orderBy: { updatedAt: "desc" },
       });
 
       // Get recent medleys
-      const recentMedleys = await Medley.findAll({
-        include: ["Vocalist"],
-        limit: 5,
-        order: [["updated_at", "DESC"]],
+      const recentMedleys = await prisma.medley.findMany({
+        include: {
+          vocalist: true,
+        },
+        take: 5,
+        orderBy: { updatedAt: "desc" },
       });
 
       // Get artists
-      const artists = await Artist.findAll({
-        limit: 13,
-        order: [["updated_at", "DESC"]],
+      const artists = await prisma.artist.findMany({
+        take: 13,
+        orderBy: { updatedAt: "desc" },
       });
 
       res.render("dashboard/index", {
         title: "Dashboard",
         loggedIn: true,
+        user: req.session.user,
         userBands,
         latestBandSongs,
         recentMedleys,
@@ -78,20 +96,27 @@ router.get("/", async (req, res) => {
       });
     } else {
       // Logged out dashboard
-      const bands = await Band.findAll({
-        limit: 10,
-        order: [["updated_at", "DESC"]],
+      const bands = await prisma.band.findMany({
+        take: 10,
+        orderBy: { updatedAt: "desc" },
       });
 
-      const songs = await Song.findAll({
-        include: ["Vocalist", "Artists"],
-        limit: 10,
-        order: [["updated_at", "DESC"]],
+      const songs = await prisma.song.findMany({
+        include: {
+          vocalist: true,
+          artists: {
+            include: {
+              artist: true,
+            },
+          },
+        },
+        take: 10,
+        orderBy: { updatedAt: "desc" },
       });
 
-      const artists = await Artist.findAll({
-        limit: 10,
-        order: [["updated_at", "DESC"]],
+      const artists = await prisma.artist.findMany({
+        take: 10,
+        orderBy: { updatedAt: "desc" },
       });
 
       res.render("dashboard/index", {

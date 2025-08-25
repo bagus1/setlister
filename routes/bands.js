@@ -1,19 +1,6 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
-const {
-  User,
-  Band,
-  BandMember,
-  Song,
-  BandSong,
-  Setlist,
-  SetlistSet,
-  BandInvitation,
-  Artist,
-  Vocalist,
-  Link,
-  GigDocument,
-} = require("../models");
+const { prisma } = require("../lib/prisma");
 const {
   sendBandInvitation,
   sendBandInvitationNotification,
@@ -30,15 +17,30 @@ router.use(requireAuth);
 router.get("/", async (req, res) => {
   try {
     const userId = req.session.user.id;
-    const bands = await Band.findAll({
-      include: [
-        {
-          model: User,
-          where: { id: userId },
-          through: { attributes: ["role"] },
+    const bands = await prisma.band.findMany({
+      where: {
+        members: {
+          some: {
+            userId: userId,
+          },
         },
-      ],
-      order: [["name", "ASC"]],
+      },
+      include: {
+        members: {
+          where: {
+            userId: userId,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
     });
 
     res.render("bands/index", {
@@ -82,19 +84,28 @@ router.post(
       const { name, description } = req.body;
       const userId = req.session.user.id;
 
-      // Create band
-      const band = await Band.create({
-        name,
-        description,
-        createdById: userId,
+      // Create band and add creator as owner in a transaction
+      const result = await prisma.$transaction(async (tx) => {
+        const band = await tx.band.create({
+          data: {
+            name,
+            description,
+            createdById: userId,
+          },
+        });
+
+        await tx.bandMember.create({
+          data: {
+            bandId: band.id,
+            userId,
+            role: "owner",
+          },
+        });
+
+        return band;
       });
 
-      // Add creator as owner
-      await BandMember.create({
-        bandId: band.id,
-        userId,
-        role: "owner",
-      });
+      const band = result;
 
       req.flash("success", "Band created successfully!");
       res.redirect(`/bands/${band.id}`);
@@ -112,13 +123,20 @@ router.get("/:id", async (req, res) => {
     const bandId = req.params.id;
     const userId = req.session.user.id;
 
-    const band = await Band.findByPk(bandId, {
-      include: [
-        {
-          model: User,
-          through: { attributes: ["role"] },
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
         },
-      ],
+      },
     });
 
     if (!band) {
@@ -127,50 +145,57 @@ router.get("/:id", async (req, res) => {
     }
 
     // Check if user is a member
-    const isMember = band.Users.some((user) => user.id === userId);
+    const isMember = band.members.some((member) => member.user.id === userId);
     if (!isMember) {
       req.flash("error", "You are not a member of this band");
       return res.redirect("/bands");
     }
 
     // Get setlists
-    const setlists = await Setlist.findAll({
-      where: { bandId },
-      order: [["updated_at", "DESC"]],
+    const setlists = await prisma.setlist.findMany({
+      where: { bandId: parseInt(bandId) },
+      orderBy: { updatedAt: "desc" },
     });
 
-    // Get band songs - simplified query to avoid complex includes
-    const bandSongs = await BandSong.findAll({
-      where: { bandId },
-      include: [
-        {
-          model: Song,
-          include: [
-            { model: Artist, through: { attributes: [] } },
-            { model: Vocalist },
-          ],
+    // Get band songs with includes
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: parseInt(bandId) },
+      include: {
+        song: {
+          include: {
+            artists: {
+              include: {
+                artist: true,
+              },
+            },
+            vocalist: true,
+          },
         },
-      ],
-      order: [[Song, "title", "ASC"]],
+      },
+      orderBy: {
+        song: {
+          title: "asc",
+        },
+      },
     });
 
     // Get pending invitations (not used, not expired)
     let pendingInvitations = [];
     try {
-      pendingInvitations = await BandInvitation.findAll({
+      pendingInvitations = await prisma.bandInvitation.findMany({
         where: {
-          bandId,
-          usedAt: null,
-          expiresAt: { [require("sequelize").Op.gt]: new Date() },
+          bandId: parseInt(bandId),
+          used_at: null,
+          expires_at: { gt: new Date() },
         },
-        include: [
-          {
-            model: User,
-            as: "Inviter",
-            attributes: ["username"],
+        include: {
+          inviter: {
+            select: {
+              username: true,
+            },
           },
-        ],
-        order: [["created_at", "DESC"]],
+        },
+        orderBy: { createdAt: "desc" },
       });
     } catch (associationError) {
       console.error(
@@ -178,13 +203,13 @@ router.get("/:id", async (req, res) => {
         associationError
       );
       // Fallback: get invitations without the association
-      pendingInvitations = await BandInvitation.findAll({
+      pendingInvitations = await prisma.bandInvitation.findMany({
         where: {
-          bandId,
-          usedAt: null,
-          expiresAt: { [require("sequelize").Op.gt]: new Date() },
+          bandId: parseInt(bandId),
+          used_at: null,
+          expires_at: { gt: new Date() },
         },
-        order: [["created_at", "DESC"]],
+        orderBy: { createdAt: "desc" },
       });
       console.log(
         `[${new Date().toISOString()}] Fallback query loaded ${pendingInvitations.length} pending invitations`
@@ -232,8 +257,8 @@ router.post(
       const userId = req.session.user.id;
 
       // Check if user is a member
-      const membership = await BandMember.findOne({
-        where: { bandId, userId },
+      const membership = await prisma.bandMember.findFirst({
+        where: { bandId: parseInt(bandId), userId },
       });
 
       if (!membership) {
@@ -249,22 +274,32 @@ router.post(
 
       const { title, date } = req.body;
 
-      // Create setlist
-      const setlist = await Setlist.create({
-        title,
-        bandId,
-        date: date || null,
+      // Create setlist and default sets in a transaction
+      const result = await prisma.$transaction(async (tx) => {
+        const setlist = await tx.setlist.create({
+          data: {
+            title,
+            bandId: parseInt(bandId),
+            date: date || null,
+          },
+        });
+
+        // Create default sets
+        const setNames = ["Set_1", "Set_2", "Set_3", "Set_4", "Maybe"];
+        for (let i = 0; i < setNames.length; i++) {
+          await tx.setlistSet.create({
+            data: {
+              setlistId: setlist.id,
+              name: setNames[i],
+              order: i,
+            },
+          });
+        }
+
+        return setlist;
       });
 
-      // Create default sets
-      const setNames = ["Set 1", "Set 2", "Set 3", "Set 4", "Maybe"];
-      for (let i = 0; i < setNames.length; i++) {
-        await SetlistSet.create({
-          setlistId: setlist.id,
-          name: setNames[i],
-          order: i,
-        });
-      }
+      const setlist = result;
 
       req.flash("success", "Setlist created successfully!");
       res.redirect(`/setlists/${setlist.id}/edit`);
@@ -287,8 +322,8 @@ router.post(
       const { email } = req.body;
 
       // Check if user is owner of the band
-      const membership = await BandMember.findOne({
-        where: { bandId, userId, role: "owner" },
+      const membership = await prisma.bandMember.findFirst({
+        where: { bandId: parseInt(bandId), userId, role: "owner" },
       });
 
       if (!membership) {
@@ -297,17 +332,19 @@ router.post(
       }
 
       // Get band details
-      const band = await Band.findByPk(bandId);
+      const band = await prisma.band.findUnique({
+        where: { id: parseInt(bandId) },
+      });
       if (!band) {
         req.flash("error", "Band not found");
         return res.redirect("/bands");
       }
 
       // Check if user already exists and handle accordingly
-      const existingUser = await User.findOne({ where: { email } });
+      const existingUser = await prisma.user.findFirst({ where: { email } });
       if (existingUser) {
-        const existingMembership = await BandMember.findOne({
-          where: { bandId, userId: existingUser.id },
+        const existingMembership = await prisma.bandMember.findFirst({
+          where: { bandId: parseInt(bandId), userId: existingUser.id },
         });
 
         if (existingMembership) {
@@ -316,14 +353,18 @@ router.post(
         }
 
         // User exists but is not a member of this band - add them automatically
-        await BandMember.create({
-          bandId,
-          userId: existingUser.id,
-          role: "member",
+        await prisma.bandMember.create({
+          data: {
+            bandId: parseInt(bandId),
+            userId: existingUser.id,
+            role: "member",
+          },
         });
 
         // Get inviter name
-        const inviter = await User.findByPk(userId);
+        const inviter = await prisma.user.findUnique({
+          where: { id: userId },
+        });
 
         // Send notification email to existing user
         const emailSent = await sendBandInvitationNotification(
@@ -349,12 +390,12 @@ router.post(
       }
 
       // Check if there's already a pending invitation
-      const existingInvitation = await BandInvitation.findOne({
+      const existingInvitation = await prisma.bandInvitation.findFirst({
         where: {
-          bandId,
+          bandId: parseInt(bandId),
           email,
-          usedAt: null,
-          expiresAt: { [require("sequelize").Op.gt]: new Date() },
+          used_at: null,
+          expires_at: { gt: new Date() },
         },
       });
 
@@ -367,16 +408,23 @@ router.post(
       }
 
       // Create invitation
-      const invitation = await BandInvitation.create({
-        bandId,
-        email,
-        token: uuidv4(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        invitedBy: userId,
+      const invitation = await prisma.bandInvitation.create({
+        data: {
+          id: uuidv4(),
+          bandId: parseInt(bandId),
+          email,
+          token: uuidv4(),
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          invitedBy: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       });
 
       // Get inviter name
-      const inviter = await User.findByPk(userId);
+      const inviter = await prisma.user.findUnique({
+        where: { id: userId },
+      });
 
       // Send email
       const emailSent = await sendBandInvitation(
@@ -413,8 +461,8 @@ router.get("/:id/songs", async (req, res) => {
     const userId = req.session.user.id;
 
     // Check if user is a member
-    const membership = await BandMember.findOne({
-      where: { bandId, userId },
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
     });
 
     if (!membership) {
@@ -422,7 +470,9 @@ router.get("/:id/songs", async (req, res) => {
       return res.redirect("/bands");
     }
 
-    const band = await Band.findByPk(bandId);
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+    });
 
     // Check if referrer is a setlist edit page
     const referrer = req.get("Referer");
@@ -434,9 +484,8 @@ router.get("/:id/songs", async (req, res) => {
       if (setlistEditMatch) {
         const setlistId = setlistEditMatch[1];
         // Verify the setlist exists and belongs to this band
-        const { Setlist } = require("../models");
-        const setlist = await Setlist.findOne({
-          where: { id: setlistId, bandId: bandId },
+        const setlist = await prisma.setlist.findFirst({
+          where: { id: parseInt(setlistId), bandId: parseInt(bandId) },
         });
         if (setlist) {
           fromSetlist = {
@@ -448,33 +497,35 @@ router.get("/:id/songs", async (req, res) => {
     }
 
     // Get all songs
-    const allSongs = await Song.findAll({
-      include: [
-        "Vocalist",
-        "Artists",
-        {
-          model: require("../models").GigDocument,
-          as: "GigDocuments",
-          required: false,
+    const allSongs = await prisma.song.findMany({
+      include: {
+        vocalist: true,
+        artists: {
+          include: {
+            artist: true,
+          },
         },
-        {
-          model: require("../models").Link,
-          as: "Links",
-          required: false,
-        },
-      ],
-      order: [["title", "ASC"]],
+        gigDocuments: true,
+        links: true,
+      },
+      orderBy: { title: "asc" },
     });
 
     // Get band's current songs
-    const bandSongs = await BandSong.findAll({
-      where: { bandId },
-      include: [
-        {
-          model: Song,
-          include: ["Vocalist", "Artists"],
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: parseInt(bandId) },
+      include: {
+        song: {
+          include: {
+            vocalist: true,
+            artists: {
+              include: {
+                artist: true,
+              },
+            },
+          },
         },
-      ],
+      },
     });
 
     const bandSongIds = bandSongs.map((bs) => bs.songId);
@@ -500,8 +551,8 @@ router.post("/:id/songs/:songId", async (req, res) => {
     const userId = req.session.user.id;
 
     // Check if user is a member
-    const membership = await BandMember.findOne({
-      where: { bandId, userId },
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
     });
 
     if (!membership) {
@@ -509,15 +560,22 @@ router.post("/:id/songs/:songId", async (req, res) => {
     }
 
     // Check if already added
-    const existing = await BandSong.findOne({
-      where: { bandId, songId },
+    const existing = await prisma.bandSong.findFirst({
+      where: { bandId: parseInt(bandId), songId: parseInt(songId) },
     });
 
     if (existing) {
       return res.status(400).json({ error: "Song already in band" });
     }
 
-    await BandSong.create({ bandId, songId });
+    await prisma.bandSong.create({
+      data: {
+        bandId: parseInt(bandId),
+        songId: parseInt(songId),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
     res.json({ success: true });
   } catch (error) {
     console.error("Add band song error:", error);
@@ -532,16 +590,16 @@ router.delete("/:id/songs/:songId", async (req, res) => {
     const userId = req.session.user.id;
 
     // Check if user is a member
-    const membership = await BandMember.findOne({
-      where: { bandId, userId },
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
     });
 
     if (!membership) {
       return res.status(403).json({ error: "Not authorized" });
     }
 
-    await BandSong.destroy({
-      where: { bandId, songId },
+    await prisma.bandSong.deleteMany({
+      where: { bandId: parseInt(bandId), songId: parseInt(songId) },
     });
 
     res.json({ success: true });
@@ -558,16 +616,16 @@ router.post("/:id/songs/:songId/remove", async (req, res) => {
     const userId = req.session.user.id;
 
     // Check if user is a member
-    const membership = await BandMember.findOne({
-      where: { bandId, userId },
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
     });
 
     if (!membership) {
       return res.status(403).json({ error: "Not authorized" });
     }
 
-    await BandSong.destroy({
-      where: { bandId, songId },
+    await prisma.bandSong.deleteMany({
+      where: { bandId: parseInt(bandId), songId: parseInt(songId) },
     });
 
     res.json({ success: true });
@@ -594,8 +652,8 @@ router.delete("/:id/invitations/:invitationId", async (req, res) => {
     });
 
     // Check if user is owner of the band
-    const membership = await BandMember.findOne({
-      where: { bandId, userId, role: "owner" },
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId, role: "owner" },
     });
 
     if (!membership) {
@@ -608,11 +666,11 @@ router.delete("/:id/invitations/:invitationId", async (req, res) => {
     }
 
     // Delete the invitation
-    await BandInvitation.destroy({
+    await prisma.bandInvitation.deleteMany({
       where: {
         id: invitationId,
-        bandId,
-        usedAt: null, // Only delete unused invitations
+        bandId: parseInt(bandId),
+        used_at: null, // Only delete unused invitations
       },
     });
 
@@ -646,8 +704,8 @@ router.post("/:id/invitations/:invitationId/delete", async (req, res) => {
     });
 
     // Check if user is owner of the band
-    const membership = await BandMember.findOne({
-      where: { bandId, userId, role: "owner" },
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId, role: "owner" },
     });
 
     if (!membership) {
@@ -660,11 +718,11 @@ router.post("/:id/invitations/:invitationId/delete", async (req, res) => {
     }
 
     // Delete the invitation
-    await BandInvitation.destroy({
+    await prisma.bandInvitation.deleteMany({
       where: {
         id: invitationId,
-        bandId,
-        usedAt: null, // Only delete unused invitations
+        bandId: parseInt(bandId),
+        used_at: null, // Only delete unused invitations
       },
     });
 

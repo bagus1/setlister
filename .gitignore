@@ -94,4 +94,7 @@ sendgrid.env
 .env.prod
 
 # Server configuration - environment specific
-.htaccess 
+.htaccess
+
+# Migration output files - generated data, do not commit
+migration-output/ 

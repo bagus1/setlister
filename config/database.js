@@ -35,16 +35,14 @@ module.exports = {
   },
   demo: {
     dialect: "postgres",
+    host: "localhost", // define host explicitly
+    port: 5432, // define port explicitly
     database: "bagus1_setlists_demo",
     username: process.env.DB_USER || "bagus1_setlists_app",
     password: process.env.DB_PASSWORD || "",
-    // No host/port = Unix domain socket (matches working raw pg connection)
     logging: false,
-    ssl: false, // Explicit SSL disable like Strapi example
-    dialectOptions: {
-      ssl: false, // Double-ensure SSL is disabled
-      // Additional options to match raw pg behavior
-      application_name: 'setlister-demo'
+    dialectOptions: { 
+      ssl: false 
     },
     native: false,
     pool: {

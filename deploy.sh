@@ -446,7 +446,7 @@ deploy_to_demo() {
     
     # Import data if tables are empty
     print_status "Checking if data import is needed..."
-    USER_COUNT=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { sequelize } = require('./models'); sequelize.query('SELECT COUNT(*) FROM users').then(([results]) => { console.log(results[0].count); process.exit(0); }).catch(() => { console.log('0'); process.exit(0); });\"" 2>/dev/null || echo "0")
+    USER_COUNT=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { prisma } = require('./lib/prisma'); prisma.user.count().then((count) => { console.log(count); process.exit(0); }).catch(() => { console.log('0'); process.exit(0); });\"" 2>/dev/null || echo "0")
     
     if [ "$USER_COUNT" = "0" ] || [ "$USER_COUNT" = "" ]; then
         print_status "Importing data from SQLite migration files..."

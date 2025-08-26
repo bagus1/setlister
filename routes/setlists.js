@@ -572,24 +572,160 @@ router.get("/:id/playlist", async (req, res) => {
 
     // Collect all songs with audio links
     const audioSongs = [];
-    setlist.sets.forEach((set) => {
+    const numberedSetSongs = [];
+    const maybeSetSongs = [];
+
+    // Calculate set totals and overall total
+    const setTotals = {};
+    let totalTime = 0;
+    let maybeTime = 0;
+
+    // Helper function to parse duration strings to seconds
+    function parseDurationToSeconds(durationStr) {
+      if (!durationStr) return null;
+
+      // Handle formats like "3:45", "1:23:45", "45s", etc.
+      const parts = durationStr.split(":");
+
+      if (parts.length === 2) {
+        // Format: "3:45" (minutes:seconds)
+        const minutes = parseInt(parts[0]);
+        const seconds = parseInt(parts[1]);
+        return minutes * 60 + seconds;
+      } else if (parts.length === 3) {
+        // Format: "1:23:45" (hours:minutes:seconds)
+        const hours = parseInt(parts[0]);
+        const minutes = parseInt(parts[1]);
+        const seconds = parseInt(parts[2]);
+        return hours * 3600 + minutes * 60 + seconds;
+      } else if (durationStr.includes("s")) {
+        // Format: "45s" (seconds only)
+        return parseInt(durationStr);
+      }
+
+      return null;
+    }
+
+    // Helper function to extract duration from audio file
+    async function getAudioDuration(audioUrl) {
+      try {
+        console.log("Attempting to get duration for:", audioUrl);
+
+        // Use fluent-ffmpeg to get audio duration
+        const ffmpeg = require("fluent-ffmpeg");
+
+        return new Promise((resolve) => {
+          ffmpeg.ffprobe(audioUrl, (err, metadata) => {
+            if (err) {
+              console.log("FFmpeg error:", err.message);
+              resolve(null);
+              return;
+            }
+
+            if (metadata && metadata.format && metadata.format.duration) {
+              const durationSeconds = metadata.format.duration;
+              const minutes = Math.floor(durationSeconds / 60);
+              const seconds = Math.floor(durationSeconds % 60);
+              const durationStr = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+
+              console.log(
+                "Extracted duration from FFmpeg:",
+                durationStr,
+                `(${durationSeconds}s)`
+              );
+              resolve(durationStr);
+            } else {
+              console.log("No duration found in FFmpeg metadata");
+              resolve(null);
+            }
+          });
+        });
+      } catch (error) {
+        console.log("Error getting duration for:", audioUrl, error.message);
+        return null;
+      }
+    }
+
+    // Process each set and extract audio durations
+    console.log("Starting to process sets for duration extraction...");
+    for (const set of setlist.sets) {
+      console.log("Processing set:", set.name);
       if (set.songs) {
-        set.songs.forEach((setlistSong) => {
+        let setTime = 0;
+
+        for (const setlistSong of set.songs) {
           if (setlistSong.song.links && setlistSong.song.links.length > 0) {
-            audioSongs.push({
+            const audioUrl = setlistSong.song.links[0].url;
+            console.log(
+              "Processing song:",
+              setlistSong.song.title,
+              "with audio URL:",
+              audioUrl
+            );
+
+            const duration = await getAudioDuration(audioUrl);
+            console.log("Extracted duration:", duration);
+
+            const songData = {
               song: setlistSong.song,
               set: set.name,
               order: setlistSong.order,
+              duration: duration,
+              durationSeconds: duration
+                ? parseDurationToSeconds(duration)
+                : null,
+            };
+
+            console.log("Song data:", {
+              title: songData.song.title,
+              duration: songData.duration,
+              durationSeconds: songData.durationSeconds,
             });
+
+            // Calculate time for this song
+            if (songData.durationSeconds) {
+              setTime += songData.durationSeconds;
+              if (set.name === "Maybe") {
+                maybeTime += songData.durationSeconds;
+              } else {
+                totalTime += songData.durationSeconds;
+              }
+              console.log(
+                "Added to set time:",
+                songData.durationSeconds,
+                "seconds"
+              );
+            }
+
+            // Separate Maybe songs from numbered sets
+            if (set.name === "Maybe") {
+              maybeSetSongs.push(songData);
+            } else {
+              numberedSetSongs.push(songData);
+            }
           }
-        });
+        }
+
+        // Store set total time
+        if (setTime > 0) {
+          setTotals[set.name] = setTime;
+          console.log("Set", set.name, "total time:", setTime, "seconds");
+        }
       }
-    });
+    }
+
+    console.log("Final totals:", { totalTime, maybeTime, setTotals });
+
+    // Combine numbered sets first, then Maybe songs
+    audioSongs.push(...numberedSetSongs, ...maybeSetSongs);
 
     res.render("setlists/playlist", {
       title: `Playlist - ${setlist.title}`,
       setlist,
       audioSongs,
+      setTotals,
+      totalTime,
+      maybeTime,
       user: req.session.user,
       currentUrl: req.originalUrl,
       layout: "layout",

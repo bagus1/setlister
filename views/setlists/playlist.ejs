@@ -18,7 +18,7 @@
     </div>
 
     <div class="row">
-        <div class="col-md-9 mx-auto">
+        <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -46,25 +46,43 @@
                         </div>
                         
                         <ul id="playlist" class="playlist">
+                            <% 
+                            let currentSet = null;
+                            let setSongCount = 0;
+                            %>
                             <% audioSongs.forEach((audioSong, index) => { %>
+                                <% 
+                                // Check if we're starting a new set
+                                if (currentSet !== audioSong.set) {
+                                    // Reset counters for new set
+                                    currentSet = audioSong.set;
+                                    setSongCount = 0;
+                                }
+                                setSongCount++;
+                                %>
                                 <li class="<%= index === 0 ? 'active' : '' %>" data-url="<%= audioSong.song.links[0].url %>">
                                     <a href="#" onclick="playSong(this.parentElement, event)">
                                         <div class="song-info">
-                                            <div>
-                                                <div class="song-title"><%= audioSong.song.title %></div>
-                                                <div class="song-details">
-                                                    <% if (audioSong.song.artists && audioSong.song.artists.length > 0) { %>
-                                                        by <%= audioSong.song.artists[0].artist.name %>
-                                                    <% } %>
-                                                    <% if (audioSong.song.key) { %>
-                                                        • Key: <%= audioSong.song.key %>
-                                                    <% } %>
-                                                    <% if (audioSong.song.time) { %>
-                                                        • <%= Math.floor(audioSong.song.time / 60) %>:<%= (audioSong.song.time % 60).toString().padStart(2, '0') %>
-                                                    <% } %>
-                                                </div>
+                                            <div class="song-title">
+                                                <strong><%= audioSong.song.title %></strong>
+                                                <% if (audioSong.song.artists && audioSong.song.artists.length > 0) { %>
+                                                    • <%= audioSong.song.artists[0].artist.name %>
+                                                <% } %>
+                                                <% if (audioSong.song.key) { %>
+                                                    • Key: <%= audioSong.song.key %> 
+                                                <% } %>
+                                                <% if (audioSong.duration) { %>
+                                                    • <%= audioSong.duration %>
+                                                <% } %>
                                             </div>
-                                            <span class="set-label"><%= audioSong.set %></span>
+                                            <div class="song-details">
+                                                <small>
+                                                    Set: <%= audioSong.set %>
+                                                    <% if (audioSong.order) { %>
+                                                        • Order: <%= audioSong.order %>
+                                                    <% } %>
+                                                </small>
+                                            </div>
                                         </div>
                                     </a>
                                 </li>
@@ -74,6 +92,103 @@
                         <div class="no-audio text-center py-5">
                             <h3>No Audio Files Found</h3>
                             <p class="text-muted">This setlist doesn't contain any songs with audio links.</p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calculator"></i> Set Summaries
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <% if (audioSongs.length > 0) { %>
+                        <% 
+                        let currentSet = null;
+                        let setSongCount = 0;
+                        %>
+                        <% audioSongs.forEach((audioSong, index) => { %>
+                            <% 
+                            // Check if we're starting a new set
+                            if (currentSet !== audioSong.set) {
+                                // Print summary for previous set if it exists
+                                if (currentSet && setSongCount > 0) { %>
+                                    <div class="set-summary-card mb-3">
+                                        <div class="set-summary-header">
+                                            <strong><%= currentSet %></strong>
+                                        </div>
+                                        <div class="set-summary-stats">
+                                            <span class="song-count"><%= setSongCount %> songs</span>
+                                            <% if (setTotals[currentSet]) { %>
+                                                <span class="set-time"><%= Math.floor(setTotals[currentSet] / 60) %>:<%= (setTotals[currentSet] % 60).toString().padStart(2, '0') %></span>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                <% } %>
+                                <% 
+                                // Reset counters for new set
+                                currentSet = audioSong.set;
+                                setSongCount = 0;
+                            }
+                            setSongCount++;
+                            %>
+                        <% }); %>
+                        
+                        <% 
+                        // Print summary for the last set
+                        if (currentSet && setSongCount > 0) { %>
+                            <div class="set-summary-card mb-3">
+                                <div class="set-summary-header">
+                                    <strong><%= currentSet %></strong>
+                                </div>
+                                <div class="set-summary-stats">
+                                    <span class="song-count"><%= setSongCount %> songs</span>
+                                    <% if (setTotals[currentSet]) { %>
+                                        <span class="set-time"><%= Math.floor(setTotals[currentSet] / 60) %>:<%= (setTotals[currentSet] % 60).toString().padStart(2, '0') %></span>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% } %>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="total-summary-card">
+                            <div class="total-summary-header">
+                                <strong>Total (Excluding Maybe)</strong>
+                            </div>
+                            <div class="total-summary-stats">
+                                <% 
+                                const numberedSongCount = audioSongs.filter(song => song.set !== 'Maybe').length;
+                                %>
+                                <span class="song-count"><%= numberedSongCount %> songs</span>
+                                <% if (totalTime > 0) { %>
+                                    <span class="total-time"><%= Math.floor(totalTime / 60) %>:<%= (totalTime % 60).toString().padStart(2, '0') %></span>
+                                <% } %>
+                            </div>
+                        </div>
+                        
+                        <% if (maybeTime > 0) { %>
+                            <div class="maybe-summary-card mt-3">
+                                <div class="maybe-summary-header">
+                                    <strong>Maybe Set</strong>
+                                </div>
+                                <div class="maybe-summary-stats">
+                                    <% 
+                                    const maybeSongCount = audioSongs.filter(song => song.set === 'Maybe').length;
+                                    %>
+                                    <span class="song-count"><%= maybeSongCount %> songs</span>
+                                    <span class="maybe-time"><%= Math.floor(maybeTime / 60) %>:<%= (maybeTime % 60).toString().padStart(2, '0') %></span>
+                                </div>
+                            </div>
+                        <% } %>
+                    <% } else { %>
+                        <div class="text-center py-4">
+                            <i class="bi bi-info-circle text-muted" style="font-size: 2rem;"></i>
+                            <p class="text-muted mt-2">No audio files to summarize</p>
                         </div>
                     <% } %>
                 </div>
@@ -199,6 +314,113 @@
         border-radius: 12px;
         font-size: 12px;
         font-weight: bold;
+    }
+    
+    .set-summary-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        transition: all 0.2s ease;
+    }
+    
+    .set-summary-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
+    }
+    
+    .set-summary-header {
+        color: #495057;
+        font-size: 1.1em;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #28a745;
+        padding-bottom: 5px;
+    }
+    
+    .set-summary-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9em;
+    }
+    
+    .song-count {
+        color: #6c757d;
+        font-weight: 500;
+    }
+    
+    .set-time {
+        color: #28a745;
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+    
+    .total-summary-card {
+        background: #e3f2fd;
+        border: 1px solid #bbdefb;
+        border-radius: 8px;
+        padding: 20px;
+        transition: all 0.2s ease;
+    }
+    
+    .total-summary-card:hover {
+        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+        transform: translateY(-1px);
+    }
+    
+    .total-summary-header {
+        color: #1976d2;
+        font-size: 1.2em;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #2196f3;
+        padding-bottom: 8px;
+    }
+    
+    .total-summary-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 1em;
+    }
+    
+    .total-time {
+        color: #1976d2;
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+    
+    .maybe-summary-card {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 15px;
+        transition: all 0.2s ease;
+    }
+    
+    .maybe-summary-card:hover {
+        box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+        transform: translateY(-1px);
+    }
+    
+    .maybe-summary-header {
+        color: #856404;
+        font-size: 1.1em;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #ffc107;
+        padding-bottom: 5px;
+    }
+    
+    .maybe-summary-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9em;
+    }
+    
+    .maybe-time {
+        color: #856404;
+        font-weight: bold;
+        font-size: 1.1em;
     }
     
     .no-audio {

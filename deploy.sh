@@ -472,7 +472,7 @@ deploy_to_demo() {
     
     # Test the demo application
     print_status "Testing demo application..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { prisma } = require('./lib/prisma'); prisma.$connect().then(() => { console.log('✅ Demo database connection successful'); process.exit(0); }).catch(err => { console.error('❌ Demo database connection failed:', err.message); process.exit(1); });\"" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { prisma } = require('./lib/prisma'); prisma.\$connect().then(() => { console.log('✅ Demo database connection successful'); process.exit(0); }).catch(err => { console.error('❌ Demo database connection failed:', err.message); process.exit(1); });\"" || {
         print_error "Demo database connection test failed"
         return 1
     }

@@ -570,7 +570,7 @@ router.get("/:id/playlist", async (req, res) => {
       return res.status(404).send("Setlist not found");
     }
 
-    // Collect all songs with audio links
+    // Collect all songs with audio links, ensuring Maybe songs come after numbered sets
     const audioSongs = [];
     const numberedSetSongs = [];
     const maybeSetSongs = [];

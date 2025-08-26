@@ -107,6 +107,7 @@ const COLUMN_MAPPINGS = {
     id: "id",
     name: "name",
     setlistId: "setlist_id",
+    order: "order",
     createdAt: "created_at",
     updatedAt: "updated_at",
   },
@@ -269,6 +270,24 @@ function generateInsertStatement(tableName, columns, values) {
   const mappedColumns = columns.map(
     (col) => COLUMN_MAPPINGS[tableName][col] || col
   );
+
+  // Quote reserved keywords in column names
+  const quotedColumns = mappedColumns.map((col) => {
+    const reservedKeywords = [
+      "order",
+      "key",
+      "user",
+      "group",
+      "table",
+      "index",
+      "view",
+    ];
+    if (reservedKeywords.includes(col.toLowerCase())) {
+      return `"${col}"`;
+    }
+    return col;
+  });
+
   const escapedValues = values.map((val, idx) => {
     const colName = columns[idx];
     const pgColName = mappedColumns[idx];
@@ -277,7 +296,7 @@ function generateInsertStatement(tableName, columns, values) {
   });
 
   const postgresTableName = getPostgresTableName(tableName);
-  return `INSERT INTO ${postgresTableName} (${mappedColumns.join(", ")}) VALUES (${escapedValues.join(", ")});`;
+  return `INSERT INTO ${postgresTableName} (${quotedColumns.join(", ")}) VALUES (${escapedValues.join(", ")});`;
 }
 
 function migrateTable(db, tableName) {

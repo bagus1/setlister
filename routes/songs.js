@@ -190,26 +190,33 @@ router.post(
       } = req.body;
 
       // Check for duplicate song (case-insensitive)
-      const { Sequelize } = require("sequelize");
-      const existingSong = await Song.findOne({
-        where: Sequelize.where(
-          Sequelize.fn("LOWER", Sequelize.col("title")),
-          Sequelize.fn("LOWER", title.trim())
-        ),
-        include: ["Artists"],
+      const existingSong = await prisma.song.findFirst({
+        where: {
+          title: {
+            equals: title.trim(),
+            mode: "insensitive",
+          },
+        },
+        include: {
+          artists: {
+            include: {
+              artist: true,
+            },
+          },
+        },
       });
 
       const duplicateWarning = existingSong
-        ? `A song with the title "${title}" already exists${existingSong.Artists && existingSong.Artists.length > 0 ? ` by ${existingSong.Artists[0].name}` : ""} (found: "${existingSong.title}").`
+        ? `A song with the title "${title}" already exists${existingSong.artists && existingSong.artists.length > 0 ? ` by ${existingSong.artists[0].artist.name}` : ""} (found: "${existingSong.title}").`
         : null;
 
       if (!errors.isEmpty() || duplicateWarning) {
-        const artists = await Artist.findAll({
-          order: [["name", "ASC"]],
+        const artists = await prisma.artist.findMany({
+          orderBy: { name: "asc" },
         });
 
-        const vocalists = await Vocalist.findAll({
-          order: [["name", "ASC"]],
+        const vocalists = await prisma.vocalist.findMany({
+          orderBy: { name: "asc" },
         });
 
         return res.render("songs/new", {
@@ -226,35 +233,107 @@ router.post(
       const totalTime =
         (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
 
+      // Convert BPM to integer
+      const bpmInt = bpm && bpm.trim() ? parseInt(bpm) : null;
+
+      // Convert display key to enum value
+      let enumKey = null;
+      if (key && key.trim()) {
+        const keyMap = {
+          "C#": "C_",
+          Db: "Db",
+          D: "D",
+          "D#": "D_",
+          Eb: "Eb",
+          E: "E",
+          F: "F",
+          "F#": "F_",
+          Gb: "Gb",
+          G: "G",
+          "G#": "G_",
+          Ab: "Ab",
+          A: "A",
+          "A#": "A_",
+          Bb: "Bb",
+          B: "B",
+          Cm: "Cm",
+          "C#m": "C_m",
+          Dbm: "Dbm",
+          Dm: "Dm",
+          "D#m": "D_m",
+          Ebm: "Ebm",
+          Em: "Em",
+          Fm: "Fm",
+          "F#m": "F_m",
+          Gbm: "Gbm",
+          Gm: "Gm",
+          "G#m": "G_m",
+          Abm: "Abm",
+          Am: "Am",
+          "A#m": "A_m",
+          Bbm: "Bbm",
+          Bm: "Bm",
+        };
+        enumKey = keyMap[key.trim()] || null;
+      }
+
       // Handle vocalist
       let vocalistId = null;
       if (vocalist && vocalist.trim()) {
-        const [vocalistRecord] = await Vocalist.findOrCreate({
+        let vocalistRecord = await prisma.vocalist.findFirst({
           where: { name: vocalist.trim() },
-          defaults: { name: vocalist.trim() },
         });
+
+        if (!vocalistRecord) {
+          vocalistRecord = await prisma.vocalist.create({
+            data: {
+              name: vocalist.trim(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
         vocalistId = vocalistRecord.id;
       }
 
       // Create the song
-      const song = await Song.create({
-        title: title.trim(),
-        key: key || null,
-        time: totalTime,
-        bpm: bpm || null,
-        vocalistId: vocalistId,
+      const song = await prisma.song.create({
+        data: {
+          title: title.trim(),
+          key: enumKey,
+          time: totalTime,
+          bpm: bpmInt,
+          vocalistId: vocalistId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       });
 
       // Handle artist
       if (artist && artist.trim()) {
-        const [artistRecord] = await Artist.findOrCreate({
-          where: Sequelize.where(
-            Sequelize.fn("LOWER", Sequelize.col("name")),
-            Sequelize.fn("LOWER", artist.trim())
-          ),
-          defaults: { name: artist.trim() },
+        let artistRecord = await prisma.artist.findFirst({
+          where: { name: artist.trim() },
         });
-        await song.addArtist(artistRecord);
+
+        if (!artistRecord) {
+          artistRecord = await prisma.artist.create({
+            data: {
+              name: artist.trim(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
+
+        // Create the song-artist relationship
+        await prisma.songArtist.create({
+          data: {
+            songId: song.id,
+            artistId: artistRecord.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
       }
 
       req.flash("success", "Song added successfully");
@@ -383,8 +462,16 @@ router.get("/:id", async (req, res) => {
 // GET /songs/:id/edit - Show edit song form
 router.get("/:id/edit", requireAuth, async (req, res) => {
   try {
-    const song = await Song.findByPk(req.params.id, {
-      include: ["Artists", "Vocalist"],
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+      },
     });
 
     if (!song) {
@@ -392,12 +479,12 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       return res.redirect("/songs");
     }
 
-    const artists = await Artist.findAll({
-      order: [["name", "ASC"]],
+    const artists = await prisma.artist.findMany({
+      orderBy: { name: "asc" },
     });
 
-    const vocalists = await Vocalist.findAll({
-      order: [["name", "ASC"]],
+    const vocalists = await prisma.vocalist.findMany({
+      orderBy: { name: "asc" },
     });
 
     res.render("songs/edit", {
@@ -408,7 +495,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
     });
   } catch (error) {
     logger.logError("Edit song form error", error);
-    req.redirect("/songs");
+    res.redirect("/songs");
   }
 });
 
@@ -443,16 +530,24 @@ router.post(
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        const song = await Song.findByPk(req.params.id, {
-          include: ["Artists", "Vocalist"],
+        const song = await prisma.song.findUnique({
+          where: { id: parseInt(req.params.id) },
+          include: {
+            artists: {
+              include: {
+                artist: true,
+              },
+            },
+            vocalist: true,
+          },
         });
 
-        const artists = await Artist.findAll({
-          order: [["name", "ASC"]],
+        const artists = await prisma.artist.findMany({
+          orderBy: { name: "asc" },
         });
 
-        const vocalists = await Vocalist.findAll({
-          order: [["name", "ASC"]],
+        const vocalists = await prisma.vocalist.findMany({
+          orderBy: { name: "asc" },
         });
 
         return res.render("songs/edit", {
@@ -465,7 +560,9 @@ router.post(
         });
       }
 
-      const song = await Song.findByPk(req.params.id);
+      const song = await prisma.song.findUnique({
+        where: { id: parseInt(req.params.id) },
+      });
       if (!song) {
         req.flash("error", "Song not found");
         return res.redirect("/songs");
@@ -485,6 +582,47 @@ router.post(
       const totalTime =
         (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
 
+      // Convert display key to enum value
+      let enumKey = null;
+      if (key && key.trim()) {
+        const keyMap = {
+          "C#": "C_",
+          Db: "Db",
+          D: "D",
+          "D#": "D_",
+          Eb: "Eb",
+          E: "E",
+          F: "F",
+          "F#": "F_",
+          Gb: "Gb",
+          G: "G",
+          "G#": "G_",
+          Ab: "Ab",
+          A: "A",
+          "A#": "A_",
+          Bb: "Bb",
+          B: "B",
+          Cm: "Cm",
+          "C#m": "C_m",
+          Dbm: "Dbm",
+          Dm: "Dm",
+          "D#m": "D_m",
+          Ebm: "Ebm",
+          Em: "Em",
+          Fm: "Fm",
+          "F#m": "F_m",
+          Gbm: "Gbm",
+          Gm: "Gm",
+          "G#m": "G_m",
+          Abm: "Abm",
+          Am: "Am",
+          "A#m": "A_m",
+          Bbm: "Bbm",
+          Bm: "Bm",
+        };
+        enumKey = keyMap[key.trim()] || null;
+      }
+
       // Convert BPM to proper value
       let bpmValue = null;
       if (bpm && typeof bpm === "string" && bpm.trim() !== "") {
@@ -496,33 +634,67 @@ router.post(
       // Handle vocalist
       let vocalistId = null;
       if (vocalist && vocalist.trim()) {
-        const [vocalistRecord] = await Vocalist.findOrCreate({
+        let vocalistRecord = await prisma.vocalist.findFirst({
           where: { name: vocalist.trim() },
-          defaults: { name: vocalist.trim() },
         });
+
+        if (!vocalistRecord) {
+          vocalistRecord = await prisma.vocalist.create({
+            data: {
+              name: vocalist.trim(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
         vocalistId = vocalistRecord.id;
       }
 
       // Handle artist - only allow adding if currently blank
-      const currentArtist = await song.getArtists();
+      const currentArtists = await prisma.songArtist.findMany({
+        where: { songId: song.id },
+        include: { artist: true },
+      });
+
       if (
         artist &&
         artist.trim() &&
-        (!currentArtist || currentArtist.length === 0)
+        (!currentArtists || currentArtists.length === 0)
       ) {
-        const [artistRecord] = await Artist.findOrCreate({
+        let artistRecord = await prisma.artist.findFirst({
           where: { name: artist.trim() },
-          defaults: { name: artist.trim() },
         });
-        await song.addArtist(artistRecord);
+
+        if (!artistRecord) {
+          artistRecord = await prisma.artist.create({
+            data: {
+              name: artist.trim(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
+
+        await prisma.songArtist.create({
+          data: {
+            songId: song.id,
+            artistId: artistRecord.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
       }
 
       // Update song (excluding title which is read-only)
-      await song.update({
-        key: key || null,
-        time: totalTime || null,
-        bpm: bpmValue,
-        vocalistId,
+      await prisma.song.update({
+        where: { id: song.id },
+        data: {
+          key: enumKey,
+          time: totalTime || null,
+          bpm: bpmValue,
+          vocalistId,
+          updatedAt: new Date(),
+        },
       });
 
       // Note: Title is read-only and cannot be changed
@@ -543,13 +715,17 @@ router.post(
 // DELETE /songs/:id - Delete song
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
-    const song = await Song.findByPk(req.params.id);
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
     if (!song) {
       req.flash("error", "Song not found");
       return res.redirect("/songs");
     }
 
-    await song.destroy();
+    await prisma.song.delete({
+      where: { id: parseInt(req.params.id) },
+    });
     req.flash("success", "Song deleted successfully");
     res.redirect("/songs");
   } catch (error) {

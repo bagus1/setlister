@@ -63,7 +63,7 @@ Modes:
   update   - Quick deploy (push to git, pull on server, restart)
   quick    - Update files without restart (auto-commit, push to git, pull on server)
   deploy-demo - Deploy to demo environment with PostgreSQL migration
-  migrate  - Run database migrations on server
+  migrate  - Run database migrations on server (Prisma)
   restart  - Just restart the server
   restart-demo - Just restart the demo server
   stop     - Stop the server (kill Passenger process)
@@ -86,7 +86,7 @@ Examples:
   ./deploy.sh update       # Quick deploy with restart
   ./deploy.sh quick        # Update files without restart
   ./deploy.sh deploy-demo  # Deploy to demo with PostgreSQL migration
-  ./deploy.sh migrate      # Run database migrations
+  ./deploy.sh migrate      # Run database migrations (Prisma)
   ./deploy.sh restart      # Just restart server
   ./deploy.sh stop         # Stop server
   ./deploy.sh start        # Start server
@@ -361,20 +361,19 @@ run_migrations() {
         return 1
     }
     
-    # Check if this is a PostgreSQL environment
-    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && [ -f 'config/database.js' ] && grep -q 'dialect.*postgres' config/database.js"; then
-        print_status "PostgreSQL environment detected, using Sequelize CLI migrations..."
-        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx sequelize-cli db:migrate" || {
-            print_error "Failed to run PostgreSQL migrations on server"
-            return 1
-        }
-    else
-        print_status "SQLite environment detected, using legacy migration..."
-        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node migrate.js" || {
-            print_error "Failed to run SQLite migrations on server"
-            return 1
-        }
-    fi
+    # Generate Prisma client
+    print_status "Generating Prisma client..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
+        print_error "Failed to generate Prisma client on server"
+        return 1
+    }
+    
+    # Push schema changes to database
+    print_status "Pushing schema changes to database..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
+        print_error "Failed to push schema changes to database"
+        return 1
+    }
     
     print_success "Database migrations completed successfully!"
     print_warning "Note: You may need to restart the server if migrations affect running processes."
@@ -431,9 +430,16 @@ deploy_to_demo() {
         print_status "Migration files already exist, skipping generation"
     fi
     
-    # Run PostgreSQL schema migration
+    # Generate Prisma client
+    print_status "Generating Prisma client..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
+        print_error "Failed to generate Prisma client on demo server"
+        return 1
+    }
+    
+    # Push schema changes to database
     print_status "Running PostgreSQL schema migration..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && export \$(cat .env | xargs) && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx sequelize-cli db:migrate" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && export \$(cat .env | xargs) && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
         print_error "Failed to run PostgreSQL migration on demo server"
         return 1
     }
@@ -466,7 +472,7 @@ deploy_to_demo() {
     
     # Test the demo application
     print_status "Testing demo application..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { sequelize } = require('./models'); sequelize.authenticate().then(() => { console.log('✅ Demo database connection successful'); process.exit(0); }).catch(err => { console.error('❌ Demo database connection failed:', err.message); process.exit(1); });\"" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { prisma } = require('./lib/prisma'); prisma.\$connect().then(() => { console.log('✅ Demo database connection successful'); process.exit(0); }).catch(err => { console.error('❌ Demo database connection failed:', err.message); process.exit(1); });\"" || {
         print_error "Demo database connection test failed"
         return 1
     }

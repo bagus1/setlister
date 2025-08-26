@@ -91,6 +91,8 @@ router.post(
             name,
             description,
             createdById: userId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           },
         });
 
@@ -99,6 +101,8 @@ router.post(
             bandId: band.id,
             userId,
             role: "owner",
+            createdAt: new Date(),
+            updatedAt: new Date(),
           },
         });
 
@@ -181,7 +185,8 @@ router.get("/:id", async (req, res) => {
 
     // Get pending invitations (not used, not expired)
     let pendingInvitations = [];
-    try {0
+    try {
+      0;
       pendingInvitations = await prisma.bandInvitation.findMany({
         where: {
           bandId: parseInt(bandId),
@@ -280,7 +285,9 @@ router.post(
           data: {
             title,
             bandId: parseInt(bandId),
-            date: date || null,
+            date: date ? new Date(date) : null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           },
         });
 
@@ -292,6 +299,8 @@ router.post(
               setlistId: setlist.id,
               name: setNames[i],
               order: i,
+              createdAt: new Date(),
+              updatedAt: new Date(),
             },
           });
         }
@@ -358,6 +367,8 @@ router.post(
             bandId: parseInt(bandId),
             userId: existingUser.id,
             role: "member",
+            createdAt: new Date(),
+            updatedAt: new Date(),
           },
         });
 

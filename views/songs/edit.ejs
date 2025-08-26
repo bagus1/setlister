@@ -29,9 +29,9 @@
 
                             <div class="mb-3">
                                 <label for="artist" class="form-label">Artist</label>
-                                <% if (song.Artists && song.Artists.length > 0 && song.Artists[0].name) { %>
+                                <% if (song.artists && song.artists.length > 0 && song.artists[0].artist.name) { %>
                                     <input type="text" class="form-control bg-light" id="artist" name="artist"
-                                        value="<%= song.Artists[0].name %>" readonly>
+                                        value="<%= song.artists[0].artist.name %>" readonly>
                                     <div class="form-text text-muted">Artist cannot be edited once assigned</div>
                                 <% } else { %>
                                     <input type="text" class="form-control" id="artist" name="artist"
@@ -48,7 +48,7 @@
                             <div class="mb-3">
                                 <label for="vocalist" class="form-label">Vocalist</label>
                                 <input type="text" class="form-control" id="vocalist" name="vocalist"
-                                    value="<%= song.Vocalist ? song.Vocalist.name : '' %>" list="vocalistsList"
+                                    value="<%= song.vocalist ? song.vocalist.name : '' %>" list="vocalistsList"
                                     placeholder="Who sings this song?">
                                 <datalist id="vocalistsList">
                                     <% vocalists.forEach(vocalist=> { %>

@@ -954,8 +954,10 @@ router.post(
         data: {
           title,
           bandId: originalSetlist.bandId,
-          date: date || null,
+          date: date ? new Date(date) : null,
           isFinalized: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       });
 
@@ -967,6 +969,8 @@ router.post(
             setlistId: newSetlist.id,
             name: originalSet.name,
             order: originalSet.order,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           },
         });
 
@@ -979,6 +983,8 @@ router.post(
                 setlistSetId: newSet.id,
                 songId: originalSetlistSong.songId,
                 order: originalSetlistSong.order,
+                createdAt: new Date(),
+                updatedAt: new Date(),
               },
             });
           }
@@ -1068,6 +1074,8 @@ router.post("/:id/save", async (req, res) => {
             setlistId,
             name: setName,
             order: setOrder,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           },
         });
       }
@@ -1080,6 +1088,8 @@ router.post("/:id/save", async (req, res) => {
               setlistSetId: setlistSet.id,
               songId: songs[i],
               order: i + 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
             },
           });
         }
@@ -1233,6 +1243,8 @@ router.get("/:id/finalize", async (req, res) => {
             bandId: setlist.band.id,
             songId: songId,
             gigDocumentId: preferredDocId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           },
         });
       }
@@ -1342,7 +1354,10 @@ router.post("/:id/finalize", async (req, res) => {
 
     await prisma.setlist.update({
       where: { id: setlistId },
-      data: { isFinalized: true },
+      data: {
+        isFinalized: true,
+        updatedAt: new Date(),
+      },
     });
 
     req.flash("success", "Setlist finalized successfully!");
@@ -1392,11 +1407,14 @@ router.post("/:id/preferred-gig-document", async (req, res) => {
       },
       update: {
         gigDocumentId: gigDocumentId || null,
+        updatedAt: new Date(),
       },
       create: {
         bandId: setlist.band.id,
         songId: songId,
         gigDocumentId: gigDocumentId || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     });
 
@@ -1901,7 +1919,10 @@ router.post("/:id/save-recordings-url", requireAuth, async (req, res) => {
     // Update the setlist with the recordings URL
     await prisma.setlist.update({
       where: { id: setlistId },
-      data: { recordingsUrl },
+      data: {
+        recordingsUrl,
+        updatedAt: new Date(),
+      },
     });
 
     res.json({ success: true, message: "Recordings URL saved successfully" });
@@ -1948,7 +1969,22 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
-    // Delete the setlist (cascade will handle related records)
+    // Delete related records in the correct order to avoid foreign key constraints
+    // First, delete all SetlistSong records
+    await prisma.setlistSong.deleteMany({
+      where: {
+        setlistSet: {
+          setlistId: setlistId,
+        },
+      },
+    });
+
+    // Then, delete all SetlistSet records
+    await prisma.setlistSet.deleteMany({
+      where: { setlistId: setlistId },
+    });
+
+    // Finally, delete the setlist
     await prisma.setlist.delete({
       where: { id: setlistId },
     });

@@ -5,8 +5,8 @@
                 <h1>
                     <%= song.title %>
                 </h1>
-                <% if (song.Artists && song.Artists.length> 0) { %>
-                    <p class="text-muted">by <a href="/artists/<%= song.Artists[0].id %>" class="text-decoration-none"><%= song.Artists[0].name %></a>
+                <% if (song.artists && song.artists.length > 0) { %>
+                    <p class="text-muted">by <a href="/artists/<%= song.artists[0].artist.id %>" class="text-decoration-none"><%= song.artists[0].artist.name %></a>
                     </p>
                     <% } %>
             </div>
@@ -43,8 +43,8 @@
                     <div class="col-md-6">
                         <strong>Artist:</strong>
                         <p>
-                            <% if (song.Artists && song.Artists.length> 0) { %>
-                                <a href="/artists/<%= song.Artists[0].id %>" class="text-decoration-none"><%= song.Artists[0].name %></a>
+                            <% if (song.artists && song.artists.length > 0) { %>
+                                <a href="/artists/<%= song.artists[0].artist.id %>" class="text-decoration-none"><%= song.artists[0].artist.name %></a>
                                     <% } else { %>
                                         <span class="text-muted">Not specified</span>
                                         <% } %>
@@ -56,8 +56,8 @@
                     <div class="col-md-6">
                         <strong>Vocalist:</strong>
                         <p>
-                            <% if (song.Vocalist) { %>
-                                <%= song.Vocalist.name %>
+                            <% if (song.vocalist) { %>
+                                <%= song.vocalist.name %>
                                     <% } else { %>
                                         <span class="text-muted">Not specified</span>
                                         <% } %>

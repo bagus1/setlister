@@ -172,7 +172,6 @@ router.post(
       const gigDocument = await prisma.gigDocument.create({
         data: {
           songId: song.id,
-          title: autoTitle,
           type,
           version: docVersion,
           content: content ? content.trim() : null,
@@ -184,9 +183,9 @@ router.post(
 
       req.flash(
         "success",
-        `Gig document created successfully: ${gigDocument.title} - v${gigDocument.version}`
+        `Gig document created successfully: ${typeLabels[type]} - v${gigDocument.version}`
       );
-      res.redirect(`/songs/${song.id}/docs/${gigDocument.id}`);
+      res.redirect(`/songs/${song.id}`);
     } catch (error) {
       console.error("Create gig document error:", error);
       req.flash("error", "Error creating gig document");
@@ -384,7 +383,7 @@ router.put(
       });
 
       req.flash("success", "Gig document updated successfully");
-      res.redirect(`/songs/${songId}/docs/${gigDocument.id}`);
+      res.redirect(`/songs/${songId}`);
     } catch (error) {
       console.error("Update gig document error:", error);
       req.flash("error", "Error updating gig document");
@@ -421,7 +420,7 @@ router.delete("/:songId/docs/:id", requireAuth, async (req, res) => {
       where: { id: parseInt(id) },
     });
     req.flash("success", "Gig document deleted successfully");
-    res.redirect(`/songs/${songId}/docs`);
+    res.redirect(`/songs/${songId}`);
   } catch (error) {
     console.error("Delete gig document error:", error);
     req.flash("error", "Error deleting gig document");
@@ -458,7 +457,7 @@ router.post(
         data: { gigDocumentId: parseInt(id) },
       });
       req.flash("success", "Preferred gig document updated");
-      res.redirect(`/songs/${songId}/docs/${id}`);
+      res.redirect(`/songs/${songId}`);
     } catch (error) {
       console.error("Set preferred gig document error:", error);
       req.flash("error", "Error setting preferred gig document");

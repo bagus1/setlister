@@ -26,40 +26,40 @@
                 </h5>
             </div>
             <div class="card-body">
-                <% if (artist.Songs && artist.Songs.length> 0) { %>
+                <% if (artist.songs && artist.songs.length > 0) { %>
                     <div class="row">
-                        <% artist.Songs.forEach(song=> { %>
+                        <% artist.songs.forEach(songArtist => { %>
                             <div class="col-md-6 col-lg-4 mb-3">
                                 <div class="card song-card">
                                     <div class="card-body">
                                         <h6 class="card-title mb-2">
-                                            <a href="/songs/<%= song.id %>" class="text-decoration-none">
-                                                <%= song.title %>
+                                            <a href="/songs/<%= songArtist.song.id %>" class="text-decoration-none">
+                                                <%= songArtist.song.title %>
                                             </a>
                                         </h6>
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
-                                                <% if (song.Vocalist) { %>
+                                                <% if (songArtist.song.vocalist) { %>
                                                     <span class="badge bg-secondary me-1">
                                                         <i class="bi bi-mic"></i>
-                                                        <%= song.Vocalist.name %>
+                                                        <%= songArtist.song.vocalist.name %>
                                                     </span>
                                                     <% } %>
-                                                        <% if (song.key) { %>
+                                                        <% if (songArtist.song.key) { %>
                                                             <span class="badge bg-primary me-1">
-                                                                Key: <%= song.key %>
+                                                                Key: <%= songArtist.song.key %>
                                                             </span>
                                                             <% } %>
-                                                                <% if (song.bpm) { %>
+                                                                <% if (songArtist.song.bpm) { %>
                                                                     <span class="badge bg-warning text-dark">
                                                                         <i class="bi bi-speedometer"></i>
-                                                                        <%= song.bpm %> BPM
+                                                                        <%= songArtist.song.bpm %> BPM
                                                                     </span>
                                                                     <% } %>
                                             </div>
-                                            <% if (song.time) { %>
+                                            <% if (songArtist.song.time) { %>
                                                 <small class="text-muted">
-                                                    <%= Math.floor(song.time / 60) %>:<%= (song.time %
+                                                    <%= Math.floor(songArtist.song.time / 60) %>:<%= (songArtist.song.time %
                                                             60).toString().padStart(2, '0' ) %>
                                                 </small>
                                                 <% } %>

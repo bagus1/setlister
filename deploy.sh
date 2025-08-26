@@ -454,7 +454,7 @@ deploy_to_demo() {
         # Import each table in dependency order
         for table in users bands artists vocalists songs gig_documents setlists medleys band_members song_artists band_songs setlist_sets setlist_songs medley_songs band_invitations password_resets links; do
             print_status "Importing $table..."
-            ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && [ -f 'migration-output/$table.sql' ] && PGPASSWORD=$DB_PASSWORD psql -h localhost -U bagus1_setlists_app -d bagus1_setlists_demo -f 'migration-output/$table.sql' || echo 'No migration file for $table'" || {
+            ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && [ -f 'migration-output/$table.sql' ] && PGPASSWORD=$DB_PASSWORD psql -h localhost -U $DB_USER -d $DB_NAME -f 'migration-output/$table.sql' || echo 'No migration file for $table'" || {
                 print_warning "Failed to import $table, continuing..."
             }
         done
@@ -462,7 +462,7 @@ deploy_to_demo() {
         
         # Fix auto-increment sequences after data migration
         print_status "Fixing auto-increment sequences..."
-        ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && PGPASSWORD=$DB_PASSWORD psql -h localhost -U bagus1_setlists_app -d bagus1_setlists_demo -c \"SELECT setval('users_id_seq', (SELECT MAX(id) FROM users)); SELECT setval('bands_id_seq', (SELECT MAX(id) FROM bands)); SELECT setval('artists_id_seq', (SELECT MAX(id) FROM artists)); SELECT setval('vocalists_id_seq', (SELECT MAX(id) FROM vocalists)); SELECT setval('songs_id_seq', (SELECT MAX(id) FROM songs)); SELECT setval('gig_documents_id_seq', (SELECT MAX(id) FROM gig_documents)); SELECT setval('setlists_id_seq', (SELECT MAX(id) FROM setlists)); SELECT setval('band_members_id_seq', (SELECT MAX(id) FROM band_members)); SELECT setval('band_invitations_id_seq', (SELECT MAX(id) FROM band_invitations)); SELECT setval('password_resets_id_seq', (SELECT MAX(id) FROM password_resets)); SELECT setval('setlist_sets_id_seq', (SELECT MAX(id) FROM setlist_sets)); SELECT setval('setlist_songs_id_seq', (SELECT MAX(id) FROM setlist_songs)); SELECT setval('medleys_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('medley_songs_id_seq', (SELECT MAX(id) FROM medley_songs)); SELECT setval('band_songs_id_seq', (SELECT MAX(id) FROM band_songs)); SELECT setval('song_artists_id_seq', (SELECT MAX(id) FROM song_artists)); SELECT setval('links_id_seq', (SELECT MAX(id) FROM links));\"" || {
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && PGPASSWORD=$DB_PASSWORD psql -h localhost -U $DB_USER -d $DB_NAME -c \"SELECT setval('users_id_seq', (SELECT MAX(id) FROM users)); SELECT setval('bands_id_seq', (SELECT MAX(id) FROM bands)); SELECT setval('artists_id_seq', (SELECT MAX(id) FROM artists)); SELECT setval('vocalists_id_seq', (SELECT MAX(id) FROM vocalists)); SELECT setval('songs_id_seq', (SELECT MAX(id) FROM songs)); SELECT setval('gig_documents_id_seq', (SELECT MAX(id) FROM gig_documents)); SELECT setval('setlists_id_seq', (SELECT MAX(id) FROM setlists)); SELECT setval('band_members_id_seq', (SELECT MAX(id) FROM band_members)); SELECT setval('band_invitations_id_seq', (SELECT MAX(id) FROM band_invitations)); SELECT setval('password_resets_id_seq', (SELECT MAX(id) FROM password_resets)); SELECT setval('setlist_sets_id_seq', (SELECT MAX(id) FROM setlist_sets)); SELECT setval('setlist_songs_id_seq', (SELECT MAX(id) FROM setlist_songs)); SELECT setval('medleys_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('medley_songs_id_seq', (SELECT MAX(id) FROM medley_songs)); SELECT setval('band_songs_id_seq', (SELECT MAX(id) FROM band_songs)); SELECT setval('song_artists_id_seq', (SELECT MAX(id) FROM song_artists)); SELECT setval('links_id_seq', (SELECT MAX(id) FROM links));\"" || {
             print_warning "Failed to fix sequences, continuing..."
         }
         print_success "Sequences fixed"
@@ -472,7 +472,7 @@ deploy_to_demo() {
     
     # Test the demo application
     print_status "Testing demo application..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { prisma } = require('./lib/prisma'); prisma.\$connect().then(() => { console.log('✅ Demo database connection successful'); process.exit(0); }).catch(err => { console.error('❌ Demo database connection failed:', err.message); process.exit(1); });\"" || {
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && NODE_ENV=demo PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e 'const { prisma } = require(\"./lib/prisma\"); prisma.\$connect().then(() => { console.log(\"✅ Demo database connection successful\"); process.exit(0); }).catch(err => { console.error(\"❌ Demo database connection failed:\", err.message); process.exit(1); });'" || {
         print_error "Demo database connection test failed"
         return 1
     }

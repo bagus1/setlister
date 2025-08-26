@@ -59,10 +59,11 @@ Setlist Manager Git-Based Deployment Script
 Usage: ./deploy.sh [mode]
 
 Modes:
-  deploy   - Deploy current changes (push to git, pull on server, restart)
-  update   - Quick deploy (push to git, pull on server, restart)
-  quick    - Update files without restart (auto-commit, push to git, pull on server)
+  deploy   - Deploy current changes with PostgreSQL migration (push to git, pull on server, migrate, restart)
+  update   - Quick deploy with PostgreSQL migration (push to git, pull on server, migrate, restart)
+  quick    - Update files with PostgreSQL migration (auto-commit, push to git, pull on server, migrate, restart)
   deploy-demo - Deploy to demo environment with PostgreSQL migration
+  test-migration - Test PostgreSQL migration locally (no server deployment)
   migrate  - Run database migrations on server (Prisma)
   restart  - Just restart the server
   restart-demo - Just restart the demo server
@@ -191,10 +192,69 @@ deploy_via_git() {
         ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
     fi
     
+    # Check if PostgreSQL migration is needed
+    print_status "Checking if PostgreSQL migration is needed..."
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && [ ! -f 'migration-output' ]"; then
+        print_status "Generating PostgreSQL migration files..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node migrate-sqlite-to-postgres.js" || {
+            print_error "Failed to generate migration files on server"
+            return 1
+        }
+    else
+        print_status "Migration files already exist, skipping generation"
+    fi
+    
+    # Generate Prisma client
+    print_status "Generating Prisma client..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
+        print_error "Failed to generate Prisma client on server"
+        return 1
+    }
+    
+    # Push schema changes to database
+    print_status "Running PostgreSQL schema migration..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
+        print_error "Failed to run PostgreSQL migration on server"
+        return 1
+    }
+    
+    # Import data if tables are empty
+    print_status "Checking if data import is needed..."
+    USER_COUNT=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { prisma } = require('./lib/prisma'); prisma.user.count().then((count) => { console.log(count); process.exit(0); }).catch(() => { console.log('0'); process.exit(0); });\"" 2>/dev/null || echo "0")
+    
+    if [ "$USER_COUNT" = "0" ] || [ "$USER_COUNT" = "" ]; then
+        print_status "Importing data from SQLite migration files..."
+        
+        # Import each table in dependency order
+        for table in users bands artists vocalists songs gig_documents setlists medleys band_members song_artists band_songs setlist_sets setlist_songs medley_songs band_invitations password_resets links; do
+            print_status "Importing $table..."
+            ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && [ -f 'migration-output/$table.sql' ] && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -f 'migration-output/$table.sql' || echo 'No migration file for $table'" || {
+                print_warning "Failed to import $table, continuing..."
+            }
+        done
+        print_success "Data import completed"
+        
+        # Fix auto-increment sequences after data migration
+        print_status "Fixing auto-increment sequences..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -c \"SELECT setval('users_id_seq', (SELECT MAX(id) FROM users)); SELECT setval('bands_id_seq', (SELECT MAX(id) FROM bands)); SELECT setval('artists_id_seq', (SELECT MAX(id) FROM artists)); SELECT setval('vocalists_id_seq', (SELECT MAX(id) FROM vocalists)); SELECT setval('songs_id_seq', (SELECT MAX(id) FROM songs)); SELECT setval('gig_documents_id_seq', (SELECT MAX(id) FROM gig_documents)); SELECT setval('setlists_id_seq', (SELECT MAX(id) FROM setlists)); SELECT setval('band_members_id_seq', (SELECT MAX(id) FROM band_members)); SELECT setval('password_resets_id_seq', (SELECT MAX(id) FROM password_resets)); SELECT setval('setlist_sets_id_seq', (SELECT MAX(id) FROM setlist_sets)); SELECT setval('setlist_songs_id_seq', (SELECT MAX(id) FROM setlist_songs)); SELECT setval('medleys_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('medley_songs_id_seq', (SELECT MAX(id) FROM medley_songs)); SELECT setval('band_songs_id_seq', (SELECT MAX(id) FROM band_songs)); SELECT setval('song_artists_id_seq', (SELECT MAX(id) FROM song_artists)); SELECT setval('links_id_seq', (SELECT MAX(id) FROM links));\"" || {
+            print_warning "Failed to fix sequences, continuing..."
+        }
+        print_success "Sequences fixed"
+    else
+        print_status "Data already exists, skipping import"
+    fi
+    
+    # Test the database connection
+    print_status "Testing database connection..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e 'const { prisma } = require(\"./lib/prisma\"); prisma.\$connect().then(() => { console.log(\"✅ Production database connection successful\"); process.exit(0); }).catch(err => { console.error(\"❌ Production database connection failed:\", err.message); process.exit(1); });'" || {
+        print_error "Production database connection test failed"
+        return 1
+    }
+    
     # Restart server
     restart_server
     
-    print_success "Deployment completed!"
+    print_success "Deployment completed with PostgreSQL migration!"
 }
 
 # Function to update files without restart
@@ -234,9 +294,68 @@ update_via_git() {
         ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
     fi
     
+    # Check if PostgreSQL migration is needed
+    print_status "Checking if PostgreSQL migration is needed..."
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && [ ! -f 'migration-output' ]"; then
+        print_status "Generating PostgreSQL migration files..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node migrate-sqlite-to-postgres.js" || {
+            print_error "Failed to generate migration files on server"
+            return 1
+        }
+    else
+        print_status "Migration files already exist, skipping generation"
+    fi
+    
+    # Generate Prisma client
+    print_status "Generating Prisma client..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
+        print_error "Failed to generate Prisma client on server"
+        return 1
+    }
+    
+    # Push schema changes to database
+    print_status "Running PostgreSQL schema migration..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
+        print_error "Failed to run PostgreSQL migration on server"
+        return 1
+    }
+    
+    # Import data if tables are empty
+    print_status "Checking if data import is needed..."
+    USER_COUNT=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e \"const { prisma } = require('./lib/prisma'); prisma.user.count().then((count) => { console.log(count); process.exit(0); }).catch(() => { console.log('0'); process.exit(0); });\"" 2>/dev/null || echo "0")
+    
+    if [ "$USER_COUNT" = "0" ] || [ "$USER_COUNT" = "" ]; then
+        print_status "Importing data from SQLite migration files..."
+        
+        # Import each table in dependency order
+        for table in users bands artists vocalists songs gig_documents setlists medleys band_members song_artists band_songs setlist_sets setlist_songs medley_songs band_invitations password_resets links; do
+            print_status "Importing $table..."
+            ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && [ -f 'migration-output/$table.sql' ] && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -f 'migration-output/$table.sql' || echo 'No migration file for $table'" || {
+                print_warning "Failed to import $table, continuing..."
+            }
+        done
+        print_success "Data import completed"
+        
+        # Fix auto-increment sequences after data migration
+        print_status "Fixing auto-increment sequences..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -c \"SELECT setval('users_id_seq', (SELECT MAX(id) FROM users)); SELECT setval('bands_id_seq', (SELECT MAX(id) FROM bands)); SELECT setval('artists_id_seq', (SELECT MAX(id) FROM artists)); SELECT setval('vocalists_id_seq', (SELECT MAX(id) FROM vocalists)); SELECT setval('songs_id_seq', (SELECT MAX(id) FROM songs)); SELECT setval('gig_documents_id_seq', (SELECT MAX(id) FROM gig_documents)); SELECT setval('setlists_id_seq', (SELECT MAX(id) FROM setlists)); SELECT setval('band_members_id_seq', (SELECT MAX(id) FROM band_members)); SELECT setval('password_resets_id_seq', (SELECT MAX(id) FROM password_resets)); SELECT setval('setlist_sets_id_seq', (SELECT MAX(id) FROM setlist_sets)); SELECT setval('setlist_songs_id_seq', (SELECT MAX(id) FROM setlist_songs)); SELECT setval('medleys_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('medley_songs_id_seq', (SELECT MAX(id) FROM medley_songs)); SELECT setval('band_songs_id_seq', (SELECT MAX(id) FROM band_songs)); SELECT setval('song_artists_id_seq', (SELECT MAX(id) FROM song_artists)); SELECT setval('links_id_seq', (SELECT MAX(id) FROM links));\"" || {
+            print_warning "Failed to fix sequences, continuing..."
+        }
+        print_success "Sequences fixed"
+    else
+        print_status "Data already exists, skipping import"
+    fi
+    
+    # Test the database connection
+    print_status "Testing database connection..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/node -e 'const { prisma } = require(\"./lib/prisma\"); prisma.\$connect().then(() => { console.log(\"✅ Production database connection successful\"); process.exit(0); }).catch(err => { console.error(\"❌ Production database connection failed:\", err.message); process.exit(1); });'" || {
+        print_error "Production database connection test failed"
+        return 1
+    }
+    
     restart_server
     
-    print_success "Quick deployment completed!"
+    print_success "Quick deployment completed with PostgreSQL migration!"
 }
 
 # Function to quick deploy (just pull on server)
@@ -379,6 +498,93 @@ run_migrations() {
     print_warning "Note: You may need to restart the server if migrations affect running processes."
 }
 
+# Function to test PostgreSQL migration locally
+test_migration() {
+    print_status "Testing PostgreSQL migration locally..."
+    
+    # Check if we have the required files
+    if [ ! -f "migrate-sqlite-to-postgres.js" ]; then
+        print_error "Migration script not found: migrate-sqlite-to-postgres.js"
+        return 1
+    fi
+    
+    if [ ! -f "prisma/schema.prisma" ]; then
+        print_error "Prisma schema not found: prisma/schema.prisma"
+        return 1
+    fi
+    
+    # Check if PostgreSQL migration is needed
+    print_status "Checking if PostgreSQL migration files exist..."
+    if [ ! -d "migration-output" ]; then
+        print_status "Generating PostgreSQL migration files..."
+        node migrate-sqlite-to-postgres.js || {
+            print_error "Failed to generate migration files locally"
+            return 1
+        }
+    else
+        print_status "Migration files already exist, skipping generation"
+    fi
+    
+    # Generate Prisma client
+    print_status "Generating Prisma client..."
+    npx prisma generate || {
+        print_error "Failed to generate Prisma client locally"
+        return 1
+    }
+    
+    # Small delay to ensure Prisma client is ready
+    print_status "Waiting for Prisma client to be ready..."
+    sleep 2
+    
+    # Push schema changes to database
+    print_status "Running PostgreSQL schema migration..."
+    export $(cat .env | xargs)
+    npx prisma db push || {
+        print_error "Failed to run PostgreSQL migration locally"
+        return 1
+    }
+    
+    # Import data if tables are empty
+    print_status "Checking if data import is needed..."
+    USER_COUNT=$(node -e "const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.user.count().then((count) => { console.log(count); process.exit(0); }).catch(() => { console.log('0'); process.exit(0); });" 2>/dev/null || echo "0")
+    
+    if [ "$USER_COUNT" = "0" ] || [ "$USER_COUNT" = "" ]; then
+        print_status "Importing data from SQLite migration files..."
+        
+        # Import each table in dependency order
+        for table in users bands artists vocalists songs gig_documents setlists medleys band_members song_artists band_songs setlist_sets setlist_songs medley_songs band_invitations password_resets links; do
+            print_status "Importing $table..."
+            if [ -f "migration-output/$table.sql" ]; then
+                PGPASSWORD=$DB_PASSWORD psql -h localhost -U $DB_USER -d $DB_NAME -f "migration-output/$table.sql" || {
+                    print_warning "Failed to import $table, continuing..."
+                }
+            else
+                print_warning "No migration file for $table"
+            fi
+        done
+        print_success "Data import completed"
+        
+        # Fix auto-increment sequences after data migration
+        print_status "Fixing auto-increment sequences..."
+        PGPASSWORD=$DB_PASSWORD psql -h localhost -U $DB_USER -d $DB_NAME -c "SELECT setval('users_id_seq', (SELECT MAX(id) FROM users)); SELECT setval('bands_id_seq', (SELECT MAX(id) FROM bands)); SELECT setval('artists_id_seq', (SELECT MAX(id) FROM artists)); SELECT setval('vocalists_id_seq', (SELECT MAX(id) FROM vocalists)); SELECT setval('songs_id_seq', (SELECT MAX(id) FROM songs)); SELECT setval('gig_documents_id_seq', (SELECT MAX(id) FROM gig_documents)); SELECT setval('setlists_id_seq', (SELECT MAX(id) FROM setlists)); SELECT setval('band_members_id_seq', (SELECT MAX(id) FROM band_members)); SELECT setval('password_resets_id_seq', (SELECT MAX(id) FROM password_resets)); SELECT setval('setlist_sets_id_seq', (SELECT MAX(id) FROM setlist_sets)); SELECT setval('setlist_songs_id_seq', (SELECT MAX(id) FROM setlist_songs)); SELECT setval('medleys_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('medley_songs_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('band_songs_id_seq', (SELECT MAX(id) FROM band_songs)); SELECT setval('links_id_seq', (SELECT MAX(id) FROM links));" || {
+            print_warning "Failed to fix sequences, continuing..."
+        }
+        print_success "Sequences fixed"
+    else
+        print_status "Data already exists, skipping import"
+    fi
+    
+    # Test the database connection
+    print_status "Testing database connection..."
+    node -e "const { PrismaClient } = require('./generated/prisma'); const prisma = new PrismaClient(); prisma.\$connect().then(() => { console.log('✅ Local PostgreSQL database connection successful'); process.exit(0); }).catch(err => { console.error('❌ Local PostgreSQL database connection failed:', err.message); process.exit(1); });" || {
+        print_error "Local PostgreSQL database connection test failed"
+        return 1
+    }
+    
+    print_success "Local migration test completed successfully!"
+    print_status "Your local PostgreSQL database is ready for testing"
+}
+
 # Function to deploy to demo environment with PostgreSQL migration
 # Note: This function automatically fixes auto-increment sequences after data import
 # to prevent "duplicate key value violates unique constraint" errors when creating new records
@@ -462,7 +668,7 @@ deploy_to_demo() {
         
         # Fix auto-increment sequences after data migration
         print_status "Fixing auto-increment sequences..."
-        ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && export \$(cat .env | xargs) && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -c \"SELECT setval('users_id_seq', (SELECT MAX(id) FROM users)); SELECT setval('bands_id_seq', (SELECT MAX(id) FROM bands)); SELECT setval('artists_id_seq', (SELECT MAX(id) FROM artists)); SELECT setval('vocalists_id_seq', (SELECT MAX(id) FROM vocalists)); SELECT setval('songs_id_seq', (SELECT MAX(id) FROM songs)); SELECT setval('gig_documents_id_seq', (SELECT MAX(id) FROM gig_documents)); SELECT setval('setlists_id_seq', (SELECT MAX(id) FROM setlists)); SELECT setval('band_members_id_seq', (SELECT MAX(id) FROM band_members)); SELECT setval('band_invitations_id_seq', (SELECT MAX(id) FROM band_invitations)); SELECT setval('password_resets_id_seq', (SELECT MAX(id) FROM password_resets)); SELECT setval('setlist_sets_id_seq', (SELECT MAX(id) FROM setlist_sets)); SELECT setval('setlist_songs_id_seq', (SELECT MAX(id) FROM setlist_songs)); SELECT setval('medleys_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('medley_songs_id_seq', (SELECT MAX(id) FROM medley_songs)); SELECT setval('band_songs_id_seq', (SELECT MAX(id) FROM band_songs)); SELECT setval('song_artists_id_seq', (SELECT MAX(id) FROM song_artists)); SELECT setval('links_id_seq', (SELECT MAX(id) FROM links));\"" || {
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $DEMO_PATH && export \$(cat .env | xargs) && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -c \"SELECT setval('users_id_seq', (SELECT MAX(id) FROM users)); SELECT setval('bands_id_seq', (SELECT MAX(id) FROM bands)); SELECT setval('artists_id_seq', (SELECT MAX(id) FROM artists)); SELECT setval('vocalists_id_seq', (SELECT MAX(id) FROM vocalists)); SELECT setval('songs_id_seq', (SELECT MAX(id) FROM songs)); SELECT setval('gig_documents_id_seq', (SELECT MAX(id) FROM gig_documents)); SELECT setval('setlists_id_seq', (SELECT MAX(id) FROM setlists)); SELECT setval('band_members_id_seq', (SELECT MAX(id) FROM band_members)); SELECT setval('password_resets_id_seq', (SELECT MAX(id) FROM password_resets)); SELECT setval('setlist_sets_id_seq', (SELECT MAX(id) FROM setlist_sets)); SELECT setval('setlist_songs_id_seq', (SELECT MAX(id) FROM setlist_songs)); SELECT setval('medleys_id_seq', (SELECT MAX(id) FROM medleys)); SELECT setval('medley_songs_id_seq', (SELECT MAX(id) FROM medley_songs)); SELECT setval('band_songs_id_seq', (SELECT MAX(id) FROM band_songs)); SELECT setval('song_artists_id_seq', (SELECT MAX(id) FROM song_artists)); SELECT setval('links_id_seq', (SELECT MAX(id) FROM links));\"" || {
             print_warning "Failed to fix sequences, continuing..."
         }
         print_success "Sequences fixed"
@@ -652,6 +858,9 @@ main() {
         "deploy-demo")
             check_git_status
             deploy_to_demo
+            ;;
+        "test-migration")
+            test_migration
             ;;
         "deps")
             update_dependencies

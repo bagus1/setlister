@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { prisma } = require("./lib/prisma");
+const { Client } = require("pg");
 const readline = require("readline");
 
 // Environment variables for server connection
@@ -13,6 +13,17 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
+
+// Database connection function
+function createDbClient() {
+  return new Client({
+    host: "localhost",
+    port: 5432,
+    database: process.env.DB_NAME || "bagus1_setlists_prod",
+    user: process.env.DB_USER || "bagus1_setlists_app",
+    password: process.env.DB_PASSWORD || "allofmyfriends",
+  });
+}
 
 // Colors for console output
 const colors = {
@@ -570,36 +581,78 @@ async function deleteSong() {
     return;
   }
 
-  try {
-    const song = await prisma.song.findUnique({
-      where: { id: parseInt(songId) },
-      include: {
-        artists: {
-          include: {
-            artist: true,
-          },
-        },
-        vocalist: true,
-        links: true,
-      },
-    });
+  const client = createDbClient();
 
-    if (!song) {
+  try {
+    await client.connect();
+
+    // Get song details with related data
+    const songQuery = `
+      SELECT s.id, s.title, s.key, s.time, s.created_at,
+             v.name as vocalist_name,
+             COUNT(l.id) as link_count,
+             COUNT(gd.id) as gig_doc_count
+      FROM songs s
+      LEFT JOIN vocalists v ON s.vocalist_id = v.id
+      LEFT JOIN links l ON s.id = l.song_id
+      LEFT JOIN gig_documents gd ON s.id = gd.song_id
+      WHERE s.id = $1
+      GROUP BY s.id, s.title, s.key, s.time, s.created_at, v.name
+    `;
+
+    const songResult = await client.query(songQuery, [parseInt(songId)]);
+
+    if (songResult.rows.length === 0) {
       log("Song not found!", "red");
       return;
     }
 
+    const song = songResult.rows[0];
+
+    // Get artist information
+    const artistQuery = `
+      SELECT a.name as artist_name
+      FROM song_artists sa
+      JOIN artists a ON sa.artist_id = a.id
+      WHERE sa.song_id = $1
+      LIMIT 1
+    `;
+
+    const artistResult = await client.query(artistQuery, [parseInt(songId)]);
+    const artistName =
+      artistResult.rows.length > 0 ? artistResult.rows[0].artist_name : null;
+
+    // Get link details
+    const linksQuery = `
+      SELECT type, description, url
+      FROM links
+      WHERE song_id = $1
+      ORDER BY id
+    `;
+
+    const linksResult = await client.query(linksQuery, [parseInt(songId)]);
+
+    // Display song information
     log(`\nSong: ${song.title}`, "blue");
-    if (song.artists && song.artists.length > 0) {
-      log(`Artist: ${song.artists[0].artist.name}`, "blue");
+    if (artistName) {
+      log(`Artist: ${artistName}`, "blue");
     }
-    if (song.vocalist) {
-      log(`Vocalist: ${song.vocalist.name}`, "blue");
+    if (song.vocalist_name) {
+      log(`Vocalist: ${song.vocalist_name}`, "blue");
+    }
+    if (song.key) {
+      log(`Key: ${song.key}`, "blue");
+    }
+    if (song.time) {
+      log(
+        `Time: ${Math.floor(song.time / 60)}:${(song.time % 60).toString().padStart(2, "0")}`,
+        "blue"
+      );
     }
 
-    if (song.links && song.links.length > 0) {
-      log(`\nLinks (${song.links.length}):`, "yellow");
-      song.links.forEach((link, index) => {
+    if (linksResult.rows.length > 0) {
+      log(`\nLinks (${linksResult.rows.length}):`, "yellow");
+      linksResult.rows.forEach((link, index) => {
         log(
           `  ${index + 1}. [${link.type}] ${link.description || "No description"} - ${link.url}`,
           "white"
@@ -609,17 +662,36 @@ async function deleteSong() {
       log("\nNo links found for this song.", "yellow");
     }
 
+    log(`\nGig Documents: ${song.gig_doc_count}`, "yellow");
+
     const confirmed = await confirmAction(`delete song "${song.title}"`);
     if (confirmed) {
-      await prisma.song.delete({
-        where: { id: parseInt(songId) },
-      });
+      // Delete in correct order due to foreign key constraints
+      await client.query("DELETE FROM setlist_songs WHERE song_id = $1", [
+        parseInt(songId),
+      ]);
+      await client.query("DELETE FROM song_artists WHERE song_id = $1", [
+        parseInt(songId),
+      ]);
+      await client.query("DELETE FROM band_songs WHERE song_id = $1", [
+        parseInt(songId),
+      ]);
+      await client.query("DELETE FROM links WHERE song_id = $1", [
+        parseInt(songId),
+      ]);
+      await client.query("DELETE FROM gig_documents WHERE song_id = $1", [
+        parseInt(songId),
+      ]);
+      await client.query("DELETE FROM songs WHERE id = $1", [parseInt(songId)]);
+
       log("Song deleted successfully!", "green");
     } else {
       log("Deletion cancelled.", "yellow");
     }
   } catch (error) {
     log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 

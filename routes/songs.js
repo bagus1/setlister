@@ -91,7 +91,21 @@ router.get("/api/song/:id", async (req, res) => {
 // GET /songs - Show all songs
 router.get("/", async (req, res) => {
   try {
+    // Build where clause to filter private songs
+    const whereClause = {
+      OR: [
+        { private: false }, // Show all public songs
+        { private: true, createdById: req.session.user?.id }, // Show private songs only if user owns them
+      ],
+    };
+
+    // If no user is logged in, only show public songs
+    if (!req.session.user) {
+      whereClause.OR = [{ private: false }];
+    }
+
     const songs = await prisma.song.findMany({
+      where: whereClause,
       include: {
         artists: {
           include: {
@@ -101,6 +115,7 @@ router.get("/", async (req, res) => {
         vocalist: true,
         links: true,
         gigDocuments: true,
+        creator: true, // Include creator info for display
       },
       orderBy: { title: "asc" },
     });
@@ -187,6 +202,7 @@ router.post(
         minutes = 0,
         seconds = 0,
         bpm,
+        private: isPrivate,
       } = req.body;
 
       // Check for duplicate song (case-insensitive)
@@ -297,6 +313,18 @@ router.post(
       }
 
       // Create the song
+      console.log("Creating song with data:", {
+        title: title.trim(),
+        key: enumKey,
+        time: totalTime,
+        bpm: bpmInt,
+        vocalistId: vocalistId,
+        createdById: req.session.user.id,
+        private: isPrivate === "true",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      
       const song = await prisma.song.create({
         data: {
           title: title.trim(),
@@ -304,10 +332,14 @@ router.post(
           time: totalTime,
           bpm: bpmInt,
           vocalistId: vocalistId,
+          createdById: req.session.user.id,
+          private: isPrivate === "true",
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
+      
+      console.log("Song created successfully:", song);
 
       // Handle artist
       if (artist && artist.trim()) {

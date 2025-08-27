@@ -507,8 +507,14 @@ router.get("/:id/songs", async (req, res) => {
       }
     }
 
-    // Get all songs
+    // Get all songs with privacy filtering
     const allSongs = await prisma.song.findMany({
+      where: {
+        OR: [
+          { private: false }, // Show all public songs
+          { private: true, createdById: userId }, // Show private songs only if user owns them
+        ],
+      },
       include: {
         vocalist: true,
         artists: {
@@ -518,6 +524,7 @@ router.get("/:id/songs", async (req, res) => {
         },
         gigDocuments: true,
         links: true,
+        creator: true, // Include creator info for display
       },
       orderBy: { title: "asc" },
     });

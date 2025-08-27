@@ -91,6 +91,9 @@
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <h6 class="card-title text-dark mb-0">
                                                     <%= song.title %>
+                                                    <% if (song.private) { %>
+                                                        <i class="bi bi-lock text-warning ms-1" title="Private song"></i>
+                                                    <% } %>
                                                 </h6>
                                                 <div class="d-flex align-items-center gap-1">
                                                     <% if (song.links && song.links.length > 0) { %>
@@ -103,6 +106,13 @@
                                             </div>
                                             <% if (song.artists && song.artists.length> 0) { %>
                                                 <p class="text-muted mb-1">by <%= song.artists[0].artist.name %>
+                                                </p>
+                                                <% } %>
+                                            <% if (song.creator) { %>
+                                                <p class="text-muted mb-1">
+                                                    <small>
+                                                        <i class="bi bi-person"></i> Added by <%= song.creator.username %>
+                                                    </small>
                                                 </p>
                                                 <% } %>
                                             <div class="d-flex justify-content-between align-items-center">

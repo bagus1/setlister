@@ -19,6 +19,7 @@ model User {
   bands        BandMember[]
   createdBands Band[]           @relation("BandCreator")
   gigDocuments GigDocument[]    @relation("DocumentCreator")
+  createdSongs Song[]           @relation("SongCreator")
 
   @@map("users")
 }
@@ -81,6 +82,8 @@ model Song {
   time         Int?
   bpm          Int?
   vocalistId   Int?            @map("vocalist_id")
+  createdById  Int?            @map("created_by_id")
+  private      Boolean         @default(false)
   createdAt    DateTime        @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   bandSongs    BandSong[]
@@ -90,6 +93,7 @@ model Song {
   setlistSongs SetlistSong[]
   artists      SongArtist[]
   vocalist     Vocalist?       @relation(fields: [vocalistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator      User?           @relation("SongCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("songs")
 }

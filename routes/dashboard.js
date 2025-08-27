@@ -101,7 +101,11 @@ router.get("/", async (req, res) => {
         orderBy: { updatedAt: "desc" },
       });
 
+      // Only show public songs for logged out users
       const songs = await prisma.song.findMany({
+        where: {
+          private: false, // Only show public songs
+        },
         include: {
           vocalist: true,
           artists: {

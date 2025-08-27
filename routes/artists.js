@@ -29,10 +29,19 @@ router.get("/:id", async (req, res) => {
       where: { id: parseInt(req.params.id) },
       include: {
         songs: {
+          where: {
+            song: {
+              OR: [
+                { private: false }, // Show all public songs
+                { private: true, createdById: req.session.user?.id }, // Show private songs only if user owns them
+              ],
+            },
+          },
           include: {
             song: {
               include: {
                 vocalist: true,
+                creator: true, // Include creator info for display
               },
             },
           },

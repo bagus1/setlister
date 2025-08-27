@@ -27,7 +27,7 @@
 #
 # Prisma Safety Features:
 #   - Automatically detects schema changes in prisma/schema.prisma
-#   - Stops server before running migrations
+#   - Uses Passenger restart mechanism (no dangerous process killing)
 #   - Regenerates Prisma client after schema changes
 #   - Uses prisma migrate deploy (safer than db push)
 #   - Verifies server health after restart
@@ -269,17 +269,11 @@ deploy_via_git() {
         SCHEMA_CHANGED=true
     fi
     
-    # If schema changed, run Prisma commands with server stop/start
+    # If schema changed, run Prisma commands with Passenger restart
     if [ "$SCHEMA_CHANGED" = true ]; then
-        print_status "Schema or structural changes detected - stopping server for safe migration..."
+        print_status "Schema or structural changes detected - restarting server for safe migration..."
         
-        # Stop the server before making database changes
-        stop_server
-        
-        # Wait a moment for processes to fully stop
-        sleep 3
-        
-        # Generate Prisma client
+        # Generate Prisma client first
         print_status "Generating Prisma client..."
         ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
             print_error "Failed to generate Prisma client on server"
@@ -290,24 +284,20 @@ deploy_via_git() {
         print_status "Running database migrations..."
         ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate deploy" || {
             print_error "Failed to run database migrations on server"
-            print_error "Attempting to start server anyway..."
-            start_server
+            print_error "Server may be in an unstable state - manual intervention required"
             return 1
         }
         
         print_success "Schema migration completed"
         
-        # Start the server with new schema
-        print_status "Starting server with new schema..."
-        start_server
-        
-        # Wait for server to fully start
-        sleep 5
+        # Restart the server with new schema via Passenger
+        print_status "Restarting server with new schema via Passenger..."
+        restart_server_passenger
         
         # Verify server is responding
         print_status "Verifying server is responding..."
-        if curl -s -f "https://$HOST_DOMAIN" > /dev/null 2>&1; then
-            print_success "Server is responding successfully"
+        if is_server_responding; then
+            print_success "Server is responding successfully with new schema"
         else
             print_warning "Server may not be fully ready yet - check manually"
         fi
@@ -588,7 +578,16 @@ restart_demo_server() {
     print_success "Demo server restarted successfully"
 }
 
-# Function to check if server is running
+# Function to check if server is responding (more reliable than process checking)
+is_server_responding() {
+    if curl -s -f "https://$HOST_DOMAIN" > /dev/null 2>&1; then
+        return 0  # Server is responding
+    else
+        return 1  # Server is not responding
+    fi
+}
+
+# Function to check if server is running (for informational purposes)
 is_server_running() {
     if ssh "$HOST_USER@$HOST_DOMAIN" "pgrep -f 'Passenger NodeApp.*setlister'" > /dev/null 2>&1; then
         return 0  # Server is running
@@ -597,33 +596,33 @@ is_server_running() {
     fi
 }
 
-# Function to stop server
-stop_server() {
-    print_status "Stopping server..."
+# Function to restart server (Passenger-friendly)
+restart_server_passenger() {
+    print_status "Restarting server via Passenger..."
     
-    # Check if server is actually running
-    if ! is_server_running; then
-        print_status "Server is already stopped"
-        return 0
-    fi
-    
-    ssh "$HOST_USER@$HOST_DOMAIN" "pkill -f 'Passenger NodeApp.*setlister'" || {
-        print_warning "No Passenger process found to stop"
-        return 0
+    # Use Passenger's restart mechanism instead of trying to kill processes
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && touch tmp/restart.txt" || {
+        print_error "Failed to trigger Passenger restart"
+        return 1
     }
     
-    # Wait and verify server is stopped
+    # Wait for Passenger to restart the app
+    print_status "Waiting for Passenger to restart the application..."
+    sleep 5
+    
+    # Verify server is responding
     local attempts=0
-    while is_server_running && [ $attempts -lt 10 ]; do
-        sleep 1
+    while ! is_server_responding && [ $attempts -lt 30 ]; do
+        sleep 2
         attempts=$((attempts + 1))
+        print_status "Waiting for server to respond... (attempt $attempts/30)"
     done
     
-    if is_server_running; then
-        print_error "Failed to stop server after 10 attempts"
-        return 1
+    if is_server_responding; then
+        print_success "Server restarted successfully"
     else
-        print_success "Server stopped successfully"
+        print_error "Server failed to respond after restart"
+        return 1
     fi
 }
 

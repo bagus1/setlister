@@ -280,6 +280,23 @@ deploy_via_git() {
             return 1
         }
         
+        # Check if migrations exist and create them if needed
+        print_status "Checking for existing migrations..."
+        if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && [ ! -d 'prisma/migrations' ] || [ -z \"\$(ls -A prisma/migrations 2>/dev/null)\" ]"; then
+            print_status "No migrations found - creating initial migration from current schema..."
+            ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate dev --name initial_schema --create-only" || {
+                print_error "Failed to create initial migration"
+                return 1
+            }
+            print_success "Initial migration created"
+        else
+            print_status "Existing migrations found, checking if schema is in sync..."
+            # Try to create a migration for any schema changes
+            ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate dev --name schema_update --create-only" 2>/dev/null || {
+                print_status "No new migrations needed or migration creation failed (continuing with existing migrations)"
+            }
+        fi
+        
         # Run database migrations (safer than db push)
         print_status "Running database migrations..."
         ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate deploy" || {

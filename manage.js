@@ -83,217 +83,248 @@ async function showServerInstructions() {
 
 async function listUsers() {
   log("\n=== Users ===", "cyan");
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      createdAt: true,
-      bands: {
-        select: {
-          role: true,
-          band: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: { id: "asc" },
-  });
+  const client = createDbClient();
 
-  users.forEach((user) => {
-    const bands =
-      user.bands && user.bands.length > 0
-        ? user.bands
-            .map((member) => `${member.band.name}(${member.role})`)
-            .join(", ")
-        : "No bands";
+  try {
+    await client.connect();
 
-    log(
-      `ID: ${user.id} | ${user.username} | ${user.email} | Created: ${user.createdAt.toLocaleDateString()}`,
-      "blue"
-    );
-    log(`  Bands: ${bands}`, "white");
-  });
-  log(`Total users: ${users.length}`, "green");
+    const usersQuery = `
+      SELECT u.id, u.username, u.email, u.created_at,
+             bm.role, b.name as band_name
+      FROM users u
+      LEFT JOIN band_members bm ON u.id = bm.user_id
+      LEFT JOIN bands b ON bm.band_id = b.id
+      ORDER BY u.id ASC
+    `;
+
+    const result = await client.query(usersQuery);
+
+    // Group users by their data
+    const userMap = new Map();
+
+    result.rows.forEach((row) => {
+      if (!userMap.has(row.id)) {
+        userMap.set(row.id, {
+          id: row.id,
+          username: row.username,
+          email: row.email,
+          created_at: row.created_at,
+          bands: [],
+        });
+      }
+
+      if (row.band_name) {
+        userMap.get(row.id).bands.push({
+          role: row.role,
+          band: { name: row.band_name },
+        });
+      }
+    });
+
+    const users = Array.from(userMap.values());
+
+    users.forEach((user) => {
+      const bands =
+        user.bands && user.bands.length > 0
+          ? user.bands
+              .map((member) => `${member.band.name}(${member.role})`)
+              .join(", ")
+          : "No bands";
+
+      log(
+        `ID: ${user.id} | ${user.username} | ${user.email} | Created: ${new Date(user.created_at).toLocaleDateString()}`,
+        "blue"
+      );
+      log(`  Bands: ${bands}`, "white");
+    });
+    log(`Total users: ${users.length}`, "green");
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
+  }
 }
 
 async function listBands() {
   log("\n=== Bands ===", "cyan");
-  const bands = await prisma.band.findMany({
-    include: {
-      members: {
-        select: {
-          role: true,
-          user: {
-            select: {
-              id: true,
-              username: true,
-              email: true,
-            },
-          },
-        },
-      },
-      songs: {
-        select: {
-          song: {
-            select: {
-              id: true,
-              title: true,
-              artists: {
-                select: {
-                  artist: {
-                    select: {
-                      name: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    orderBy: { id: "asc" },
-  });
+  const client = createDbClient();
 
-  if (bands.length === 0) {
-    log("No bands found.", "yellow");
-    return;
-  }
+  try {
+    await client.connect();
 
-  // Show simple list first
-  bands.forEach((band) => {
-    const memberCount = band.members ? band.members.length : 0;
-    const songCount = band.songs ? band.songs.length : 0;
+    const bandsQuery = `
+      SELECT b.id, b.name, b.created_at,
+             COUNT(DISTINCT bm.user_id) as member_count,
+             COUNT(DISTINCT bs.song_id) as song_count
+      FROM bands b
+      LEFT JOIN band_members bm ON b.id = bm.band_id
+      LEFT JOIN band_songs bs ON b.id = bs.band_id
+      GROUP BY b.id, b.name, b.created_at
+      ORDER BY b.id ASC
+    `;
+
+    const result = await client.query(bandsQuery);
+
+    if (result.rows.length === 0) {
+      log("No bands found.", "yellow");
+      return;
+    }
+
+    // Show simple list first
+    result.rows.forEach((band) => {
+      log(
+        `${band.id}. ${band.name} | Members: ${band.member_count} | Songs: ${band.song_count} | Created: ${new Date(band.created_at).toLocaleDateString()}`,
+        "blue"
+      );
+    });
+
+    log(`\nTotal bands: ${result.rows.length}`, "green");
+
+    // Prompt for detailed view
+    const choice = await question(
+      "\nEnter the ID of the band for detailed info (or press Enter to skip): "
+    );
+
+    if (!choice.trim()) {
+      return; // User chose to skip
+    }
+
+    const bandId = parseInt(choice);
+    if (isNaN(bandId)) {
+      log("Invalid band ID.", "red");
+      return;
+    }
+
+    // Get detailed band info
+    const detailedBandQuery = `
+      SELECT b.id, b.name, b.created_at
+      FROM bands b
+      WHERE b.id = $1
+    `;
+
+    const bandResult = await client.query(detailedBandQuery, [bandId]);
+    if (bandResult.rows.length === 0) {
+      log(`No band found with ID ${bandId}.`, "red");
+      return;
+    }
+
+    const selectedBand = bandResult.rows[0];
+
+    log(`\n=== Detailed Info for "${selectedBand.name}" ===`, "cyan");
     log(
-      `${band.id}. ${band.name} | Members: ${memberCount} | Songs: ${songCount} | Created: ${band.createdAt.toLocaleDateString()}`,
+      `ID: ${selectedBand.id} | Created: ${new Date(selectedBand.created_at).toLocaleDateString()}`,
       "blue"
     );
-  });
 
-  log(`\nTotal bands: ${bands.length}`, "green");
+    // Show detailed members
+    const membersQuery = `
+      SELECT bm.role, u.username, u.email
+      FROM band_members bm
+      JOIN users u ON bm.user_id = u.id
+      WHERE bm.band_id = $1
+      ORDER BY u.username
+    `;
 
-  // Prompt for detailed view
-  const choice = await question(
-    "\nEnter the ID of the band for detailed info (or press Enter to skip): "
-  );
+    const membersResult = await client.query(membersQuery, [bandId]);
 
-  if (!choice.trim()) {
-    return; // User chose to skip
-  }
+    if (membersResult.rows.length > 0) {
+      log("\nMembers:", "yellow");
+      membersResult.rows.forEach((member) => {
+        const role = member.role || "member";
+        log(`  - ${member.username} (${member.email}) - ${role}`, "white");
+      });
+    } else {
+      log("\nMembers: None", "yellow");
+    }
 
-  const bandId = parseInt(choice);
-  if (isNaN(bandId)) {
-    log("Invalid band ID.", "red");
-    return;
-  }
+    // Show detailed songs
+    const songsQuery = `
+      SELECT bs.song_id, s.title, a.name as artist_name
+      FROM band_songs bs
+      JOIN songs s ON bs.song_id = s.id
+      LEFT JOIN song_artists sa ON s.id = sa.song_id
+      LEFT JOIN artists a ON sa.artist_id = a.id
+      WHERE bs.band_id = $1
+      ORDER BY s.title
+    `;
 
-  const selectedBand = bands.find((band) => band.id === bandId);
-  if (!selectedBand) {
-    log(`No band found with ID ${bandId}.`, "red");
-    return;
-  }
+    const songsResult = await client.query(songsQuery, [bandId]);
 
-  log(`\n=== Detailed Info for "${selectedBand.name}" ===`, "cyan");
-  log(
-    `ID: ${selectedBand.id} | Created: ${selectedBand.createdAt.toLocaleDateString()}`,
-    "blue"
-  );
-
-  // Show detailed members
-  if (selectedBand.members && selectedBand.members.length > 0) {
-    log("\nMembers:", "yellow");
-    selectedBand.members.forEach((member) => {
-      const role = member.role || "member";
-      log(
-        `  - ${member.user.username} (${member.user.email}) - ${role}`,
-        "white"
-      );
-    });
-  } else {
-    log("\nMembers: None", "yellow");
-  }
-
-  // Show detailed songs
-  if (selectedBand.songs && selectedBand.songs.length > 0) {
-    log("\nSongs:", "yellow");
-    selectedBand.songs.forEach((bandSong) => {
-      const artist =
-        bandSong.song.artists && bandSong.song.artists.length > 0
-          ? bandSong.song.artists[0].artist.name
-          : "Unknown Artist";
-      log(
-        `  - ID: ${bandSong.song.id} | "${bandSong.song.title}" by ${artist}`,
-        "white"
-      );
-    });
-  } else {
-    log("\nSongs: None", "yellow");
+    if (songsResult.rows.length > 0) {
+      log("\nSongs:", "yellow");
+      songsResult.rows.forEach((song) => {
+        const artist = song.artist_name || "Unknown Artist";
+        log(`  - ID: ${song.song_id} | "${song.title}" by ${artist}`, "white");
+      });
+    } else {
+      log("\nSongs: None", "yellow");
+    }
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
 async function listSongs() {
   log("\n=== Songs ===", "cyan");
-  const songs = await prisma.song.findMany({
-    include: {
-      artists: {
-        include: {
-          artist: true,
-        },
-      },
-      vocalist: true,
-    },
-    orderBy: { title: "asc" },
-  });
+  const client = createDbClient();
 
-  songs.forEach((song) => {
-    const artist =
-      song.artists && song.artists.length > 0
-        ? song.artists[0].artist.name
-        : "Unknown";
-    log(
-      `ID: ${song.id} | ${song.title} | ${artist} | Created: ${song.createdAt.toLocaleDateString()}`,
-      "blue"
-    );
-  });
-  log(`Total songs: ${songs.length}`, "green");
+  try {
+    await client.connect();
+
+    const songsQuery = `
+      SELECT s.id, s.title, s.created_at, a.name as artist_name
+      FROM songs s
+      LEFT JOIN song_artists sa ON s.id = sa.song_id
+      LEFT JOIN artists a ON sa.artist_id = a.id
+      ORDER BY s.title ASC
+    `;
+
+    const result = await client.query(songsQuery);
+
+    result.rows.forEach((song) => {
+      const artist = song.artist_name || "Unknown";
+      log(
+        `ID: ${song.id} | ${song.title} | ${artist} | Created: ${new Date(song.created_at).toLocaleDateString()}`,
+        "blue"
+      );
+    });
+    log(`Total songs: ${result.rows.length}`, "green");
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
+  }
 }
 
 async function mergeArtists() {
   log("\n=== Merge Artists ===", "yellow");
+  const client = createDbClient();
 
   try {
+    await client.connect();
+
     // First, show all artists to help user choose
     log("\nAvailable artists:", "blue");
-    const allArtists = await prisma.artist.findMany({
-      include: {
-        songs: {
-          select: {
-            song: {
-              select: {
-                id: true,
-                title: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: { name: "asc" },
-    });
+    const allArtistsQuery = `
+      SELECT a.id, a.name, COUNT(sa.song_id) as song_count
+      FROM artists a
+      LEFT JOIN song_artists sa ON a.id = sa.artist_id
+      GROUP BY a.id, a.name
+      ORDER BY a.name ASC
+    `;
 
-    if (allArtists.length < 2) {
+    const allArtistsResult = await client.query(allArtistsQuery);
+
+    if (allArtistsResult.rows.length < 2) {
       log("Need at least 2 artists to perform a merge.", "red");
       return;
     }
 
-    allArtists.forEach((artist, index) => {
-      const songCount = artist.songs ? artist.songs.length : 0;
+    allArtistsResult.rows.forEach((artist, index) => {
       log(
-        `${index + 1}. ${artist.name} (ID: ${artist.id}) - ${songCount} songs`,
+        `${index + 1}. ${artist.name} (ID: ${artist.id}) - ${artist.song_count} songs`,
         "white"
       );
     });
@@ -307,13 +338,13 @@ async function mergeArtists() {
     if (
       isNaN(sourceIndex) ||
       sourceIndex < 0 ||
-      sourceIndex >= allArtists.length
+      sourceIndex >= allArtistsResult.rows.length
     ) {
       log("Invalid choice.", "red");
       return;
     }
 
-    const sourceArtist = allArtists[sourceIndex];
+    const sourceArtist = allArtistsResult.rows[sourceIndex];
 
     // Get target artist (the one to merge into)
     const targetChoice = await question(
@@ -324,7 +355,7 @@ async function mergeArtists() {
     if (
       isNaN(targetIndex) ||
       targetIndex < 0 ||
-      targetIndex >= allArtists.length
+      targetIndex >= allArtistsResult.rows.length
     ) {
       log("Invalid choice.", "red");
       return;
@@ -335,16 +366,16 @@ async function mergeArtists() {
       return;
     }
 
-    const targetArtist = allArtists[targetIndex];
+    const targetArtist = allArtistsResult.rows[targetIndex];
 
     // Show what will happen
     log(`\nMerge Summary:`, "cyan");
     log(
-      `FROM: ${sourceArtist.name} (ID: ${sourceArtist.id}) - ${sourceArtist.songs ? sourceArtist.songs.length : 0} songs`,
+      `FROM: ${sourceArtist.name} (ID: ${sourceArtist.id}) - ${sourceArtist.song_count} songs`,
       "yellow"
     );
     log(
-      `INTO: ${targetArtist.name} (ID: ${targetArtist.id}) - ${targetArtist.songs ? targetArtist.songs.length : 0} songs`,
+      `INTO: ${targetArtist.name} (ID: ${targetArtist.id}) - ${targetArtist.song_count} songs`,
       "green"
     );
 
@@ -361,214 +392,253 @@ async function mergeArtists() {
     log("\nPerforming merge...", "blue");
 
     // Update all songs from source artist to target artist
-    if (sourceArtist.songs && sourceArtist.songs.length > 0) {
-      for (const songArtist of sourceArtist.songs) {
-        // Update the song artist relationship to point to target artist
-        await prisma.songArtist.update({
-          where: { id: songArtist.id },
-          data: { artistId: targetArtist.id },
-        });
-        log(`Moved song: ${songArtist.song.title}`, "white");
-      }
-    }
+    const updateQuery = `
+      UPDATE song_artists 
+      SET artist_id = $1, updated_at = NOW()
+      WHERE artist_id = $2
+    `;
+
+    const updateResult = await client.query(updateQuery, [
+      targetArtist.id,
+      sourceArtist.id,
+    ]);
+    log(
+      `Moved ${updateResult.rowCount} songs from "${sourceArtist.name}" to "${targetArtist.name}"`,
+      "white"
+    );
 
     // Delete the source artist
-    await prisma.artist.delete({
-      where: { id: sourceArtist.id },
-    });
+    await client.query("DELETE FROM artists WHERE id = $1", [sourceArtist.id]);
     log(`Deleted source artist: ${sourceArtist.name}`, "yellow");
 
     // Show final result
     log(`\n✅ Merge completed successfully!`, "green");
     log(`\nSongs now belonging to "${targetArtist.name}":`, "cyan");
 
-    const finalSongs = await prisma.song.findMany({
-      include: {
-        artists: {
-          where: { artistId: targetArtist.id },
-          select: {
-            artist: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: { title: "asc" },
-    });
+    const finalSongsQuery = `
+      SELECT s.title
+      FROM songs s
+      JOIN song_artists sa ON s.id = sa.song_id
+      WHERE sa.artist_id = $1
+      ORDER BY s.title ASC
+    `;
 
-    if (finalSongs.length > 0) {
-      finalSongs.forEach((song, index) => {
+    const finalSongsResult = await client.query(finalSongsQuery, [
+      targetArtist.id,
+    ]);
+
+    if (finalSongsResult.rows.length > 0) {
+      finalSongsResult.rows.forEach((song, index) => {
         log(`  ${index + 1}. ${song.title}`, "white");
       });
-      log(`\nTotal songs: ${finalSongs.length}`, "green");
+      log(`\nTotal songs: ${finalSongsResult.rows.length}`, "green");
     } else {
       log("  No songs found.", "yellow");
     }
   } catch (error) {
     log(`Error during merge: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
 async function listArtists() {
   log("\n=== Artists ===", "cyan");
-  const artists = await prisma.artist.findMany({
-    include: {
-      songs: {
-        select: {
-          song: {
-            select: {
-              id: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
+  const client = createDbClient();
 
-  artists.forEach((artist) => {
-    const songCount = artist.songs ? artist.songs.length : 0;
-    log(`ID: ${artist.id} | ${artist.name} | Songs: ${songCount}`, "blue");
-  });
-  log(`Total artists: ${artists.length}`, "green");
+  try {
+    await client.connect();
+
+    const artistsQuery = `
+      SELECT a.id, a.name, COUNT(sa.song_id) as song_count
+      FROM artists a
+      LEFT JOIN song_artists sa ON a.id = sa.artist_id
+      GROUP BY a.id, a.name
+      ORDER BY a.name ASC
+    `;
+
+    const result = await client.query(artistsQuery);
+
+    result.rows.forEach((artist) => {
+      log(
+        `ID: ${artist.id} | ${artist.name} | Songs: ${artist.song_count}`,
+        "blue"
+      );
+    });
+    log(`Total artists: ${result.rows.length}`, "green");
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
+  }
 }
 
 async function deleteUser() {
   const userId = await question("Enter user ID to delete: ");
+  const client = createDbClient();
 
   if (!userId.trim()) {
     log("No User Deleted", "yellow");
     return;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: parseInt(userId) },
-  });
+  try {
+    await client.connect();
 
-  if (!user) {
-    log("User not found!", "red");
-    return;
-  }
+    const userQuery = "SELECT id, username, email FROM users WHERE id = $1";
+    const userResult = await client.query(userQuery, [parseInt(userId)]);
 
-  log(`Found user: ${user.username} (${user.email})`, "yellow");
-
-  if (await confirmAction(`delete user ${user.username}`)) {
-    // Delete related data first
-    await prisma.bandInvitation.deleteMany({
-      where: { invitedBy: parseInt(userId) },
-    });
-    await prisma.bandMember.deleteMany({ where: { userId: parseInt(userId) } });
-
-    // Check if user owns any bands
-    const ownedBands = await prisma.band.findMany({
-      where: { createdById: parseInt(userId) },
-      select: { id: true, name: true },
-    });
-
-    if (ownedBands.length > 0) {
-      log(`\n⚠️  WARNING: User owns ${ownedBands.length} band(s):`, "red");
-      ownedBands.forEach((band) => {
-        log(`  - ${band.name} (ID: ${band.id})`, "yellow");
-      });
-
-      log(
-        "\nYou must transfer ownership of these bands before deleting the user.",
-        "red"
-      );
-      const newOwnerId = await question(
-        "Enter the user ID to transfer ownership to: "
-      );
-
-      if (!newOwnerId.trim()) {
-        log("No new owner specified. User deletion cancelled.", "yellow");
-        return;
-      }
-
-      const newOwner = await prisma.user.findUnique({
-        where: { id: parseInt(newOwnerId) },
-      });
-
-      if (!newOwner) {
-        log("New owner not found. User deletion cancelled.", "red");
-        return;
-      }
-
-      log(`Transferring ownership to: ${newOwner.username}`, "green");
-
-      // Transfer ownership of all bands
-      for (const band of ownedBands) {
-        await prisma.band.update({
-          where: { id: band.id },
-          data: { createdById: parseInt(newOwnerId) },
-        });
-        log(
-          `  - ${band.name} ownership transferred to ${newOwner.username}`,
-          "green"
-        );
-      }
+    if (userResult.rows.length === 0) {
+      log("User not found!", "red");
+      return;
     }
 
-    // Delete user
-    await prisma.user.delete({
-      where: { id: parseInt(userId) },
-    });
-    log(`User ${user.username} deleted successfully!`, "green");
-  } else {
-    log("Deletion cancelled.", "yellow");
+    const user = userResult.rows[0];
+    log(`Found user: ${user.username} (${user.email})`, "yellow");
+
+    if (await confirmAction(`delete user ${user.username}`)) {
+      // Delete related data first
+      await client.query("DELETE FROM band_invitations WHERE invited_by = $1", [
+        parseInt(userId),
+      ]);
+      await client.query("DELETE FROM band_members WHERE user_id = $1", [
+        parseInt(userId),
+      ]);
+
+      // Check if user owns any bands
+      const ownedBandsQuery =
+        "SELECT id, name FROM bands WHERE created_by_id = $1";
+      const ownedBandsResult = await client.query(ownedBandsQuery, [
+        parseInt(userId),
+      ]);
+
+      if (ownedBandsResult.rows.length > 0) {
+        log(
+          `\n⚠️  WARNING: User owns ${ownedBandsResult.rows.length} band(s):`,
+          "red"
+        );
+        ownedBandsResult.rows.forEach((band) => {
+          log(`  - ${band.name} (ID: ${band.id})`, "yellow");
+        });
+
+        log(
+          "\nYou must transfer ownership of these bands before deleting the user.",
+          "red"
+        );
+        const newOwnerId = await question(
+          "Enter the user ID to transfer ownership to: "
+        );
+
+        if (!newOwnerId.trim()) {
+          log("No new owner specified. User deletion cancelled.", "yellow");
+          return;
+        }
+
+        const newOwnerQuery = "SELECT id, username FROM users WHERE id = $1";
+        const newOwnerResult = await client.query(newOwnerQuery, [
+          parseInt(newOwnerId),
+        ]);
+
+        if (newOwnerResult.rows.length === 0) {
+          log("New owner not found. User deletion cancelled.", "red");
+          return;
+        }
+
+        const newOwner = newOwnerResult.rows[0];
+        log(`Transferring ownership to: ${newOwner.username}`, "green");
+
+        // Transfer ownership of all bands
+        for (const band of ownedBandsResult.rows) {
+          await client.query(
+            "UPDATE bands SET created_by_id = $1 WHERE id = $2",
+            [parseInt(newOwnerId), band.id]
+          );
+          log(
+            `  - ${band.name} ownership transferred to ${newOwner.username}`,
+            "green"
+          );
+        }
+      }
+
+      // Delete user
+      await client.query("DELETE FROM users WHERE id = $1", [parseInt(userId)]);
+      log(`User ${user.username} deleted successfully!`, "green");
+    } else {
+      log("Deletion cancelled.", "yellow");
+    }
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
 async function deleteBand() {
   const bandId = await question("Enter band ID to delete: ");
+  const client = createDbClient();
 
   if (!bandId.trim()) {
     log("No Band Deleted", "yellow");
     return;
   }
 
-  const band = await prisma.band.findUnique({
-    where: { id: parseInt(bandId) },
-  });
+  try {
+    await client.connect();
 
-  if (!band) {
-    log("Band not found!", "red");
-    return;
-  }
+    const bandQuery = "SELECT id, name FROM bands WHERE id = $1";
+    const bandResult = await client.query(bandQuery, [parseInt(bandId)]);
 
-  log(`Found band: ${band.name}`, "yellow");
-
-  if (await confirmAction(`delete band ${band.name}`)) {
-    // Delete related data first
-    await prisma.bandInvitation.deleteMany({
-      where: { bandId: parseInt(bandId) },
-    });
-    await prisma.bandMember.deleteMany({ where: { bandId: parseInt(bandId) } });
-    await prisma.bandSong.deleteMany({ where: { bandId: parseInt(bandId) } });
-
-    // Delete setlists and sets
-    const setlists = await prisma.setlist.findMany({
-      where: { bandId: parseInt(bandId) },
-    });
-    for (const setlist of setlists) {
-      // Delete setlist songs first (they reference setlist sets)
-      await prisma.setlistSong.deleteMany({
-        where: { setlistSet: { setlistId: setlist.id } },
-      });
-      // Then delete setlist sets
-      await prisma.setlistSet.deleteMany({ where: { setlistId: setlist.id } });
+    if (bandResult.rows.length === 0) {
+      log("Band not found!", "red");
+      return;
     }
-    await prisma.setlist.deleteMany({ where: { bandId: parseInt(bandId) } });
 
-    // Delete band
-    await prisma.band.delete({
-      where: { id: parseInt(bandId) },
-    });
-    log(`Band ${band.name} deleted successfully!`, "green");
-  } else {
-    log("Deletion cancelled.", "yellow");
+    const band = bandResult.rows[0];
+    log(`Found band: ${band.name}`, "yellow");
+
+    if (await confirmAction(`delete band ${band.name}`)) {
+      // Delete related data first
+      await client.query("DELETE FROM band_invitations WHERE band_id = $1", [
+        parseInt(bandId),
+      ]);
+      await client.query("DELETE FROM band_members WHERE band_id = $1", [
+        parseInt(bandId),
+      ]);
+      await client.query("DELETE FROM band_songs WHERE band_id = $1", [
+        parseInt(bandId),
+      ]);
+
+      // Delete setlists and sets
+      const setlistsQuery = "SELECT id FROM setlists WHERE band_id = $1";
+      const setlistsResult = await client.query(setlistsQuery, [
+        parseInt(bandId),
+      ]);
+
+      for (const setlist of setlistsResult.rows) {
+        // Delete setlist songs first (they reference setlist sets)
+        await client.query(
+          "DELETE FROM setlist_songs WHERE setlist_set_id IN (SELECT id FROM setlist_sets WHERE setlist_id = $1)",
+          [setlist.id]
+        );
+        // Then delete setlist sets
+        await client.query("DELETE FROM setlist_sets WHERE setlist_id = $1", [
+          setlist.id,
+        ]);
+      }
+      await client.query("DELETE FROM setlists WHERE band_id = $1", [
+        parseInt(bandId),
+      ]);
+
+      // Delete band
+      await client.query("DELETE FROM bands WHERE id = $1", [parseInt(bandId)]);
+      log(`Band ${band.name} deleted successfully!`, "green");
+    } else {
+      log("Deletion cancelled.", "yellow");
+    }
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
@@ -698,6 +768,7 @@ async function deleteSong() {
 async function deleteLinks() {
   log("\n=== Delete Links from Song ===", "red");
   const songId = await question("Enter song ID: ");
+  const client = createDbClient();
 
   if (!songId.trim()) {
     log("No Song Selected", "yellow");
@@ -705,35 +776,47 @@ async function deleteLinks() {
   }
 
   try {
-    const song = await prisma.song.findUnique({
-      where: { id: parseInt(songId) },
-      include: {
-        artists: {
-          include: {
-            artist: true,
-          },
-        },
-        links: true,
-      },
-    });
+    await client.connect();
 
-    if (!song) {
+    const songQuery = `
+      SELECT s.id, s.title, a.name as artist_name
+      FROM songs s
+      LEFT JOIN song_artists sa ON s.id = sa.song_id
+      LEFT JOIN artists a ON sa.artist_id = a.id
+      WHERE s.id = $1
+      LIMIT 1
+    `;
+
+    const songResult = await client.query(songQuery, [parseInt(songId)]);
+
+    if (songResult.rows.length === 0) {
       log("Song not found!", "red");
       return;
     }
 
+    const song = songResult.rows[0];
     log(`\nSong: ${song.title}`, "blue");
-    if (song.artists && song.artists.length > 0) {
-      log(`Artist: ${song.artists[0].artist.name}`, "blue");
+    if (song.artist_name) {
+      log(`Artist: ${song.artist_name}`, "blue");
     }
 
-    if (!song.links || song.links.length === 0) {
+    // Get links for this song
+    const linksQuery = `
+      SELECT id, type, description, url
+      FROM links
+      WHERE song_id = $1
+      ORDER BY id
+    `;
+
+    const linksResult = await client.query(linksQuery, [parseInt(songId)]);
+
+    if (linksResult.rows.length === 0) {
       log("\nNo links found for this song.", "yellow");
       return;
     }
 
-    log(`\nLinks (${song.links.length}):`, "yellow");
-    song.links.forEach((link, index) => {
+    log(`\nLinks (${linksResult.rows.length}):`, "yellow");
+    linksResult.rows.forEach((link, index) => {
       log(
         `  ${index + 1}. [${link.type}] ${link.description || "No description"} - ${link.url}`,
         "white"
@@ -742,7 +825,7 @@ async function deleteLinks() {
 
     log("\nOptions:", "cyan");
     log(
-      `- Enter a number (1-${song.links.length}) to delete that specific link`,
+      `- Enter a number (1-${linksResult.rows.length}) to delete that specific link`,
       "white"
     );
     log('- Type "all" to delete all links', "white");
@@ -759,13 +842,13 @@ async function deleteLinks() {
 
     if (choice === "all") {
       const confirmed = await confirmAction(
-        `delete all ${song.links.length} links from "${song.title}"`
+        `delete all ${linksResult.rows.length} links from "${song.title}"`
       );
       if (confirmed) {
-        await prisma.link.deleteMany({
-          where: { songId: song.id },
-        });
-        log(`${song.links.length} links deleted successfully!`, "green");
+        await client.query("DELETE FROM links WHERE song_id = $1", [
+          parseInt(songId),
+        ]);
+        log(`${linksResult.rows.length} links deleted successfully!`, "green");
       } else {
         log("Deletion cancelled.", "yellow");
       }
@@ -773,32 +856,37 @@ async function deleteLinks() {
     }
 
     const linkIndex = parseInt(choice) - 1;
-    if (isNaN(linkIndex) || linkIndex < 0 || linkIndex >= song.links.length) {
+    if (
+      isNaN(linkIndex) ||
+      linkIndex < 0 ||
+      linkIndex >= linksResult.rows.length
+    ) {
       log('Invalid choice. Please enter a valid number or "all".', "red");
       return;
     }
 
-    const selectedLink = song.links[linkIndex];
+    const selectedLink = linksResult.rows[linkIndex];
     const confirmed = await confirmAction(
       `delete link [${selectedLink.type}] ${selectedLink.description || "No description"} from "${song.title}"`
     );
 
     if (confirmed) {
-      await prisma.link.delete({
-        where: { id: selectedLink.id },
-      });
+      await client.query("DELETE FROM links WHERE id = $1", [selectedLink.id]);
       log("Link deleted successfully!", "green");
     } else {
       log("Deletion cancelled.", "yellow");
     }
   } catch (error) {
     log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
 async function deleteArtist() {
   log("\n=== Delete Artist ===", "red");
   const artistId = await question("Enter artist ID to delete: ");
+  const client = createDbClient();
 
   if (!artistId.trim()) {
     log("No Artist Deleted", "yellow");
@@ -806,36 +894,44 @@ async function deleteArtist() {
   }
 
   try {
-    const artist = await prisma.artist.findUnique({
-      where: { id: parseInt(artistId) },
-      include: {
-        songs: {
-          select: {
-            song: {
-              select: {
-                id: true,
-                title: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    await client.connect();
 
-    if (!artist) {
+    const artistQuery = `
+      SELECT a.id, a.name, COUNT(sa.song_id) as song_count
+      FROM artists a
+      LEFT JOIN song_artists sa ON a.id = sa.artist_id
+      WHERE a.id = $1
+      GROUP BY a.id, a.name
+    `;
+
+    const artistResult = await client.query(artistQuery, [parseInt(artistId)]);
+
+    if (artistResult.rows.length === 0) {
       log("Artist not found!", "red");
       return;
     }
 
+    const artist = artistResult.rows[0];
     log(`\nArtist: ${artist.name}`, "blue");
 
-    if (artist.songs && artist.songs.length > 0) {
+    if (artist.song_count > 0) {
+      // Get song details
+      const songsQuery = `
+        SELECT s.id, s.title
+        FROM songs s
+        JOIN song_artists sa ON s.id = sa.song_id
+        WHERE sa.artist_id = $1
+        ORDER BY s.title
+      `;
+
+      const songsResult = await client.query(songsQuery, [parseInt(artistId)]);
+
       log(
-        `\nThis artist has ${artist.songs.length} song(s) that will also be deleted:`,
+        `\nThis artist has ${songsResult.rows.length} song(s) that will also be deleted:`,
         "yellow"
       );
-      artist.songs.forEach((songArtist, index) => {
-        log(`  ${index + 1}. ${songArtist.song.title}`, "white");
+      songsResult.rows.forEach((song, index) => {
+        log(`  ${index + 1}. ${song.title}`, "white");
       });
 
       log(
@@ -847,36 +943,110 @@ async function deleteArtist() {
     }
 
     const confirmed = await confirmAction(
-      `delete artist "${artist.name}" and all ${artist.songs ? artist.songs.length : 0} associated songs`
+      `delete artist "${artist.name}" and all ${artist.song_count} associated songs`
     );
 
     if (confirmed) {
-      // Delete all songs by this artist first
-      if (artist.songs && artist.songs.length > 0) {
-        for (const songArtist of artist.songs) {
-          await prisma.song.delete({
-            where: { id: songArtist.song.id },
-          });
+      // Delete in correct order due to foreign key constraints
+      if (artist.song_count > 0) {
+        // Get the song IDs first before deleting relationships
+        const songIdsQuery = `
+          SELECT s.id 
+          FROM songs s 
+          JOIN song_artists sa ON s.id = sa.song_id 
+          WHERE sa.artist_id = $1
+        `;
+        const songIdsResult = await client.query(songIdsQuery, [
+          parseInt(artistId),
+        ]);
+        const songIds = songIdsResult.rows.map((row) => row.id);
+
+        if (songIds.length > 0) {
+          log(
+            `\nCleaning up related data for ${songIds.length} songs...`,
+            "blue"
+          );
+
+          // Delete setlist_songs first (they reference setlist_sets)
+          const setlistSongsResult = await client.query(
+            "DELETE FROM setlist_songs WHERE song_id = ANY($1) RETURNING id",
+            [songIds]
+          );
+          if (setlistSongsResult.rowCount > 0) {
+            log(
+              `Removed ${setlistSongsResult.rowCount} setlist song references.`,
+              "yellow"
+            );
+          }
+
+          // Delete gig_documents
+          const gigDocsResult = await client.query(
+            "DELETE FROM gig_documents WHERE song_id = ANY($1) RETURNING id",
+            [songIds]
+          );
+          if (gigDocsResult.rowCount > 0) {
+            log(`Removed ${gigDocsResult.rowCount} gig documents.`, "yellow");
+          }
+
+          // Delete links
+          const linksResult = await client.query(
+            "DELETE FROM links WHERE song_id = ANY($1) RETURNING id",
+            [songIds]
+          );
+          if (linksResult.rowCount > 0) {
+            log(`Removed ${linksResult.rowCount} links.`, "yellow");
+          }
+
+          // Delete band_songs relationships
+          const bandSongsResult = await client.query(
+            "DELETE FROM band_songs WHERE song_id = ANY($1) RETURNING id",
+            [songIds]
+          );
+          if (bandSongsResult.rowCount > 0) {
+            log(
+              `Removed ${bandSongsResult.rowCount} band-song relationships.`,
+              "yellow"
+            );
+          }
+
+          // First, delete song_artists relationships
+          await client.query("DELETE FROM song_artists WHERE artist_id = $1", [
+            parseInt(artistId),
+          ]);
+          log(
+            `Removed ${artist.song_count} song-artist relationships.`,
+            "yellow"
+          );
+
+          // Finally delete the songs
+          const deleteSongsQuery = `
+            DELETE FROM songs 
+            WHERE id = ANY($1)
+          `;
+          await client.query(deleteSongsQuery, [songIds]);
+          log(`${songIds.length} songs deleted.`, "yellow");
         }
-        log(`${artist.songs.length} songs deleted.`, "yellow");
       }
 
-      // Delete the artist
-      await prisma.artist.delete({
-        where: { id: parseInt(artistId) },
-      });
+      // Finally delete the artist
+      await client.query("DELETE FROM artists WHERE id = $1", [
+        parseInt(artistId),
+      ]);
       log(`Artist "${artist.name}" deleted successfully!`, "green");
     } else {
       log("Deletion cancelled.", "yellow");
     }
   } catch (error) {
     log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
 async function deleteGigDocuments() {
   log("\n=== Delete Gig Documents from Song ===", "red");
   const songId = await question("Enter song ID: ");
+  const client = createDbClient();
 
   if (!songId.trim()) {
     log("No Song Selected", "yellow");
@@ -884,42 +1054,54 @@ async function deleteGigDocuments() {
   }
 
   try {
-    const song = await prisma.song.findUnique({
-      where: { id: parseInt(songId) },
-      include: {
-        artists: {
-          include: {
-            artist: true,
-          },
-        },
-        gigDocuments: true,
-      },
-    });
+    await client.connect();
 
-    if (!song) {
+    const songQuery = `
+      SELECT s.id, s.title, a.name as artist_name
+      FROM songs s
+      LEFT JOIN song_artists sa ON s.id = sa.song_id
+      LEFT JOIN artists a ON sa.artist_id = a.id
+      WHERE s.id = $1
+      LIMIT 1
+    `;
+
+    const songResult = await client.query(songQuery, [parseInt(songId)]);
+
+    if (songResult.rows.length === 0) {
       log("Song not found!", "red");
       return;
     }
 
+    const song = songResult.rows[0];
     log(`\nSong: ${song.title}`, "blue");
-    if (song.artists && song.artists.length > 0) {
-      log(`Artist: ${song.artists[0].artist.name}`, "blue");
+    if (song.artist_name) {
+      log(`Artist: ${song.artist_name}`, "blue");
     }
 
-    if (!song.gigDocuments || song.gigDocuments.length === 0) {
+    // Get gig documents for this song
+    const gigDocsQuery = `
+      SELECT id, type, version
+      FROM gig_documents
+      WHERE song_id = $1
+      ORDER BY id
+    `;
+
+    const gigDocsResult = await client.query(gigDocsQuery, [parseInt(songId)]);
+
+    if (gigDocsResult.rows.length === 0) {
       log("\nNo gig documents found for this song.", "yellow");
       return;
     }
 
-    log(`\nGig Documents (${song.gigDocuments.length}):`, "yellow");
-    song.gigDocuments.forEach((doc, index) => {
+    log(`\nGig Documents (${gigDocsResult.rows.length}):`, "yellow");
+    gigDocsResult.rows.forEach((doc, index) => {
       const docTitle = `${doc.type || "No type"} - v${doc.version || "No version"}`;
       log(`  ${index + 1}. ${docTitle}`, "white");
     });
 
     log("\nOptions:", "cyan");
     log(
-      `- Enter a number (1-${song.gigDocuments.length}) to delete that specific gig document`,
+      `- Enter a number (1-${gigDocsResult.rows.length}) to delete that specific gig document`,
       "white"
     );
     log('- Type "all" to delete all gig documents', "white");
@@ -936,14 +1118,14 @@ async function deleteGigDocuments() {
 
     if (choice === "all") {
       const confirmed = await confirmAction(
-        `delete all ${song.gigDocuments.length} gig documents from "${song.title}"`
+        `delete all ${gigDocsResult.rows.length} gig documents from "${song.title}"`
       );
       if (confirmed) {
-        await prisma.gigDocument.deleteMany({
-          where: { songId: song.id },
-        });
+        await client.query("DELETE FROM gig_documents WHERE song_id = $1", [
+          parseInt(songId),
+        ]);
         log(
-          `${song.gigDocuments.length} gig documents deleted successfully!`,
+          `${gigDocsResult.rows.length} gig documents deleted successfully!`,
           "green"
         );
       } else {
@@ -956,34 +1138,37 @@ async function deleteGigDocuments() {
     if (
       isNaN(docIndex) ||
       docIndex < 0 ||
-      docIndex >= song.gigDocuments.length
+      docIndex >= gigDocsResult.rows.length
     ) {
       log('Invalid choice. Please enter a valid number or "all".', "red");
       return;
     }
 
-    const selectedDoc = song.gigDocuments[docIndex];
+    const selectedDoc = gigDocsResult.rows[docIndex];
     const docTitle = `${selectedDoc.type || "No type"} - v${selectedDoc.version || "No version"}`;
     const confirmed = await confirmAction(
       `delete gig document ${docTitle} from "${song.title}"`
     );
 
     if (confirmed) {
-      await prisma.gigDocument.delete({
-        where: { id: selectedDoc.id },
-      });
+      await client.query("DELETE FROM gig_documents WHERE id = $1", [
+        selectedDoc.id,
+      ]);
       log("Gig document deleted successfully!", "green");
     } else {
       log("Deletion cancelled.", "yellow");
     }
   } catch (error) {
     log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
 async function editSong() {
   log("\n=== Edit Song ===", "cyan");
   const songId = await question("Enter song ID: ");
+  const client = createDbClient();
 
   if (!songId.trim()) {
     log("No Song Selected", "yellow");
@@ -991,32 +1176,35 @@ async function editSong() {
   }
 
   try {
-    const song = await prisma.song.findUnique({
-      where: { id: parseInt(songId) },
-      include: {
-        artists: {
-          include: {
-            artist: true,
-          },
-        },
-        vocalist: true,
-      },
-    });
+    await client.connect();
 
-    if (!song) {
+    const songQuery = `
+      SELECT s.id, s.title, s.key, s.time, a.name as artist_name, v.name as vocalist_name
+      FROM songs s
+      LEFT JOIN song_artists sa ON s.id = sa.song_id
+      LEFT JOIN artists a ON sa.artist_id = a.id
+      LEFT JOIN vocalists v ON s.vocalist_id = v.id
+      WHERE s.id = $1
+      LIMIT 1
+    `;
+
+    const songResult = await client.query(songQuery, [parseInt(songId)]);
+
+    if (songResult.rows.length === 0) {
       log("Song not found!", "red");
       return;
     }
 
+    const song = songResult.rows[0];
     log(`\nCurrent song details:`, "blue");
     log(`Title: ${song.title}`, "white");
-    if (song.artists && song.artists.length > 0) {
-      log(`Artist: ${song.artists[0].artist.name}`, "white");
+    if (song.artist_name) {
+      log(`Artist: ${song.artist_name}`, "white");
     } else {
       log(`Artist: None assigned`, "white");
     }
-    if (song.vocalist) {
-      log(`Vocalist: ${song.vocalist.name}`, "white");
+    if (song.vocalist_name) {
+      log(`Vocalist: ${song.vocalist_name}`, "white");
     }
     if (song.key) {
       log(`Key: ${song.key}`, "white");
@@ -1040,124 +1228,163 @@ async function editSong() {
     }
 
     // Edit artist
-    const currentArtist =
-      song.artists && song.artists.length > 0
-        ? song.artists[0].artist.name
-        : "";
+    const currentArtist = song.artist_name || "";
     const newArtist = await question(
       `Enter new artist (or press Enter to keep current: ${currentArtist}): `
     );
 
     if (newArtist.trim()) {
       // Find or create the artist
-      let artist = await prisma.artist.findFirst({
-        where: { name: newArtist.trim() },
-      });
+      let artistQuery = "SELECT id, name FROM artists WHERE name = $1";
+      let artistResult = await client.query(artistQuery, [newArtist.trim()]);
+      let artist = artistResult.rows[0];
 
       if (!artist) {
-        artist = await prisma.artist.create({
-          data: {
-            name: newArtist.trim(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
+        const createArtistQuery = `
+          INSERT INTO artists (name, created_at, updated_at)
+          VALUES ($1, NOW(), NOW())
+          RETURNING id, name
+        `;
+        artistResult = await client.query(createArtistQuery, [
+          newArtist.trim(),
+        ]);
+        artist = artistResult.rows[0];
         log(`Created new artist: ${artist.name}`, "green");
       }
 
       // Remove existing artist associations and add the new one
-      await prisma.songArtist.deleteMany({
-        where: { songId: song.id },
-      });
-      await prisma.songArtist.create({
-        data: {
-          songId: song.id,
-          artistId: artist.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
+      await client.query("DELETE FROM song_artists WHERE song_id = $1", [
+        song.id,
+      ]);
+      await client.query(
+        `
+        INSERT INTO song_artists (song_id, artist_id, created_at, updated_at)
+        VALUES ($1, $2, NOW(), NOW())
+      `,
+        [song.id, artist.id]
+      );
       log(`Artist updated to: ${artist.name}`, "green");
     }
 
     // Save the song
-    await prisma.song.update({
-      where: { id: song.id },
-      data: {
-        title: song.title,
-        updatedAt: new Date(),
-      },
-    });
+    await client.query(
+      `
+      UPDATE songs 
+      SET title = $1, updated_at = NOW()
+      WHERE id = $2
+    `,
+      [song.title, song.id]
+    );
     log("\nSong updated successfully!", "green");
 
     // Show final result
     log("\nUpdated song details:", "blue");
     log(`Title: ${song.title}`, "white");
-    const updatedSong = await prisma.song.findUnique({
-      where: { id: parseInt(songId) },
-      include: {
-        artists: {
-          include: {
-            artist: true,
-          },
-        },
-        vocalist: true,
-      },
-    });
-    if (updatedSong.artists && updatedSong.artists.length > 0) {
-      log(`Artist: ${updatedSong.artists[0].artist.name}`, "white");
+
+    const updatedSongQuery = `
+      SELECT a.name as artist_name
+      FROM songs s
+      LEFT JOIN song_artists sa ON s.id = sa.song_id
+      LEFT JOIN artists a ON sa.artist_id = a.id
+      WHERE s.id = $1
+      LIMIT 1
+    `;
+
+    const updatedSongResult = await client.query(updatedSongQuery, [
+      parseInt(songId),
+    ]);
+    if (updatedSongResult.rows[0] && updatedSongResult.rows[0].artist_name) {
+      log(`Artist: ${updatedSongResult.rows[0].artist_name}`, "white");
     } else {
       log(`Artist: None assigned`, "white");
     }
   } catch (error) {
     log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
 async function cleanupOrphanedData() {
   log("\n=== Cleaning up orphaned data ===", "cyan");
+  const client = createDbClient();
 
-  // Clean up orphaned band invitations
-  const orphanedInvitations = await prisma.bandInvitation.findMany({
-    where: {
-      expiresAt: { lt: new Date() },
-    },
-  });
+  try {
+    await client.connect();
 
-  if (orphanedInvitations.length > 0) {
-    log(`Found ${orphanedInvitations.length} expired invitations`, "yellow");
-    if (await confirmAction("delete expired invitations")) {
-      await prisma.bandInvitation.deleteMany({
-        where: {
-          expiresAt: { lt: new Date() },
-        },
-      });
-      log("Expired invitations cleaned up!", "green");
+    // Clean up orphaned band invitations
+    const orphanedInvitationsQuery = `
+      SELECT id, expires_at
+      FROM band_invitations
+      WHERE expires_at < NOW()
+    `;
+
+    const orphanedInvitationsResult = await client.query(
+      orphanedInvitationsQuery
+    );
+
+    if (orphanedInvitationsResult.rows.length > 0) {
+      log(
+        `Found ${orphanedInvitationsResult.rows.length} expired invitations`,
+        "yellow"
+      );
+      if (await confirmAction("delete expired invitations")) {
+        await client.query(
+          "DELETE FROM band_invitations WHERE expires_at < NOW()"
+        );
+        log("Expired invitations cleaned up!", "green");
+      }
+    } else {
+      log("No expired invitations found.", "green");
     }
-  } else {
-    log("No expired invitations found.", "green");
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
   }
 }
 
 async function showStats() {
   log("\n=== Application Statistics ===", "cyan");
+  const client = createDbClient();
 
-  const userCount = await prisma.user.count();
-  const bandCount = await prisma.band.count();
-  const songCount = await prisma.song.count();
-  const setlistCount = await prisma.setlist.count();
-  const invitationCount = await prisma.bandInvitation.count({
-    where: {
-      used_at: null,
-      expires_at: { gt: new Date() },
-    },
-  });
+  try {
+    await client.connect();
 
-  log(`Users: ${userCount}`, "blue");
-  log(`Bands: ${bandCount}`, "blue");
-  log(`Songs: ${songCount}`, "blue");
-  log(`Setlists: ${setlistCount}`, "blue");
-  log(`Active Invitations: ${invitationCount}`, "blue");
+    const userCountResult = await client.query(
+      "SELECT COUNT(*) as count FROM users"
+    );
+    const bandCountResult = await client.query(
+      "SELECT COUNT(*) as count FROM bands"
+    );
+    const songCountResult = await client.query(
+      "SELECT COUNT(*) as count FROM songs"
+    );
+    const setlistCountResult = await client.query(
+      "SELECT COUNT(*) as count FROM setlists"
+    );
+    const invitationCountResult = await client.query(`
+      SELECT COUNT(*) as count 
+      FROM band_invitations 
+      WHERE used_at IS NULL AND expires_at > NOW()
+    `);
+
+    const userCount = userCountResult.rows[0].count;
+    const bandCount = bandCountResult.rows[0].count;
+    const songCount = songCountResult.rows[0].count;
+    const setlistCount = setlistCountResult.rows[0].count;
+    const invitationCount = invitationCountResult.rows[0].count;
+
+    log(`Users: ${userCount}`, "blue");
+    log(`Bands: ${bandCount}`, "blue");
+    log(`Songs: ${songCount}`, "blue");
+    log(`Setlists: ${setlistCount}`, "blue");
+    log(`Active Invitations: ${invitationCount}`, "blue");
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
+  }
 }
 
 async function showMenu() {

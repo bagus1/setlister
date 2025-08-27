@@ -4,6 +4,68 @@ const router = express.Router();
 const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
 
+// Dynamic whitelist validation using database
+async function getWhitelistValidation(linkType) {
+  try {
+    const whitelistDomains = await prisma.whitelistDomain.findMany({
+      where: {
+        linkType,
+        isActive: true,
+      },
+    });
+
+    if (whitelistDomains.length === 0) {
+      // Fallback for 'other' type or if no whitelist exists
+      return {
+        pattern: /^https?:\/\/.+/,
+        message: "Please enter a valid URL",
+      };
+    }
+
+    // Build regex pattern from whitelisted domains
+    const domainPatterns = whitelistDomains.map((wd) => {
+      // Escape special regex characters in domain names
+      const escapedDomain = wd.domain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return `(www\\.)?${escapedDomain}`;
+    });
+
+    const pattern = new RegExp(
+      `^https?:\\/\\/(${domainPatterns.join("|")})\\/.*$`
+    );
+
+    // Create helpful message listing the allowed domains
+    const domainList = whitelistDomains.map((wd) => wd.domain).join(", ");
+    const message = `Please enter a valid URL from one of these domains: ${domainList}. If you need to add a different domain, please visit /whitelist-request to request a domain whitelist.`;
+
+    return { pattern, message };
+  } catch (error) {
+    console.error(`Error getting whitelist for ${linkType}:`, error);
+    // Fallback to basic URL validation
+    return {
+      pattern: /^https?:\/\/.+/,
+      message: "Please enter a valid URL",
+    };
+  }
+}
+
+// Custom validation function for link URLs
+const validateLinkUrl = async (value, { req }) => {
+  const linkType = req.body.type;
+
+  try {
+    const validation = await getWhitelistValidation(linkType);
+
+    if (!validation.pattern.test(value)) {
+      return Promise.reject(validation.message);
+    }
+
+    return Promise.resolve();
+  } catch (error) {
+    console.error(`Validation error for ${linkType}:`, error);
+    return Promise.reject("Error validating URL. Please try again.");
+  }
+};
+
 // POST /songs/:songId/links - Add a new link to a song
 router.post(
   "/:songId/links",
@@ -32,7 +94,10 @@ router.post(
         "other",
       ])
       .withMessage("Please select a valid link type"),
-    body("url").isURL().withMessage("Please enter a valid URL"),
+    body("url")
+      .isURL()
+      .withMessage("Please enter a valid URL")
+      .custom(validateLinkUrl),
     body("description")
       .optional()
       .isLength({ max: 255 })
@@ -42,7 +107,9 @@ router.post(
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        req.flash("error", errors.array()[0].msg);
+        // Use the error message as-is
+        const errorMsg = errors.array()[0].msg;
+        req.flash("error", errorMsg);
         return res.redirect(`/songs/${req.params.songId}`);
       }
 
@@ -72,7 +139,7 @@ router.post(
     } catch (error) {
       console.error("Add link error:", error);
       req.flash("error", "Error adding link");
-      res.redirect(`/songs/${req.params.songId}`);
+      res.redirect(`/songs/${song.id}`);
     }
   }
 );

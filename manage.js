@@ -1404,8 +1404,242 @@ async function showMenu() {
   log("12. Cleanup orphaned data", "yellow");
   log("13. Show statistics", "cyan");
   log("14. Merge artists", "yellow");
-  log("15. Exit (or type q/quit)", "reset");
+  log("15. Manage whitelist domains", "green");
+  log("16. Exit (or type q/quit)", "reset");
   log("=====================================", "magenta");
+}
+
+async function manageWhitelistDomains() {
+  log("\n=== Manage Whitelist Domains ===", "cyan");
+  const client = createDbClient();
+
+  try {
+    await client.connect();
+
+    while (true) {
+      log("\nWhitelist Domain Management:", "yellow");
+      log("1. List all whitelist domains", "white");
+      log("2. Add new whitelist domain", "white");
+      log("3. Deactivate whitelist domain", "white");
+      log("4. Reactivate whitelist domain", "white");
+      log("5. Back to main menu", "white");
+
+      const choice = await question("\nEnter your choice (1-5): ");
+
+      switch (choice) {
+        case "1":
+          await listWhitelistDomains(client);
+          break;
+        case "2":
+          await addWhitelistDomain(client);
+          break;
+        case "3":
+          await deactivateWhitelistDomain(client);
+          break;
+        case "4":
+          await reactivateWhitelistDomain(client);
+          break;
+        case "5":
+          return;
+        default:
+          log("Invalid choice. Please try again.", "red");
+      }
+    }
+  } catch (error) {
+    log(`Error managing whitelist domains: ${error.message}`, "red");
+  } finally {
+    await client.end();
+  }
+}
+
+async function listWhitelistDomains(client) {
+  log("\n=== Whitelist Domains ===", "cyan");
+
+  try {
+    const query = `
+      SELECT wd.id, wd."linkType", wd.domain, wd.pattern, wd.is_active, wd.created_at
+      FROM whitelist_domains wd
+      ORDER BY wd."linkType", wd.domain
+    `;
+
+    const result = await client.query(query);
+
+    if (result.rows.length === 0) {
+      log("No whitelist domains found.", "yellow");
+      return;
+    }
+
+    let currentType = null;
+    result.rows.forEach((row, index) => {
+      if (row.linkType !== currentType) {
+        currentType = row.linkType;
+        log(`\n${currentType.toUpperCase()}:`, "magenta");
+      }
+
+      const status = row.is_active ? "✅ Active" : "❌ Inactive";
+      log(`  ${index + 1}. ${row.domain} - ${status}`, "white");
+      log(`     Pattern: ${row.pattern}`, "cyan");
+      log(
+        `     Added: ${new Date(row.created_at).toLocaleDateString()}`,
+        "blue"
+      );
+    });
+  } catch (error) {
+    log(`Error listing whitelist domains: ${error.message}`, "red");
+  }
+}
+
+async function addWhitelistDomain(client) {
+  log("\n=== Add Whitelist Domain ===", "cyan");
+
+  try {
+    // Get available link types
+    const linkTypesQuery = `
+      SELECT unnest(enum_range(NULL::enum_links_type)) as link_type
+      ORDER BY link_type
+    `;
+    const linkTypesResult = await client.query(linkTypesQuery);
+
+    log("\nAvailable link types:", "yellow");
+    linkTypesResult.rows.forEach((row, index) => {
+      log(`${index + 1}. ${row.link_type}`, "white");
+    });
+
+    const linkTypeIndex = await question(
+      "\nEnter the number of the link type: "
+    );
+    const linkType =
+      linkTypesResult.rows[parseInt(linkTypeIndex) - 1]?.link_type;
+
+    if (!linkType) {
+      log("Invalid link type selection.", "red");
+      return;
+    }
+
+    const domain = await question("Enter the domain (e.g., example.com): ");
+    const pattern = await question(
+      "Enter the regex pattern (or press Enter for default): "
+    );
+
+    // Use default pattern if none provided
+    const finalPattern =
+      pattern ||
+      `^https?:\\/\\/(www\\.)?${domain.replace(/[.*+?^${}()|[\]\\]/g, "\\\\$&")}\\/.*$`;
+
+    const confirm = await confirmAction(
+      `add domain "${domain}" for link type "${linkType}" with pattern "${finalPattern}"`
+    );
+
+    if (!confirm) {
+      log("Domain addition cancelled.", "yellow");
+      return;
+    }
+
+    const insertQuery = `
+      INSERT INTO whitelist_domains ("linkType", domain, pattern, is_active, created_at, updated_at)
+      VALUES ($1, $2, $3, true, NOW(), NOW())
+      ON CONFLICT ("linkType", domain) 
+      DO UPDATE SET 
+        pattern = EXCLUDED.pattern,
+        is_active = true,
+        updated_at = NOW()
+    `;
+
+    await client.query(insertQuery, [linkType, domain, finalPattern]);
+    log(
+      `Successfully added/updated whitelist domain "${domain}" for "${linkType}"`,
+      "green"
+    );
+  } catch (error) {
+    log(`Error adding whitelist domain: ${error.message}`, "red");
+  }
+}
+
+async function deactivateWhitelistDomain(client) {
+  log("\n=== Deactivate Whitelist Domain ===", "cyan");
+
+  try {
+    const query = `
+      SELECT id, "linkType", domain, is_active
+      FROM whitelist_domains
+      WHERE is_active = true
+      ORDER BY "linkType", domain
+    `;
+
+    const result = await client.query(query);
+
+    if (result.rows.length === 0) {
+      log("No active whitelist domains found.", "yellow");
+      return;
+    }
+
+    log("\nActive whitelist domains:", "yellow");
+    result.rows.forEach((row, index) => {
+      log(`${index + 1}. ${row.domain} (${row.link_type})`, "white");
+      log(`     Pattern: ${row.pattern}`, "cyan");
+      log(
+        `     Added: ${new Date(row.created_at).toLocaleDateString()}`,
+        "blue"
+      );
+    });
+  } catch (error) {
+    log(`Error listing whitelist domains: ${error.message}`, "red");
+  }
+}
+
+async function reactivateWhitelistDomain(client) {
+  log("\n=== Reactivate Whitelist Domain ===", "cyan");
+
+  try {
+    const query = `
+      SELECT id, "linkType", domain, is_active
+      FROM whitelist_domains
+      WHERE is_active = false
+      ORDER BY "linkType", domain
+    `;
+
+    const result = await client.query(query);
+
+    if (result.rows.length === 0) {
+      log("No inactive whitelist domains found.", "yellow");
+      return;
+    }
+
+    log("\nInactive whitelist domains:", "yellow");
+    result.rows.forEach((row, index) => {
+      log(`${index + 1}. ${row.domain} (${row.linkType})`, "white");
+    });
+
+    const domainIndex = await question(
+      "\nEnter the number of the domain to reactivate: "
+    );
+    const selectedDomain = result.rows[parseInt(domainIndex) - 1];
+
+    if (!selectedDomain) {
+      log("Invalid domain selection.", "red");
+      return;
+    }
+
+    const confirm = await confirmAction(
+      `reactivate domain "${selectedDomain.domain}" for "${selectedDomain.linkType}"`
+    );
+
+    if (!confirm) {
+      log("Reactivation cancelled.", "yellow");
+      return;
+    }
+
+    const updateQuery = `
+      UPDATE whitelist_domains 
+      SET is_active = true, updated_at = NOW()
+      WHERE id = $1
+    `;
+
+    await client.query(updateQuery, [selectedDomain.id]);
+    log(`Successfully reactivated domain "${selectedDomain.domain}"`, "green");
+  } catch (error) {
+    log(`Error reactivating whitelist domain: ${error.message}`, "red");
+  }
 }
 
 async function main() {
@@ -1417,7 +1651,7 @@ async function main() {
 
     while (true) {
       await showMenu();
-      const choice = await question("Enter your choice (1-15, q to quit): ");
+      const choice = await question("Enter your choice (1-16, q to quit): ");
 
       switch (choice.toLowerCase()) {
         case "1":
@@ -1461,6 +1695,9 @@ async function main() {
           break;
         case "14":
           await mergeArtists();
+          break;
+        case "15":
+          await manageWhitelistDomains();
           break;
         case "q":
         case "quit":
@@ -1542,10 +1779,13 @@ if (process.argv.length > 2) {
         case "merge-artists":
           await mergeArtists();
           break;
+        case "whitelist-domains":
+          await manageWhitelistDomains();
+          break;
         default:
           log(`Unknown command: ${command}`, "red");
           log(
-            "Available commands: list-users, list-bands, list-songs, delete-links, delete-gig-documents, edit-song, cleanup, stats, merge-artists",
+            "Available commands: list-users, list-bands, list-songs, delete-links, delete-gig-documents, edit-song, cleanup, stats, merge-artists, whitelist-domains",
             "yellow"
           );
           log("For server commands: npm run manage server <command>", "yellow");

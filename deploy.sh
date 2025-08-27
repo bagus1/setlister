@@ -68,7 +68,8 @@ Setlist Manager Git-Based Deployment Script
 Usage: ./deploy.sh [mode]
 
 Modes:
-  deploy   - Deploy current changes with PostgreSQL migration (push to git, pull on server, migrate, restart)
+  deploy   - Smart daily deployment (schema-aware, fast when no changes)
+  deploy-postgres - Full PostgreSQL setup with migration (for new servers)
   update   - Quick deploy with PostgreSQL migration (push to git, pull on server, migrate, restart)
   quick    - Update files with PostgreSQL migration (auto-commit, push to git, pull on server, migrate, restart)
   deploy-demo - Deploy to demo environment with PostgreSQL migration
@@ -97,7 +98,8 @@ Environment Variables (can be set before running):
 
 
 Examples:
-  ./deploy.sh deploy       # Full deployment with restart
+  ./deploy.sh deploy       # Smart daily deployment (schema-aware)
+  ./deploy.sh deploy-postgres # Full PostgreSQL setup with migration
   ./deploy.sh update       # Quick deploy with restart
   ./deploy.sh quick        # Update files without restart
   ./deploy.sh deploy-demo  # Deploy to demo with PostgreSQL migration
@@ -174,8 +176,94 @@ check_branch_mismatch() {
     fi
 }
 
-# Function to deploy via git
+# Function to deploy via git (smart schema detection)
 deploy_via_git() {
+    print_status "Deploying via Git..."
+    
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
+    # Check if we have changes to push
+    if [ "$(git rev-list HEAD...origin/$CURRENT_BRANCH --count)" != "0" ]; then
+        print_status "Pushing changes to GitHub..."
+        git push origin "$CURRENT_BRANCH"
+        print_success "Changes pushed to GitHub"
+    else
+        print_status "No changes to push"
+    fi
+    
+    # Ensure server is on the same branch
+    print_status "Ensuring server is on branch: $CURRENT_BRANCH"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $CURRENT_BRANCH" || {
+        print_error "Failed to checkout branch $CURRENT_BRANCH on server"
+        return 1
+    }
+    
+    # Pull on server
+    print_status "Pulling changes on server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin $CURRENT_BRANCH" || {
+        print_error "Failed to pull on server"
+        return 1
+    }
+    
+    # Install dependencies if package.json changed
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
+        print_status "Installing dependencies..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
+    fi
+    
+    # Check if schema changes were made
+    print_status "Checking for schema changes..."
+    SCHEMA_CHANGED=false
+    
+    # Check if prisma/schema.prisma changed
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q prisma/schema.prisma"; then
+        print_status "Schema changes detected in prisma/schema.prisma"
+        SCHEMA_CHANGED=true
+    fi
+    
+    # Check if any migration files changed
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q migration-output"; then
+        print_status "Migration files changed"
+        SCHEMA_CHANGED=true
+    fi
+    
+    # If schema changed, run Prisma commands
+    if [ "$SCHEMA_CHANGED" = true ]; then
+        print_status "Schema changes detected - running Prisma commands..."
+        
+        # Generate Prisma client
+        print_status "Generating Prisma client..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
+            print_error "Failed to generate Prisma client on server"
+            return 1
+        }
+        
+        # Push schema changes to database
+        print_status "Running PostgreSQL schema migration..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
+            print_error "Failed to run PostgreSQL migration on server"
+            return 1
+        }
+        
+        print_success "Schema migration completed"
+    else
+        print_status "No schema changes detected - skipping Prisma commands"
+    fi
+    
+    # Restart server
+    restart_server
+    
+    if [ "$SCHEMA_CHANGED" = true ]; then
+        print_success "Deployment completed with schema migration!"
+    else
+        print_success "Deployment completed (no schema changes)!"
+    fi
+}
+
+# Function to deploy PostgreSQL setup via git (full migration)
+deploy_postgres_via_git() {
     print_status "Deploying via Git..."
     
     # Get current branch name
@@ -995,6 +1083,11 @@ main() {
             check_git_status
             check_branch_mismatch
             deploy_via_git
+            ;;
+        "deploy-postgres")
+            check_git_status
+            check_branch_mismatch
+            deploy_postgres_via_git
             ;;
         "update")
             check_git_status

@@ -82,6 +82,8 @@ Modes:
   deps     - Update dependencies on server
   deps-demo - Update dependencies on demo server
   status   - Show deployment status
+  logs     - View Passenger logs (last 200 lines)
+  app-logs - View application logs (last 200 lines)
   backup   - Create backup
   dbackup  - Create database backup and download locally
   restoredb-local - Restore database backup to local PostgreSQL
@@ -109,6 +111,8 @@ Examples:
   ./deploy.sh start        # Start server
   ./deploy.sh deps         # Update dependencies
   ./deploy.sh status       # Show status
+  ./deploy.sh logs         # View Passenger logs
+  ./deploy.sh app-logs     # View application logs
   ./deploy.sh dbackup      # Create database backup and download locally
 
 
@@ -605,6 +609,46 @@ run_migrations() {
     print_warning "Note: You may need to restart the server if migrations affect running processes."
 }
 
+# Function to view Passenger logs
+view_passenger_logs() {
+    print_status "Fetching Passenger logs..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "tail -200 /home/$HOST_USER/logs/setlist-passenger.log" || {
+        print_error "Failed to fetch Passenger logs"
+        return 1
+    }
+}
+
+# Function to view application logs
+view_app_logs() {
+    print_status "Fetching application logs..."
+    
+    # Try multiple possible log file locations
+    local log_files=(
+        "/home/$HOST_USER/logs/setlister/app-production.log"
+        "/home/$HOST_USER/logs/app-production.log"
+        "/home/$HOST_USER/logs/setlister.log"
+        "/home/$HOST_USER/logs/application.log"
+    )
+    
+    local found_log=false
+    for log_file in "${log_files[@]}"; do
+        if ssh "$HOST_USER@$HOST_DOMAIN" "test -f $log_file" 2>/dev/null; then
+            print_status "Found log file: $log_file"
+            ssh "$HOST_USER@$HOST_DOMAIN" "tail -200 $log_file" && {
+                found_log=true
+                break
+            }
+        fi
+    done
+    
+    if [ "$found_log" = false ]; then
+        print_warning "No application log files found. Available log files:"
+        ssh "$HOST_USER@$HOST_DOMAIN" "find /home/$HOST_USER/logs -name '*.log' -type f 2>/dev/null | head -10" || {
+            print_error "Could not list available log files"
+        }
+    fi
+}
+
 # Function to test PostgreSQL migration locally
 test_migration() {
     print_status "Testing PostgreSQL migration locally..."
@@ -1044,6 +1088,14 @@ main() {
             ;;
         "status")
             show_status
+            exit 0
+            ;;
+        "logs")
+            view_passenger_logs
+            exit 0
+            ;;
+        "app-logs")
+            view_app_logs
             exit 0
             ;;
         "restart")

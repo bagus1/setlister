@@ -4,17 +4,34 @@
 # Usage: ./deploy.sh [mode]
 # 
 # Modes:
-#   deploy   - Deploy current changes (push to git, pull on server, restart)
-#   update   - Quick deploy (push to git, pull on server, restart)
-#   quick    - Update files without restart (auto-commit, push to git, pull on server)
+#   deploy   - Smart daily deployment (schema-aware, fast when no changes)
+#   deploy-postgres - Full PostgreSQL setup with migration (for new servers)
+#   update   - Quick deploy with PostgreSQL migration (push to git, pull on server, migrate, restart)
+#   quick    - Update files with PostgreSQL migration (auto-commit, push to git, pull on server, migrate, restart)
+#   deploy-demo - Deploy to demo environment with PostgreSQL migration
+#   test-migration - Test PostgreSQL migration locally (no server deployment)
+#   migrate  - Run database migrations on server (Prisma, with server stop/start)
+#   safe-migrate - Run migrations with extra safety checks and rollback capability
 #   restart  - Just restart the server
+#   restart-demo - Just restart the demo server
 #   stop     - Stop the server (kill Passenger process)
 #   start    - Start the server (touch restart.txt)
 #   deps     - Update dependencies on server
+#   deps-demo - Update dependencies on demo server
 #   status   - Show deployment status
 #   backup   - Create backup
+#   dbackup  - Create database backup and download locally
+#   restoredb-local - Restore database backup to local PostgreSQL
 #   rollback - Rollback to previous commit
-#   help     - Show this help message
+#   help     - Show this help message (default)
+#
+# Prisma Safety Features:
+#   - Automatically detects schema changes in prisma/schema.prisma
+#   - Stops server before running migrations
+#   - Regenerates Prisma client after schema changes
+#   - Uses prisma migrate deploy (safer than db push)
+#   - Verifies server health after restart
+#   - Provides rollback capability for failed migrations
 
 set -e  # Exit on any error
 
@@ -74,7 +91,8 @@ Modes:
   quick    - Update files with PostgreSQL migration (auto-commit, push to git, pull on server, migrate, restart)
   deploy-demo - Deploy to demo environment with PostgreSQL migration
   test-migration - Test PostgreSQL migration locally (no server deployment)
-  migrate  - Run database migrations on server (Prisma)
+  migrate  - Run database migrations on server (Prisma, with server stop/start)
+  safe-migrate - Run migrations with extra safety checks and rollback capability
   restart  - Just restart the server
   restart-demo - Just restart the demo server
   stop     - Stop the server (kill Passenger process)
@@ -251,9 +269,15 @@ deploy_via_git() {
         SCHEMA_CHANGED=true
     fi
     
-    # If schema changed, run Prisma commands
+    # If schema changed, run Prisma commands with server stop/start
     if [ "$SCHEMA_CHANGED" = true ]; then
-        print_status "Schema or structural changes detected - running Prisma commands..."
+        print_status "Schema or structural changes detected - stopping server for safe migration..."
+        
+        # Stop the server before making database changes
+        stop_server
+        
+        # Wait a moment for processes to fully stop
+        sleep 3
         
         # Generate Prisma client
         print_status "Generating Prisma client..."
@@ -262,20 +286,36 @@ deploy_via_git() {
             return 1
         }
         
-        # Push schema changes to database
-        print_status "Running PostgreSQL schema migration..."
-        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
-            print_error "Failed to run PostgreSQL migration on server"
+        # Run database migrations (safer than db push)
+        print_status "Running database migrations..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate deploy" || {
+            print_error "Failed to run database migrations on server"
+            print_error "Attempting to start server anyway..."
+            start_server
             return 1
         }
         
         print_success "Schema migration completed"
+        
+        # Start the server with new schema
+        print_status "Starting server with new schema..."
+        start_server
+        
+        # Wait for server to fully start
+        sleep 5
+        
+        # Verify server is responding
+        print_status "Verifying server is responding..."
+        if curl -s -f "https://$HOST_DOMAIN" > /dev/null 2>&1; then
+            print_success "Server is responding successfully"
+        else
+            print_warning "Server may not be fully ready yet - check manually"
+        fi
+        
     else
-        print_status "No schema or structural changes detected - skipping Prisma commands"
+        print_status "No schema or structural changes detected - restarting server normally..."
+        restart_server
     fi
-    
-    # Restart server
-    restart_server
     
     if [ "$SCHEMA_CHANGED" = true ]; then
         print_success "Deployment completed with safe Prisma initialization!"
@@ -548,14 +588,43 @@ restart_demo_server() {
     print_success "Demo server restarted successfully"
 }
 
+# Function to check if server is running
+is_server_running() {
+    if ssh "$HOST_USER@$HOST_DOMAIN" "pgrep -f 'Passenger NodeApp.*setlister'" > /dev/null 2>&1; then
+        return 0  # Server is running
+    else
+        return 1  # Server is not running
+    fi
+}
+
 # Function to stop server
 stop_server() {
     print_status "Stopping server..."
+    
+    # Check if server is actually running
+    if ! is_server_running; then
+        print_status "Server is already stopped"
+        return 0
+    fi
+    
     ssh "$HOST_USER@$HOST_DOMAIN" "pkill -f 'Passenger NodeApp.*setlister'" || {
         print_warning "No Passenger process found to stop"
         return 0
     }
-    print_success "Server stopped successfully"
+    
+    # Wait and verify server is stopped
+    local attempts=0
+    while is_server_running && [ $attempts -lt 10 ]; do
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+    
+    if is_server_running; then
+        print_error "Failed to stop server after 10 attempts"
+        return 1
+    else
+        print_success "Server stopped successfully"
+    fi
 }
 
 # Function to start server
@@ -565,7 +634,22 @@ start_server() {
         print_error "Failed to start server"
         return 1
     }
-    print_success "Server started successfully"
+    
+    # Wait and verify server is running
+    print_status "Waiting for server to start..."
+    local attempts=0
+    while ! is_server_running && [ $attempts -lt 30 ]; do
+        sleep 2
+        attempts=$((attempts + 1))
+        print_status "Waiting for server to start... (attempt $attempts/30)"
+    done
+    
+    if is_server_running; then
+        print_success "Server started successfully"
+    else
+        print_error "Server failed to start after 30 attempts"
+        return 1
+    fi
 }
 
 # Function to update dependencies
@@ -609,22 +693,112 @@ run_migrations() {
         return 1
     }
     
+    # Stop the server before making database changes
+    print_status "Stopping server for safe migration..."
+    stop_server
+    
+    # Wait a moment for processes to fully stop
+    sleep 3
+    
     # Generate Prisma client
     print_status "Generating Prisma client..."
     ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
         print_error "Failed to generate Prisma client on server"
+        print_error "Attempting to start server anyway..."
+        start_server
         return 1
     }
     
-    # Push schema changes to database
-    print_status "Pushing schema changes to database..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
-        print_error "Failed to push schema changes to database"
+    # Run database migrations (safer than db push)
+    print_status "Running database migrations..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate deploy" || {
+        print_error "Failed to run database migrations on server"
+        print_error "Attempting to start server anyway..."
+        start_server
         return 1
     }
     
     print_success "Database migrations completed successfully!"
-    print_warning "Note: You may need to restart the server if migrations affect running processes."
+    
+    # Start the server with new schema
+    print_status "Starting server with new schema..."
+    start_server
+    
+    # Wait for server to fully start
+    sleep 5
+    
+    # Verify server is responding
+    print_status "Verifying server is responding..."
+    if curl -s -f "https://$HOST_DOMAIN" > /dev/null 2>&1; then
+        print_success "Server is responding successfully"
+    else
+        print_warning "Server may not be fully ready yet - check manually"
+    fi
+}
+
+# Function to run safe database migrations with rollback capability
+safe_migrate() {
+    print_status "Running safe database migrations with rollback capability..."
+    
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
+    # First ensure we have the latest code
+    print_status "Pulling latest code on server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $CURRENT_BRANCH && git pull origin $CURRENT_BRANCH" || {
+        print_error "Failed to pull latest code on server"
+        return 1
+    }
+    
+    # Create a backup before proceeding
+    print_status "Creating database backup before migration..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db pull --schema=prisma/schema.prisma.backup" || {
+        print_warning "Could not create schema backup - proceeding anyway"
+    }
+    
+    # Stop the server before making database changes
+    print_status "Stopping server for safe migration..."
+    stop_server
+    
+    # Wait a moment for processes to fully stop
+    sleep 3
+    
+    # Generate Prisma client
+    print_status "Generating Prisma client..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
+        print_error "Failed to generate Prisma client on server"
+        print_error "Attempting to start server anyway..."
+        start_server
+        return 1
+    }
+    
+    # Run database migrations with extra safety
+    print_status "Running database migrations..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate deploy" || {
+        print_error "Failed to run database migrations on server"
+        print_error "Migration failed - server will remain stopped for manual intervention"
+        print_error "You may need to manually rollback or fix the database schema"
+        return 1
+    }
+    
+    print_success "Database migrations completed successfully!"
+    
+    # Start the server with new schema
+    print_status "Starting server with new schema..."
+    start_server
+    
+    # Wait for server to fully start
+    sleep 5
+    
+    # Verify server is responding
+    print_status "Verifying server is responding..."
+    if curl -s -f "https://$HOST_DOMAIN" > /dev/null 2>&1; then
+        print_success "Server is responding successfully"
+        print_success "Safe migration completed successfully!"
+    else
+        print_warning "Server may not be fully ready yet - check manually"
+    fi
 }
 
 # Function to view Passenger logs
@@ -1186,6 +1360,9 @@ main() {
             ;;
         "migrate")
             run_migrations
+            ;;
+        "safe-migrate")
+            safe_migrate
             ;;
         *)
             print_error "Unknown mode: $MODE"

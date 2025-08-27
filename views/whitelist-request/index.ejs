@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Domain Whitelist - Setlister</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        select, input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .submit-btn {
+            background: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+        .submit-btn:hover {
+            background: #2980b9;
+        }
+        .help-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border-left: 4px solid #3498db;
+        }
+        .example h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        .example p {
+            margin: 0;
+            color: #666;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .info-box h3 {
+            margin: 0 0 15px 0;
+            color: #1976d2;
+        }
+        .info-box p {
+            margin: 0 0 10px 0;
+            color: #1565c0;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Setlister</a>
+        
+        <h1>Request Domain Whitelist</h1>
+        
+        <div class="info-box">
+            <h3>📋 What is this form for?</h3>
+            <p>If you're trying to add a link but getting a validation error because the domain isn't in our whitelist, you can request that we add it.</p>
+            <p>We'll review your request and add legitimate, music-related domains to our approved list.</p>
+        </div>
+
+        <form method="POST" action="/whitelist-request">
+            <div class="form-group">
+                <label for="linkType">Link Type *</label>
+                <select id="linkType" name="linkType" required>
+                    <option value="">Select a link type...</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="video">Video (Vimeo, TikTok, etc.)</option>
+                    <option value="spotify">Spotify</option>
+                    <option value="apple-music">Apple Music</option>
+                    <option value="soundcloud">SoundCloud</option>
+                    <option value="bandcamp">Bandcamp</option>
+                    <option value="lyrics">Lyrics</option>
+                    <option value="tab">Guitar Tab</option>
+                    <option value="bass tab">Bass Tab</option>
+                    <option value="chords">Chords</option>
+                    <option value="guitar tutorial">Guitar Tutorial</option>
+                    <option value="bass tutorial">Bass Tutorial</option>
+                    <option value="keyboard tutorial">Keyboard Tutorial</option>
+                    <option value="audio">Audio File</option>
+                    <option value="sheet-music">Sheet Music</option>
+                    <option value="backing-track">Backing Track</option>
+                    <option value="karaoke">Karaoke</option>
+                    <option value="horn chart">Horn Chart</option>
+                    <option value="other">Other</option>
+                </select>
+                <div class="help-text">Select the type of link you're trying to add</div>
+            </div>
+
+            <div class="form-group">
+                <label for="domain">Domain to Whitelist *</label>
+                <input type="text" id="domain" name="domain" placeholder="example.com" required>
+                <div class="help-text">Enter just the domain name (e.g., example.com, not https://example.com)</div>
+            </div>
+
+            <div class="form-group">
+                <label for="exampleUrl">Example URL from this Domain *</label>
+                <input type="url" id="exampleUrl" name="exampleUrl" placeholder="https://example.com/song-page" required>
+                <div class="help-text">Provide a specific URL from this domain that shows the type of content you want to link to</div>
+            </div>
+
+            <div class="form-group">
+                <label for="reason">Why should we whitelist this domain? *</label>
+                <textarea id="reason" name="reason" placeholder="Please explain why this domain should be allowed for this link type. What kind of content does it provide? Is it reputable and music-related?" required></textarea>
+                <div class="help-text">Minimum 10 characters, maximum 500 characters</div>
+            </div>
+
+            <div class="form-group">
+                <label for="contactEmail">Your Email Address *</label>
+                <input type="email" id="contactEmail" name="contactEmail" placeholder="your.email@example.com" required>
+                <div class="help-text">We'll use this to contact you about your request</div>
+            </div>
+
+            <div class="example">
+                <h4>💡 Example Request</h4>
+                <p><strong>Link Type:</strong> Guitar Tutorial</p>
+                <p><strong>Domain:</strong> guitarlessons.com</p>
+                <p><strong>Example URL:</strong> https://guitarlessons.com/lessons/beginner-chords</p>
+                <p><strong>Reason:</strong> This is a well-known guitar education website that provides high-quality video tutorials and chord charts. It's similar to other approved sites like justinguitar.com and would be valuable for our users learning guitar.</p>
+            </div>
+
+            <button type="submit" class="submit-btn">Submit Whitelist Request</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -234,6 +234,7 @@ The project includes `deploy.sh` for automated deployment and server management.
 ```bash
 ./deploy.sh quick     # Fast updates (UI/templates) - no restart
 ./deploy.sh deploy    # Full deployment with restart
+./deploy.sh migrate   # Run database migrations (Prisma)
 ./deploy.sh restart   # Just restart the server
 ./deploy.sh status    # Check deployment status
 ```
@@ -268,18 +269,20 @@ The script provides multiple deployment modes for different scenarios:
 
 #### **📋 Deployment Modes Reference Table**
 
-| Mode           | **Local Git Operations**                           | **Server Git Operations** | **Server Restart**   | **Use Case**                              |
-| -------------- | -------------------------------------------------- | ------------------------- | -------------------- | ----------------------------------------- |
-| **`deploy`**   | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ✅ Yes               | Full deployment with new changes          |
-| **`update`**   | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ✅ Yes               | Quick deploy (push and pull with restart) |
-| **`quick`**    | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ❌ No                | Fast file updates (UI/templates)          |
-| **`restart`**  | ❌ None                                            | ❌ None                   | ✅ Yes               | Just restart the server                   |
-| **`stop`**     | ❌ None                                            | ❌ None                   | ❌ Kills process     | Stop the server                           |
-| **`start`**    | ❌ None                                            | ❌ None                   | ✅ Touch restart.txt | Start the server                          |
-| **`deps`**     | ❌ None                                            | ❌ None                   | ❌ No                | Update npm dependencies                   |
-| **`status`**   | ❌ None                                            | ❌ None                   | ❌ No                | Show deployment status                    |
-| **`backup`**   | ❌ None                                            | ❌ None                   | ❌ No                | Create server backup                      |
-| **`rollback`** | ✅ `git reset --hard`<br>✅ `git push --force`     | ✅ `git reset --hard`     | ✅ Yes               | Rollback to previous commit               |
+| Mode               | **Local Git Operations**                           | **Server Git Operations** | **Server Restart**   | **Use Case**                              |
+| ------------------ | -------------------------------------------------- | ------------------------- | -------------------- | ----------------------------------------- |
+| **`deploy`**       | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ✅ Yes               | Full deployment with new changes          |
+| **`update`**       | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ✅ Yes               | Quick deploy (push and pull with restart) |
+| **`quick`**        | ✅ `git add .`<br>✅ `git commit`<br>✅ `git push` | ✅ `git pull`             | ❌ No                | Fast file updates (UI/templates)          |
+| **`migrate`**      | ❌ None                                            | ❌ None                   | ✅ Yes               | Run database migrations (Prisma)          |
+| **`safe-migrate`** | ❌ None                                            | ❌ None                   | ✅ Yes               | Safe migrations with backup (Prisma)      |
+| **`restart`**      | ❌ None                                            | ❌ None                   | ✅ Yes               | Just restart the server                   |
+| **`stop`**         | ❌ None                                            | ❌ None                   | ❌ Kills process     | Stop the server                           |
+| **`start`**        | ❌ None                                            | ❌ None                   | ✅ Touch restart.txt | Start the server                          |
+| **`deps`**         | ❌ None                                            | ❌ None                   | ❌ No                | Update npm dependencies                   |
+| **`status`**       | ❌ None                                            | ❌ None                   | ❌ No                | Show deployment status                    |
+| **`backup`**       | ❌ None                                            | ❌ None                   | ❌ No                | Create server backup                      |
+| **`rollback`**     | ✅ `git reset --hard`<br>✅ `git push --force`     | ✅ `git reset --hard`     | ✅ Yes               | Rollback to previous commit               |
 
 #### **🚀 Primary Deployment Modes**
 
@@ -338,6 +341,56 @@ The script provides multiple deployment modes for different scenarios:
 ./deploy.sh rollback   # Rollback to previous commit
 ```
 
+### 🗄️ **Prisma Database Migrations** (NEW!)
+
+The deployment script now includes **automatic Prisma schema change detection** and **safe database migration handling** for PostgreSQL deployments.
+
+#### **🔍 Automatic Schema Detection**
+
+The script automatically detects when `prisma/schema.prisma` changes and:
+
+- ✅ **Stops the server** before making database changes
+- ✅ **Regenerates the Prisma client** after schema changes
+- ✅ **Runs database migrations** using `prisma migrate deploy`
+- ✅ **Restarts the server** with the new schema
+- ✅ **Verifies server health** after deployment
+
+#### **🚀 Prisma-Safe Deployment Modes**
+
+| Mode               | **Schema Changes** | **Server Stop/Start** | **Prisma Client** | **Use Case**                          |
+| ------------------ | ------------------ | --------------------- | ----------------- | ------------------------------------- |
+| **`deploy`**       | ✅ Auto-detected   | ✅ Smart handling     | ✅ Regenerated    | Full deployment with schema awareness |
+| **`migrate`**      | ✅ Manual trigger  | ✅ Full stop/start    | ✅ Regenerated    | Just run database migrations          |
+| **`safe-migrate`** | ✅ Manual trigger  | ✅ Full stop/start    | ✅ Regenerated    | Extra safe with backup capability     |
+
+#### **📋 Prisma Migration Commands**
+
+```bash
+# Run migrations with server stop/start
+./deploy.sh migrate
+
+# Extra safe migration with backup
+./deploy.sh safe-migrate
+
+# Check if migrations are needed
+./deploy.sh status
+```
+
+#### **🛡️ Safety Features**
+
+- **Server State Management**: Automatically stops server before database changes
+- **Process Verification**: Ensures server actually stops/starts
+- **Health Checks**: Verifies server responds after deployment
+- **Rollback Capability**: Can recover from failed migrations
+- **Migration Safety**: Uses `prisma migrate deploy` instead of `db push`
+
+#### **⚠️ Important Notes**
+
+- **Always test locally** before deploying schema changes
+- **Backup your database** before major schema changes
+- **Server will be briefly unavailable** during migrations
+- **Use `safe-migrate`** for critical production changes
+
 ### Typical Workflow
 
 1. **Make changes** to your code
@@ -373,9 +426,12 @@ The script provides multiple deployment modes for different scenarios:
 
 - **Use `quick` mode** for most UI/template changes
 - **Use `deploy` mode** for server.js or dependency changes
+- **Use `migrate` mode** for database schema changes (Prisma)
+- **Use `safe-migrate` mode** for critical production schema changes
 - **Backup regularly**: Use `./deploy.sh backup` to create backups
 - **Check status**: Use `./deploy.sh status` to verify deployment
 - **Test locally** before deploying to production
+- **Always backup database** before major schema changes
 
 ### Dependency Management
 

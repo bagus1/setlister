@@ -1457,9 +1457,9 @@ async function listWhitelistDomains(client) {
 
   try {
     const query = `
-      SELECT wd.id, wd.link_type, wd.domain, wd.pattern, wd.is_active, wd.created_at
+      SELECT wd.id, wd."linkType", wd.domain, wd.pattern, wd.is_active, wd.created_at
       FROM whitelist_domains wd
-      ORDER BY wd.link_type, wd.domain
+      ORDER BY wd."linkType", wd.domain
     `;
 
     const result = await client.query(query);
@@ -1471,8 +1471,8 @@ async function listWhitelistDomains(client) {
 
     let currentType = null;
     result.rows.forEach((row, index) => {
-      if (row.link_type !== currentType) {
-        currentType = row.link_type;
+      if (row.linkType !== currentType) {
+        currentType = row.linkType;
         log(`\n${currentType.toUpperCase()}:`, "magenta");
       }
 
@@ -1536,9 +1536,9 @@ async function addWhitelistDomain(client) {
     }
 
     const insertQuery = `
-      INSERT INTO whitelist_domains (link_type, domain, pattern, is_active, created_at, updated_at)
+      INSERT INTO whitelist_domains ("linkType", domain, pattern, is_active, created_at, updated_at)
       VALUES ($1, $2, $3, true, NOW(), NOW())
-      ON CONFLICT (link_type, domain) 
+      ON CONFLICT ("linkType", domain) 
       DO UPDATE SET 
         pattern = EXCLUDED.pattern,
         is_active = true,
@@ -1560,10 +1560,10 @@ async function deactivateWhitelistDomain(client) {
 
   try {
     const query = `
-      SELECT id, link_type, domain, is_active
+      SELECT id, "linkType", domain, is_active
       FROM whitelist_domains
       WHERE is_active = true
-      ORDER BY link_type, domain
+      ORDER BY "linkType", domain
     `;
 
     const result = await client.query(query);
@@ -1592,10 +1592,10 @@ async function reactivateWhitelistDomain(client) {
 
   try {
     const query = `
-      SELECT id, link_type, domain, is_active
+      SELECT id, "linkType", domain, is_active
       FROM whitelist_domains
       WHERE is_active = false
-      ORDER BY link_type, domain
+      ORDER BY "linkType", domain
     `;
 
     const result = await client.query(query);
@@ -1607,7 +1607,7 @@ async function reactivateWhitelistDomain(client) {
 
     log("\nInactive whitelist domains:", "yellow");
     result.rows.forEach((row, index) => {
-      log(`${index + 1}. ${row.domain} (${row.link_type})`, "white");
+      log(`${index + 1}. ${row.domain} (${row.linkType})`, "white");
     });
 
     const domainIndex = await question(
@@ -1621,7 +1621,7 @@ async function reactivateWhitelistDomain(client) {
     }
 
     const confirm = await confirmAction(
-      `reactivate domain "${selectedDomain.domain}" for "${selectedDomain.link_type}"`
+      `reactivate domain "${selectedDomain.domain}" for "${selectedDomain.linkType}"`
     );
 
     if (!confirm) {

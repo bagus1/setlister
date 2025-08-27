@@ -35,7 +35,7 @@ async function getWhitelistValidation(linkType) {
 
     // Create helpful message listing the allowed domains
     const domainList = whitelistDomains.map((wd) => wd.domain).join(", ");
-    const message = `Please enter a valid URL from one of these domains: ${domainList}. If you need to add a different domain, please request a domain whitelist.`;
+    const message = `Please enter a valid URL from one of these domains: ${domainList}. If you need to add a different domain, please visit /whitelist-request to request a domain whitelist.`;
 
     return { pattern, message };
   } catch (error) {
@@ -107,13 +107,9 @@ router.post(
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        // Add whitelist request link to error messages
+        // Use the error message as-is
         const errorMsg = errors.array()[0].msg;
-        const enhancedErrorMsg = errorMsg.includes("whitelist")
-          ? `${errorMsg} <a href="/whitelist-request" class="text-primary">Request Domain Whitelist</a>`
-          : errorMsg;
-
-        req.flash("error", enhancedErrorMsg);
+        req.flash("error", errorMsg);
         return res.redirect(`/songs/${req.params.songId}`);
       }
 

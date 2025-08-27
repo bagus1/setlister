@@ -34,55 +34,93 @@ router.get("/whitelist-requests", requireAdmin, async (req, res) => {
 });
 
 // POST /admin/whitelist-requests/:id/approve - Approve a whitelist request
-router.post("/whitelist-requests/:id/approve", requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { notes } = req.body;
+router.post(
+  "/whitelist-requests/:id/approve",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
 
-    await prisma.whitelistRequest.update({
-      where: { id: parseInt(id) },
-      data: {
-        status: "approved",
-        updatedAt: new Date(),
-      },
-    });
+      // Get the whitelist request details
+      const request = await prisma.whitelistRequest.findUnique({
+        where: { id: parseInt(id) },
+      });
 
-    // TODO: Send email notification to user that their request was approved
-    console.log(`Whitelist request ${id} approved`);
+      if (!request) {
+        req.flash("error", "Whitelist request not found");
+        return res.redirect("/admin/whitelist-requests");
+      }
 
-    req.flash("success", "Whitelist request approved successfully");
-    res.redirect("/admin/whitelist-requests");
-  } catch (error) {
-    console.error("Error approving whitelist request:", error);
-    req.flash("error", "Error approving whitelist request");
-    res.redirect("/admin/whitelist-requests");
+      // Update request status to approved
+      await prisma.whitelistRequest.update({
+        where: { id: parseInt(id) },
+        data: {
+          status: "approved",
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create the actual whitelist domain
+      const pattern = `^https?:\\/\\/(www\\.)?${request.domain.replace(/[.*+?^${}()|[\]\\]/g, "\\\\$&")}\\/.*$`;
+
+      await prisma.whitelistDomain.create({
+        data: {
+          linkType: request.linkType,
+          domain: request.domain,
+          pattern: pattern,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // TODO: Send email notification to user that their request was approved
+      console.log(
+        `Whitelist request ${id} approved and domain ${request.domain} added to whitelist`
+      );
+
+      req.flash(
+        "success",
+        `Whitelist request approved and domain ${request.domain} added successfully`
+      );
+      res.redirect("/admin/whitelist-requests");
+    } catch (error) {
+      console.error("Error approving whitelist request:", error);
+      req.flash("error", "Error approving whitelist request");
+      res.redirect("/admin/whitelist-requests");
+    }
   }
-});
+);
 
 // POST /admin/whitelist-requests/:id/reject - Reject a whitelist request
-router.post("/whitelist-requests/:id/reject", requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { notes } = req.body;
+router.post(
+  "/whitelist-requests/:id/reject",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
 
-    await prisma.whitelistRequest.update({
-      where: { id: parseInt(id) },
-      data: {
-        status: "rejected",
-        updatedAt: new Date(),
-      },
-    });
+      await prisma.whitelistRequest.update({
+        where: { id: parseInt(id) },
+        data: {
+          status: "rejected",
+          updatedAt: new Date(),
+        },
+      });
 
-    // TODO: Send email notification to user that their request was rejected
-    console.log(`Whitelist request ${id} rejected`);
+      // TODO: Send email notification to user that their request was rejected
+      console.log(`Whitelist request ${id} rejected`);
 
-    req.flash("success", "Whitelist request rejected successfully");
-    res.redirect("/admin/whitelist-requests");
-  } catch (error) {
-    console.error("Error rejecting whitelist request:", error);
-    req.flash("error", "Error rejecting whitelist request");
-    res.redirect("/admin/whitelist-requests");
+      req.flash("success", "Whitelist request rejected successfully");
+      res.redirect("/admin/whitelist-requests");
+    } catch (error) {
+      console.error("Error rejecting whitelist request:", error);
+      req.flash("error", "Error rejecting whitelist request");
+      res.redirect("/admin/whitelist-requests");
+    }
   }
-});
+);
 
 module.exports = router;

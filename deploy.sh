@@ -30,6 +30,15 @@ HOST_USER=${HOST_USER:-bagus1}
 HOST_DOMAIN=${HOST_DOMAIN:-bagus.org}
 SETLIST_PATH=${SETLIST_PATH:-/home/bagus1/repositories/setlister}
 DEMO_PATH=${DEMO_PATH:-/home/bagus1/repositories/demoset}
+BACKUP_PATH=${BACKUP_PATH:-/Users/john/coding-practice/setlists/setlist_backups}
+
+
+
+# Check for --help option
+if [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
 
 # Default mode - show help if no argument provided
 MODE=${1:-help}
@@ -73,14 +82,19 @@ Modes:
   deps-demo - Update dependencies on demo server
   status   - Show deployment status
   backup   - Create backup
+  dbackup  - Create database backup and download locally
+  restoredb-local - Restore database backup to local PostgreSQL
   rollback - Rollback to previous commit
   help     - Show this help message (default)
 
-Environment Variables:
+Environment Variables (can be set before running):
   HOST_USER      - Username for server (default: bagus1)
   HOST_DOMAIN    - Server domain (default: bagus.org)
   SETLIST_PATH   - Path on server (default: /home/bagus1/repositories/setlister)
   DEMO_PATH      - Path to demo environment (default: /home/bagus1/repositories/demoset)
+  BACKUP_PATH    - Local backup directory (default: /Users/john/coding-practice/setlists/setlist_backups)
+
+
 
 Examples:
   ./deploy.sh deploy       # Full deployment with restart
@@ -93,6 +107,11 @@ Examples:
   ./deploy.sh start        # Start server
   ./deploy.sh deps         # Update dependencies
   ./deploy.sh status       # Show status
+  ./deploy.sh dbackup      # Create database backup and download locally
+
+
+
+
 
 EOF
 }
@@ -772,6 +791,130 @@ create_backup() {
     print_warning "   Keep it secure and don't share it!"
 }
 
+# Function to create database backup and download it locally
+create_dbackup() {
+    print_status "Creating database backup and downloading locally..."
+    
+    # Create backup directory if it doesn't exist
+    ssh "$HOST_USER@$HOST_DOMAIN" "mkdir -p ~/repositories/dbackups"
+    
+    # Create local backup directory
+    mkdir -p "$BACKUP_PATH"
+    
+    # Create backup filename with timestamp
+    BACKUP_FILENAME="setlister_prod_backup_$(date +%Y%m%d_%H%M%S).sql"
+    
+    # Create PostgreSQL backup on server
+    print_status "Creating PostgreSQL backup on server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && pg_dump \"postgresql://bagus1_setlists_app:allofmyfriends@localhost:5432/bagus1_setlists_prod\" > ~/repositories/dbackups/$BACKUP_FILENAME"
+    
+    # Download backup to local backup directory
+    print_status "Downloading backup to $BACKUP_PATH..."
+    scp "$HOST_USER@$HOST_DOMAIN:~/repositories/dbackups/$BACKUP_FILENAME" "$BACKUP_PATH/"
+    
+    # Compress the local backup
+    print_status "Compressing local backup..."
+    gzip "$BACKUP_PATH/$BACKUP_FILENAME"
+    
+    print_success "Database backup created and downloaded: $BACKUP_PATH/$BACKUP_FILENAME.gz"
+    print_status "Server backup also available at: ~/repositories/dbackups/$BACKUP_FILENAME"
+}
+
+# Function to restore database backup locally
+restore_dbackup_local() {
+    print_status "Restoring database backup locally..."
+    
+    # Check if backup directory exists
+    if [ ! -d "$BACKUP_PATH" ]; then
+        print_error "Backup directory not found: $BACKUP_PATH"
+        print_error "Run './deploy.sh dbackup' first to create a backup"
+        return 1
+    fi
+    
+    # List available backups
+    print_status "Available backups in $BACKUP_PATH:"
+    local backups=($(ls -t "$BACKUP_PATH"/*.sql.gz 2>/dev/null))
+    
+    if [ ${#backups[@]} -eq 0 ]; then
+        print_error "No compressed backups found in $BACKUP_PATH"
+        print_error "Run './deploy.sh dbackup' first to create a backup"
+        return 1
+    fi
+    
+    # Show backups with numbers
+    for i in "${!backups[@]}"; do
+        local filename=$(basename "${backups[$i]}")
+        local size=$(du -h "${backups[$i]}" | cut -f1)
+        echo "  $((i+1)). $filename ($size)"
+    done
+    
+    # Prompt for backup selection
+    echo
+    read -p "Select backup to restore (1-${#backups[@]}): " selection
+    
+    if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt ${#backups[@]} ]; then
+        print_error "Invalid selection. Please choose a number between 1 and ${#backups[@]}"
+        return 1
+    fi
+    
+    local selected_backup="${backups[$((selection-1))]}"
+    local backup_filename=$(basename "$selected_backup")
+    
+    print_status "Selected backup: $backup_filename"
+    
+    # Confirm restore
+    read -p "This will overwrite your local database. Continue? (y/N): " confirm
+    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+        print_status "Restore cancelled"
+        return 0
+    fi
+    
+    # Get database info from .env
+    if [ ! -f ".env" ]; then
+        print_error ".env file not found. Cannot determine database connection details."
+        return 1
+    fi
+    
+    # Source .env file to get database variables
+    export $(cat .env | grep -v '^#' | xargs)
+    
+    # Check if required variables are set
+    if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
+        print_error "Missing required database variables in .env (DB_NAME, DB_USER, DB_PASSWORD)"
+        return 1
+    fi
+    
+    print_status "Restoring to local database: $DB_NAME"
+    
+    # Decompress backup
+    print_status "Decompressing backup..."
+    local temp_sql="${selected_backup%.gz}"
+    gunzip -c "$selected_backup" > "$temp_sql"
+    
+    # Restore database
+    print_status "Restoring database (this may take a while)..."
+    PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -f "$temp_sql" || {
+        print_error "Database restore failed"
+        rm -f "$temp_sql"
+        return 1
+    }
+    
+    # Clean up temp file
+    rm -f "$temp_sql"
+    
+    # Verify restore
+    print_status "Verifying restore..."
+    local user_count=$(PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
+    local song_count=$(PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM songs;" | xargs)
+    local song_artist_count=$(PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM song_artists;" | xargs)
+    
+    print_success "Database restore completed successfully!"
+    print_status "Verification results:"
+    print_status "  Users: $user_count"
+    print_status "  Songs: $song_count"
+    print_status "  Song-Artist relationships: $song_artist_count"
+}
+
 # Function to rollback
 rollback() {
     print_warning "Rolling back to previous commit..."
@@ -833,6 +976,14 @@ main() {
             ;;
         "backup")
             create_backup
+            exit 0
+            ;;
+        "dbackup")
+            create_dbackup
+            exit 0
+            ;;
+        "restoredb-local")
+            restore_dbackup_local
             exit 0
             ;;
         "rollback")

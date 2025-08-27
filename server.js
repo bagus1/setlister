@@ -24,6 +24,7 @@ const setlistRoutes = require("./routes/setlists");
 const invitationRoutes = require("./routes/invitations");
 const bulkAddSongsRoutes = require("./routes/bulk-add-songs");
 const linkRoutes = require("./routes/links");
+const legalRoutes = require("./routes/legal");
 
 const app = express();
 const server = http.createServer(app);
@@ -94,6 +95,7 @@ app.use("/bulk-add-songs", bulkAddSongsRoutes);
 app.use("/songs", linkRoutes);
 app.use("/songs", require("./routes/gig-documents"));
 app.use("/songs", songRoutes);
+app.use("/legal", legalRoutes);
 
 // Socket.io for real-time collaboration
 io.on("connection", (socket) => {

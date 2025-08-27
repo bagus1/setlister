@@ -68,7 +68,7 @@ Setlist Manager Git-Based Deployment Script
 Usage: ./deploy.sh [mode]
 
 Modes:
-  deploy   - Smart daily deployment (schema-aware, fast when no changes)
+  deploy   - Smart daily deployment (Prisma-aware, safe stop/start for structural changes)
   deploy-postgres - Full PostgreSQL setup with migration (for new servers)
   update   - Quick deploy with PostgreSQL migration (push to git, pull on server, migrate, restart)
   quick    - Update files with PostgreSQL migration (auto-commit, push to git, pull on server, migrate, restart)
@@ -217,8 +217,8 @@ deploy_via_git() {
         ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
     fi
     
-    # Check if schema changes were made
-    print_status "Checking for schema changes..."
+    # Check if schema or structural changes were made
+    print_status "Checking for schema or structural changes..."
     SCHEMA_CHANGED=false
     
     # Check if prisma/schema.prisma changed
@@ -233,9 +233,27 @@ deploy_via_git() {
         SCHEMA_CHANGED=true
     fi
     
+    # Check for new routes that might import Prisma
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q '^routes/'"; then
+        print_status "New routes detected - may affect Prisma initialization"
+        SCHEMA_CHANGED=true
+    fi
+    
+    # Check for changes to lib/prisma.js or similar Prisma files
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q '^lib/'"; then
+        print_status "Prisma library changes detected"
+        SCHEMA_CHANGED=true
+    fi
+    
+    # Check for new files that might import Prisma
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q '^.*\.js$'"; then
+        print_status "New JavaScript files detected - may affect Prisma initialization"
+        SCHEMA_CHANGED=true
+    fi
+    
     # If schema changed, run Prisma commands
     if [ "$SCHEMA_CHANGED" = true ]; then
-        print_status "Schema changes detected - running Prisma commands..."
+        print_status "Schema or structural changes detected - running Prisma commands..."
         
         # Generate Prisma client
         print_status "Generating Prisma client..."
@@ -253,16 +271,16 @@ deploy_via_git() {
         
         print_success "Schema migration completed"
     else
-        print_status "No schema changes detected - skipping Prisma commands"
+        print_status "No schema or structural changes detected - skipping Prisma commands"
     fi
     
     # Restart server
     restart_server
     
     if [ "$SCHEMA_CHANGED" = true ]; then
-        print_success "Deployment completed with schema migration!"
+        print_success "Deployment completed with safe Prisma initialization!"
     else
-        print_success "Deployment completed (no schema changes)!"
+        print_success "Deployment completed (no structural changes)!"
     fi
 }
 
@@ -938,7 +956,9 @@ create_dbackup() {
     
     # Create PostgreSQL backup on server
     print_status "Creating PostgreSQL backup on server..."
-    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && pg_dump \"postgresql://bagus1_setlists_app:allofmyfriends@localhost:5432/bagus1_setlists_prod\" > ~/repositories/dbackups/$BACKUP_FILENAME"
+    # --verbose: Shows progress and details
+    # --inserts: Uses INSERT statements instead of COPY for better compatibility
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && pg_dump --verbose --inserts \"postgresql://bagus1_setlists_app:allofmyfriends@localhost:5432/bagus1_setlists_prod\" > ~/repositories/dbackups/$BACKUP_FILENAME"
     
     # Download backup to local backup directory
     print_status "Downloading backup to $BACKUP_PATH..."

@@ -381,7 +381,8 @@ enum enum_songs_key {
 
 model WhitelistRequest {
   id           Int      @id @default(autoincrement())
-  linkType     enum_links_type @map("link_type")  domain       String   @db.VarChar(255)
+  linkType     enum_links_type @map("link_type")
+  domain       String   @db.VarChar(255)
   reason       String   @db.Text
   exampleUrl   String   @db.VarChar(500) @map("example_url")
   contactEmail String   @db.VarChar(255) @map("contact_email")
@@ -400,7 +401,7 @@ enum enum_whitelist_request_status {
 
 model WhitelistDomain {
   id        Int      @id @default(autoincrement())
-  linkType  enum_links_type
+  linkType  enum_links_type @map("link_type")
   domain    String   @db.VarChar(255)
   pattern   String   @db.Text
   isActive  Boolean  @default(true) @map("is_active")

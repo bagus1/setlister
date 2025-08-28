@@ -757,4 +757,374 @@ router.post("/:id/invitations/:invitationId/delete", async (req, res) => {
   }
 });
 
+// POST /bands/:id/quick-set - Process quick set creation
+router.post(
+  "/:id/quick-set",
+  [body("songList").notEmpty().withMessage("Please provide a song list")],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        req.flash("error", "Please provide a song list");
+        return res.redirect(`/bands/${req.params.id}`);
+      }
+
+      const bandId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+      const { songList } = req.body;
+
+      // Check band membership
+      const band = await prisma.band.findFirst({
+        where: {
+          id: bandId,
+          members: {
+            some: { userId: userId },
+          },
+        },
+      });
+
+      if (!band) {
+        req.flash("error", "Band not found or you don't have permission");
+        return res.redirect("/bands");
+      }
+
+      // Parse the song list
+      const parseResult = parseQuickSetInput(songList);
+
+      if (parseResult.errors.length > 0) {
+        req.flash("error", parseResult.errors.join(", "));
+        return res.redirect(`/bands/${bandId}`);
+      }
+
+      // Store the parsed data in session for confirmation page
+      req.session.quickSetData = {
+        bandId: bandId,
+        sets: parseResult.sets,
+        songs: parseResult.songs,
+      };
+
+      // Redirect to confirmation page
+      res.redirect(`/bands/${bandId}/quick-set/confirm`);
+    } catch (error) {
+      console.error("Quick set creation error:", error);
+      req.flash("error", "An error occurred processing your setlist");
+      res.redirect(`/bands/${req.params.id}`);
+    }
+  }
+);
+
+// GET /bands/:id/quick-set/confirm - Show confirmation page with song matching
+router.get("/:id/quick-set/confirm", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Check if we have session data
+    if (
+      !req.session.quickSetData ||
+      req.session.quickSetData.bandId !== bandId
+    ) {
+      req.flash("error", "No setlist data found. Please try again.");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const { sets, songs } = req.session.quickSetData;
+
+    // Find song matches for each song
+    const songMatches = await Promise.all(
+      songs.map(async (song) => {
+        const matches = await findSongMatches(song.title, song.artist);
+
+        // Only pre-select if we have a high-confidence match
+        let selectedMatch = null;
+        let shouldPreferExisting = false;
+
+        if (matches.length > 0) {
+          const bestMatch = matches[0];
+          // Pre-select if exact match OR fuzzy match with high confidence (70%+)
+          if (bestMatch.matchType === "exact" || bestMatch.confidence >= 0.7) {
+            selectedMatch = bestMatch;
+            shouldPreferExisting = true;
+          }
+        }
+
+        return {
+          ...song,
+          matches: matches,
+          selectedMatch: selectedMatch,
+          shouldPreferExisting: shouldPreferExisting, // Flag for frontend
+          needsCreation: matches.length === 0,
+        };
+      })
+    );
+
+    res.render("bands/quick-set-confirm", {
+      title: `Confirm Setlist - ${band.name}`,
+      band,
+      sets,
+      songMatches,
+      totalSongs: songs.length,
+    });
+  } catch (error) {
+    console.error("Quick set confirm error:", error);
+    req.flash("error", "An error occurred loading the confirmation page");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// Function to calculate string similarity (Levenshtein-based)
+function calculateSimilarity(str1, str2) {
+  // Normalize strings: lowercase, trim
+  const s1 = str1.toLowerCase().trim();
+  const s2 = str2.toLowerCase().trim();
+
+  if (s1 === s2) return 1.0; // Perfect match
+
+  // Levenshtein distance calculation
+  const matrix = [];
+  const len1 = s1.length;
+  const len2 = s2.length;
+
+  // Initialize matrix
+  for (let i = 0; i <= len2; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= len1; j++) {
+    matrix[0][j] = j;
+  }
+
+  // Fill matrix
+  for (let i = 1; i <= len2; i++) {
+    for (let j = 1; j <= len1; j++) {
+      if (s2.charAt(i - 1) === s1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j] + 1 // deletion
+        );
+      }
+    }
+  }
+
+  const distance = matrix[len2][len1];
+  const maxLength = Math.max(len1, len2);
+
+  // Convert to similarity percentage (0-1)
+  return maxLength === 0 ? 1.0 : (maxLength - distance) / maxLength;
+}
+
+// Function to find song matches using JavaScript-based fuzzy matching
+async function findSongMatches(title, artist = "") {
+  try {
+    // First try exact matches
+    let exactMatches = [];
+
+    if (artist) {
+      // Look for exact title + artist match
+      exactMatches = await prisma.song.findMany({
+        where: {
+          title: { equals: title, mode: "insensitive" },
+          artists: {
+            some: {
+              artist: {
+                name: { equals: artist, mode: "insensitive" },
+              },
+            },
+          },
+        },
+        include: {
+          artists: {
+            include: { artist: true },
+          },
+          vocalist: true,
+          creator: true,
+        },
+        take: 5,
+      });
+    } else {
+      // Look for exact title match (no artist specified)
+      exactMatches = await prisma.song.findMany({
+        where: {
+          title: { equals: title, mode: "insensitive" },
+        },
+        include: {
+          artists: {
+            include: { artist: true },
+          },
+          vocalist: true,
+          creator: true,
+        },
+        take: 5,
+      });
+    }
+
+    if (exactMatches.length > 0) {
+      return exactMatches.map((song) => ({
+        ...song,
+        matchType: "exact",
+        confidence: 1.0,
+      }));
+    }
+
+    // If no exact matches, try JavaScript-based fuzzy matching
+    // Get all songs for fuzzy comparison (limit to reasonable number)
+    const allSongs = await prisma.song.findMany({
+      include: {
+        artists: {
+          include: { artist: true },
+        },
+        vocalist: true,
+        creator: true,
+      },
+      take: 1000, // Limit to avoid performance issues
+    });
+
+    if (allSongs.length > 0) {
+      // Calculate similarity scores using JavaScript
+      const scoredSongs = allSongs.map((song) => {
+        const titleSimilarity = calculateSimilarity(title, song.title);
+
+        // If artist was provided, factor it into the score
+        let artistSimilarity = 0;
+        if (artist && song.artists && song.artists.length > 0) {
+          artistSimilarity = Math.max(
+            ...song.artists.map((sa) =>
+              calculateSimilarity(artist, sa.artist.name)
+            )
+          );
+        }
+
+        // Combined score: title is more important (70%) than artist (30%)
+        const combinedScore = artist
+          ? titleSimilarity * 0.7 + artistSimilarity * 0.3
+          : titleSimilarity;
+
+        return {
+          ...song,
+          matchType: "fuzzy",
+          confidence: combinedScore,
+        };
+      });
+
+      // Filter and sort by similarity score
+      const fuzzyMatches = scoredSongs
+        .filter((song) => song.confidence > 0.3) // 30% similarity threshold
+        .sort((a, b) => b.confidence - a.confidence)
+        .slice(0, 5); // Top 5 matches
+
+      if (fuzzyMatches.length > 0) {
+        return fuzzyMatches;
+      }
+    }
+
+    return []; // No matches found
+  } catch (error) {
+    console.error("Error finding song matches:", error);
+    return [];
+  }
+}
+
+// Function to parse quick set input
+function parseQuickSetInput(input) {
+  const lines = input
+    .trim()
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line);
+  const result = {
+    sets: [],
+    songs: [],
+    errors: [],
+  };
+
+  let currentSet = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check if this is a set header (e.g., "Set 1:", "Set 2:")
+    const setMatch = line.match(/^Set\s+(\d+):\s*$/i);
+    if (setMatch) {
+      currentSet = {
+        name: line,
+        setNumber: parseInt(setMatch[1]),
+        songs: [],
+      };
+      result.sets.push(currentSet);
+      continue;
+    }
+
+    // If we don't have a current set, that's an error
+    if (!currentSet) {
+      result.errors.push(
+        `Line ${i + 1}: Songs must be under a set header (e.g., "Set 1:")`
+      );
+      continue;
+    }
+
+    // Parse song line - format: "Song Title, Artist" or just "Song Title"
+    const parts = line.split(",").map((part) => part.trim());
+
+    if (parts.length > 2) {
+      result.errors.push(
+        `Line ${i + 1}: Too many commas. Format should be "Song Title, Artist" or just "Song Title"`
+      );
+      continue;
+    }
+
+    if (parts[0] === "") {
+      result.errors.push(`Line ${i + 1}: Empty song title`);
+      continue;
+    }
+
+    // Trim '>' from song titles (common in jam band setlists)
+    // Example: "The Music Never Stopped >" becomes "The Music Never Stopped"
+    let songTitle = parts[0].trim();
+    if (songTitle.endsWith(">")) {
+      songTitle = songTitle.slice(0, -1).trim(); // Remove '>' and trim again
+    }
+
+    const song = {
+      title: songTitle,
+      artist: parts.length > 1 ? parts[1] : "",
+      setNumber: currentSet.setNumber,
+      lineNumber: i + 1,
+    };
+
+    currentSet.songs.push(song);
+    result.songs.push(song);
+  }
+
+  if (result.sets.length === 0) {
+    result.errors.push(
+      "No sets found. Please include set headers like 'Set 1:', 'Set 2:', etc."
+    );
+  }
+
+  if (result.songs.length === 0) {
+    result.errors.push(
+      "No songs found. Please add songs under your set headers."
+    );
+  }
+
+  return result;
+}
+
 module.exports = router;

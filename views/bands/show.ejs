@@ -151,7 +151,7 @@
 </div>
 
 <div class="row">
-    <!-- Setlists Section -->
+    <!-- Left Column: Setlists -->
     <div class="col-md-8 mb-4">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -214,10 +214,202 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Handle delete invitation buttons
-            document.querySelectorAll('.delete-invitation').forEach(button => {
+    <!-- Right Column: Quick Set + Members -->
+    <div class="col-md-4">
+        <!-- Quick Set Creation Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightning"></i> Quick Set Creation
+                </h5>
+            </div>
+            <div class="card-body">
+                <button type="button" class="btn btn-primary" id="quickSetBtn">
+                    <i class="bi bi-plus-circle"></i> Create Quick Set
+                </button>
+                
+                <!-- Quick Set Form (initially hidden) -->
+                <div id="quickSetForm" class="mt-3" style="display: none;">
+                    <form action="/bands/<%= band.id %>/quick-set" method="POST">
+                        <div class="mb-3">
+                            <label for="songList" class="form-label">Paste your setlist here:</label>
+                            <textarea class="form-control" id="songList" name="songList" rows="10" 
+                                placeholder="Set 1:
+The Music Never Stopped >
+Sugaree >
+The Music Never Stopped
+Me & My Uncle >
+Big River
+
+Set 2:
+It Must Have Been The Roses
+C.C. Rider, Grateful Dead
+
+Set 3:
+Ramble On Rose">Set 1:
+
+
+Set 2:
+
+
+Set 3:
+
+
+Set 4:
+
+</textarea>
+                            <div class="form-text">
+                                Format: <strong>Song Title, Artist</strong> (Artist is optional)<br>
+                                Each set should start with "Set X:" on its own line
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="bi bi-check-circle"></i> Process
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="cancelQuickSet">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Band Members Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Members
+                </h5>
+            </div>
+            <div class="card-body">
+                <% band.members.forEach(member => { %>
+                    <div class="d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <%= member.user.username %>
+                                <% if (member.role === 'owner') { %>
+                                    <span class="badge bg-primary">Owner</span>
+                                    <% } %>
+                        </div>
+                    </div>
+                    <% }) %>
+
+                        <!-- Invite Member Form -->
+                        <% const isOwner = band.members.find(member => member.user.id === userId && member.role === 'owner'); %>
+                            <% if (isOwner) { %>
+                                <hr>
+                                <h6>Invite New Member</h6>
+                                <form action="/bands/<%= band.id %>/invite" method="POST">
+                                    <div class="input-group">
+                                        <input type="email" class="form-control form-control-sm" name="email"
+                                            placeholder="Email address" required>
+                                        <button class="btn btn-outline-secondary btn-sm" type="submit">
+                                            <i class="bi bi-send"></i> Invite
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Show pending invitations -->
+                                <% if (pendingInvitations && pendingInvitations.length> 0) { %>
+                                    <div class="mt-3">
+                                        <h6 class="mb-2">Pending Invitations</h6>
+                                        <div class="list-group list-group-flush">
+                                            <% pendingInvitations.forEach(invitation=> { %>
+                                                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                                    <div>
+                                                        <small class="text-muted">
+                                                            <%= invitation.email %>
+                                                        </small>
+                                                        <br>
+                                                        <small class="text-muted">Sent: <%= new
+                                                                Date(invitation.createdAt).toLocaleDateString() %>
+                                                        </small>
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger delete-invitation"
+                                                        data-invitation-id="<%= invitation.id %>"
+                                                        data-email="<%= invitation.email %>">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                                <% }) %>
+                                        </div>
+                                    </div>
+                                    <% } else { %>
+                                        <p class="text-muted small mt-2">No pending invitations</p>
+                                        <% } %>
+                                            <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Band Songs Section (full width below) -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-music-note-list"></i> Band Songs
+                </h5>
+                <a href="/bands/<%= band.id %>/songs" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-gear"></i> Manage Songs
+                </a>
+            </div>
+            <div class="card-body band-songs">
+                <% if (bandSongs && bandSongs.length> 0) { %>
+                    <div class="row">
+                        <% bandSongs.forEach(song => { %>
+                            <div class="col-md-4 mb-3">
+                                <a href="/songs/<%= song.song.id %>" class="text-decoration-none">
+                                    <div class="song-card">
+                                        <div class="song-title">
+                                            <%= song.song.title %>
+                                        </div>
+                                        <% if (song.song.artists && song.song.artists.length> 0) { %>
+                                            <div class="song-artist">
+                                                by <%= song.song.artists[0].artist.name %>
+                                            </div>
+                                            <% } %>
+                                                <% if (song.song.vocalist) { %>
+                                                    <div class="song-vocalist">
+                                                        vocals: <%= song.song.vocalist.name %>
+                                                    </div>
+                                                    <% } %>
+                                                        <div class="d-flex align-items-center mt-2">
+                                                            <% if (song.song.key) { %>
+                                                                <span class="song-key me-2">
+                                                                    <%= song.song.key %>
+                                                                </span>
+                                                                <% } %>
+                                                                    <% if (song.song.time) { %>
+                                                                        <% const minutes=Math.floor(song.song.time / 60); %>
+                                                                            <% const seconds=song.song.time % 60; %>
+                                                                                <span class="song-time">
+                                                                                    <%= minutes %>:<%= seconds.toString().padStart(2, '0') %>
+                                                                                </span>
+                                                                                <% } %>
+                                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                            <% }) %>
+                    </div>
+                    <% } else { %>
+                        <p class="text-muted">This band doesn't have any songs yet.</p>
+                        <a href="/bands/<%= band.id %>/songs" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add Songs
+                        </a>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle delete invitation buttons
+        document.querySelectorAll('.delete-invitation').forEach(button => {
                 button.addEventListener('click', function () {
                     const invitationId = this.getAttribute('data-invitation-id');
                     const email = this.getAttribute('data-email');
@@ -296,162 +488,52 @@
                 });
             });
         });
+
+        // Quick Set Form Toggle
+        document.getElementById('quickSetBtn').addEventListener('click', function() {
+            const form = document.getElementById('quickSetForm');
+            const btn = document.getElementById('quickSetBtn');
+            
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                btn.innerHTML = '<i class="bi bi-chevron-up"></i> Hide Form';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-primary');
+                // Focus on textarea
+                document.getElementById('songList').focus();
+            } else {
+                form.style.display = 'none';
+                btn.innerHTML = '<i class="bi bi-plus-circle"></i> Create Quick Set';
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-primary');
+            }
+        });
+
+        // Cancel button
+        document.getElementById('cancelQuickSet').addEventListener('click', function() {
+            const form = document.getElementById('quickSetForm');
+            const btn = document.getElementById('quickSetBtn');
+            
+            form.style.display = 'none';
+            btn.innerHTML = '<i class="bi bi-plus-circle"></i> Create Quick Set';
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-primary');
+            
+            // Clear the textarea
+            document.getElementById('songList').value = `Set 1:
+
+
+Set 2:
+
+
+Set 3:
+
+
+Set 4:
+
+`;
+        });
     </script>
-
-    <!-- Band Members Section -->
-    <div class="col-md-4 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-people"></i> Members
-                </h5>
-            </div>
-            <div class="card-body">
-                <% band.members.forEach(member => { %>
-                    <div class="d-flex justify-content-between align-items-center py-2">
-                        <div>
-                            <%= member.user.username %>
-                                <% if (member.role === 'owner') { %>
-                                    <span class="badge bg-primary">Owner</span>
-                                    <% } %>
-                        </div>
-                    </div>
-                    <% }) %>
-
-                        <!-- Invite Member Form -->
-                        <% const isOwner = band.members.find(member => member.user.id === userId && member.role === 'owner'); %>
-                            <% if (isOwner) { %>
-                                <hr>
-                                <h6>Invite New Member</h6>
-                                <form action="/bands/<%= band.id %>/invite" method="POST">
-                                    <div class="input-group">
-                                        <input type="email" class="form-control form-control-sm" name="email"
-                                            placeholder="Email address" required>
-                                        <button type="submit" class="btn btn-outline-primary btn-sm">
-                                            <i class="bi bi-plus"></i> Invite
-                                        </button>
-                                    </div>
-                                </form>
-
-                                <!-- Pending Invitations -->
-                                <% if (typeof pendingInvitations !=='undefined' && pendingInvitations.length> 0) { %>
-                                    <hr>
-                                    <h6>Pending Invitations</h6>
-                                    <div class="list-group list-group-flush">
-                                        <% pendingInvitations.forEach(invitation=> { %>
-                                            <div
-                                                class="list-group-item d-flex justify-content-between align-items-center py-2 px-0">
-                                                <div>
-                                                    <div class="fw-bold">
-                                                        <%= invitation.email %>
-                                                    </div>
-                                                    <small class="text-muted">
-                                                        Invited by <%= invitation.inviter ? invitation.inviter.username
-                                                            : 'Unknown' %>
-                                                            on <%= new Date(invitation.createdAt).toLocaleDateString()
-                                                                %>
-                                                    </small>
-                                                    <br>
-                                                    <small class="text-muted">
-                                                        Expires: <%= new Date(invitation.expires_at).toLocaleDateString()
-                                                            %>
-                                                    </small>
-                                                </div>
-                                                <button class="btn btn-outline-danger btn-sm delete-invitation"
-                                                    data-invitation-id="<%= invitation.id %>"
-                                                    data-email="<%= invitation.email %>">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                            <% }) %>
-                                    </div>
-                                    <% } else if (isOwner) { %>
-                                        <hr>
-                                        <h6>Pending Invitations</h6>
-                                        <p class="text-muted small">No pending invitations</p>
-                                        <% } %>
-                                            <% } %>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Band Songs Section -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="bi bi-music-note-list"></i> Our Songs
-                </h5>
-                <a href="/bands/<%= band.id %>/songs" class="btn btn-primary btn-sm">
-                    <i class="bi bi-gear"></i> Manage Songs
-                </a>
-            </div>
-            <div class="card-body band-songs">
-                <% if (bandSongs && bandSongs.length > 0) { %>
-                    <div class="row">
-                        <% bandSongs.forEach(song => { %>
-                            <div class="col-md-4 mb-3">
-                                <a href="/songs/<%= song.song.id %>" class="text-decoration-none">
-                                    <div class="card song-card h-100">
-                                        <div class="card-body">
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <h6 class="card-title text-dark mb-0">
-                                                    <%= song.song.title %>
-                                                </h6>
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <!-- Note: Links and GigDocuments not loaded in simplified query -->
-                                                </div>
-                                            </div>
-                                            <% if (song.song.artists && song.song.artists.length > 0) { %>
-                                                <p class="text-muted mb-1 small">by <%= song.song.artists[0].artist.name %></p>
-                                            <% } %>
-                                            <div class="d-flex flex-wrap gap-1">
-                                                <% if (song.song.vocalist) { %>
-                                                    <span class="badge bg-secondary">
-                                                        <i class="bi bi-mic"></i>
-                                                        <%= song.song.vocalist.name %>
-                                                    </span>
-                                                <% } %>
-                                                <% if (song.song.key) { %>
-                                                    <span class="badge bg-primary">
-                                                        Key: <%= song.song.key %>
-                                                    </span>
-                                                <% } %>
-                                                <% if (song.song.bpm) { %>
-                                                    <span class="badge bg-warning text-dark">
-                                                        <i class="bi bi-speedometer"></i>
-                                                        <%= song.song.bpm %> BPM
-                                                    </span>
-                                                <% } %>
-                                                <% if (song.song.time) { %>
-                                                    <span class="badge bg-info text-dark">
-                                                        <i class="bi bi-clock"></i>
-                                                        <%= Math.floor(song.song.time / 60) %>:<%= (song.song.time % 60).toString().padStart(2, '0') %>
-                                                    </span>
-                                                <% } %>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                        <% }) %>
-                    </div>
-                <% } else { %>
-                    <div class="text-center py-4">
-                        <i class="bi bi-music-note text-muted" style="font-size: 3rem;"></i>
-                        <h6 class="text-muted mt-2">No songs assigned to this band yet</h6>
-                        <p class="text-muted small">Start building your band's repertoire!</p>
-                        <a href="/bands/<%= band.id %>/songs" class="btn btn-primary">
-                            <i class="bi bi-plus-circle"></i> Add Songs
-                        </a>
-                    </div>
-                <% } %>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- New Setlist Modal -->
 <div class="modal fade" id="newSetlistModal" tabindex="-1">
@@ -468,7 +550,7 @@
                         <input type="text" class="form-control" id="title" name="title" required>
                     </div>
                     <div class="mb-3">
-                        <label for="date" class="form-label">Date (Optional)</label>
+                        <label for="date" class="form-label">Date (optional)</label>
                         <input type="date" class="form-control" id="date" name="date">
                     </div>
                 </div>

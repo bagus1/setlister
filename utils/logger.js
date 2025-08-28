@@ -39,8 +39,9 @@ const logger = {
   },
 
   // Log page access
-  logPageAccess(path, userId = null) {
-    const message = this.formatMessage(`${path} accessed`, userId);
+  logPageAccess(path, userId = null, ip = null) {
+    const ipInfo = ip ? ` from ${ip}` : "";
+    const message = this.formatMessage(`${path} accessed${ipInfo}`, userId);
     console.log(message);
     this.writeToFile(message);
   },

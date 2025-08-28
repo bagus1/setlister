@@ -7,9 +7,18 @@ const requestLogger = (req, res, next) => {
   const path = req.path;
   const method = req.method;
 
+  // Get client IP (handles proxies/load balancers)
+  const ip =
+    req.headers["x-forwarded-for"] ||
+    req.headers["x-real-ip"] ||
+    req.connection.remoteAddress ||
+    req.socket.remoteAddress ||
+    (req.connection.socket ? req.connection.socket.remoteAddress : null) ||
+    req.ip;
+
   // Log page access for GET requests
   if (method === "GET") {
-    logger.logPageAccess(path, userId);
+    logger.logPageAccess(path, userId, ip);
   }
 
   // Log form submissions for POST/PUT/DELETE requests

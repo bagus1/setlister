@@ -1,0 +1,21 @@
+User-agent: *
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /manage/
+Disallow: /bands/*/songs
+Disallow: /setlists/*/edit
+Disallow: /songs/new
+Disallow: /songs/*/edit
+Disallow: /whitelist-request
+
+# Allow public pages
+Allow: /
+Allow: /songs
+Allow: /artists
+Allow: /setlists
+
+# Crawl delay to reduce server load
+Crawl-delay: 1
+
+Sitemap: https://setlists.bagus.org/sitemap.xml

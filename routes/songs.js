@@ -205,22 +205,63 @@ router.post(
         private: isPrivate,
       } = req.body;
 
-      // Check for duplicate song (case-insensitive)
-      const existingSong = await prisma.song.findFirst({
-        where: {
-          title: {
-            equals: title.trim(),
-            mode: "insensitive",
-          },
-        },
-        include: {
-          artists: {
-            include: {
-              artist: true,
+      // Get artist ID first (needed for proper duplicate detection)
+      let artistId = null;
+      if (artist && artist.trim()) {
+        const artistRecord = await prisma.artist.findFirst({
+          where: { name: artist.trim() },
+        });
+        if (artistRecord) {
+          artistId = artistRecord.id;
+        }
+      }
+
+      // Check for duplicate song with proper artist logic (case-insensitive)
+      let existingSong = null;
+
+      if (artistId) {
+        // If artist is provided, check for same title AND same artist (both case-insensitive)
+        existingSong = await prisma.song.findFirst({
+          where: {
+            title: {
+              equals: title.trim(),
+              mode: "insensitive",
+            },
+            artists: {
+              some: {
+                artistId: artistId,
+              },
             },
           },
-        },
-      });
+          include: {
+            artists: {
+              include: {
+                artist: true,
+              },
+            },
+          },
+        });
+      } else {
+        // If no artist provided, check for same title with NO artists (case-insensitive)
+        existingSong = await prisma.song.findFirst({
+          where: {
+            title: {
+              equals: title.trim(),
+              mode: "insensitive",
+            },
+            artists: {
+              none: {},
+            },
+          },
+          include: {
+            artists: {
+              include: {
+                artist: true,
+              },
+            },
+          },
+        });
+      }
 
       const duplicateWarning = existingSong
         ? `A song with the title "${title}" already exists${existingSong.artists && existingSong.artists.length > 0 ? ` by ${existingSong.artists[0].artist.name}` : ""} (found: "${existingSong.title}").`
@@ -324,7 +365,7 @@ router.post(
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      
+
       const song = await prisma.song.create({
         data: {
           title: title.trim(),
@@ -338,30 +379,30 @@ router.post(
           updatedAt: new Date(),
         },
       });
-      
+
       console.log("Song created successfully:", song);
 
-      // Handle artist
+      // Handle artist (create if needed, use existing artistId if found)
       if (artist && artist.trim()) {
-        let artistRecord = await prisma.artist.findFirst({
-          where: { name: artist.trim() },
-        });
+        let finalArtistId = artistId; // Use the one we found earlier
 
-        if (!artistRecord) {
-          artistRecord = await prisma.artist.create({
+        // If artist doesn't exist yet, create it
+        if (!finalArtistId) {
+          const artistRecord = await prisma.artist.create({
             data: {
               name: artist.trim(),
               createdAt: new Date(),
               updatedAt: new Date(),
             },
           });
+          finalArtistId = artistRecord.id;
         }
 
         // Create the song-artist relationship
         await prisma.songArtist.create({
           data: {
             songId: song.id,
-            artistId: artistRecord.id,
+            artistId: finalArtistId,
             createdAt: new Date(),
             updatedAt: new Date(),
           },

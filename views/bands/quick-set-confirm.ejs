@@ -1,0 +1,312 @@
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Confirm Quick Setlist</h1>
+            <p class="text-muted">Review and confirm song matches for <strong><%= band.name %></strong></p>
+        </div>
+        <div>
+            <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Band
+            </a>
+        </div>
+    </div>
+
+    <form action="/bands/<%= band.id %>/quick-set/create" method="POST" id="confirmForm">
+        <!-- Setlist Details -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-check"></i> Setlist Details
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="setlistTitle" class="form-label">Setlist Title *</label>
+                                    <input type="text" class="form-control" id="setlistTitle" name="setlistTitle" 
+                                           placeholder="e.g., Red Rocks 2024, Practice Session, Gig at The Fillmore" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="setlistDate" class="form-label">Date (optional)</label>
+                                    <input type="date" class="form-control" id="setlistDate" name="setlistDate">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Summary</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <span>Total Songs:</span>
+                            <strong><%= totalSongs %></strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Sets:</span>
+                            <strong><%= sets.length %></strong>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between text-success">
+                            <span>Matched:</span>
+                            <strong id="matchedCount">-</strong>
+                        </div>
+                        <div class="d-flex justify-content-between text-warning">
+                            <span>Will Create:</span>
+                            <strong id="createCount">-</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Song Matching Results -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-music-note-list"></i> Song Matches
+                    <small class="text-muted">(Select the best match for each song or create new)</small>
+                </h5>
+            </div>
+            <div class="card-body">
+                <% sets.forEach((set, setIndex) => { %>
+                    <h6 class="set-header text-primary mb-3">
+                        <i class="bi bi-collection"></i> <%= set.name %>
+                    </h6>
+                    
+                    <div class="row mb-4">
+                        <% set.songs.forEach((setSong, songIndex) => { %>
+                            <% const songMatch = songMatches.find(sm => sm.lineNumber === setSong.lineNumber); %>
+                            <% if (songMatch) { %>
+                                <div class="col-12 mb-4">
+                                    <div class="song-match-container">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <strong class="me-2 fs-5"><%= songMatch.title %></strong>
+                                            <% if (songMatch.artist) { %>
+                                                <span class="text-muted">by <%= songMatch.artist %></span>
+                                            <% } %>
+                                        </div>
+                                        
+                                        <!-- Hidden input to track selection -->
+                                        <input type="hidden" name="song_<%= songMatch.lineNumber %>" 
+                                               value="<%= songMatch.shouldPreferExisting && songMatch.selectedMatch ? 'existing_' + songMatch.selectedMatch.id : 'new' %>" 
+                                               id="hidden_song_<%= songMatch.lineNumber %>">
+                                        
+                                        <div class="row g-2">
+                                            <!-- Left: Option to create new song -->
+                                            <div class="col-2">
+                                                <div class="border border-light-subtle rounded p-2">
+                                                    <div class="mb-1"><strong>Create New</strong></div>
+                                                    <div class="card border-warning new-song-card <%= (songMatch.matches.length === 0 || !songMatch.shouldPreferExisting) ? 'selected' : '' %>" 
+                                                         data-song-line="<%= songMatch.lineNumber %>" 
+                                                         style="cursor: pointer;">
+                                                        <div class="card-body p-2">
+                                                            <div class="song-title"><%= songMatch.title %></div>
+                                                            <div class="mt-2" onclick="event.stopPropagation();">
+                                                                <label class="form-label small mb-1">Artist</label>
+                                                                <input type="text" 
+                                                                       class="form-control form-control-sm" 
+                                                                       name="new_artist_<%= songMatch.lineNumber %>"
+                                                                       value="<%= songMatch.artist || '' %>"
+                                                                       placeholder="Enter artist name"
+                                                                       style="font-size: 0.75rem;">
+                                                            </div>
+                                                            <div class="text-center mt-1">
+                                                                <span class="badge bg-warning text-dark">New Song</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Right: Existing song matches -->
+                                            <% if (songMatch.matches.length > 0) { %>
+                                                <div class="col-10">
+                                                    <div class="border border-light-subtle rounded p-2">
+                                                        <div class="mb-2">
+                                                            <strong>Use existing song:</strong>
+                                                        </div>
+                                                    
+                                                    <div class="row">
+                                                        <% songMatch.matches.forEach((match, matchIndex) => { %>
+                                                            <div class="col mb-2">
+                                                                <div class="card match-card <%= (songMatch.selectedMatch && match.id === songMatch.selectedMatch.id) ? 'selected' : '' %>" 
+                                                                     data-song-line="<%= songMatch.lineNumber %>" 
+                                                                     data-song-id="<%= match.id %>" 
+                                                                     style="cursor: pointer;">
+                                                                    <div class="card-body p-2">
+                                                                        <div class="song-title"><%= match.title %></div>
+                                                                        <% if (match.artists && match.artists.length > 0) { %>
+                                                                            <div class="song-artist text-muted">by <%= match.artists[0].artist.name %></div>
+                                                                        <% } else { %>
+                                                                            <!-- Artist input for songs without artists -->
+                                                                            <div class="mt-2" onclick="event.stopPropagation();">
+                                                                                <label class="form-label small mb-1">Artist</label>
+                                                                                <input type="text" 
+                                                                                       class="form-control form-control-sm" 
+                                                                                       name="existing_artist_<%= songMatch.lineNumber %>_<%= match.id %>"
+                                                                                       value="<%= songMatch.artist || '' %>"
+                                                                                       placeholder="Enter artist name"
+                                                                                       style="font-size: 0.75rem;">
+                                                                            </div>
+                                                                        <% } %>
+                                                                        <% if (match.vocalist) { %>
+                                                                            <div class="song-vocalist text-muted">vocals: <%= match.vocalist.name %></div>
+                                                                        <% } %>
+                                                                        <div class="d-flex justify-content-between align-items-center mt-1">
+                                                                            <% if (match.matchType === 'exact') { %>
+                                                                                <span class="badge bg-success">Exact Match</span>
+                                                                            <% } else { %>
+                                                                                <span class="badge bg-info">Similar (~<%= Math.round(match.confidence * 100) %>%)</span>
+                                                                            <% } %>
+                                                                            <a href="/songs/<%= match.id %>" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">
+                                                                                <i class="bi bi-eye"></i>
+                                                                            </a>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        <% }); %>
+                                                    </div>
+                                                    </div>
+                                                </div>
+                                            <% } else { %>
+                                                <!-- No matches found - show message -->
+                                                <div class="col-10">
+                                                    <div class="border border-light-subtle rounded p-2">
+                                                        <div class="alert alert-info mb-0">
+                                                            <i class="bi bi-info-circle"></i> No existing songs found. This will create a new song.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                        
+                                        <!-- Hidden inputs for song data -->
+                                        <input type="hidden" name="original_title_<%= songMatch.lineNumber %>" value="<%= songMatch.title %>">
+                                        <input type="hidden" name="original_artist_<%= songMatch.lineNumber %>" value="<%= songMatch.artist %>">
+                                        <input type="hidden" name="set_number_<%= songMatch.lineNumber %>" value="<%= songMatch.setNumber %>">
+                                    </div>
+                                </div>
+                            <% } %>
+                        <% }); %>
+                    </div>
+                <% }); %>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="/bands/<%= band.id %>" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle"></i> Create Setlist
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.match-card {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.match-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.song-match-container {
+    border-left: 3px solid #dee2e6;
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+}
+
+.set-header {
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+
+
+.row {
+    --bs-gutter-x: 0.5rem;
+}
+
+.new-song-card.selected,
+.match-card.selected {
+    border-color: #0d6efd !important;
+    background-color: #e7f3ff;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update summary counts
+    function updateCounts() {
+        const hiddenInputs = document.querySelectorAll('input[name^="song_"][type="hidden"]');
+        let matchedCount = 0;
+        let createCount = 0;
+        
+        hiddenInputs.forEach(input => {
+            if (input.value.startsWith('existing_')) {
+                matchedCount++;
+            } else if (input.value === 'new') {
+                createCount++;
+            }
+        });
+        
+        document.getElementById('matchedCount').textContent = matchedCount;
+        document.getElementById('createCount').textContent = createCount;
+    }
+    
+    // Function to update card selection for a song line
+    function updateCardSelection(lineNumber, selectedValue) {
+        const hiddenInput = document.getElementById(`hidden_song_${lineNumber}`);
+        hiddenInput.value = selectedValue;
+        
+        // Remove selected class from all cards in this line
+        document.querySelectorAll(`[data-song-line="${lineNumber}"]`).forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        // Add selected class to the appropriate card
+        if (selectedValue === 'new') {
+            document.querySelector(`[data-song-line="${lineNumber}"].new-song-card`).classList.add('selected');
+        } else {
+            const songId = selectedValue.replace('existing_', '');
+            document.querySelector(`[data-song-line="${lineNumber}"][data-song-id="${songId}"]`).classList.add('selected');
+        }
+        
+        updateCounts();
+    }
+
+    // Handle new song card clicks
+    document.querySelectorAll('.new-song-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const lineNumber = this.dataset.songLine;
+            updateCardSelection(lineNumber, 'new');
+        });
+    });
+
+    // Handle existing song card clicks
+    document.querySelectorAll('.match-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const lineNumber = this.dataset.songLine;
+            const songId = this.dataset.songId;
+            updateCardSelection(lineNumber, `existing_${songId}`);
+        });
+    });
+
+    // Initial count
+    updateCounts();
+});
+</script>

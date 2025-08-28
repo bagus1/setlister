@@ -234,18 +234,13 @@
                         <div class="mb-3">
                             <label for="songList" class="form-label">Paste your setlist here:</label>
                             <textarea class="form-control" id="songList" name="songList" rows="10" 
-                                placeholder="Set 1:
-The Music Never Stopped >
+                                placeholder="The Music Never Stopped >
 Sugaree >
 The Music Never Stopped
 Me & My Uncle >
 Big River
-
-Set 2:
 It Must Have Been The Roses
 C.C. Rider, Grateful Dead
-
-Set 3:
 Ramble On Rose">Set 1:
 
 
@@ -260,7 +255,7 @@ Set 4:
 </textarea>
                             <div class="form-text">
                                 Format: <strong>Song Title, Artist</strong> (Artist is optional)<br>
-                                Each set should start with "Set X:" on its own line
+                                Set headers like "Set 1:" are optional - if omitted, all songs will be put in "Set 1"
                             </div>
                         </div>
                         <div class="d-flex gap-2">
@@ -519,7 +514,7 @@ Set 4:
             btn.classList.remove('btn-outline-primary');
             btn.classList.add('btn-primary');
             
-            // Clear the textarea
+            // Reset the textarea to default
             document.getElementById('songList').value = `Set 1:
 
 

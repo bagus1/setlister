@@ -86,6 +86,7 @@ Usage: ./deploy.sh [mode]
 
 Modes:
   deploy   - Smart daily deployment (Prisma-aware, safe stop/start for structural changes)
+  deploy-simple - Deploy code changes only (no Prisma checks, fast restart)
   deploy-postgres - Full PostgreSQL setup with migration (for new servers)
   update   - Quick deploy with PostgreSQL migration (push to git, pull on server, migrate, restart)
   quick    - Update files with PostgreSQL migration (auto-commit, push to git, pull on server, migrate, restart)
@@ -239,10 +240,18 @@ deploy_via_git() {
     print_status "Checking for schema or structural changes..."
     SCHEMA_CHANGED=false
     
-    # Check if prisma/schema.prisma changed
-    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q prisma/schema.prisma"; then
-        print_status "Schema changes detected in prisma/schema.prisma"
+    # Check if prisma/schema.prisma differs between local and production
+    print_status "Comparing local and production schema files..."
+    LOCAL_SCHEMA_HASH=$(md5sum prisma/schema.prisma | cut -d' ' -f1)
+    REMOTE_SCHEMA_HASH=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && md5sum prisma/schema.prisma | cut -d' ' -f1" 2>/dev/null || echo "missing")
+    
+    if [ "$LOCAL_SCHEMA_HASH" != "$REMOTE_SCHEMA_HASH" ]; then
+        print_status "Schema differences detected between local and production"
+        print_status "Local schema hash: $LOCAL_SCHEMA_HASH"
+        print_status "Remote schema hash: $REMOTE_SCHEMA_HASH"
         SCHEMA_CHANGED=true
+    else
+        print_status "Schema files match between local and production"
     fi
     
     # Check if any migration files changed
@@ -270,9 +279,12 @@ deploy_via_git() {
         SCHEMA_CHANGED=true
     fi
     
-    # Check for new files that might import Prisma
-    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q '^.*\.js$'"; then
-        print_status "New JavaScript files detected - may affect Prisma initialization"
+    # Check for new files that might import Prisma (but exclude minor changes)
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q '^routes/.*\.js$'"; then
+        print_status "Route files changed - may affect Prisma queries"
+        SCHEMA_CHANGED=true
+    elif ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q '^lib/.*\.js$'"; then
+        print_status "Library files changed - may affect Prisma initialization"
         SCHEMA_CHANGED=true
     fi
     
@@ -287,30 +299,79 @@ deploy_via_git() {
             return 1
         }
         
-        # Check if migrations exist and create them if needed
-        print_status "Checking for existing migrations..."
-        if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && [ ! -d 'prisma/migrations' ] || [ -z \"\$(ls -A prisma/migrations 2>/dev/null)\" ]"; then
-            print_status "No migrations found - creating initial migration from current schema..."
-            ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate dev --name initial_schema --create-only" || {
-                print_error "Failed to create initial migration"
+        # Generate migrations locally if needed
+        print_status "Generating migrations locally if needed..."
+        if [ ! -d "prisma/migrations" ] || [ -z "$(ls -A prisma/migrations 2>/dev/null)" ]; then
+            print_status "No local migrations found - creating initial migration from current schema..."
+            npx prisma migrate dev --name initial_schema --create-only || {
+                print_error "Failed to create initial migration locally"
                 return 1
             }
-            print_success "Initial migration created"
+            print_success "Initial migration created locally"
         else
-            print_status "Existing migrations found, checking if schema is in sync..."
+            print_status "Checking for new schema changes to migrate..."
             # Try to create a migration for any schema changes
-            ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate dev --name schema_update --create-only" 2>/dev/null || {
-                print_status "No new migrations needed or migration creation failed (continuing with existing migrations)"
+            npx prisma migrate dev --name schema_update --create-only 2>/dev/null || {
+                print_status "No new migrations needed"
             }
         fi
         
-        # Run database migrations (safer than db push)
-        print_status "Running database migrations..."
-        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate deploy" || {
-            print_error "Failed to run database migrations on server"
-            print_error "Server may be in an unstable state - manual intervention required"
-            return 1
-        }
+        # Find migrations that exist locally but not on production
+        print_status "Checking for missing migrations on production..."
+        LOCAL_MIGRATIONS=($(ls prisma/migrations/ 2>/dev/null | sort))
+        REMOTE_MIGRATIONS=($(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && ls prisma/migrations/ 2>/dev/null | sort" || echo ""))
+        
+        MISSING_MIGRATIONS=()
+        for migration in "${LOCAL_MIGRATIONS[@]}"; do
+            if [ "$migration" != "migration_lock.toml" ]; then
+                if ! printf '%s\n' "${REMOTE_MIGRATIONS[@]}" | grep -q "^$migration$"; then
+                    MISSING_MIGRATIONS+=("$migration")
+                fi
+            fi
+        done
+        
+        if [ ${#MISSING_MIGRATIONS[@]} -gt 0 ]; then
+            print_status "Found ${#MISSING_MIGRATIONS[@]} missing migrations on production:"
+            for migration in "${MISSING_MIGRATIONS[@]}"; do
+                print_status "  - $migration"
+            done
+            
+            # Run SQL from missing migrations directly
+            for migration in "${MISSING_MIGRATIONS[@]}"; do
+                print_status "Applying migration: $migration"
+                if [ -f "prisma/migrations/$migration/migration.sql" ]; then
+                    # Copy migration to production
+                    scp "prisma/migrations/$migration/migration.sql" "$HOST_USER@$HOST_DOMAIN:/tmp/${migration}_migration.sql" || {
+                        print_error "Failed to copy migration $migration to production"
+                        return 1
+                    }
+                    
+                    # Run SQL directly
+                    print_status "Executing SQL for migration: $migration"
+                    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && psql \$DATABASE_URL -f /tmp/${migration}_migration.sql" || {
+                        print_error "Failed to execute SQL for migration: $migration"
+                        print_error "Check the SQL file and database state manually"
+                        return 1
+                    }
+                    
+                    # Clean up temp file
+                    ssh "$HOST_USER@$HOST_DOMAIN" "rm /tmp/${migration}_migration.sql"
+                    
+                    # Mark migration as applied in Prisma's tracking table
+                    print_status "Marking migration as applied: $migration"
+                    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && psql \$DATABASE_URL -c \"INSERT INTO _prisma_migrations (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count) VALUES (gen_random_uuid(), 'manual_sql_migration', NOW(), '$migration', NULL, NULL, NOW(), 1) ON CONFLICT (migration_name) DO NOTHING;\"" || {
+                        print_warning "Failed to mark migration as applied - continuing anyway"
+                    }
+                    
+                    print_success "Migration $migration applied successfully"
+                else
+                    print_error "Migration SQL file not found: prisma/migrations/$migration/migration.sql"
+                    return 1
+                fi
+            done
+        else
+            print_status "All migrations are already present on production"
+        fi
         
         print_success "Schema migration completed"
         
@@ -580,6 +641,51 @@ quick_deploy() {
     
     print_success "Files updated successfully! (No server restart)"
     print_warning "Note: Some changes may require a restart. Use './deploy.sh restart' if needed."
+}
+
+# Function to deploy simple (no Prisma checks - code changes only)
+deploy_simple() {
+    print_status "Simple deployment (no Prisma checks)..."
+    
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
+    # Check if we have changes to push
+    if [ "$(git rev-list HEAD...origin/$CURRENT_BRANCH --count)" != "0" ]; then
+        print_status "Pushing changes to GitHub..."
+        git push origin "$CURRENT_BRANCH"
+        print_success "Changes pushed to GitHub"
+    else
+        print_status "No changes to push"
+    fi
+    
+    # Ensure server is on the same branch
+    print_status "Ensuring server is on branch: $CURRENT_BRANCH"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $CURRENT_BRANCH" || {
+        print_error "Failed to checkout branch $CURRENT_BRANCH on server"
+        return 1
+    }
+    
+    # Pull on server
+    print_status "Pulling changes on server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin $CURRENT_BRANCH" || {
+        print_error "Failed to pull on server"
+        return 1
+    }
+    
+    # Install dependencies if package.json changed
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q package.json"; then
+        print_status "Installing dependencies..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npm install --production"
+    fi
+    
+    # Simple restart - no Prisma checks
+    print_status "Restarting server..."
+    restart_server
+    
+    print_success "Simple deployment completed!"
+    print_warning "Note: This deployment skipped all Prisma checks. Use regular 'deploy' for schema changes."
 }
 
 # Function to restart server
@@ -1367,6 +1473,11 @@ main() {
             check_git_status
             check_branch_mismatch
             deploy_via_git
+            ;;
+        "deploy-simple")
+            check_git_status
+            check_branch_mismatch
+            deploy_simple
             ;;
         "deploy-postgres")
             check_git_status

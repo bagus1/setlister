@@ -813,6 +813,342 @@ router.post(
   }
 );
 
+// POST /bands/:id/quick-set/create - Create the setlist from confirmed selections
+router.post("/:id/quick-set/create", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { setlistTitle, setlistDate, ...songSelections } = req.body;
+
+    // Check if we have session data
+    if (
+      !req.session.quickSetData ||
+      req.session.quickSetData.bandId !== bandId
+    ) {
+      req.flash("error", "No setlist data found. Please try again.");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const { sets, songs } = req.session.quickSetData;
+
+    // Process song selections and create new songs as needed
+    const processedSongs = await Promise.all(
+      songs.map(async (originalSong, index) => {
+        const lineNumber = originalSong.lineNumber; // Use the actual line number from parsing
+        const selection = songSelections[`song_${lineNumber}`];
+
+        // Skip if no selection was made for this song
+        if (!selection) {
+          return null;
+        }
+
+        if (selection === "new") {
+          // Create new song
+          const artistName =
+            songSelections[`new_artist_${lineNumber}`] || originalSong.artist;
+
+          // Create or find artist if provided
+          let artistId = null;
+          if (artistName && artistName.trim()) {
+            const artist = await prisma.artist.upsert({
+              where: { name: artistName.trim() },
+              update: {},
+              create: {
+                name: artistName.trim(),
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+            artistId = artist.id;
+          }
+
+          // Check if song already exists with proper duplicate logic (case-insensitive)
+          let existingSong = null;
+
+          if (artistId) {
+            // If artist is provided, check for same title AND same artist (both case-insensitive)
+            existingSong = await prisma.song.findFirst({
+              where: {
+                title: {
+                  equals: originalSong.title.trim(),
+                  mode: "insensitive",
+                },
+                artists: {
+                  some: {
+                    artistId: artistId,
+                  },
+                },
+              },
+              include: {
+                artists: {
+                  include: {
+                    artist: true,
+                  },
+                },
+              },
+            });
+          } else {
+            // If no artist provided, check for same title with NO artists (case-insensitive)
+            existingSong = await prisma.song.findFirst({
+              where: {
+                title: {
+                  equals: originalSong.title.trim(),
+                  mode: "insensitive",
+                },
+                artists: {
+                  none: {},
+                },
+              },
+              include: {
+                artists: {
+                  include: {
+                    artist: true,
+                  },
+                },
+              },
+            });
+          }
+
+          // Use existing song if found, otherwise create new one
+          const newSong =
+            existingSong ||
+            (await prisma.song.create({
+              data: {
+                title: originalSong.title,
+                createdById: userId,
+                private: false, // Quick set songs are not private by default
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                artists: artistId
+                  ? {
+                      create: {
+                        artistId: artistId,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                      },
+                    }
+                  : undefined,
+              },
+              include: {
+                artists: {
+                  include: { artist: true },
+                },
+              },
+            }));
+
+          // Add song to band
+          await prisma.bandSong.upsert({
+            where: {
+              bandId_songId: {
+                bandId: bandId,
+                songId: newSong.id,
+              },
+            },
+            update: {},
+            create: {
+              bandId: bandId,
+              songId: newSong.id,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+
+          return newSong;
+        } else if (selection.startsWith("existing_")) {
+          // Use existing song
+          const songId = parseInt(selection.replace("existing_", ""));
+          const existingSong = await prisma.song.findUnique({
+            where: { id: songId },
+            include: {
+              artists: {
+                include: { artist: true },
+              },
+            },
+          });
+
+          if (existingSong) {
+            // Check if an artist was provided for this existing song
+            const artistFieldName = `existing_artist_${originalSong.lineNumber}_${songId}`;
+            const providedArtist = req.body[artistFieldName];
+
+            if (
+              providedArtist &&
+              providedArtist.trim() &&
+              existingSong.artists.length === 0
+            ) {
+              // Add the artist to this existing song
+              let artist = await prisma.artist.findFirst({
+                where: { name: providedArtist.trim() },
+              });
+
+              if (!artist) {
+                // Create new artist
+                artist = await prisma.artist.create({
+                  data: {
+                    name: providedArtist.trim(),
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  },
+                });
+              }
+
+              // Add artist to song
+              await prisma.songArtist.create({
+                data: {
+                  songId: songId,
+                  artistId: artist.id,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                },
+              });
+
+              // Refresh the song with the new artist
+              const updatedSong = await prisma.song.findUnique({
+                where: { id: songId },
+                include: {
+                  artists: {
+                    include: { artist: true },
+                  },
+                },
+              });
+
+              if (updatedSong) {
+                existingSong.artists = updatedSong.artists;
+              }
+            }
+
+            // Ensure song is added to band if not already
+            await prisma.bandSong.upsert({
+              where: {
+                bandId_songId: {
+                  bandId: bandId,
+                  songId: songId,
+                },
+              },
+              update: {},
+              create: {
+                bandId: bandId,
+                songId: songId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+          }
+
+          return existingSong;
+        }
+
+        return null;
+      })
+    );
+
+    // Filter out any null songs
+    const validSongs = processedSongs.filter((song) => song !== null);
+
+    // Create the setlist
+    const setlist = await prisma.setlist.create({
+      data: {
+        title: setlistTitle,
+        date: setlistDate ? new Date(setlistDate) : new Date(),
+        bandId: bandId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Create sets and add songs
+    for (let i = 0; i < sets.length; i++) {
+      const set = sets[i];
+
+      // Map set names to database enum values
+      let dbSetName;
+      if (set.setNumber === 1) {
+        dbSetName = "Set_1";
+      } else if (set.setNumber === 2) {
+        dbSetName = "Set_2";
+      } else if (set.setNumber === 3) {
+        dbSetName = "Set_3";
+      } else if (set.setNumber === 4) {
+        dbSetName = "Set_4";
+      } else {
+        dbSetName = "Maybe";
+      }
+
+      const setlistSet = await prisma.setlistSet.create({
+        data: {
+          setlistId: setlist.id,
+          name: dbSetName,
+          order: i + 1, // Set order based on array index
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Find songs that belong to this set
+      const setOriginalSongs = songs.filter(
+        (song) => song.setNumber === set.setNumber
+      );
+      const setSongs = [];
+
+      // Match processed songs to original songs by line number
+      for (const originalSong of setOriginalSongs) {
+        const processedSong = validSongs.find((ps) =>
+          processedSongs.find(
+            (procSong, idx) =>
+              procSong === ps &&
+              songs[idx].lineNumber === originalSong.lineNumber
+          )
+        );
+        if (processedSong) {
+          setSongs.push(processedSong);
+        }
+      }
+
+      // Add songs to this set
+      for (let j = 0; j < setSongs.length; j++) {
+        const song = setSongs[j];
+        await prisma.setlistSong.create({
+          data: {
+            setlistSetId: setlistSet.id,
+            songId: song.id,
+            order: j + 1, // Order within the set
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    // Clear session data
+    delete req.session.quickSetData;
+
+    req.flash("success", `Setlist "${setlistTitle}" created successfully!`);
+    res.redirect(`/setlists/${setlist.id}`);
+  } catch (error) {
+    console.error("Quick set creation error:", error);
+    req.flash(
+      "error",
+      "An error occurred creating the setlist. Please try again."
+    );
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
 // GET /bands/:id/quick-set/confirm - Show confirmation page with song matching
 router.get("/:id/quick-set/confirm", async (req, res) => {
   try {
@@ -886,6 +1222,96 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
     res.redirect(`/bands/${req.params.id}`);
   }
 });
+
+// Helper function to extract keywords from song titles
+function getKeywords(title) {
+  const stopWords = [
+    "the",
+    "a",
+    "an",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "and",
+    "or",
+    "but",
+    "my",
+    "your",
+    "his",
+    "her",
+    "its",
+    "our",
+    "their",
+  ];
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "") // Remove punctuation
+    .split(/\s+/)
+    .filter((word) => word.length > 2 && !stopWords.includes(word));
+}
+
+// Function to find keyword-based matches
+function findKeywordMatches(searchTitle, searchArtist, allSongs) {
+  const searchKeywords = getKeywords(searchTitle);
+  if (searchKeywords.length === 0) return [];
+
+  const keywordMatches = allSongs
+    .map((song) => {
+      const songKeywords = getKeywords(song.title);
+
+      // Find intersecting keywords
+      const intersection = searchKeywords.filter((keyword) =>
+        songKeywords.some(
+          (songKeyword) =>
+            // Exact match or one contains the other (for roses/rose)
+            keyword === songKeyword ||
+            keyword.includes(songKeyword) ||
+            songKeyword.includes(keyword)
+        )
+      );
+
+      // Calculate keyword overlap percentage
+      const overlapPercentage =
+        intersection.length /
+        Math.max(searchKeywords.length, songKeywords.length);
+
+      // Boost score if artist also matches
+      let artistBoost = 0;
+      if (searchArtist && song.artists && song.artists.length > 0) {
+        const searchArtistKeywords = getKeywords(searchArtist);
+        const songArtistKeywords = getKeywords(song.artists[0].artist.name);
+        const artistIntersection = searchArtistKeywords.filter((keyword) =>
+          songArtistKeywords.some(
+            (artistKeyword) =>
+              keyword === artistKeyword ||
+              keyword.includes(artistKeyword) ||
+              artistKeyword.includes(keyword)
+          )
+        );
+        if (artistIntersection.length > 0) {
+          artistBoost = 0.2; // 20% boost for artist match
+        }
+      }
+
+      const finalScore = overlapPercentage + artistBoost;
+
+      return {
+        ...song,
+        matchType: "keyword",
+        confidence: finalScore,
+        matchedKeywords: intersection,
+      };
+    })
+    .filter((song) => song.confidence >= 0.15) // At least 15% keyword overlap
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 5); // Top 5 matches
+
+  return keywordMatches;
+}
 
 // Function to calculate string similarity (Levenshtein-based)
 function calculateSimilarity(str1, str2) {
@@ -983,8 +1409,8 @@ async function findSongMatches(title, artist = "") {
       }));
     }
 
-    // If no exact matches, try JavaScript-based fuzzy matching
-    // Get all songs for fuzzy comparison (limit to reasonable number)
+    // If no exact matches, try keyword-based matching first
+    // Get all songs for keyword and fuzzy comparison (limit to reasonable number)
     const allSongs = await prisma.song.findMany({
       include: {
         artists: {
@@ -995,6 +1421,14 @@ async function findSongMatches(title, artist = "") {
       },
       take: 1000, // Limit to avoid performance issues
     });
+
+    if (allSongs.length > 0) {
+      // Try keyword matching first (Pass 3)
+      const keywordMatches = findKeywordMatches(title, artist, allSongs);
+      if (keywordMatches.length > 0) {
+        return keywordMatches;
+      }
+    }
 
     if (allSongs.length > 0) {
       // Calculate similarity scores using JavaScript
@@ -1041,6 +1475,23 @@ async function findSongMatches(title, artist = "") {
   }
 }
 
+// Helper function to convert Roman numerals to numbers
+function romanToNumber(roman) {
+  const romanNumerals = {
+    I: 1,
+    II: 2,
+    III: 3,
+    IV: 4,
+    V: 5,
+    VI: 6,
+    VII: 7,
+    VIII: 8,
+    IX: 9,
+    X: 10,
+  };
+  return romanNumerals[roman.toUpperCase()] || null;
+}
+
 // Function to parse quick set input
 function parseQuickSetInput(input) {
   const lines = input
@@ -1055,28 +1506,116 @@ function parseQuickSetInput(input) {
   };
 
   let currentSet = null;
+  let useColonFormat = true; // Default to colon format
+  let setCounter = 0; // Track how many sets we've created
+
+  // Check first line to determine format
+  if (lines.length > 0) {
+    const firstLine = lines[0];
+    const colonFormat =
+      /^Set\s+(\d+|[IVX]+):\s*$/i.test(firstLine) ||
+      /^Encore:\s*$/i.test(firstLine) ||
+      /^E:\s*$/i.test(firstLine);
+    const noColonFormat =
+      /^Set\s+(\d+|[IVX]+)\s*$/i.test(firstLine) ||
+      /^Encore\s*$/i.test(firstLine) ||
+      /^E\s*$/i.test(firstLine);
+
+    if (noColonFormat && !colonFormat) {
+      useColonFormat = false;
+    }
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Check if this is a set header (e.g., "Set 1:", "Set 2:")
-    const setMatch = line.match(/^Set\s+(\d+):\s*$/i);
+    let setMatch = null;
+    let setNumber = null;
+    let setName = line;
+
+    // Always check for both colon and no-colon formats
+    // Check for set headers with colon first
+    setMatch = line.match(/^Set\s+(\d+|[IVX]+):\s*$/i);
+    if (!setMatch) {
+      setMatch = line.match(/^Encore:\s*$/i);
+      if (setMatch) {
+        setNumber = Math.min(setCounter + 1, 4); // Encore becomes next available set (max 4)
+      }
+    }
+    if (!setMatch) {
+      setMatch = line.match(/^E:\s*$/i);
+      if (setMatch) {
+        setNumber = Math.min(setCounter + 1, 4); // E: becomes next available set (max 4)
+      }
+    }
+
+    // If no colon format matched, try no-colon format
+    if (!setMatch) {
+      setMatch = line.match(/^Set\s+(\d+|[IVX]+)\s*$/i);
+      if (!setMatch) {
+        setMatch = line.match(/^Encore\s*$/i);
+        if (setMatch) {
+          setNumber = Math.min(setCounter + 1, 4); // Encore becomes next available set (max 4)
+        }
+      }
+      if (!setMatch) {
+        setMatch = line.match(/^E\s*$/i);
+        if (setMatch) {
+          setNumber = Math.min(setCounter + 1, 4); // E becomes next available set (max 4)
+        }
+      }
+    }
+
     if (setMatch) {
-      currentSet = {
-        name: line,
-        setNumber: parseInt(setMatch[1]),
-        songs: [],
-      };
-      result.sets.push(currentSet);
+      // Parse set number
+      if (setNumber === null) {
+        const setIdentifier = setMatch[1];
+        if (/^\d+$/.test(setIdentifier)) {
+          // Regular number
+          setNumber = parseInt(setIdentifier);
+        } else {
+          // Roman numeral
+          setNumber = romanToNumber(setIdentifier);
+        }
+      }
+
+      // Handle set limits: max 4 numbered sets, everything else goes to MAYBE
+      if (setNumber && setNumber <= 4) {
+        setCounter = Math.max(setCounter, setNumber);
+        currentSet = {
+          name: setName,
+          setNumber: setNumber,
+          songs: [],
+        };
+      } else {
+        // Beyond 4 sets goes to Maybe
+        currentSet = {
+          name: "Maybe",
+          setNumber: 999, // Special number for Maybe set
+          songs: [],
+        };
+      }
+
+      // Check if we already have this set
+      const existingSet = result.sets.find(
+        (s) => s.setNumber === currentSet.setNumber
+      );
+      if (!existingSet) {
+        result.sets.push(currentSet);
+      } else {
+        currentSet = existingSet; // Use existing set
+      }
       continue;
     }
 
-    // If we don't have a current set, that's an error
+    // If we don't have a current set, create a default one
     if (!currentSet) {
-      result.errors.push(
-        `Line ${i + 1}: Songs must be under a set header (e.g., "Set 1:")`
-      );
-      continue;
+      currentSet = {
+        name: "Set 1",
+        setNumber: 1,
+        songs: [],
+      };
+      result.sets.push(currentSet);
     }
 
     // Parse song line - format: "Song Title, Artist" or just "Song Title"
@@ -1094,10 +1633,12 @@ function parseQuickSetInput(input) {
       continue;
     }
 
-    // Trim '>' from song titles (common in jam band setlists)
-    // Example: "The Music Never Stopped >" becomes "The Music Never Stopped"
+    // Trim '>' and '->' from song titles (common in jam band setlists)
+    // Example: "The Music Never Stopped >" or "The Music Never Stopped ->" becomes "The Music Never Stopped"
     let songTitle = parts[0].trim();
-    if (songTitle.endsWith(">")) {
+    if (songTitle.endsWith("->")) {
+      songTitle = songTitle.slice(0, -2).trim(); // Remove '->' and trim again
+    } else if (songTitle.endsWith(">")) {
       songTitle = songTitle.slice(0, -1).trim(); // Remove '>' and trim again
     }
 
@@ -1112,17 +1653,25 @@ function parseQuickSetInput(input) {
     result.songs.push(song);
   }
 
-  if (result.sets.length === 0) {
-    result.errors.push(
-      "No sets found. Please include set headers like 'Set 1:', 'Set 2:', etc."
-    );
+  if (result.songs.length === 0) {
+    result.errors.push("No songs found. Please enter at least one song.");
   }
 
-  if (result.songs.length === 0) {
-    result.errors.push(
-      "No songs found. Please add songs under your set headers."
-    );
-  }
+  // Handle duplicate song titles by adding "Reprise" to subsequent occurrences
+  const songTitleCounts = {};
+
+  result.songs.forEach((song) => {
+    const normalizedTitle = song.title.toLowerCase().trim();
+
+    if (songTitleCounts[normalizedTitle]) {
+      // This is a duplicate - add "Reprise" to the title
+      song.title = `${song.title} Reprise`;
+      songTitleCounts[normalizedTitle]++;
+    } else {
+      // First occurrence - just track it
+      songTitleCounts[normalizedTitle] = 1;
+    }
+  });
 
   return result;
 }

@@ -110,9 +110,15 @@
                                                          style="cursor: pointer;">
                                                         <div class="card-body p-2">
                                                             <div class="song-title"><%= songMatch.title %></div>
-                                                            <% if (songMatch.artist) { %>
-                                                                <div class="song-artist text-muted">by <%= songMatch.artist %></div>
-                                                            <% } %>
+                                                            <div class="mt-2" onclick="event.stopPropagation();">
+                                                                <label class="form-label small mb-1">Artist</label>
+                                                                <input type="text" 
+                                                                       class="form-control form-control-sm" 
+                                                                       name="new_artist_<%= songMatch.lineNumber %>"
+                                                                       value="<%= songMatch.artist || '' %>"
+                                                                       placeholder="Enter artist name"
+                                                                       style="font-size: 0.75rem;">
+                                                            </div>
                                                             <div class="text-center mt-1">
                                                                 <span class="badge bg-warning text-dark">New Song</span>
                                                             </div>
@@ -140,6 +146,17 @@
                                                                         <div class="song-title"><%= match.title %></div>
                                                                         <% if (match.artists && match.artists.length > 0) { %>
                                                                             <div class="song-artist text-muted">by <%= match.artists[0].artist.name %></div>
+                                                                        <% } else { %>
+                                                                            <!-- Artist input for songs without artists -->
+                                                                            <div class="mt-2" onclick="event.stopPropagation();">
+                                                                                <label class="form-label small mb-1">Artist</label>
+                                                                                <input type="text" 
+                                                                                       class="form-control form-control-sm" 
+                                                                                       name="existing_artist_<%= songMatch.lineNumber %>_<%= match.id %>"
+                                                                                       value="<%= songMatch.artist || '' %>"
+                                                                                       placeholder="Enter artist name"
+                                                                                       style="font-size: 0.75rem;">
+                                                                            </div>
                                                                         <% } %>
                                                                         <% if (match.vocalist) { %>
                                                                             <div class="song-vocalist text-muted">vocals: <%= match.vocalist.name %></div>

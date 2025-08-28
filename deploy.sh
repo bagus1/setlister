@@ -253,7 +253,7 @@ deploy_via_git() {
     
     # Check for pending migrations that haven't been applied to production database
     print_status "Checking for pending migrations on production database..."
-    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate status 2>/dev/null | grep -q 'Following migrations have not yet been applied'"; then
+    if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma migrate status 2>/dev/null | grep -q 'have not yet been applied'"; then
         print_status "Pending migrations detected on production database"
         SCHEMA_CHANGED=true
     fi

@@ -1,6 +1,7 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
+  // Updated for private songs feature
 }
 
 datasource db {

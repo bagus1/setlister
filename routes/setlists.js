@@ -1273,6 +1273,7 @@ router.get("/:id/finalize", async (req, res) => {
                       },
                     },
                     vocalist: true,
+                    links: true,
                   },
                 },
               },
@@ -1417,6 +1418,38 @@ router.get("/:id/finalize", async (req, res) => {
       }
     });
 
+    // Calculate link counts for each song for tooltip functionality
+    const songLinkCounts = {};
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          const songId = setlistSong.song.id;
+          const links = setlistSong.song.links || [];
+
+          // Count different types of links
+          const audioLinks = links.filter(
+            (link) => link.type === "audio"
+          ).length;
+          const youtubeLinks = links.filter(
+            (link) => link.type === "youtube"
+          ).length;
+          const totalLinks = links.length;
+
+          // Check if song has gig documents
+          const hasGigDocs =
+            gigDocumentsBySong[songId] && gigDocumentsBySong[songId].length > 0;
+
+          songLinkCounts[songId] = {
+            audio: audioLinks,
+            youtube: youtubeLinks,
+            total: totalLinks,
+            hasGigDocs: hasGigDocs,
+            hasAnyRehearsalResource: hasGigDocs || totalLinks > 0,
+          };
+        });
+      }
+    });
+
     // Calculate if setlist is still editable (always editable)
     const isEditable = true;
 
@@ -1449,6 +1482,7 @@ router.get("/:id/finalize", async (req, res) => {
       isEditable,
       bandSongMap,
       gigDocumentsBySong,
+      songLinkCounts,
       getTypeIcon,
       getTypeDisplayName,
     };

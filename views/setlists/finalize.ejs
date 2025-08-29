@@ -14,7 +14,10 @@
                     </h2>
                     <% } %>
             </div>
-            <div>
+            <div class="d-flex gap-2">
+                <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-primary">
+                    <i class="bi bi-people"></i> Back to Band
+                </a>
                 <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Back to Editor
                 </a>
@@ -192,6 +195,125 @@
     </div>
 
     <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Setlist Info
+                </h6>
+            </div>
+            <div class="card-body">
+                <!-- Calculate overall stats and set breakdowns -->
+                <% 
+                let totalTime = 0; 
+                let totalSongs = 0;
+                let songsWithTime = 0; 
+                let songsForDuration = 0;
+                let setBreakdowns = [];
+                
+                if (setlist.sets) { 
+                  setlist.sets.sort((a, b) => a.order - b.order).forEach(set => {
+                    let setTime = 0;
+                    let setSongs = 0;
+                    let setTimedSongs = 0;
+                    
+                    if (set.songs) {
+                      totalSongs += set.songs.length;
+                      setSongs = set.songs.length;
+                      
+                      set.songs.forEach(setlistSong => {
+                        if (set.name !== 'Maybe') {
+                          songsForDuration++;
+                          if (setlistSong.song && setlistSong.song.time) {
+                            totalTime += setlistSong.song.time;
+                            songsWithTime++;
+                          }
+                        }
+                        
+                        if (setlistSong.song && setlistSong.song.time) {
+                          setTime += setlistSong.song.time;
+                          setTimedSongs++;
+                        }
+                      });
+                    }
+                    
+                    setBreakdowns.push({
+                      name: set.name,
+                      time: setTime,
+                      songs: setSongs,
+                      timedSongs: setTimedSongs
+                    });
+                  });
+                }
+                
+                // Format total time as hours:minutes:seconds
+                const hours = Math.floor(totalTime / 3600);
+                const minutes = Math.floor((totalTime % 3600) / 60);
+                const seconds = totalTime % 60;
+                %>
+
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <div class="h5 text-primary mb-0">
+                            <%= totalSongs %>
+                        </div>
+                        <small class="text-muted">Total Songs</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h5 text-primary mb-0">
+                            <% if (totalTime > 0) { %>
+                                <% if (hours > 0) { %>
+                                    <%= hours %>:<%= minutes.toString().padStart(2, '0') %>:<%= seconds.toString().padStart(2, '0') %>
+                                <% } else { %>
+                                    <%= minutes %>:<%= seconds.toString().padStart(2, '0') %>
+                                <% } %>
+                            <% } else { %>
+                                --:--
+                            <% } %>
+                        </div>
+                        <small class="text-muted">
+                            Est. Duration
+                            <% if (songsForDuration > 0) { %>
+                                <br><span class="badge bg-light text-dark">
+                                    <%= songsWithTime %>/<%= songsForDuration %> timed
+                                </span>
+                            <% } %>
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Set-by-set breakdowns -->
+                <% if (setBreakdowns.length > 0) { %>
+                    <div class="mb-0">
+                        <strong class="text-muted">Set Breakdowns:</strong>
+                        <div class="mt-2">
+                            <% setBreakdowns.forEach(breakdown => { %>
+                                <% if (breakdown.songs > 0) { %>
+                                    <div class="d-flex justify-content-between align-items-center py-1">
+                                        <span class="text-muted">
+                                            <%= breakdown.name %>
+                                            <small>(<%= breakdown.songs %> songs)</small>
+                                        </span>
+                                        <span class="text-primary">
+                                            <% if (breakdown.time > 0) { %>
+                                                <% const setMinutes = Math.floor(breakdown.time / 60); %>
+                                                <% const setSeconds = breakdown.time % 60; %>
+                                                <%= setMinutes %>:<%= setSeconds.toString().padStart(2, '0') %>
+                                                <% if (breakdown.timedSongs < breakdown.songs) { %>
+                                                    <small class="text-muted">(<%= breakdown.timedSongs %>/<%= breakdown.songs %>)</small>
+                                                <% } %>
+                                            <% } else { %>
+                                                --:--
+                                            <% } %>
+                                        </span>
+                                    </div>
+                                <% } %>
+                            <% }) %>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <h6 class="mb-0">

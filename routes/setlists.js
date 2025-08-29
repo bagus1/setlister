@@ -2007,6 +2007,57 @@ router.get("/:id/export-csv", async (req, res) => {
   }
 });
 
+// POST /setlists/:id/auto-save - Auto-save setlist metadata (title, date)
+router.post("/:id/auto-save", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { field, value } = req.body;
+
+    // Verify user has access to this setlist
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist || setlist.band.members.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Setlist not found or access denied" });
+    }
+
+    // Update the appropriate field
+    const updateData = { updatedAt: new Date() };
+
+    if (field === "title") {
+      updateData.title = value;
+    } else if (field === "date") {
+      updateData.date = new Date(value);
+    } else {
+      return res.status(400).json({ error: "Invalid field" });
+    }
+
+    await prisma.setlist.update({
+      where: { id: setlistId },
+      data: updateData,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Auto-save setlist error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // API endpoint to update setlist via Socket.io
 router.post("/:id/update", async (req, res) => {
   try {

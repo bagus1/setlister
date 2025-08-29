@@ -147,63 +147,117 @@
                 </h6>
             </div>
             <div class="card-body">
+                <!-- Calculate overall stats and set breakdowns -->
+                <% 
+                let totalTime = 0; 
+                let totalSongs = 0;
+                let songsWithTime = 0; 
+                let songsForDuration = 0;
+                let setBreakdowns = [];
+                
+                if (setlist.sets) { 
+                  setlist.sets.sort((a, b) => a.order - b.order).forEach(set => {
+                    let setTime = 0;
+                    let setSongs = 0;
+                    let setTimedSongs = 0;
+                    
+                    if (set.songs) {
+                      totalSongs += set.songs.length;
+                      setSongs = set.songs.length;
+                      
+                      set.songs.forEach(setlistSong => {
+                        if (set.name !== 'Maybe') {
+                          songsForDuration++;
+                          if (setlistSong.song && setlistSong.song.time) {
+                            totalTime += setlistSong.song.time;
+                            songsWithTime++;
+                          }
+                        }
+                        
+                        if (setlistSong.song && setlistSong.song.time) {
+                          setTime += setlistSong.song.time;
+                          setTimedSongs++;
+                        }
+                      });
+                    }
+                    
+                    setBreakdowns.push({
+                      name: set.name,
+                      time: setTime,
+                      songs: setSongs,
+                      timedSongs: setTimedSongs
+                    });
+                  });
+                }
+                
+                // Format total time as hours:minutes:seconds
+                const hours = Math.floor(totalTime / 3600);
+                const minutes = Math.floor((totalTime % 3600) / 60);
+                const seconds = totalTime % 60;
+                %>
+
                 <div class="row text-center mb-3">
                     <div class="col-6">
                         <div class="h5 text-primary mb-0">
-                            <% let totalSongs=0; if (setlist.sets) { setlist.sets.forEach(set=> {
-                                if (set.songs) {
-                                totalSongs += set.songs.length;
-                                }
-                                });
-                                }
-                                %>
-                                <%= totalSongs %>
+                            <%= totalSongs %>
                         </div>
                         <small class="text-muted">Total Songs</small>
                     </div>
                     <div class="col-6">
                         <div class="h5 text-primary mb-0">
-                            <% let totalTime=0; if (setlist.sets) { setlist.sets.forEach(set=> {
-                                if (set.songs && set.name !== 'Maybe') {
-                                set.songs.forEach(setlistSong => {
-                                if (setlistSong.song && setlistSong.song.time) {
-                                totalTime += setlistSong.song.time;
-                                }
-                                });
-                                }
-                                });
-                                }
-                                %>
-                                <% if (totalTime> 0) { %>
-                                    <%= Math.floor(totalTime / 60) %>:<%= (totalTime % 60).toString().padStart(2, '0' )
-                                            %>
-                                            <% } else { %>
-                                                --:--
-                                                <% } %>
+                            <% if (totalTime > 0) { %>
+                                <% if (hours > 0) { %>
+                                    <%= hours %>:<%= minutes.toString().padStart(2, '0') %>:<%= seconds.toString().padStart(2, '0') %>
+                                <% } else { %>
+                                    <%= minutes %>:<%= seconds.toString().padStart(2, '0') %>
+                                <% } %>
+                            <% } else { %>
+                                --:--
+                            <% } %>
                         </div>
-                        <small class="text-muted">Est. Duration</small>
+                        <small class="text-muted">
+                            Est. Duration
+                            <% if (songsForDuration > 0) { %>
+                                <br><span class="badge bg-light text-dark">
+                                    <%= songsWithTime %>/<%= songsForDuration %> timed
+                                </span>
+                            <% } %>
+                        </small>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <strong>Status:</strong>
-                    <% if (setlist.isFinalized) { %>
-                        <span class="badge bg-success">
-                            <i class="bi bi-lock"></i> Finalized
-                        </span>
-                        <% } else { %>
-                            <span class="badge bg-warning text-dark">
-                                <i class="bi bi-pencil"></i> Draft
-                            </span>
-                            <% } %>
-                </div>
+                <!-- Set-by-set breakdowns -->
+                <% if (setBreakdowns.length > 0) { %>
+                    <div class="mb-3">
+                        <strong class="text-muted">Set Breakdowns:</strong>
+                        <div class="mt-2">
+                            <% setBreakdowns.forEach(breakdown => { %>
+                                <% if (breakdown.songs > 0) { %>
+                                    <div class="d-flex justify-content-between align-items-center py-1">
+                                        <span class="text-muted">
+                                            <%= breakdown.name %>
+                                            <small>(<%= breakdown.songs %> songs)</small>
+                                        </span>
+                                        <span class="text-primary">
+                                            <% if (breakdown.time > 0) { %>
+                                                <% const setMinutes = Math.floor(breakdown.time / 60); %>
+                                                <% const setSeconds = breakdown.time % 60; %>
+                                                <%= setMinutes %>:<%= setSeconds.toString().padStart(2, '0') %>
+                                                <% if (breakdown.timedSongs < breakdown.songs) { %>
+                                                    <small class="text-muted">(<%= breakdown.timedSongs %>/<%= breakdown.songs %>)</small>
+                                                <% } %>
+                                            <% } else { %>
+                                                --:--
+                                            <% } %>
+                                        </span>
+                                    </div>
+                                <% } %>
+                            <% }) %>
+                        </div>
+                    </div>
+                <% } %>
 
-                <div class="mb-3">
-                    <strong>Created:</strong><br>
-                    <small class="text-muted">
-                        <%= new Date(setlist.createdAt).toLocaleDateString() %>
-                    </small>
-                </div>
+
 
                 <div class="d-grid gap-2">
                     <% if (!setlist.isFinalized) { %>
@@ -211,6 +265,11 @@
                             <i class="bi bi-pencil"></i> Edit Setlist
                         </a>
                         <% } %>
+
+                        <a href="/setlists/<%= setlist.id %>/finalize" class="btn btn-outline-success">
+                            <i class="bi bi-check-circle"></i> 
+                            <%= setlist.isFinalized ? 'View Finalize' : 'Finalize Setlist' %>
+                        </a>
 
                             <a href="/setlists/<%= setlist.id %>/print" class="btn btn-outline-secondary">
                                 <i class="bi bi-printer"></i> Print View
@@ -223,53 +282,6 @@
             </div>
         </div>
 
-        <% if (setlist.sets && setlist.sets.some(set=> set.name === 'Maybe' && set.songs &&
-            set.songs.length > 0)) { %>
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="bi bi-question-circle"></i> Maybe List
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <% const maybeSet=setlist.sets.find(set=> set.name === 'Maybe');
-                        if (maybeSet && maybeSet.songs) {
-                        %>
-                        <div class="list-group list-group-flush">
-                            <% maybeSet.songs.forEach(setlistSong=> { %>
-                                <div class="list-group-item px-0 py-2">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                                <div class="fw-bold">
-                                                    <%= setlistSong.song.title %>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-1 ms-2">
-                                                    <% if (setlistSong.song.links && setlistSong.song.links.length > 0) { %>
-                                                        <i class="bi bi-link-45deg text-primary" title="Has links"></i>
-                                                    <% } %>
-                                                    <% if (setlistSong.song.gigDocuments && setlistSong.song.gigDocuments.length > 0) { %>
-                                                        <i class="bi bi-file-earmark-text text-success" title="Has gig documents"></i>
-                                                    <% } %>
-                                                </div>
-                                            </div>
-                                            <% if (setlistSong.song.artists && setlistSong.song.artists.length> 0) { %>
-                                                <small class="text-muted">by <%= setlistSong.song.artists[0].artist.name %>
-                                                </small>
-                                                <% } %>
-                                        </div>
-                                        <% if (setlistSong.song.key) { %>
-                                            <span class="badge bg-light text-dark">
-                                                <%= setlistSong.song.key %>
-                                            </span>
-                                            <% } %>
-                                    </div>
-                                </div>
-                                <% }) %>
-                        </div>
-                        <% } %>
-                </div>
-            </div>
-            <% } %>
+
     </div>
 </div>

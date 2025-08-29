@@ -25,17 +25,28 @@
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="mb-3">
-                                    <label for="setlistTitle" class="form-label">Setlist Title *</label>
+                                    <label for="setlistTitle" class="form-label">Setlist Title</label>
                                     <input type="text" class="form-control" id="setlistTitle" name="setlistTitle" 
-                                           placeholder="e.g., Red Rocks 2024, Practice Session, Gig at The Fillmore" required>
+                                           value="<%= setlist.title %>"
+                                           data-setlist-id="<%= setlist.id %>"
+                                           data-auto-save="title">
+                                    <small class="text-muted">Changes save automatically</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="setlistDate" class="form-label">Date (optional)</label>
-                                    <input type="date" class="form-control" id="setlistDate" name="setlistDate">
+                                    <label for="setlistDate" class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="setlistDate" name="setlistDate"
+                                           value="<%= setlist.date ? setlist.date.toISOString().split('T')[0] : '' %>"
+                                           data-setlist-id="<%= setlist.id %>"
+                                           data-auto-save="date">
+                                    <small class="text-muted">Changes save automatically</small>
                                 </div>
                             </div>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            Your setlist has been created! You can now process songs individually by clicking the checkmark next to each song.
                         </div>
                     </div>
                 </div>
@@ -89,7 +100,14 @@
                                 <div class="col-12 mb-4">
                                     <div class="song-match-container">
                                         <div class="d-flex align-items-center mb-2">
-                                            <strong class="me-2 fs-5"><%= songMatch.title %></strong>
+                                            <button type="button" 
+                                                    class="btn btn-success btn-sm me-3 process-song-btn" 
+                                                    data-song-line="<%= songMatch.lineNumber %>"
+                                                    data-setlist-id="<%= setlist.id %>"
+                                                    title="Process this song">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                            <strong class="me-2 fs-5 song-title-text"><%= songMatch.title %></strong>
                                             <% if (songMatch.artist) { %>
                                                 <span class="text-muted">by <%= songMatch.artist %></span>
                                             <% } %>
@@ -109,7 +127,22 @@
                                                          data-song-line="<%= songMatch.lineNumber %>" 
                                                          style="cursor: pointer;">
                                                         <div class="card-body p-2">
-                                                            <div class="song-title"><%= songMatch.title %></div>
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <div class="song-title" 
+                                                                     data-line-number="<%= songMatch.lineNumber %>"
+                                                                     data-original-title="<%= songMatch.title %>"><%= songMatch.title %></div>
+                                                                <button type="button" 
+                                                                        class="btn btn-sm btn-outline-secondary p-1" 
+                                                                        onclick="editSongTitle(this); event.stopPropagation();"
+                                                                        title="Edit song title"
+                                                                        style="border: none; background: none; font-size: 0.75rem;">
+                                                                    <i class="bi bi-pencil"></i>
+                                                                </button>
+                                                            </div>
+                                                            <input type="hidden" 
+                                                                   name="edited_title_<%= songMatch.lineNumber %>" 
+                                                                   value="<%= songMatch.title %>"
+                                                                   class="edited-title-input">
                                                             <div class="mt-2" onclick="event.stopPropagation();">
                                                                 <label class="form-label small mb-1">Artist</label>
                                                                 <input type="text" 
@@ -119,9 +152,7 @@
                                                                        placeholder="Enter artist name"
                                                                        style="font-size: 0.75rem;">
                                                             </div>
-                                                            <div class="text-center mt-1">
-                                                                <span class="badge bg-warning text-dark">New Song</span>
-                                                            </div>
+
                                                         </div>
                                                     </div>
                                                 </div>
@@ -207,7 +238,7 @@
         <div class="d-flex justify-content-end gap-2 mt-4">
             <a href="/bands/<%= band.id %>" class="btn btn-secondary">Cancel</a>
             <button type="submit" class="btn btn-success">
-                <i class="bi bi-check-circle"></i> Create Setlist
+                <i class="bi bi-arrow-right-circle"></i> Go to Setlist
             </button>
         </div>
     </form>
@@ -249,6 +280,75 @@
 </style>
 
 <script>
+// Function to handle editing of song titles via pencil icon
+function editSongTitle(buttonElement) {
+    // Prevent event bubbling to avoid triggering card selection
+    event.stopPropagation();
+    
+    // Find the title element (sibling of the button)
+    const titleElement = buttonElement.parentNode.querySelector('.song-title');
+    const lineNumber = titleElement.dataset.lineNumber;
+    const currentTitle = titleElement.textContent.trim();
+    const hiddenInput = document.querySelector(`input[name="edited_title_${lineNumber}"]`);
+    
+    // Create input field
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentTitle;
+    input.className = 'form-control form-control-sm';
+    input.style.fontSize = '0.875rem';
+    input.style.fontWeight = 'normal';
+    
+    // Hide the title and button, show input
+    titleElement.style.display = 'none';
+    buttonElement.style.display = 'none';
+    titleElement.parentNode.insertBefore(input, titleElement.nextSibling);
+    
+    // Focus and select all text
+    input.focus();
+    input.select();
+    
+    // Handle save on Enter or blur
+    function saveTitle() {
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== currentTitle) {
+            titleElement.textContent = newTitle;
+            hiddenInput.value = newTitle;
+        }
+        
+        // Remove input and show title and button
+        input.remove();
+        titleElement.style.display = 'block';
+        buttonElement.style.display = 'block';
+    }
+    
+    // Handle cancel on Escape
+    function cancelEdit() {
+        input.remove();
+        titleElement.style.display = 'block';
+        buttonElement.style.display = 'block';
+    }
+    
+    // Event listeners
+    input.addEventListener('blur', saveTitle);
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveTitle();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEdit();
+        }
+        // Stop propagation to prevent card selection
+        e.stopPropagation();
+    });
+    
+    // Stop click events on input from bubbling
+    input.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Update summary counts
     function updateCounts() {
@@ -303,6 +403,142 @@ document.addEventListener('DOMContentLoaded', function() {
             const lineNumber = this.dataset.songLine;
             const songId = this.dataset.songId;
             updateCardSelection(lineNumber, `existing_${songId}`);
+        });
+    });
+
+    // Auto-save functionality for setlist metadata
+    function autoSaveField(field, value, setlistId) {
+        fetch(`/setlists/${setlistId}/auto-save`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ field, value })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`${field} auto-saved successfully`);
+            } else {
+                console.error(`Failed to auto-save ${field}:`, data.error);
+            }
+        })
+        .catch(error => {
+            console.error(`Error auto-saving ${field}:`, error);
+        });
+    }
+
+    // Add auto-save listeners
+    document.querySelectorAll('[data-auto-save]').forEach(input => {
+        input.addEventListener('blur', function() {
+            const field = this.dataset.autoSave;
+            const value = this.value;
+            const setlistId = this.dataset.setlistId;
+            
+            if (value) {
+                autoSaveField(field, value, setlistId);
+            }
+        });
+    });
+
+    // Individual song processing functionality
+    function processSong(songLine, setlistId) {
+        const button = document.querySelector(`[data-song-line="${songLine}"]`);
+        const container = button.closest('.song-match-container');
+        const hiddenInput = document.getElementById(`hidden_song_${songLine}`);
+        const selection = hiddenInput.value;
+        
+        // Get song details from the form
+        const songData = {
+            songLine: songLine,
+            selection: selection,
+            setlistId: setlistId
+        };
+        
+        // Add data from form fields
+        if (selection === 'new') {
+            songData.editedTitle = document.querySelector(`input[name="edited_title_${songLine}"]`)?.value;
+            songData.newArtist = document.querySelector(`input[name="new_artist_${songLine}"]`)?.value;
+            songData.originalTitle = document.querySelector(`input[name="original_title_${songLine}"]`)?.value || container.querySelector('.song-title-text').textContent;
+        } else {
+            // Get existing song data
+            const songId = selection.replace('existing_', '');
+            songData.songId = songId;
+            songData.newArtist = document.querySelector(`input[name="new_artist_${songLine}"]`)?.value;
+        }
+        
+        // Disable button and show processing
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        
+        // AJAX call to process individual song
+        fetch(`/bands/<%= band.id %>/quick-set/process-song`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(songData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Success - update button and collapse
+                button.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-success');
+                
+                // Hide the song selection area but keep the title visible
+                const songSelectionArea = container.querySelector('.row.g-2');
+                const songTitleArea = container.querySelector('.d-flex.align-items-center.mb-2');
+                const outerCol = container.closest('.col-12.mb-4');
+                
+                if (songSelectionArea && songTitleArea) {
+                    // Keep the title area but make it more compact
+                    songTitleArea.style.marginBottom = '4px';
+                    
+                    // Hide the selection area with animation
+                    songSelectionArea.style.transition = 'all 0.3s ease-out';
+                    songSelectionArea.style.opacity = '0';
+                    songSelectionArea.style.transform = 'scale(0.95)';
+                    
+                    setTimeout(() => {
+                        songSelectionArea.style.display = 'none';
+                        
+                        // Tighten spacing - override the mb-4 class
+                        if (outerCol) {
+                            outerCol.style.marginBottom = '4px';
+                        }
+                        
+                        // Make the song container more compact
+                        container.style.marginBottom = '0px';
+                        container.style.paddingBottom = '4px';
+                    }, 300);
+                }
+                
+                console.log(`Song processed successfully: ${data.songTitle}`);
+            } else {
+                // Error - reset button
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-check-lg"></i>';
+                console.error('Error processing song:', data.error);
+                alert('Error processing song: ' + data.error);
+            }
+        })
+        .catch(error => {
+            // Error - reset button
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-check-lg"></i>';
+            console.error('Error processing song:', error);
+            alert('Error processing song. Please try again.');
+        });
+    }
+
+    // Add click listeners to all process buttons
+    document.querySelectorAll('.process-song-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const songLine = this.dataset.songLine;
+            const setlistId = this.dataset.setlistId;
+            processSong(songLine, setlistId);
         });
     });
 

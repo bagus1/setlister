@@ -796,9 +796,67 @@ router.post(
         return res.redirect(`/bands/${bandId}`);
       }
 
-      // Store the parsed data in session for confirmation page
+      // Create setlist immediately with auto-generated name
+      const currentDate = new Date();
+      const defaultTitle = `Quick Set - ${currentDate.toLocaleDateString(
+        "en-US",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }
+      )}`;
+
+      const setlist = await prisma.setlist.create({
+        data: {
+          title: defaultTitle,
+          bandId: bandId,
+          date: currentDate,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create empty sets for the setlist (use upsert to avoid duplicates)
+      for (const set of parseResult.sets) {
+        const setName =
+          set.name === "Set 1"
+            ? "Set_1"
+            : set.name === "Set 2"
+              ? "Set_2"
+              : set.name === "Set 3"
+                ? "Set_3"
+                : set.name === "Set 4"
+                  ? "Set_4"
+                  : set.name === "Encore"
+                    ? "Set_3"
+                    : "Maybe";
+
+        await prisma.setlistSet.upsert({
+          where: {
+            setlistId_name: {
+              setlistId: setlist.id,
+              name: setName,
+            },
+          },
+          update: {
+            order: set.setNumber === 999 ? 999 : set.setNumber,
+            updatedAt: new Date(),
+          },
+          create: {
+            setlistId: setlist.id,
+            name: setName,
+            order: set.setNumber === 999 ? 999 : set.setNumber,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      // Store the parsed data and setlist ID in session for confirmation page
       req.session.quickSetData = {
         bandId: bandId,
+        setlistId: setlist.id,
         sets: parseResult.sets,
         songs: parseResult.songs,
       };
@@ -812,6 +870,244 @@ router.post(
     }
   }
 );
+
+// POST /bands/:id/quick-set/process-song - Process individual song via AJAX
+router.post("/:id/quick-set/process-song", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const {
+      songLine,
+      selection,
+      setlistId,
+      editedTitle,
+      newArtist,
+      originalTitle,
+      songId,
+    } = req.body;
+
+    // Check if we have session data
+    if (
+      !req.session.quickSetData ||
+      req.session.quickSetData.bandId !== bandId ||
+      req.session.quickSetData.setlistId !== parseInt(setlistId)
+    ) {
+      return res.status(400).json({ error: "Invalid session data" });
+    }
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const { sets, songs } = req.session.quickSetData;
+    const originalSong = songs.find((s) => s.lineNumber === parseInt(songLine));
+
+    if (!originalSong) {
+      return res.status(400).json({ error: "Song not found" });
+    }
+
+    let processedSong;
+
+    if (selection === "new") {
+      // Create new song with edited title if provided
+      const finalTitle = editedTitle || originalTitle || originalSong.title;
+      const artistName = newArtist || originalSong.artist;
+
+      // Create or find artist if provided
+      let artistId = null;
+      if (artistName && artistName.trim()) {
+        const artist = await prisma.artist.upsert({
+          where: { name: artistName.trim() },
+          update: {},
+          create: {
+            name: artistName.trim(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+        artistId = artist.id;
+      }
+
+      // Check if song already exists
+      let existingSong = null;
+      if (artistId) {
+        existingSong = await prisma.song.findFirst({
+          where: {
+            title: { equals: finalTitle.trim(), mode: "insensitive" },
+            artists: { some: { artistId: artistId } },
+          },
+        });
+      } else {
+        existingSong = await prisma.song.findFirst({
+          where: {
+            title: { equals: finalTitle.trim(), mode: "insensitive" },
+            artists: { none: {} },
+          },
+        });
+      }
+
+      // Use existing song if found, otherwise create new one
+      processedSong =
+        existingSong ||
+        (await prisma.song.create({
+          data: {
+            title: finalTitle,
+            createdById: userId,
+            private: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            artists: artistId
+              ? {
+                  create: {
+                    artistId: artistId,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  },
+                }
+              : undefined,
+          },
+          include: {
+            artists: { include: { artist: true } },
+          },
+        }));
+    } else {
+      // Use existing song
+      processedSong = await prisma.song.findUnique({
+        where: { id: parseInt(songId) },
+        include: {
+          artists: { include: { artist: true } },
+        },
+      });
+
+      if (!processedSong) {
+        return res.status(400).json({ error: "Selected song not found" });
+      }
+
+      // Add artist if provided for existing song
+      if (newArtist && newArtist.trim()) {
+        const artist = await prisma.artist.upsert({
+          where: { name: newArtist.trim() },
+          update: {},
+          create: {
+            name: newArtist.trim(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+        // Add artist to song if not already associated
+        await prisma.songArtist.upsert({
+          where: {
+            songId_artistId: {
+              songId: processedSong.id,
+              artistId: artist.id,
+            },
+          },
+          update: {},
+          create: {
+            songId: processedSong.id,
+            artistId: artist.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    // Add song to band
+    await prisma.bandSong.upsert({
+      where: {
+        bandId_songId: {
+          bandId: bandId,
+          songId: processedSong.id,
+        },
+      },
+      update: {},
+      create: {
+        bandId: bandId,
+        songId: processedSong.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Find the appropriate set and add song to setlist
+    const setData = sets.find((s) =>
+      s.songs.some((song) => song.lineNumber === parseInt(songLine))
+    );
+    console.log(`Processing song ${songLine}, setData:`, setData);
+
+    if (setData) {
+      const setName =
+        setData.name === "Set 1"
+          ? "Set_1"
+          : setData.name === "Set 2"
+            ? "Set_2"
+            : setData.name === "Set 3"
+              ? "Set_3"
+              : setData.name === "Set 4"
+                ? "Set_4"
+                : setData.name === "Encore"
+                  ? "Set_3"
+                  : "Maybe";
+
+      console.log(
+        `Looking for setlist set: setlistId=${setlistId}, name=${setName}`
+      );
+
+      // Find the setlist set
+      const setlistSet = await prisma.setlistSet.findFirst({
+        where: {
+          setlistId: parseInt(setlistId),
+          name: setName,
+        },
+      });
+
+      console.log("Found setlistSet:", setlistSet);
+
+      if (setlistSet) {
+        // Count existing songs in this set for ordering
+        const existingSongsCount = await prisma.setlistSong.count({
+          where: { setlistSetId: setlistSet.id },
+        });
+
+        // Add song to setlist
+        console.log(
+          `Adding song to setlist: setlistSetId=${setlistSet.id}, songId=${processedSong.id}, order=${existingSongsCount + 1}`
+        );
+        await prisma.setlistSong.create({
+          data: {
+            setlistSetId: setlistSet.id,
+            songId: processedSong.id,
+            order: existingSongsCount + 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+        console.log(`Successfully added song to setlist`);
+      }
+    }
+
+    res.json({
+      success: true,
+      songTitle: processedSong.title,
+      songId: processedSong.id,
+    });
+  } catch (error) {
+    console.error("Process song error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // POST /bands/:id/quick-set/create - Create the setlist from confirmed selections
 router.post("/:id/quick-set/create", async (req, res) => {
@@ -858,7 +1154,9 @@ router.post("/:id/quick-set/create", async (req, res) => {
         }
 
         if (selection === "new") {
-          // Create new song
+          // Create new song - use edited title if provided, otherwise original
+          const finalTitle =
+            songSelections[`edited_title_${lineNumber}`] || originalSong.title;
           const artistName =
             songSelections[`new_artist_${lineNumber}`] || originalSong.artist;
 
@@ -885,7 +1183,7 @@ router.post("/:id/quick-set/create", async (req, res) => {
             existingSong = await prisma.song.findFirst({
               where: {
                 title: {
-                  equals: originalSong.title.trim(),
+                  equals: finalTitle.trim(),
                   mode: "insensitive",
                 },
                 artists: {
@@ -907,7 +1205,7 @@ router.post("/:id/quick-set/create", async (req, res) => {
             existingSong = await prisma.song.findFirst({
               where: {
                 title: {
-                  equals: originalSong.title.trim(),
+                  equals: finalTitle.trim(),
                   mode: "insensitive",
                 },
                 artists: {
@@ -929,7 +1227,7 @@ router.post("/:id/quick-set/create", async (req, res) => {
             existingSong ||
             (await prisma.song.create({
               data: {
-                title: originalSong.title,
+                title: finalTitle,
                 createdById: userId,
                 private: false, // Quick set songs are not private by default
                 createdAt: new Date(),
@@ -1141,6 +1439,27 @@ router.post("/:id/quick-set/create", async (req, res) => {
     res.redirect(`/setlists/${setlist.id}`);
   } catch (error) {
     console.error("Quick set creation error:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Error details:", {
+      bandId: req.params.id,
+      userId: req.session?.user?.id,
+      setlistTitle: req.body.setlistTitle,
+      sessionData: !!req.session.quickSetData,
+      errorMessage: error.message,
+      errorCode: error.code,
+    });
+
+    // Log to application logger if available
+    const logger = require("../utils/logger");
+    logger.error(
+      `Quick set creation failed for band ${req.params.id}: ${error.message}`,
+      {
+        userId: req.session?.user?.id,
+        bandId: req.params.id,
+        error: error.stack,
+      }
+    );
+
     req.flash(
       "error",
       "An error occurred creating the setlist. Please try again."
@@ -1179,7 +1498,17 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       return res.redirect("/bands");
     }
 
-    const { sets, songs } = req.session.quickSetData;
+    const { sets, songs, setlistId } = req.session.quickSetData;
+
+    // Get the created setlist
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+    });
+
+    if (!setlist) {
+      req.flash("error", "Setlist not found. Please try again.");
+      return res.redirect(`/bands/${bandId}`);
+    }
 
     // Find song matches for each song
     const songMatches = await Promise.all(
@@ -1212,6 +1541,7 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
     res.render("bands/quick-set-confirm", {
       title: `Confirm Setlist - ${band.name}`,
       band,
+      setlist,
       sets,
       songMatches,
       totalSongs: songs.length,
@@ -1401,16 +1731,14 @@ async function findSongMatches(title, artist = "") {
       });
     }
 
-    if (exactMatches.length > 0) {
-      return exactMatches.map((song) => ({
-        ...song,
-        matchType: "exact",
-        confidence: 1.0,
-      }));
-    }
+    // Convert exact matches to the standard format
+    const formattedExactMatches = exactMatches.map((song) => ({
+      ...song,
+      matchType: "exact",
+      confidence: 1.0,
+    }));
 
-    // If no exact matches, try keyword-based matching first
-    // Get all songs for keyword and fuzzy comparison (limit to reasonable number)
+    // Always get additional songs for keyword and fuzzy matching
     const allSongs = await prisma.song.findMany({
       include: {
         artists: {
@@ -1422,17 +1750,33 @@ async function findSongMatches(title, artist = "") {
       take: 1000, // Limit to avoid performance issues
     });
 
-    if (allSongs.length > 0) {
-      // Try keyword matching first (Pass 3)
-      const keywordMatches = findKeywordMatches(title, artist, allSongs);
-      if (keywordMatches.length > 0) {
-        return keywordMatches;
-      }
-    }
+    let allMatches = [...formattedExactMatches];
 
     if (allSongs.length > 0) {
+      // Get keyword matches (but exclude songs we already have as exact matches)
+      const exactMatchIds = formattedExactMatches.map((match) => match.id);
+      const songsForKeywordMatching = allSongs.filter(
+        (song) => !exactMatchIds.includes(song.id)
+      );
+
+      const keywordMatches = findKeywordMatches(
+        title,
+        artist,
+        songsForKeywordMatching
+      );
+      allMatches = [...allMatches, ...keywordMatches];
+    }
+
+    // Add fuzzy matches if we don't have enough suggestions yet
+    if (allMatches.length < 5 && allSongs.length > 0) {
+      // Get existing match IDs to avoid duplicates
+      const existingMatchIds = allMatches.map((match) => match.id);
+      const songsForFuzzyMatching = allSongs.filter(
+        (song) => !existingMatchIds.includes(song.id)
+      );
+
       // Calculate similarity scores using JavaScript
-      const scoredSongs = allSongs.map((song) => {
+      const scoredSongs = songsForFuzzyMatching.map((song) => {
         const titleSimilarity = calculateSimilarity(title, song.title);
 
         // If artist was provided, factor it into the score
@@ -1461,14 +1805,17 @@ async function findSongMatches(title, artist = "") {
       const fuzzyMatches = scoredSongs
         .filter((song) => song.confidence > 0.3) // 30% similarity threshold
         .sort((a, b) => b.confidence - a.confidence)
-        .slice(0, 5); // Top 5 matches
+        .slice(0, 5 - allMatches.length); // Fill remaining slots
 
-      if (fuzzyMatches.length > 0) {
-        return fuzzyMatches;
-      }
+      allMatches = [...allMatches, ...fuzzyMatches];
     }
 
-    return []; // No matches found
+    // Sort all matches by confidence (exact matches will be first due to 1.0 confidence)
+    const finalMatches = allMatches
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 5); // Maximum 5 suggestions
+
+    return finalMatches;
   } catch (error) {
     console.error("Error finding song matches:", error);
     return [];
@@ -1492,13 +1839,105 @@ function romanToNumber(roman) {
   return romanNumerals[roman.toUpperCase()] || null;
 }
 
+// Function to parse blank-line-separated format (no set headers)
+function parseBlankLineSeparatedFormat(input) {
+  const result = {
+    sets: [],
+    songs: [],
+    errors: [],
+  };
+
+  // Split input into groups separated by blank lines
+  const groups = input.trim().split(/\n\s*\n/);
+  let lineNumber = 0;
+
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex].trim();
+    if (!group) continue;
+
+    const setNumber = groupIndex + 1;
+    const setName = setNumber <= 4 ? `Set ${setNumber}` : "Maybe";
+
+    const currentSet = {
+      name: setName,
+      setNumber: setNumber <= 4 ? setNumber : 999,
+      songs: [],
+    };
+
+    // Parse songs in this group
+    const songLines = group
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line);
+
+    for (const songLine of songLines) {
+      lineNumber++;
+
+      // Parse song line - format: "Song Title, Artist" or just "Song Title"
+      const parts = songLine.split(",").map((part) => part.trim());
+
+      if (parts.length > 2) {
+        result.errors.push(
+          `Line ${lineNumber}: Too many commas. Format should be "Song Title, Artist" or just "Song Title"`
+        );
+        continue;
+      }
+
+      if (parts[0] === "") {
+        result.errors.push(`Line ${lineNumber}: Empty song title`);
+        continue;
+      }
+
+      // Trim '>' and '->' from song titles (common in jam band setlists)
+      let songTitle = parts[0].trim();
+      if (songTitle.endsWith("->")) {
+        songTitle = songTitle.slice(0, -2).trim();
+      } else if (songTitle.endsWith(">")) {
+        songTitle = songTitle.slice(0, -1).trim();
+      }
+
+      const song = {
+        title: songTitle,
+        artist: parts.length > 1 ? parts[1] : "",
+        setNumber: currentSet.setNumber,
+        lineNumber: lineNumber,
+      };
+
+      currentSet.songs.push(song);
+      result.songs.push(song);
+    }
+
+    if (currentSet.songs.length > 0) {
+      result.sets.push(currentSet);
+    }
+  }
+
+  return result;
+}
+
 // Function to parse quick set input
 function parseQuickSetInput(input) {
-  const lines = input
-    .trim()
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line);
+  // First, split the input into raw lines (including empty ones)
+  const rawLines = input.trim().split("\n");
+
+  // Check if this looks like a blank-line-separated format
+  const hasSetHeaders = rawLines.some((line) => {
+    const trimmed = line.trim();
+    return (
+      /^Set\s+(\d+|[IVX]+)[\s:]*$/i.test(trimmed) ||
+      /^Encore[\s:]*$/i.test(trimmed) ||
+      /^E[\s:]*$/i.test(trimmed)
+    );
+  });
+
+  // If no set headers found, use blank-line-separated format
+  if (!hasSetHeaders) {
+    return parseBlankLineSeparatedFormat(input);
+  }
+
+  // Otherwise, use the existing header-based format
+  const lines = rawLines.map((line) => line.trim()).filter((line) => line);
+
   const result = {
     sets: [],
     songs: [],

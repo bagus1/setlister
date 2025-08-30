@@ -2058,6 +2058,69 @@ router.post("/:id/auto-save", async (req, res) => {
   }
 });
 
+// POST /setlists/:id/update-set-name - Update set name
+router.post("/:id/update-set-name", requireAuth, async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { oldName, newName } = req.body;
+
+    // Verify user has access to the setlist
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Validate input
+    if (!oldName || !newName) {
+      return res
+        .status(400)
+        .json({ error: "Both oldName and newName are required" });
+    }
+
+    if (newName.trim().length === 0) {
+      return res.status(400).json({ error: "New name cannot be empty" });
+    }
+
+    // Update the set name
+    await prisma.setlistSet.updateMany({
+      where: {
+        setlistId: setlistId,
+        name: oldName,
+      },
+      data: {
+        name: newName.trim(),
+        updatedAt: new Date(),
+      },
+    });
+
+    logger.info(
+      `Set name updated: ${oldName} -> ${newName} for setlist ${setlistId} by user ${userId}`
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Update set name error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // API endpoint to update setlist via Socket.io
 router.post("/:id/update", async (req, res) => {
   try {

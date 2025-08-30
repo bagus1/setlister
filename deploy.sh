@@ -22,6 +22,7 @@
 #   backup   - Create backup
 #   dbackup  - Create database backup and download locally
 #   restoredb-local - Restore database backup to local PostgreSQL (with optional cleaning)
+#   restore-prod-db-locally - Restore production backup to local PostgreSQL (step-by-step)
 #   rollback - Rollback to previous commit
 #   help     - Show this help message (default)
 #
@@ -106,6 +107,7 @@ Modes:
   backup   - Create backup
   dbackup  - Create database backup and download locally
           restoredb-local - Restore database backup to local PostgreSQL (with optional cleaning)
+  restore-prod-db-locally - Restore production backup to local PostgreSQL (step-by-step)
   rollback - Rollback to previous commit
   help     - Show this help message (default)
 
@@ -1385,6 +1387,163 @@ restore_dbackup_local() {
     print_status "  Song-Artist relationships: $song_artist_count"
 }
 
+# Function to restore production backup locally (step-by-step)
+restore_prod_db_locally() {
+    print_status "Restoring production backup locally (step-by-step)..."
+    
+    # Check if backup directory exists
+    if [ ! -d "$BACKUP_PATH" ]; then
+        print_error "Backup directory not found: $BACKUP_PATH"
+        print_error "Please check your BACKUP_PATH setting"
+        return 1
+    fi
+    
+    # List available tar.gz backups
+    print_status "Available tar.gz backups in $BACKUP_PATH:"
+    local backups=($(ls -t "$BACKUP_PATH"/*.tar.gz 2>/dev/null))
+    
+    if [ ${#backups[@]} -eq 0 ]; then
+        print_error "No tar.gz backups found in $BACKUP_PATH"
+        print_error "Please check your BACKUP_PATH setting"
+        return 1
+    fi
+    
+    # Show backups with numbers
+    for i in "${!backups[@]}"; do
+        local filename=$(basename "${backups[$i]}")
+        local size=$(du -h "${backups[$i]}" | cut -f1)
+        echo "  $((i+1)). $filename ($size)"
+    done
+    
+    # Prompt for backup selection
+    echo
+    read -p "Select backup to restore (1-${#backups[@]}): " selection
+    
+    if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt ${#backups[@]} ]; then
+        print_error "Invalid selection. Please choose a number between 1 and ${#backups[@]}"
+        return 1
+    fi
+    
+    local selected_backup="${backups[$((selection-1))]}"
+    local backup_filename=$(basename "$selected_backup")
+    
+    print_status "Selected backup: $backup_filename"
+    
+    # Confirm restore
+    read -p "This will overwrite your local database. Continue? (y/N): " confirm
+    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+        print_status "Restore cancelled"
+        return 0
+    fi
+    
+    # Get database info from .env
+    if [ ! -f ".env" ]; then
+        print_error ".env file not found. Cannot determine database connection details."
+        return 1
+    fi
+    
+    # Source .env file to get database variables
+    export $(cat .env | grep -v '^#' | xargs)
+    
+    # Check if required variables are set
+    if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
+        print_error "Missing required database variables in .env (DB_NAME, DB_USER, DB_PASSWORD)"
+        return 1
+    fi
+    
+    print_status "Restoring to local database: $DB_NAME"
+    
+    # Create temporary extraction directory
+    local extract_dir="./backup_extracted"
+    if [ -d "$extract_dir" ]; then
+        rm -rf "$extract_dir"
+    fi
+    mkdir -p "$extract_dir"
+    
+    # Step 1: Extract backup
+    print_status "Step 1: Extracting backup file..."
+    tar -xzf "$selected_backup" -C "$extract_dir" || {
+        print_error "Failed to extract backup"
+        rm -rf "$extract_dir"
+        return 1
+    }
+    print_success "Backup extracted successfully"
+    
+    # Step 2: Clear current database
+    print_status "Step 2: Clearing current database..."
+    
+    # Disable foreign key checks temporarily
+    PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -c "SET session_replication_role = replica;" || {
+        print_warning "Could not disable foreign key checks (continuing)"
+    }
+    
+    # Clear all tables in reverse dependency order
+    local tables=("password_resets" "BandInvitations" "medley_songs" "links" "gig_documents" "setlist_songs" "setlist_sets" "setlists" "song_artists" "band_songs" "band_members" "songs" "bands" "vocalists" "artists" "users")
+    
+    for table in "${tables[@]}"; do
+        PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -c "TRUNCATE TABLE $table CASCADE;" 2>/dev/null || {
+            print_warning "Table $table doesn't exist or couldn't be cleared (continuing)"
+        }
+    done
+    
+    # Re-enable foreign key checks
+    PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -c "SET session_replication_role = DEFAULT;" || {
+        print_warning "Could not re-enable foreign key checks (continuing)"
+    }
+    
+    print_success "Database cleared successfully"
+    
+    # Step 3: Restore tables in dependency order
+    print_status "Step 3: Restoring tables in dependency order..."
+    
+    local restore_order=("users" "artists" "vocalists" "bands" "songs" "band_members" "band_songs" "song_artists" "setlists" "setlist_sets" "setlist_songs" "gig_documents" "links" "medley_songs" "BandInvitations" "password_resets")
+    
+    for table in "${restore_order[@]}"; do
+        local sql_file="$extract_dir/migration-output/$table.sql"
+        
+        if [ -f "$sql_file" ]; then
+            print_status "Restoring table: $table"
+            PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" < "$sql_file" 2>&1 | tee -a restore_output.log || {
+                print_warning "Failed to restore $table (continuing with other tables)"
+            }
+            
+            # Get row count for verification
+            local count_result=$(PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM $table;" 2>/dev/null | xargs)
+            if [ -n "$count_result" ]; then
+                print_status "  📊 $table: $count_result rows restored"
+            fi
+        else
+            print_warning "SQL file not found for $table, skipping"
+        fi
+    done
+    
+    print_success "Table restoration completed"
+    
+    # Step 4: Verify restore
+    print_status "Step 4: Verifying restore..."
+    
+    local verify_tables=("songs" "gig_documents" "links" "users" "bands")
+    
+    for table in "${verify_tables[@]}"; do
+        local count_result=$(PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM $table;" 2>/dev/null | xargs)
+        if [ -n "$count_result" ]; then
+            print_status "  📊 $table: $count_result rows"
+        else
+            print_warning "  ❌ $table: Error getting count"
+        fi
+    done
+    
+    print_success "Verification completed"
+    
+    # Step 5: Cleanup
+    print_status "Step 5: Cleaning up temporary files..."
+    rm -rf "$extract_dir"
+    print_success "Temporary files cleaned up"
+    
+    print_success "Production backup restore completed successfully!"
+    print_status "Check restore_output.log for any error details"
+}
+
 # Function to rollback
 rollback() {
     print_warning "Rolling back to previous commit..."
@@ -1462,6 +1621,10 @@ main() {
             ;;
         "restoredb-local")
             restore_dbackup_local
+            exit 0
+            ;;
+        "restore-prod-db-locally")
+            restore_prod_db_locally
             exit 0
             ;;
         "rollback")

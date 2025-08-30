@@ -1,0 +1,1541 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Processing Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; text-align: center; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .summary { background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat-box { text-align: center; padding: 15px; border-radius: 5px; }
+        .success-stat { background-color: #d4edda; }
+        .warning-stat { background-color: #fff3cd; }
+        .danger-stat { background-color: #f8d7da; }
+        .info-stat { background-color: #e7f3ff; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>🎵 Song Processing Report</h1>
+    
+    <div class="summary">
+        <h2>📊 Summary Statistics</h2>
+        <div class="stats">
+            <div class="stat-box success-stat">
+                <h3>✅ Successfully Processed</h3>
+                <h2>155</h2>
+                <p>95%</p>
+            </div>
+            <div class="stat-box warning-stat">
+                <h3>⏭️ Skipped</h3>
+                <h2>8</h2>
+                <p>5%</p>
+            </div>
+            <div class="stat-box danger-stat">
+                <h3>❌ Errors</h3>
+                <h2>0</h2>
+                <p>0%</p>
+            </div>
+            <div class="stat-box info-stat">
+                <h3>🎯 Total Files</h3>
+                <h2>163</h2>
+                <p>Processed: 163</p>
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>FILENAME (Click to View)</th>
+                <th>EXTRACTED TITLE</th>
+                <th>STATUS</th>
+                <th>DB ID</th>
+                <th>DATABASE TITLE</th>
+                <th>NOTES</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-004-100%25%20Pure%20Love.html" target="_blank" style="color: #007bff; text-decoration: none;">song-004-100% Pure Love.html</a></td>
+                    <td>100% Pure Love</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-005-A%20B%20C.html" target="_blank" style="color: #007bff; text-decoration: none;">song-005-A B C.html</a></td>
+                    <td>A B C</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-006-after%20midnight.html" target="_blank" style="color: #007bff; text-decoration: none;">song-006-after midnight.html</a></td>
+                    <td>after midnight</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-007-Ain't%20No%20Sunshine.html" target="_blank" style="color: #007bff; text-decoration: none;">song-007-Ain't No Sunshine.html</a></td>
+                    <td>Ain't No Sunshine</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-008-Ain't%20No%20Use.html" target="_blank" style="color: #007bff; text-decoration: none;">song-008-Ain't No Use.html</a></td>
+                    <td>Ain't No Use</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-009-ain't%20nobody.html" target="_blank" style="color: #007bff; text-decoration: none;">song-009-ain't nobody.html</a></td>
+                    <td>ain't nobody</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-010-Alright.html" target="_blank" style="color: #007bff; text-decoration: none;">song-010-Alright.html</a></td>
+                    <td>Alright</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-011-Annie%20don't%20wear%20no%20panties.html" target="_blank" style="color: #007bff; text-decoration: none;">song-011-Annie don't wear no panties.html</a></td>
+                    <td>Annie don't wear no panties</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-012-Baby%20Love.html" target="_blank" style="color: #007bff; text-decoration: none;">song-012-Baby Love.html</a></td>
+                    <td>Baby Love</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-013-Back%20To%20Black.html" target="_blank" style="color: #007bff; text-decoration: none;">song-013-Back To Black.html</a></td>
+                    <td>Back To Black</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-014-Ball%20of%20confusion.html" target="_blank" style="color: #007bff; text-decoration: none;">song-014-Ball of confusion.html</a></td>
+                    <td>Ball of confusion</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-015-benny%20and%20the%20jets.html" target="_blank" style="color: #007bff; text-decoration: none;">song-015-benny and the jets.html</a></td>
+                    <td>benny and the jets</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-016-big%20bass%20drum.html" target="_blank" style="color: #007bff; text-decoration: none;">song-016-big bass drum.html</a></td>
+                    <td>big bass drum</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-017-big%20bass%20drum%20(dr.%20john).html" target="_blank" style="color: #007bff; text-decoration: none;">song-017-big bass drum (dr. john).html</a></td>
+                    <td>big bass drum (dr. john)</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-018-Big%20chief.html" target="_blank" style="color: #007bff; text-decoration: none;">song-018-Big chief.html</a></td>
+                    <td>Big chief</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-019-Black%20Eyed%20Pea.html" target="_blank" style="color: #007bff; text-decoration: none;">song-019-Black Eyed Pea.html</a></td>
+                    <td>Black Eyed Pea</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-020-Body%20Heat.html" target="_blank" style="color: #007bff; text-decoration: none;">song-020-Body Heat.html</a></td>
+                    <td>Body Heat</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-021-Boogie%20Nights.html" target="_blank" style="color: #007bff; text-decoration: none;">song-021-Boogie Nights.html</a></td>
+                    <td>Boogie Nights</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-022-boogie%20man.html" target="_blank" style="color: #007bff; text-decoration: none;">song-022-boogie man.html</a></td>
+                    <td>boogie man</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-023-boogie%20on%20reggae%20woman.html" target="_blank" style="color: #007bff; text-decoration: none;">song-023-boogie on reggae woman.html</a></td>
+                    <td>boogie on reggae woman</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-024-Boogie%20Oogie%20Oogie.html" target="_blank" style="color: #007bff; text-decoration: none;">song-024-Boogie Oogie Oogie.html</a></td>
+                    <td>Boogie Oogie Oogie</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-025-Born%20To%20be%20Alive.html" target="_blank" style="color: #007bff; text-decoration: none;">song-025-Born To be Alive.html</a></td>
+                    <td>Born To be Alive</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-026-Brick%20House.html" target="_blank" style="color: #007bff; text-decoration: none;">song-026-Brick House.html</a></td>
+                    <td>Brick House</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-027-Brother%20Where%20Are%20You.html" target="_blank" style="color: #007bff; text-decoration: none;">song-027-Brother Where Are You.html</a></td>
+                    <td>Brother Where Are You</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-028-Can't%20Take%20My%20Eyes%20off%20of%20You.html" target="_blank" style="color: #007bff; text-decoration: none;">song-028-Can't Take My Eyes off of You.html</a></td>
+                    <td>Can't Take My Eyes off of You</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-029-Carnival%20Time.html" target="_blank" style="color: #007bff; text-decoration: none;">song-029-Carnival Time.html</a></td>
+                    <td>Carnival Time</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-030-Change%20My%20Ways.html" target="_blank" style="color: #007bff; text-decoration: none;">song-030-Change My Ways.html</a></td>
+                    <td>Change My Ways</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-031-Cities.html" target="_blank" style="color: #007bff; text-decoration: none;">song-031-Cities.html</a></td>
+                    <td>Cities</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-032-clap%20for%20the%20wolfman.html" target="_blank" style="color: #007bff; text-decoration: none;">song-032-clap for the wolfman.html</a></td>
+                    <td>clap for the wolfman</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-033-Closer.html" target="_blank" style="color: #007bff; text-decoration: none;">song-033-Closer.html</a></td>
+                    <td>Closer</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-034-clap%20your%20hands.html" target="_blank" style="color: #007bff; text-decoration: none;">song-034-clap your hands.html</a></td>
+                    <td>clap your hands</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-035-Colors.html" target="_blank" style="color: #007bff; text-decoration: none;">song-035-Colors.html</a></td>
+                    <td>Colors</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-036-come%20down.html" target="_blank" style="color: #007bff; text-decoration: none;">song-036-come down.html</a></td>
+                    <td>come down</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-037-Come%20and%20Get%20Your%20Love.html" target="_blank" style="color: #007bff; text-decoration: none;">song-037-Come and Get Your Love.html</a></td>
+                    <td>Come and Get Your Love</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-038-Come%20on%20Come%20Over.html" target="_blank" style="color: #007bff; text-decoration: none;">song-038-Come on Come Over.html</a></td>
+                    <td>Come on Come Over</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-039-compared%20to%20what.html" target="_blank" style="color: #007bff; text-decoration: none;">song-039-compared to what.html</a></td>
+                    <td>compared to what</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-040-dance%20to%20the%20music.html" target="_blank" style="color: #007bff; text-decoration: none;">song-040-dance to the music.html</a></td>
+                    <td>dance to the music</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-041-do%20it%20like%20you%20do.html" target="_blank" style="color: #007bff; text-decoration: none;">song-041-do it like you do.html</a></td>
+                    <td>do it like you do</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-042-Devils%20Gun.html" target="_blank" style="color: #007bff; text-decoration: none;">song-042-Devils Gun.html</a></td>
+                    <td>Devils Gun</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-043-Do%20the%20Everybody%20Get%20Down.html" target="_blank" style="color: #007bff; text-decoration: none;">song-043-Do the Everybody Get Down.html</a></td>
+                    <td>Do the Everybody Get Down</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-044-Dock%20of%20the%20Bay.html" target="_blank" style="color: #007bff; text-decoration: none;">song-044-Dock of the Bay.html</a></td>
+                    <td>Dock of the Bay</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-045-domino.html" target="_blank" style="color: #007bff; text-decoration: none;">song-045-domino.html</a></td>
+                    <td>domino</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-046-Don't%20Mess%20up%20a%20Good%20thing.html" target="_blank" style="color: #007bff; text-decoration: none;">song-046-Don't Mess up a Good thing.html</a></td>
+                    <td>Don't Mess up a Good thing</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-047-Don't%20Wanna%20Fight%20No%20More.html" target="_blank" style="color: #007bff; text-decoration: none;">song-047-Don't Wanna Fight No More.html</a></td>
+                    <td>Don't Wanna Fight No More</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-048-Don't%20know%20why.html" target="_blank" style="color: #007bff; text-decoration: none;">song-048-Don't know why.html</a></td>
+                    <td>Don't know why</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-049-Double%20Wide.html" target="_blank" style="color: #007bff; text-decoration: none;">song-049-Double Wide.html</a></td>
+                    <td>Double Wide</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-050-Drift%20Away.html" target="_blank" style="color: #007bff; text-decoration: none;">song-050-Drift Away.html</a></td>
+                    <td>Drift Away</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-051-Evil%20in%20my%20Chair.html" target="_blank" style="color: #007bff; text-decoration: none;">song-051-Evil in my Chair.html</a></td>
+                    <td>Evil in my Chair</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-052-evil%20ways.html" target="_blank" style="color: #007bff; text-decoration: none;">song-052-evil ways.html</a></td>
+                    <td>evil ways</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-053-Express%20yourself.html" target="_blank" style="color: #007bff; text-decoration: none;">song-053-Express yourself.html</a></td>
+                    <td>Express yourself</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-054-feel%20like%20funkin%20it%20up.html" target="_blank" style="color: #007bff; text-decoration: none;">song-054-feel like funkin it up.html</a></td>
+                    <td>feel like funkin it up</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-055-fire.html" target="_blank" style="color: #007bff; text-decoration: none;">song-055-fire.html</a></td>
+                    <td>fire</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-056-Fire%20Eater.html" target="_blank" style="color: #007bff; text-decoration: none;">song-056-Fire Eater.html</a></td>
+                    <td>Fire Eater</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-057-fire%20on%20the%20bayou.html" target="_blank" style="color: #007bff; text-decoration: none;">song-057-fire on the bayou.html</a></td>
+                    <td>fire on the bayou</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-058-For%20What%20its%20Worth.html" target="_blank" style="color: #007bff; text-decoration: none;">song-058-For What its Worth.html</a></td>
+                    <td>For What its Worth</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-059-Foxy%20lady.html" target="_blank" style="color: #007bff; text-decoration: none;">song-059-Foxy lady.html</a></td>
+                    <td>Foxy lady</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-060-Freddy's%20dead.html" target="_blank" style="color: #007bff; text-decoration: none;">song-060-Freddy's dead.html</a></td>
+                    <td>Freddy's dead</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-061-Funkify%20Your%20Life.html" target="_blank" style="color: #007bff; text-decoration: none;">song-061-Funkify Your Life.html</a></td>
+                    <td>Funkify Your Life</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-062-Funky%20Bitch.html" target="_blank" style="color: #007bff; text-decoration: none;">song-062-Funky Bitch.html</a></td>
+                    <td>Funky Bitch</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-063-Funky%20Drummer.html" target="_blank" style="color: #007bff; text-decoration: none;">song-063-Funky Drummer.html</a></td>
+                    <td>Funky Drummer</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-064-get%20down%20tonight.html" target="_blank" style="color: #007bff; text-decoration: none;">song-064-get down tonight.html</a></td>
+                    <td>get down tonight</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-065-get%20up%20and%20drive%20your%20funky%20soul.html" target="_blank" style="color: #007bff; text-decoration: none;">song-065-get up and drive your funky soul.html</a></td>
+                    <td>get up and drive your funky soul</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-066-Get%20up%20offa%20that%20thing.html" target="_blank" style="color: #007bff; text-decoration: none;">song-066-Get up offa that thing.html</a></td>
+                    <td>Get up offa that thing</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-067-Giving%20it%20Up%20For%20Your%20Love.html" target="_blank" style="color: #007bff; text-decoration: none;">song-067-Giving it Up For Your Love.html</a></td>
+                    <td>Giving it Up For Your Love</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-068-Give%20It%20Up%20Or%20Turnit%20A%20Loose.html" target="_blank" style="color: #007bff; text-decoration: none;">song-068-Give It Up Or Turnit A Loose.html</a></td>
+                    <td>Give It Up Or Turnit A Loose</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-069-give%20up%20the%20funk.html" target="_blank" style="color: #007bff; text-decoration: none;">song-069-give up the funk.html</a></td>
+                    <td>give up the funk</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-070-good%20golly%20miss%20molly.html" target="_blank" style="color: #007bff; text-decoration: none;">song-070-good golly miss molly.html</a></td>
+                    <td>good golly miss molly</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-071-Good%20Kisser.html" target="_blank" style="color: #007bff; text-decoration: none;">song-071-Good Kisser.html</a></td>
+                    <td>Good Kisser</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-072-Good%20Love.html" target="_blank" style="color: #007bff; text-decoration: none;">song-072-Good Love.html</a></td>
+                    <td>Good Love</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-073-Good%20To%20You.html" target="_blank" style="color: #007bff; text-decoration: none;">song-073-Good To You.html</a></td>
+                    <td>Good To You</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-074-got%20to%20give%20it%20up.html" target="_blank" style="color: #007bff; text-decoration: none;">song-074-got to give it up.html</a></td>
+                    <td>got to give it up</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-075-hard%20to%20handle%20(bc's).html" target="_blank" style="color: #007bff; text-decoration: none;">song-075-hard to handle (bc's).html</a></td>
+                    <td>hard to handle (bc's)</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-076-Harder%20They%20Come.html" target="_blank" style="color: #007bff; text-decoration: none;">song-076-Harder They Come.html</a></td>
+                    <td>Harder They Come</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-077-Here%20come%20the%20girls.html" target="_blank" style="color: #007bff; text-decoration: none;">song-077-Here come the girls.html</a></td>
+                    <td>Here come the girls</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-078-hey%20pocky%20way.html" target="_blank" style="color: #007bff; text-decoration: none;">song-078-hey pocky way.html</a></td>
+                    <td>hey pocky way</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-079-higher%20ground.html" target="_blank" style="color: #007bff; text-decoration: none;">song-079-higher ground.html</a></td>
+                    <td>higher ground</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-080-Hihache.html" target="_blank" style="color: #007bff; text-decoration: none;">song-080-Hihache.html</a></td>
+                    <td>Hihache</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-081-honey%20just%20one%20sweet%20kiss.html" target="_blank" style="color: #007bff; text-decoration: none;">song-081-honey just one sweet kiss.html</a></td>
+                    <td>honey just one sweet kiss</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-082-I%20Want%20To%20Take%20You%20Higher.html" target="_blank" style="color: #007bff; text-decoration: none;">song-082-I Want To Take You Higher.html</a></td>
+                    <td>I Want To Take You Higher</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-083-i%20wish.html" target="_blank" style="color: #007bff; text-decoration: none;">song-083-i wish.html</a></td>
+                    <td>i wish</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-084-I'll%20Be%20Around.html" target="_blank" style="color: #007bff; text-decoration: none;">song-084-I'll Be Around.html</a></td>
+                    <td>I'll Be Around</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-085-It's%20All%20Right%20Now.html" target="_blank" style="color: #007bff; text-decoration: none;">song-085-It's All Right Now.html</a></td>
+                    <td>It's All Right Now</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-086-Its%20Your%20Thing.html" target="_blank" style="color: #007bff; text-decoration: none;">song-086-Its Your Thing.html</a></td>
+                    <td>Its Your Thing</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-087-Jambalaya.html" target="_blank" style="color: #007bff; text-decoration: none;">song-087-Jambalaya.html</a></td>
+                    <td>Jambalaya</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-088-jungle%20boogie.html" target="_blank" style="color: #007bff; text-decoration: none;">song-088-jungle boogie.html</a></td>
+                    <td>jungle boogie</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-089-just%20kissed%20my%20baby.html" target="_blank" style="color: #007bff; text-decoration: none;">song-089-just kissed my baby.html</a></td>
+                    <td>just kissed my baby</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-090-Kiss.html" target="_blank" style="color: #007bff; text-decoration: none;">song-090-Kiss.html</a></td>
+                    <td>Kiss</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-091-kissing%20my%20love.html" target="_blank" style="color: #007bff; text-decoration: none;">song-091-kissing my love.html</a></td>
+                    <td>kissing my love</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-092-La%20Grange.html" target="_blank" style="color: #007bff; text-decoration: none;">song-092-La Grange.html</a></td>
+                    <td>La Grange</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-093-lean%20on%20me.html" target="_blank" style="color: #007bff; text-decoration: none;">song-093-lean on me.html</a></td>
+                    <td>lean on me</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-094-Let's%20Stay%20Together.html" target="_blank" style="color: #007bff; text-decoration: none;">song-094-Let's Stay Together.html</a></td>
+                    <td>Let's Stay Together</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-095-long%20train%20running.html" target="_blank" style="color: #007bff; text-decoration: none;">song-095-long train running.html</a></td>
+                    <td>long train running</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-096-Love%20on%20the%20Run.html" target="_blank" style="color: #007bff; text-decoration: none;">song-096-Love on the Run.html</a></td>
+                    <td>Love on the Run</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-097-Lovely%20Day.html" target="_blank" style="color: #007bff; text-decoration: none;">song-097-Lovely Day.html</a></td>
+                    <td>Lovely Day</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-098-Love%20Makes%20a%20Woman.html" target="_blank" style="color: #007bff; text-decoration: none;">song-098-Love Makes a Woman.html</a></td>
+                    <td>Love Makes a Woman</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-099-Love%20Me%20Two%20Times.html" target="_blank" style="color: #007bff; text-decoration: none;">song-099-Love Me Two Times.html</a></td>
+                    <td>Love Me Two Times</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-100-Make%20a%20Better%20World.html" target="_blank" style="color: #007bff; text-decoration: none;">song-100-Make a Better World.html</a></td>
+                    <td>Make a Better World</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-101-Make%20it%20funky.html" target="_blank" style="color: #007bff; text-decoration: none;">song-101-Make it funky.html</a></td>
+                    <td>Make it funky</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-102-make%20me%20smile.html" target="_blank" style="color: #007bff; text-decoration: none;">song-102-make me smile.html</a></td>
+                    <td>make me smile</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-103-mardi%20gras%20in%20new%20orleans.html" target="_blank" style="color: #007bff; text-decoration: none;">song-103-mardi gras in new orleans.html</a></td>
+                    <td>mardi gras in new orleans</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-104-Mardi%20Gras%20Mambo.html" target="_blank" style="color: #007bff; text-decoration: none;">song-104-Mardi Gras Mambo.html</a></td>
+                    <td>Mardi Gras Mambo</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-105-Miserable%20Bastard.html" target="_blank" style="color: #007bff; text-decoration: none;">song-105-Miserable Bastard.html</a></td>
+                    <td>Miserable Bastard</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-106-Miss%20Riverside.html" target="_blank" style="color: #007bff; text-decoration: none;">song-106-Miss Riverside.html</a></td>
+                    <td>Miss Riverside</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-107-Mr.%20Big%20Stuff.html" target="_blank" style="color: #007bff; text-decoration: none;">song-107-Mr. Big Stuff.html</a></td>
+                    <td>Mr. Big Stuff</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-108-Mr%20Magic.html" target="_blank" style="color: #007bff; text-decoration: none;">song-108-Mr Magic.html</a></td>
+                    <td>Mr Magic</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-109-outta%20space.html" target="_blank" style="color: #007bff; text-decoration: none;">song-109-outta space.html</a></td>
+                    <td>outta space</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-110-Palm%20court%20Strut.html" target="_blank" style="color: #007bff; text-decoration: none;">song-110-Palm court Strut.html</a></td>
+                    <td>Palm court Strut</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-111-papa%20was%20a%20rolling%20stone.html" target="_blank" style="color: #007bff; text-decoration: none;">song-111-papa was a rolling stone.html</a></td>
+                    <td>papa was a rolling stone</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-112-papa's%20got%20a%20brand%20new%20bag.html" target="_blank" style="color: #007bff; text-decoration: none;">song-112-papa's got a brand new bag.html</a></td>
+                    <td>papa's got a brand new bag</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-113-play%20that%20funky%20music.html" target="_blank" style="color: #007bff; text-decoration: none;">song-113-play that funky music.html</a></td>
+                    <td>play that funky music</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-114-Reverend%20McCarty's%20BBQ%20Shack.html" target="_blank" style="color: #007bff; text-decoration: none;">song-114-Reverend McCarty's BBQ Shack.html</a></td>
+                    <td>Reverend McCarty's BBQ Shack</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-115-right%20place%20wrong%20time.html" target="_blank" style="color: #007bff; text-decoration: none;">song-115-right place wrong time.html</a></td>
+                    <td>right place wrong time</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-116-Rock%20Steady.html" target="_blank" style="color: #007bff; text-decoration: none;">song-116-Rock Steady.html</a></td>
+                    <td>Rock Steady</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-117-Sand.html" target="_blank" style="color: #007bff; text-decoration: none;">song-117-Sand.html</a></td>
+                    <td>Sand</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-118-Running%20Man.html" target="_blank" style="color: #007bff; text-decoration: none;">song-118-Running Man.html</a></td>
+                    <td>Running Man</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-119-school%20boy%20crush.html" target="_blank" style="color: #007bff; text-decoration: none;">song-119-school boy crush.html</a></td>
+                    <td>school boy crush</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-120-second%20that%20emotion.html" target="_blank" style="color: #007bff; text-decoration: none;">song-120-second that emotion.html</a></td>
+                    <td>second that emotion</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-121-September.html" target="_blank" style="color: #007bff; text-decoration: none;">song-121-September.html</a></td>
+                    <td>September</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-122-Shake%20Everything%20You've%20Got.html" target="_blank" style="color: #007bff; text-decoration: none;">song-122-Shake Everything You've Got.html</a></td>
+                    <td>Shake Everything You've Got</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-123-shake%20your%20booty.html" target="_blank" style="color: #007bff; text-decoration: none;">song-123-shake your booty.html</a></td>
+                    <td>shake your booty</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-124-Shakey%20Ground.html" target="_blank" style="color: #007bff; text-decoration: none;">song-124-Shakey Ground.html</a></td>
+                    <td>Shakey Ground</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-125-she's%20a%20bad%20mama%20jama.html" target="_blank" style="color: #007bff; text-decoration: none;">song-125-she's a bad mama jama.html</a></td>
+                    <td>she's a bad mama jama</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-126-She%20Caught%20The%20Katy.html" target="_blank" style="color: #007bff; text-decoration: none;">song-126-She Caught The Katy.html</a></td>
+                    <td>She Caught The Katy</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-127-Sing%20a%20simple%20song.html" target="_blank" style="color: #007bff; text-decoration: none;">song-127-Sing a simple song.html</a></td>
+                    <td>Sing a simple song</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-128-Slippery%20People.html" target="_blank" style="color: #007bff; text-decoration: none;">song-128-Slippery People.html</a></td>
+                    <td>Slippery People</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-129-Smoke%20My%20Peace%20Pipe.html" target="_blank" style="color: #007bff; text-decoration: none;">song-129-Smoke My Peace Pipe.html</a></td>
+                    <td>Smoke My Peace Pipe</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-130-Smoke%20My%20Peace%20Pipe.html" target="_blank" style="color: #007bff; text-decoration: none;">song-130-Smoke My Peace Pipe.html</a></td>
+                    <td>Smoke My Peace Pipe</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-131-sneaking%20sally.html" target="_blank" style="color: #007bff; text-decoration: none;">song-131-sneaking sally.html</a></td>
+                    <td>sneaking sally</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-132-untitled.html" target="_blank" style="color: #007bff; text-decoration: none;">song-132-untitled.html</a></td>
+                    <td>Untitled</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-133-sounds%20like%20a%20party.html" target="_blank" style="color: #007bff; text-decoration: none;">song-133-sounds like a party.html</a></td>
+                    <td>sounds like a party</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-134-start%20from%20scratch.html" target="_blank" style="color: #007bff; text-decoration: none;">song-134-start from scratch.html</a></td>
+                    <td>start from scratch</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-135-staying%20alive.html" target="_blank" style="color: #007bff; text-decoration: none;">song-135-staying alive.html</a></td>
+                    <td>staying alive</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-136-Stomp.html" target="_blank" style="color: #007bff; text-decoration: none;">song-136-Stomp.html</a></td>
+                    <td>Stomp</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-137-sugaree.html" target="_blank" style="color: #007bff; text-decoration: none;">song-137-sugaree.html</a></td>
+                    <td>sugaree</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-138-Sunny.html" target="_blank" style="color: #007bff; text-decoration: none;">song-138-Sunny.html</a></td>
+                    <td>Sunny</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-139-Take%20Me%20to%20the%20River.html" target="_blank" style="color: #007bff; text-decoration: none;">song-139-Take Me to the River.html</a></td>
+                    <td>Take Me to the River</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-140-Tell%20Mama.html" target="_blank" style="color: #007bff; text-decoration: none;">song-140-Tell Mama.html</a></td>
+                    <td>Tell Mama</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-141-Tell%20Me%20Something%20Good.html" target="_blank" style="color: #007bff; text-decoration: none;">song-141-Tell Me Something Good.html</a></td>
+                    <td>Tell Me Something Good</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-142-thank%20you.html" target="_blank" style="color: #007bff; text-decoration: none;">song-142-thank you.html</a></td>
+                    <td>thank you</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-143-There's%20Something%20Wrong%20with%20this%20Picture.html" target="_blank" style="color: #007bff; text-decoration: none;">song-143-There's Something Wrong with this Picture.html</a></td>
+                    <td>There's Something Wrong with this Picture</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-144-them%20changes.html" target="_blank" style="color: #007bff; text-decoration: none;">song-144-them changes.html</a></td>
+                    <td>them changes</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-145-there%20was%20a%20time.html" target="_blank" style="color: #007bff; text-decoration: none;">song-145-there was a time.html</a></td>
+                    <td>there was a time</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-146-thrill%20is%20gone.html" target="_blank" style="color: #007bff; text-decoration: none;">song-146-thrill is gone.html</a></td>
+                    <td>thrill is gone</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-147-time.html" target="_blank" style="color: #007bff; text-decoration: none;">song-147-time.html</a></td>
+                    <td>time</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-148-turn%20the%20beat%20around.html" target="_blank" style="color: #007bff; text-decoration: none;">song-148-turn the beat around.html</a></td>
+                    <td>turn the beat around</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-149-Tutti%20Ma.html" target="_blank" style="color: #007bff; text-decoration: none;">song-149-Tutti Ma.html</a></td>
+                    <td>Tutti Ma</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-150-Unaware.html" target="_blank" style="color: #007bff; text-decoration: none;">song-150-Unaware.html</a></td>
+                    <td>Unaware</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-151-uptown%20funk.html" target="_blank" style="color: #007bff; text-decoration: none;">song-151-uptown funk.html</a></td>
+                    <td>uptown funk</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-152-Valerie.html" target="_blank" style="color: #007bff; text-decoration: none;">song-152-Valerie.html</a></td>
+                    <td>Valerie</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-153-vilified.html" target="_blank" style="color: #007bff; text-decoration: none;">song-153-vilified.html</a></td>
+                    <td>vilified</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-154-The%20Walk.html" target="_blank" style="color: #007bff; text-decoration: none;">song-154-The Walk.html</a></td>
+                    <td>The Walk</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-155-We%20can%20work%20it%20out.html" target="_blank" style="color: #007bff; text-decoration: none;">song-155-We can work it out.html</a></td>
+                    <td>We can work it out</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-156-We're%20Gonna%20Party.html" target="_blank" style="color: #007bff; text-decoration: none;">song-156-We're Gonna Party.html</a></td>
+                    <td>We're Gonna Party</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-157-What'd%20I%20Say.html" target="_blank" style="color: #007bff; text-decoration: none;">song-157-What'd I Say.html</a></td>
+                    <td>What'd I Say</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-158-What%20You%20Won't%20Do%20For%20Love.html" target="_blank" style="color: #007bff; text-decoration: none;">song-158-What You Won't Do For Love.html</a></td>
+                    <td>What You Won't Do For Love</td>
+                    <td>✅ Processed</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-159-What's%20Goin%20On.html" target="_blank" style="color: #007bff; text-decoration: none;">song-159-What's Goin On.html</a></td>
+                    <td>What's Goin On</td>
+                    <td>⏭️ Skipped</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-160-Where%20Did%20Our%20Love%20Go.html" target="_blank" style="color: #007bff; text-decoration: none;">song-160-Where Did Our Love Go.html</a></td>
+                    <td>Where Did Our Love Go</td>
+                    <td>⏭️ Skipped</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-161-will%20it%20go%20round%20in%20circles.html" target="_blank" style="color: #007bff; text-decoration: none;">song-161-will it go round in circles.html</a></td>
+                    <td>will it go round in circles</td>
+                    <td>⏭️ Skipped</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-162-With%20a%20little%20help%20from%20my%20friends.html" target="_blank" style="color: #007bff; text-decoration: none;">song-162-With a little help from my friends.html</a></td>
+                    <td>With a little help from my friends</td>
+                    <td>⏭️ Skipped</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-163-wolfman'S%20brother.html" target="_blank" style="color: #007bff; text-decoration: none;">song-163-wolfman'S brother.html</a></td>
+                    <td>wolfman'S brother</td>
+                    <td>⏭️ Skipped</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-164-Yellow%20moon.html" target="_blank" style="color: #007bff; text-decoration: none;">song-164-Yellow moon.html</a></td>
+                    <td>Yellow moon</td>
+                    <td>⏭️ Skipped</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-165-you%20sexy%20thing.html" target="_blank" style="color: #007bff; text-decoration: none;">song-165-you sexy thing.html</a></td>
+                    <td>you sexy thing</td>
+                    <td>⏭️ Skipped</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+                <tr>
+                    <td><a href="http://127.0.0.1:5500/KDGRB/songs/song-166-You%20spin%20me%20round.html" target="_blank" style="color: #007bff; text-decoration: none;">song-166-You spin me round.html</a></td>
+                    <td>You spin me round</td>
+                    <td>⏭️ Skipped</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+              
+        </tbody>
+    </table>
+
+    <div style="text-align: center; color: #666; font-size: 0.9em; margin-top: 20px;">
+        Generated on 8/30/2025, 1:41:08 PM
+    </div>
+</body>
+</html>

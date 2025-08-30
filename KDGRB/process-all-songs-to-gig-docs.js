@@ -9,25 +9,8 @@ const dotenv = require("dotenv");
 
 let prisma = new PrismaClient();
 
-// Function to execute SQL command on production via SSH
-async function executeProductionSQL(sqlCommand, description) {
-  try {
-    console.log(`🔄 ${description}...`);
-
-    const sshCommand = `ssh bagus1@bagus.org "cd ~/repositories/setlister && PGPASSWORD=allofmyfriends psql -h localhost -U bagus1_setlists_app -d bagus1_setlists_prod -c '${sqlCommand.replace(/'/g, "''")}'"`;
-
-    const result = execSync(sshCommand, { encoding: "utf8" });
-
-    console.log(`✅ ${description} completed`);
-    return result;
-  } catch (error) {
-    console.error(`❌ Error ${description}:`, error.message);
-    throw error;
-  }
-}
-
 // Function to execute SQL command locally via psql
-async function executeLocalSQL(sqlCommand, description) {
+async function executeLocalSQL(sqlCommand, params, description) {
   try {
     console.log(`🔄 ${description}...`);
 
@@ -39,7 +22,25 @@ async function executeLocalSQL(sqlCommand, description) {
     const dbPassword = process.env.DB_PASSWORD || "allofmyfriends";
     const dbName = process.env.DB_NAME || "bagus1_setlists_prod";
 
-    const psqlCommand = `PGPASSWORD='${dbPassword}' psql -h ${dbHost} -U ${dbUser} -d ${dbName} -c '${sqlCommand.replace(/'/g, "''")}'`;
+    // Build the SQL command with parameters
+    let finalSQL = sqlCommand;
+    if (params && params.length > 0) {
+      // Replace $1, $2, etc. with actual values, properly escaped
+      params.forEach((param, index) => {
+        const placeholder = `$${index + 1}`;
+        if (param === null) {
+          finalSQL = finalSQL.replace(placeholder, "NULL");
+        } else if (typeof param === "string") {
+          // Escape single quotes in strings
+          const escapedParam = param.replace(/'/g, "''");
+          finalSQL = finalSQL.replace(placeholder, `'${escapedParam}'`);
+        } else {
+          finalSQL = finalSQL.replace(placeholder, param);
+        }
+      });
+    }
+
+    const psqlCommand = `PGPASSWORD='${dbPassword}' psql -h ${dbHost} -U ${dbUser} -d ${dbName} -c '${finalSQL}'`;
 
     const result = execSync(psqlCommand, { encoding: "utf8" });
 
@@ -77,9 +78,11 @@ async function showInteractiveMenu() {
 4. Process by Filename
 5. Process with Start/End Range
 6. Match only (no gig docs/links)
-7. Exit
+7. Process Single Song with Direct SQL
+8. Generate SQL for Single Song
+9. Exit
 
-Choose an option (1-7): `);
+Choose an option (1-9): `);
 
   const choice = await askQuestion("");
 
@@ -103,6 +106,12 @@ Choose an option (1-7): `);
       await processAllSongsToGigDocs({ matchOnly: true });
       break;
     case "7":
+      await processSingleSongWithDirectSQL();
+      break;
+    case "8":
+      await generateSQLForSingleSong();
+      break;
+    case "9":
       console.log("👋 Goodbye!");
       rl.close();
       process.exit(0);
@@ -138,9 +147,14 @@ async function processAllSongsToGigDocs(options = {}) {
         console.log("🏠 LOCAL MODE: Using direct SQL execution");
         options.localSql = true;
       } else if (envChoice === "2") {
-        console.log("🌐 PRODUCTION MODE: Using SSH + direct SQL execution");
+        console.log(
+          "🌐 PRODUCTION MODE: Using direct SQL execution (run from production server)"
+        );
         console.log(
           "⚠️  WARNING: This will create/update gig documents and links on the live system!"
+        );
+        console.log(
+          "💡 TIP: Run this script directly on the production server for production mode"
         );
         const confirm = await askQuestion("Type 'PRODUCTION' to confirm: ");
         if (confirm !== "PRODUCTION") {
@@ -291,6 +305,52 @@ function extractTitleFromFilename(filename) {
   return title;
 }
 
+function extractTitleFromHTML(htmlContent) {
+  // Extract song title from h1 tag - try multiple patterns
+  let songTitle = null;
+
+  // Pattern 1: Look for the first non-empty h1 tag with content
+  const h1Matches = htmlContent.match(/<h1[^>]*>.*?<\/h1>/gi);
+  if (h1Matches) {
+    for (const h1Match of h1Matches) {
+      // Extract text content from h1 tag
+      const textMatch = h1Match.match(/<h1[^>]*>(.*?)<\/h1>/i);
+      if (textMatch && textMatch[1]) {
+        // Remove HTML tags and get clean text
+        const cleanText = textMatch[1].replace(/<[^>]*>/g, "").trim();
+        if (cleanText && cleanText.length > 0) {
+          songTitle = cleanText;
+          break; // Use the first non-empty title found
+        }
+      }
+    }
+  }
+
+  // If still no title, try alternative patterns
+  if (!songTitle) {
+    // Pattern 2: <h1...><span...>title</span> - use non-greedy match to capture full content
+    const titleMatch1 = htmlContent.match(
+      /<h1[^>]*>.*?<span[^>]*>([^<]*?)<\/span>/i
+    );
+    if (titleMatch1 && titleMatch1[1] && titleMatch1[1].trim()) {
+      songTitle = titleMatch1[1].trim();
+    } else {
+      // Pattern 3: <h1...>title</h1> (without span)
+      const titleMatch2 = htmlContent.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+      if (titleMatch2 && titleMatch2[1] && titleMatch2[1].trim()) {
+        songTitle = titleMatch2[1].trim();
+      }
+    }
+  }
+
+  // Handle special cases
+  if (songTitle === "Untitled" || songTitle === "untitled") {
+    return null;
+  }
+
+  return songTitle;
+}
+
 async function findSongInDatabase(extractedTitle) {
   // First try exact match
   let song = await prisma.song.findFirst({
@@ -328,6 +388,43 @@ async function findSongInDatabase(extractedTitle) {
   return null;
 }
 
+async function findSongByTitle(title) {
+  // First try exact match
+  let song = await prisma.song.findFirst({
+    where: {
+      title: { equals: title, mode: "insensitive" },
+    },
+  });
+
+  if (song) {
+    return song;
+  }
+
+  // Try similar match (contains)
+  song = await prisma.song.findFirst({
+    where: {
+      title: { contains: title, mode: "insensitive" },
+    },
+  });
+
+  if (song) {
+    return song;
+  }
+
+  // Try reverse contains (extracted title contains database title)
+  song = await prisma.song.findFirst({
+    where: {
+      title: { mode: "insensitive" },
+    },
+  });
+
+  if (song && title.toLowerCase().includes(song.title.toLowerCase())) {
+    return song;
+  }
+
+  return null;
+}
+
 async function processSongFile(filename, songInfo, options = {}) {
   try {
     const { song, matchType } = songInfo;
@@ -347,12 +444,14 @@ async function processSongFile(filename, songInfo, options = {}) {
       const escapedContent = content.replace(/'/g, "''");
       const now = new Date().toISOString();
 
-      // Create gig document SQL
-      const gigDocSQL = `INSERT INTO gig_documents (song_id, created_by_id, type, version, content, is_active, created_at, updated_at) VALUES (${song.id}, 1, 'chords', 1, '${escapedContent}', true, '${now}', '${now}') RETURNING id;`;
+      // Create gig document SQL with parameters
+      const gigDocSQL = `INSERT INTO gig_documents (song_id, created_by_id, type, version, content, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;`;
+      const gigDocParams = [song.id, 1, "chords", 1, content, true, now, now];
 
       // Execute gig document creation
-      const gigDocResult = await executeProductionSQL(
+      const gigDocResult = await executeLocalSQL(
         gigDocSQL,
+        gigDocParams,
         "Creating gig document"
       );
 
@@ -378,16 +477,26 @@ async function processSongFile(filename, songInfo, options = {}) {
 
           try {
             // Check if link already exists
-            const checkLinkSQL = `SELECT id FROM links WHERE song_id = ${song.id} AND url = '${urlInfo.url.replace(/'/g, "''")}';`;
-            const existingLinkResult = await executeProductionSQL(
+            const checkLinkSQL = `SELECT id FROM links WHERE song_id = $1 AND url = $2;`;
+            const checkLinkParams = [song.id, urlInfo.url];
+            const existingLinkResult = await executeLocalSQL(
               checkLinkSQL,
+              checkLinkParams,
               "Checking existing link"
             );
 
             if (!existingLinkResult.includes("(0 rows)")) {
               // Create new link
-              const linkSQL = `INSERT INTO links (song_id, type, description, url, created_at, updated_at) VALUES (${song.id}, '${dbLinkType}', '${(urlInfo.description || urlInfo.url).replace(/'/g, "''")}', '${urlInfo.url.replace(/'/g, "''")}', '${now}', '${now}');`;
-              await executeProductionSQL(linkSQL, "Creating link");
+              const linkSQL = `INSERT INTO links (song_id, type, description, url, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6);`;
+              const linkParams = [
+                song.id,
+                dbLinkType,
+                urlInfo.description || urlInfo.url,
+                urlInfo.url,
+                now,
+                now,
+              ];
+              await executeProductionSQL(linkSQL, linkParams, "Creating link");
               linksCreated++;
             }
           } catch (error) {
@@ -400,12 +509,20 @@ async function processSongFile(filename, songInfo, options = {}) {
         success: true,
         message: `PRODUCTION: Gig document ${gigDocId} (${matchType}), ${linksCreated} new links created`,
       };
-    } else if (options.localSql || options.production) {
-      // Direct SQL mode: Generate and execute SQL commands (local or production)
-      const envLabel = options.localSql ? "LOCAL" : "PRODUCTION";
-      const executeSQL = options.localSql
-        ? executeLocalSQL
-        : executeProductionSQL;
+    } else if (options.localSql || options.production || options.directSql) {
+      // Direct SQL mode: Generate and execute SQL commands (local, production, or direct)
+      let envLabel, executeSQL;
+
+      if (options.localSql) {
+        envLabel = "LOCAL";
+        executeSQL = executeLocalSQL;
+      } else if (options.production) {
+        envLabel = "PRODUCTION";
+        executeSQL = executeLocalSQL; // Use local SQL execution (assumes running from production server)
+      } else if (options.directSql) {
+        envLabel = "DIRECT";
+        executeSQL = executeLocalSQL;
+      }
 
       console.log(
         `    Creating new gig document using DIRECT SQL (${envLabel})`
@@ -415,11 +532,16 @@ async function processSongFile(filename, songInfo, options = {}) {
       const escapedContent = content.replace(/'/g, "''");
       const now = new Date().toISOString();
 
-      // Create gig document SQL
-      const gigDocSQL = `INSERT INTO gig_documents (song_id, created_by_id, type, version, content, is_active, created_at, updated_at) VALUES (${song.id}, 1, 'chords', 1, '${escapedContent}', true, '${now}', '${now}') RETURNING id;`;
+      // Create gig document SQL with parameters
+      const gigDocSQL = `INSERT INTO gig_documents (song_id, created_by_id, type, version, content, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;`;
+      const gigDocParams = [song.id, 1, "chords", 1, content, true, now, now];
 
       // Execute gig document creation
-      const gigDocResult = await executeSQL(gigDocSQL, "Creating gig document");
+      const gigDocResult = await executeSQL(
+        gigDocSQL,
+        gigDocParams,
+        "Creating gig document"
+      );
 
       // Extract gig document ID from result
       const gigDocIdMatch = gigDocResult.match(/id\s*\n\s*(\d+)/);
@@ -443,16 +565,26 @@ async function processSongFile(filename, songInfo, options = {}) {
 
           try {
             // Check if link already exists
-            const checkLinkSQL = `SELECT id FROM links WHERE song_id = ${song.id} AND url = '${urlInfo.url.replace(/'/g, "''")}';`;
+            const checkLinkSQL = `SELECT id FROM links WHERE song_id = $1 AND url = $2;`;
+            const checkLinkParams = [song.id, urlInfo.url];
             const existingLinkResult = await executeSQL(
               checkLinkSQL,
+              checkLinkParams,
               "Checking existing link"
             );
 
             if (!existingLinkResult.includes("(0 rows)")) {
               // Create new link
-              const linkSQL = `INSERT INTO links (song_id, type, description, url, created_at, updated_at) VALUES (${song.id}, '${dbLinkType}', '${(urlInfo.description || urlInfo.url).replace(/'/g, "''")}', '${urlInfo.url.replace(/'/g, "''")}', '${now}', '${now}');`;
-              await executeSQL(linkSQL, "Creating link");
+              const linkSQL = `INSERT INTO links (song_id, type, description, url, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6);`;
+              const linkParams = [
+                song.id,
+                dbLinkType,
+                urlInfo.description || urlInfo.url,
+                urlInfo.url,
+                now,
+                now,
+              ];
+              await executeSQL(linkSQL, linkParams, "Creating link");
               linksCreated++;
             }
           } catch (error) {
@@ -599,15 +731,32 @@ function generateChordContent(songContent) {
   if (bodyMatch) {
     let bodyContent = bodyMatch[1];
 
+    // Debug: log the first 200 characters of body content
+    console.log("🔍 Debug - First 200 chars of body content:");
+    console.log(bodyContent.substring(0, 200));
+
     // Remove the title (h1 tag) from the content
     bodyContent = bodyContent.replace(/<h1[^>]*>.*?<\/h1>/gi, "");
 
     // Remove the first hr tag from the content
     bodyContent = bodyContent.replace(/<hr[^>]*>/, "");
 
-    // Remove all URL links from the content
-    bodyContent = bodyContent.replace(/<a[^>]*href="[^"]*"[^>]*>.*?<\/a>/g, "");
-    bodyContent = bodyContent.replace(/https?:\/\/[^\s<>"']+/g, "");
+    // Remove all URL links from the content (more aggressive cleaning)
+    bodyContent = bodyContent.replace(/<a[^>]*>.*?<\/a>/g, ""); // Remove ALL anchor tags
+    bodyContent = bodyContent.replace(/https?:\/\/[^\s<>"']+/g, ""); // Remove standalone URLs
+
+    // Clean up any remaining empty spans or paragraphs that might have been left behind
+    bodyContent = bodyContent.replace(/<span><\/span>/g, "");
+    bodyContent = bodyContent.replace(/<p><\/p>/g, "");
+    bodyContent = bodyContent.replace(/<p><span><\/span><\/p>/g, "");
+
+    // Additional aggressive cleaning for any remaining problematic tags
+    bodyContent = bodyContent.replace(/<a[^>]*>/g, ""); // Remove any remaining opening anchor tags
+    bodyContent = bodyContent.replace(/<\/a>/g, ""); // Remove any remaining closing anchor tags
+
+    // Debug: log the first 200 characters after cleaning
+    console.log("🔍 Debug - First 200 chars after cleaning:");
+    console.log(bodyContent.substring(0, 200));
 
     // Convert specific CSS classes to TinyMCE indentation format
     // .c21 (36pt) -> padding-left: 40px (first level)
@@ -998,6 +1147,225 @@ async function processByFilename() {
   } catch (error) {
     console.error("❌ Error:", error.message);
     await showInteractiveMenu();
+  }
+}
+
+// Function to process a single song with direct SQL (no SSH)
+async function processSingleSongWithDirectSQL() {
+  try {
+    console.log("🎵 Process Single Song with Direct SQL");
+    console.log("=====================================");
+
+    // Find song files
+    const songsDir = path.join(__dirname, "songs");
+    const songFiles = fs
+      .readdirSync(songsDir)
+      .filter((file) => file.endsWith(".html"));
+
+    if (songFiles.length === 0) {
+      console.log("❌ No song files found");
+      return;
+    }
+
+    // Show available files
+    console.log("📁 Available song files:");
+    songFiles.forEach((file, index) => {
+      console.log(`  ${index + 1}. ${file}`);
+    });
+
+    // Get user selection
+    const fileChoice = await askQuestion(
+      `\nSelect file number (1-${songFiles.length}): `
+    );
+    const fileIndex = parseInt(fileChoice) - 1;
+
+    if (isNaN(fileIndex) || fileIndex < 0 || fileIndex >= songFiles.length) {
+      console.log("❌ Invalid file selection");
+      return;
+    }
+
+    const selectedFile = songFiles[fileIndex];
+    console.log(`✅ Selected file: ${selectedFile}`);
+
+    // Extract title and find database match
+    const filePath = path.join(songsDir, selectedFile);
+    const htmlContent = fs.readFileSync(filePath, "utf8");
+    const title = extractTitleFromHTML(htmlContent);
+
+    if (!title) {
+      console.log("❌ Could not extract title from file");
+      return;
+    }
+
+    console.log(`🎵 Extracted title: "${title}"`);
+
+    // Find database match
+    const song = await findSongByTitle(title);
+
+    if (!song) {
+      console.log("❌ No database match found for this song");
+      return;
+    }
+
+    console.log(`✅ Database match: ID ${song.id} - "${song.title}"`);
+
+    // Process the song with direct SQL (no SSH)
+    const result = await processSongFile(
+      selectedFile,
+      { song: song, matchType: "SINGLE_SONG" },
+      { directSql: true }
+    );
+
+    if (result.success) {
+      console.log(`✅ Successfully processed: ${result.message}`);
+    } else {
+      console.log(`❌ Error: ${result.message}`);
+    }
+  } catch (error) {
+    console.error("❌ Error:", error.message);
+  }
+}
+
+// Function to generate SQL for a single song (no execution)
+async function generateSQLForSingleSong() {
+  try {
+    console.log("📝 Generate SQL for Single Song");
+    console.log("================================");
+
+    // Find song files
+    const songsDir = path.join(__dirname, "songs");
+    const songFiles = fs
+      .readdirSync(songsDir)
+      .filter((file) => file.endsWith(".html"));
+
+    if (songFiles.length === 0) {
+      console.log("❌ No song files found");
+      return;
+    }
+
+    // Show available files
+    console.log("📁 Available song files:");
+    songFiles.forEach((file, index) => {
+      console.log(`  ${index + 1}. ${file}`);
+    });
+
+    // Get user selection
+    const fileChoice = await askQuestion(
+      `\nSelect file number (1-${songFiles.length}): `
+    );
+    const fileIndex = parseInt(fileChoice) - 1;
+
+    if (isNaN(fileIndex) || fileIndex < 0 || fileIndex >= songFiles.length) {
+      console.log("❌ Invalid file selection");
+      return;
+    }
+
+    const selectedFile = songFiles[fileIndex];
+    console.log(`✅ Selected file: ${selectedFile}`);
+
+    // Extract title and find database match
+    const filePath = path.join(songsDir, selectedFile);
+    const htmlContent = fs.readFileSync(filePath, "utf8");
+    const title = extractTitleFromHTML(htmlContent);
+
+    if (!title) {
+      console.log("❌ Could not extract title from file");
+      return;
+    }
+
+    console.log(`🎵 Extracted title: "${title}"`);
+
+    // Find database match
+    const song = await findSongByTitle(title);
+
+    if (!song) {
+      console.log("❌ No database match found for this song");
+      return;
+    }
+
+    console.log(`✅ Database match: ID ${song.id} - "${song.title}"`);
+
+    // Generate chord content and extract URLs
+    const { content, urls } = generateChordContent(htmlContent);
+
+    // Debug info
+    console.log(`📊 Content length: ${content.length} characters`);
+    console.log(`🔗 URLs found: ${urls.length}`);
+
+    // Generate SQL file
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const sqlFilename = `song-${song.id}-${song.title.replace(/[^a-zA-Z0-9]/g, "-")}-${timestamp}.sql`;
+    const sqlFilePath = path.join(__dirname, sqlFilename);
+
+    // Build the SQL content
+    let sqlContent = `-- SQL for song: "${song.title}" (ID: ${song.id})\n`;
+    sqlContent += `-- Generated from file: ${selectedFile}\n`;
+    sqlContent += `-- Generated at: ${new Date().toISOString()}\n`;
+    sqlContent += `-- Run with: psql -h localhost -U your_user -d your_database -f ${sqlFilename}\n\n`;
+
+    // Gig document SQL
+    sqlContent += `-- 1. Create gig document:\n`;
+
+        // For very long content, use regular quotes with proper escaping
+    const escapedContent = content.replace(/'/g, "''");
+    if (escapedContent.length > 1000) {
+      sqlContent += `-- Note: Content is very long, using regular quotes with escaping\n`;
+      
+      // Output the complete SQL in one compact block
+      const sqlStatement = `INSERT INTO gig_documents (song_id, created_by_id, type, version, content, is_active, created_at, updated_at) VALUES (${song.id}, 1, 'chords', 1, '${escapedContent.replace(/\n/g, " ").replace(/\s+/g, " ")}', true, NOW(), NOW());`;
+      
+      sqlContent += sqlStatement + "\n";
+    } else {
+      sqlContent += `INSERT INTO gig_documents (song_id, created_by_id, type, version, content, is_active, created_at, updated_at) VALUES (${song.id}, 1, 'chords', 1, '${escapedContent}', true, NOW(), NOW());\n`;
+    }
+    sqlContent += "\n";
+
+    // Links SQL (if any)
+    if (urls.length > 0) {
+      sqlContent += `-- 2. Create links for this song:\n`;
+      urls.forEach((urlInfo, index) => {
+        if (urlInfo.type === "font_resource" || urlInfo.type === "other") {
+          return; // Skip non-music links
+        }
+
+        const dbLinkType = mapLinkType(urlInfo.type);
+        const description = urlInfo.description || urlInfo.url;
+
+        sqlContent += `-- Link ${index + 1}: ${urlInfo.type} - ${description}\n`;
+        sqlContent += `INSERT INTO links (song_id, type, description, url, created_at, updated_at)\n`;
+        sqlContent += `VALUES (${song.id}, '${dbLinkType}', E'${description.replace(/'/g, "''")}', E'${urlInfo.url.replace(/'/g, "''")}', NOW(), NOW());\n\n`;
+      });
+    } else {
+      sqlContent += `-- 2. No links found for this song\n\n`;
+    }
+
+    sqlContent += `-- End of generated SQL\n`;
+
+    // Write the SQL file
+    fs.writeFileSync(sqlFilePath, sqlContent, "utf8");
+
+    // Show summary
+    console.log("\n" + "=".repeat(80));
+    console.log("📝 SQL FILE GENERATED");
+    console.log("=".repeat(80));
+    console.log(`📁 File: ${sqlFilename}`);
+    console.log(`📍 Location: ${sqlFilePath}`);
+    console.log(`📊 Content length: ${content.length} characters`);
+    console.log(
+      `🔗 Links found: ${urls.filter((u) => u.type !== "font_resource" && u.type !== "other").length}`
+    );
+    console.log("");
+    console.log("💡 To run this SQL file:");
+    console.log(
+      `   psql -h localhost -U your_user -d your_database -f ${sqlFilename}`
+    );
+    console.log("");
+    console.log(
+      "   Or copy the file path above and run it in your database tool!"
+    );
+    console.log("=".repeat(80));
+  } catch (error) {
+    console.error("❌ Error:", error.message);
   }
 }
 

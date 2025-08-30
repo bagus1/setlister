@@ -6,13 +6,16 @@ async function testProductionPrisma() {
   let prisma;
 
   try {
+    console.log("🧪 Testing Production Prisma Connection");
+    console.log("=====================================");
+
     console.log("🔄 Creating production Prisma client...");
 
     // Create production Prisma client
     prisma = new PrismaClient({
       datasources: {
         db: {
-          url: "postgresql://bagus1_setlists_app:allofmyfriends@192.250.227.26:5432/bagus1_setlists_prod",
+          url: "postgresql://bagus1_setlists_app:allofmyfriends@localhost:5432/bagus1_setlists_prod",
         },
       },
     });
@@ -35,9 +38,13 @@ async function testProductionPrisma() {
     console.log("🔄 Disconnecting...");
     await prisma.$disconnect();
     console.log("✅ Disconnected successfully!");
+
+    console.log("\n🎉 Production Prisma test PASSED!");
   } catch (error) {
     console.error("❌ Error:", error.message);
     console.error("Full error:", error);
+
+    console.log("\n💥 Production Prisma test FAILED!");
 
     if (prisma) {
       try {
@@ -47,10 +54,11 @@ async function testProductionPrisma() {
         console.error("❌ Error disconnecting:", disconnectError.message);
       }
     }
+
+    // Exit with error code for production scripts
+    process.exit(1);
   }
 }
 
 // Run the test
-console.log("🧪 Testing Production Prisma Connection");
-console.log("=====================================");
 testProductionPrisma();

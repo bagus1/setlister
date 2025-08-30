@@ -130,8 +130,24 @@
                 <% ['Set_1', 'Set_2' , 'Set_3' , 'Set_4' ].forEach((setName, index)=> { %>
                     <div class="col-md-6 mb-4">
                         <div class="set-header">
-                            <%= setName.replace('_', ' ') %>
-                                <span class="set-time float-end" data-set="<%= setName %>">0:00</span>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center">
+                                    <span class="set-name-display" data-set-name="<%= setName %>">
+                                        <%= setName.replace('_', ' ') %>
+                                    </span>
+                                    <input type="text" class="form-control form-control-sm set-name-input d-none ms-2" 
+                                           data-set-name="<%= setName %>" 
+                                           data-setlist-id="<%= setlist.id %>"
+                                           value="<%= setName.replace('_', ' ') %>"
+                                           style="width: 120px;">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2 edit-set-name-btn" 
+                                            data-set-name="<%= setName %>"
+                                            title="Edit set name">
+                                        <i class="bi bi-pencil" style="font-size: 0.8rem;"></i>
+                                    </button>
+                                </div>
+                                <span class="set-time" data-set="<%= setName %>">0:00</span>
+                            </div>
                         </div>
                         <div class="drop-zone <%= setlist.sets.find(s => s.name === setName && s.songs.length > 0) ? 'has-songs' : '' %>"
                             data-set-name="<%= setName %>">
@@ -333,6 +349,76 @@
         const countDisplay = document.querySelector('.song-count[data-set="Maybe"]');
         if (countDisplay) {
             countDisplay.textContent = `(${maybeCount} songs)`;
+        }
+
+        // Set name editing functionality
+        const editButtons = document.querySelectorAll('.edit-set-name-btn');
+        editButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const setName = this.dataset.setName;
+                const displaySpan = document.querySelector(`.set-name-display[data-set-name="${setName}"]`);
+                const inputField = document.querySelector(`.set-name-input[data-set-name="${setName}"]`);
+                
+                // Hide display, show input
+                displaySpan.classList.add('d-none');
+                inputField.classList.remove('d-none');
+                inputField.focus();
+                inputField.select();
+            });
+        });
+
+        // Handle saving on blur
+        const setNameInputs = document.querySelectorAll('.set-name-input');
+        setNameInputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                saveSetName(this);
+            });
+            
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    this.blur();
+                }
+            });
+        });
+
+        function saveSetName(inputElement) {
+            const setName = inputElement.dataset.setName;
+            const setlistId = inputElement.dataset.setlistId;
+            const newName = inputElement.value.trim();
+            const displaySpan = document.querySelector(`.set-name-display[data-set-name="${setName}"]`);
+            
+            if (newName && newName !== displaySpan.textContent.trim()) {
+                // Save via AJAX
+                fetch(`/setlists/${setlistId}/update-set-name`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        oldName: setName,
+                        newName: newName
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displaySpan.textContent = newName;
+                    } else {
+                        // Revert on error
+                        inputElement.value = displaySpan.textContent;
+                        alert('Error updating set name: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    inputElement.value = displaySpan.textContent;
+                    alert('Error updating set name');
+                });
+            }
+            
+            // Hide input, show display
+            inputElement.classList.add('d-none');
+            displaySpan.classList.remove('d-none');
         }
     });
 </script>

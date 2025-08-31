@@ -26,6 +26,7 @@ const bulkAddSongsRoutes = require("./routes/bulk-add-songs");
 const linkRoutes = require("./routes/links");
 const legalRoutes = require("./routes/legal");
 const whitelistRequestRoutes = require("./routes/whitelist-requests");
+const googleDocProcessingRoutes = require("./routes/google-doc-processing");
 
 const app = express();
 const server = http.createServer(app);
@@ -98,6 +99,7 @@ app.use("/songs", require("./routes/gig-documents"));
 app.use("/songs", songRoutes);
 app.use("/legal", legalRoutes);
 app.use("/whitelist-request", whitelistRequestRoutes);
+app.use("/google-docs", googleDocProcessingRoutes);
 app.use("/admin", require("./routes/admin"));
 
 // Socket.io for real-time collaboration

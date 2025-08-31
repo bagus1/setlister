@@ -1,8 +1,21 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1>Confirm Quick Setlist</h1>
-            <p class="text-muted">Review and confirm song matches for <strong><%= band.name %></strong></p>
+            <h1>
+                <% if (isGoogleDocImport) { %>
+                    <i class="bi bi-file-earmark-text"></i> Google Doc Import
+                <% } else { %>
+                    Confirm Quick Setlist
+                <% } %>
+            </h1>
+            <p class="text-muted">
+                <% if (isGoogleDocImport) { %>
+                    Review and confirm songs extracted from Google Doc for <strong><%= band.name %></strong>
+                    <br><small class="text-info">Google Doc content will be preserved as gig documents</small>
+                <% } else { %>
+                    Review and confirm song matches for <strong><%= band.name %></strong>
+                <% } %>
+            </p>
         </div>
         <div>
             <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
@@ -46,7 +59,7 @@
                         </div>
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle"></i> 
-                            Your setlist has been created! You can now process songs individually by clicking the checkmark next to each song.
+                            Your setlist has been created! You can now process songs individually by clicking the checkmark next to each song, or remove songs completely by clicking the X button.
                         </div>
                     </div>
                 </div>
@@ -81,13 +94,20 @@
 
         <!-- Song Matching Results -->
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="bi bi-music-note-list"></i> Song Matches
-                    <small class="text-muted">(Select the best match for each song or create new, click the checkmark to add it to your set list)</small>
-                </h5>s
+                </h5>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-arrow-right-circle"></i> Go to Setlist
+                </button>
             </div>
             <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle"></i>
+                    Select the best match for each song or select Create New, click the checkmark to add it to your set list, or click the X to fuhgetaboutit. We appreciate your taking care to keep the title and artist information accurate. If your band does an original rendition of a covers song feel free to create a new song with the same title but you as the artist.
+                </div>
+                
                 <% sets.forEach((set, setIndex) => { %>
                     <h6 class="set-header text-primary mb-3">
                         <i class="bi bi-collection"></i> <%= set.name %>
@@ -101,17 +121,25 @@
                                     <div class="song-match-container">
                                         <div class="d-flex align-items-center mb-2">
                                             <button type="button" 
-                                                    class="btn btn-success btn-sm me-3 process-song-btn" 
+                                                    class="btn btn-success btn-sm me-2 process-song-btn" 
                                                     data-song-line="<%= songMatch.lineNumber %>"
                                                     data-setlist-id="<%= setlist.id %>"
-                                                    title="Process this song">
+                                                    title="Add this to my setlist">
                                                 <i class="bi bi-check-lg"></i>
+                                            </button>
+                                            <button type="button" 
+                                                    class="btn btn-danger btn-sm me-3 remove-song-btn" 
+                                                    data-song-line="<%= songMatch.lineNumber %>"
+                                                    title="Fuhgeddaboudit">
+                                                <i class="bi bi-x-lg"></i>
                                             </button>
                                             <strong class="me-2 fs-5 song-title-text"><%= songMatch.title %></strong>
                                             <% if (songMatch.artist) { %>
                                                 <span class="text-muted">by <%= songMatch.artist %></span>
                                             <% } %>
                                         </div>
+                                        
+
                                         
                                         <!-- Hidden input to track selection -->
                                         <input type="hidden" name="song_<%= songMatch.lineNumber %>" 
@@ -487,6 +515,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 button.classList.remove('btn-success');
                 button.classList.add('btn-outline-success');
                 
+                // Hide the X button when checkmark is clicked
+                const removeButton = container.querySelector('.remove-song-btn');
+                if (removeButton) {
+                    removeButton.style.transition = 'all 0.3s ease-out';
+                    removeButton.style.opacity = '0';
+                    removeButton.style.transform = 'scale(0.8)';
+                    setTimeout(() => {
+                        removeButton.style.display = 'none';
+                    }, 300);
+                }
+                
                 // Hide the song selection area but keep the title visible
                 const songSelectionArea = container.querySelector('.row.g-2');
                 const songTitleArea = container.querySelector('.d-flex.align-items-center.mb-2');
@@ -533,12 +572,56 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Remove song functionality
+    function removeSong(songLine) {
+        const container = document.querySelector(`[data-song-line="${songLine}"]`).closest('.song-match-container');
+        const outerCol = container.closest('.col-12.mb-4');
+        
+        // Animate removal
+        container.style.transition = 'all 0.3s ease-out';
+        container.style.opacity = '0';
+        container.style.transform = 'scale(0.95)';
+        
+        setTimeout(() => {
+            // Remove the entire song container
+            if (outerCol) {
+                outerCol.remove();
+            } else {
+                container.remove();
+            }
+            
+            // Update counts
+            updateCounts();
+            
+            // Check if any songs remain
+            const remainingSongs = document.querySelectorAll('.song-match-container');
+            if (remainingSongs.length === 0) {
+                // No songs left, show message
+                const cardBody = document.querySelector('.card-body');
+                if (cardBody) {
+                    const noSongsMessage = document.createElement('div');
+                    noSongsMessage.className = 'alert alert-info text-center';
+                    noSongsMessage.innerHTML = '<i class="bi bi-info-circle"></i> All songs have been removed.';
+                    cardBody.appendChild(noSongsMessage);
+                }
+            }
+        }, 300);
+    }
+
     // Add click listeners to all process buttons
     document.querySelectorAll('.process-song-btn').forEach(button => {
         button.addEventListener('click', function() {
             const songLine = this.dataset.songLine;
             const setlistId = this.dataset.setlistId;
             processSong(songLine, setlistId);
+        });
+    });
+
+    // Add click listeners to all remove buttons
+    document.querySelectorAll('.remove-song-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const songLine = this.dataset.songLine;
+            removeSong(songLine);
         });
     });
 

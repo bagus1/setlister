@@ -100,3 +100,7 @@ sendgrid.env
 migration-output/ 
 
 /generated/prisma
+
+
+# Google Cloud Service Account credentials
+*api*.json

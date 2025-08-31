@@ -94,13 +94,20 @@
 
         <!-- Song Matching Results -->
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="bi bi-music-note-list"></i> Song Matches
-                    <small class="text-muted">(Select the best match for each song or create new, click the checkmark to add it to your set list, or click the X to remove it completely)</small>
-                </h5>s
+                </h5>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-arrow-right-circle"></i> Go to Setlist
+                </button>
             </div>
             <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle"></i>
+                    Select the best match for each song or select Create New, click the checkmark to add it to your set list, or click the X to fuhgetaboutit. We appreciate your taking care to keep the title and artist information accurate. If your band does an original rendition of a covers song feel free to create a new song with the same title but you as the artist.
+                </div>
+                
                 <% sets.forEach((set, setIndex) => { %>
                     <h6 class="set-header text-primary mb-3">
                         <i class="bi bi-collection"></i> <%= set.name %>

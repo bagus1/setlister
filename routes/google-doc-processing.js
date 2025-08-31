@@ -7,11 +7,7 @@ const { prisma } = require("../lib/prisma");
 const router = express.Router();
 
 // Load Google service account credentials
-const CREDENTIALS_PATH = path.join(
-  __dirname,
-  "..",
-  "setlister-api-44d3352d2811.json"
-);
+// Google Drive API scopes
 const SCOPES = [
   "https://www.googleapis.com/auth/documents.readonly",
   "https://www.googleapis.com/auth/drive.readonly",
@@ -20,7 +16,14 @@ const SCOPES = [
 // Initialize Google Drive API client for exporting documents
 function getGoogleDriveClient() {
   try {
-    const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
+    // Use environment variable for credentials file, fallback to default
+    const credentialsPath = process.env.GOOGLE_CREDENTIALS_FILE
+      ? path.join(__dirname, "..", process.env.GOOGLE_CREDENTIALS_FILE)
+      : path.join(__dirname, "..", "setlister-api-8ba5ce617f03.json"); // Default to working file
+
+    console.log(`Using credentials file: ${path.basename(credentialsPath)}`);
+
+    const credentials = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: SCOPES,

@@ -173,6 +173,8 @@ router.get("/:id", async (req, res) => {
               },
             },
             vocalist: true,
+            links: true,
+            gigDocuments: true,
           },
         },
       },

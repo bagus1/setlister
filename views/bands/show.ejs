@@ -285,6 +285,63 @@ Set 4:
             </div>
         </div>
 
+        <!-- Google Doc Processing Panel -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-file-earmark-text"></i> Process Google Doc
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Paste a Google Doc URL to automatically extract songs and create gig documents.
+                </p>
+                
+                <form id="googleDocForm">
+                    <div class="mb-3">
+                        <label for="googleDocUrl" class="form-label">Google Doc URL:</label>
+                        <input type="url" class="form-control" id="googleDocUrl" name="googleDocUrl" 
+                            placeholder="https://docs.google.com/document/d/YOUR_DOC_ID/edit" required>
+                        <div class="form-text">
+                            Paste the full URL from your Google Doc containing chord charts or setlists.
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm" id="processGoogleDocBtn">
+                            <i class="bi bi-play-circle"></i> Process Document
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="clearGoogleDocForm">
+                            Clear
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Processing Status (initially hidden) -->
+                <div id="processingStatus" class="mt-3" style="display: none;">
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Processing...</span>
+                            </div>
+                            <span id="processingMessage">Processing your Google Doc...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results Display (initially hidden) -->
+                <div id="processingResults" class="mt-3" style="display: none;">
+                    <div class="alert alert-success">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-check-circle"></i> Processing Complete!
+                        </h6>
+                        <div id="resultsContent">
+                            <!-- Results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Band Members Section -->
         <div class="card">
             <div class="card-header">
@@ -372,33 +429,46 @@ Set 4:
                             <div class="col-md-4 mb-3">
                                 <a href="/songs/<%= song.song.id %>" class="text-decoration-none">
                                     <div class="song-card">
-                                        <div class="song-title">
-                                            <%= song.song.title %>
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="song-title text-dark mb-0">
+                                                <%= song.song.title %>
+                                                <% if (song.song.private) { %>
+                                                    <i class="bi bi-lock text-warning ms-1" title="Private song"></i>
+                                                <% } %>
+                                            </h6>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <% if (song.song.links && song.song.links.length > 0) { %>
+                                                    <i class="bi bi-link-45deg text-primary" title="Has links"></i>
+                                                <% } %>
+                                                <% if (song.song.gigDocuments && song.song.gigDocuments.length > 0) { %>
+                                                    <i class="bi bi-file-earmark-text text-success" title="Has gig documents"></i>
+                                                <% } %>
+                                            </div>
                                         </div>
                                         <% if (song.song.artists && song.song.artists.length> 0) { %>
                                             <div class="song-artist">
                                                 by <%= song.song.artists[0].artist.name %>
                                             </div>
+                                        <% } %>
+                                        <% if (song.song.vocalist) { %>
+                                            <div class="song-vocalist">
+                                                vocals: <%= song.song.vocalist.name %>
+                                            </div>
+                                        <% } %>
+                                        <div class="d-flex align-items-center mt-2">
+                                            <% if (song.song.key) { %>
+                                                <span class="song-key me-2">
+                                                    <%= song.song.key %>
+                                                </span>
                                             <% } %>
-                                                <% if (song.song.vocalist) { %>
-                                                    <div class="song-vocalist">
-                                                        vocals: <%= song.song.vocalist.name %>
-                                                    </div>
-                                                    <% } %>
-                                                        <div class="d-flex align-items-center mt-2">
-                                                            <% if (song.song.key) { %>
-                                                                <span class="song-key me-2">
-                                                                    <%= song.song.key %>
-                                                                </span>
-                                                                <% } %>
-                                                                    <% if (song.song.time) { %>
-                                                                        <% const minutes=Math.floor(song.song.time / 60); %>
-                                                                            <% const seconds=song.song.time % 60; %>
-                                                                                <span class="song-time">
-                                                                                    <%= minutes %>:<%= seconds.toString().padStart(2, '0') %>
-                                                                                </span>
-                                                                                <% } %>
-                                                        </div>
+                                            <% if (song.song.time) { %>
+                                                <% const minutes=Math.floor(song.song.time / 60); %>
+                                                <% const seconds=song.song.time % 60; %>
+                                                <span class="song-time">
+                                                    <%= minutes %>:<%= seconds.toString().padStart(2, '0') %>
+                                                </span>
+                                            <% } %>
+                                        </div>
                                     </div>
                                 </a>
                             </div>
@@ -541,6 +611,107 @@ Set 3:
 Set 4:
 
 `;
+        });
+
+        // Google Doc Processing Form
+        document.getElementById('googleDocForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const url = document.getElementById('googleDocUrl').value;
+            const processBtn = document.getElementById('processGoogleDocBtn');
+            const statusDiv = document.getElementById('processingStatus');
+            const resultsDiv = document.getElementById('processingResults');
+            
+            // Show processing status
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+            statusDiv.style.display = 'block';
+            resultsDiv.style.display = 'none';
+            
+                    // Call the backend API
+        fetch('/google-docs/admin/process-google-doc', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ googleDocUrl: url })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Hide status, show results
+            statusDiv.style.display = 'none';
+            resultsDiv.style.display = 'block';
+            
+            // Reset button
+            processBtn.disabled = false;
+            processBtn.innerHTML = '<i class="bi bi-play-circle"></i> Process Document';
+            
+            if (data.success) {
+                // Show success results with song extraction details
+                let songsHtml = '';
+                if (data.data.extractedSongs && data.data.extractedSongs.length > 0) {
+                    songsHtml = '<div class="mt-3"><h6>Songs Found:</h6><ul class="list-group">';
+                    data.data.extractedSongs.forEach(song => {
+                        // Escape HTML content for safe display
+                        const escapedPreview = song.contentPreview
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#39;');
+                        
+                        songsHtml += `
+                            <li class="list-group-item">
+                                <strong>${song.title}</strong> (Song ${song.index})
+                                <br><small class="text-muted">Content: ${song.contentLength} characters</small>
+                                <br><small class="text-muted">Preview: ${escapedPreview}</small>
+                            </li>
+                        `;
+                    });
+                    songsHtml += '</ul></div>';
+                }
+                
+                document.getElementById('resultsContent').innerHTML = `
+                    <p><strong>Google Doc processed successfully!</strong></p>
+                    <p><strong>Title:</strong> ${data.data.title || 'Untitled'}</p>
+                    <p><strong>Document ID:</strong> ${data.data.documentId}</p>
+                    <p><strong>Original Content:</strong> ${data.data.contentLength} characters</p>
+                    <p><strong>Converted HTML:</strong> ${data.data.htmlContentLength} characters</p>
+                    <p><strong>Songs Found:</strong> ${data.data.songsFound}</p>
+                    ${songsHtml}
+                `;
+            } else {
+                // Show error results
+                document.getElementById('resultsContent').innerHTML = `
+                    <p><strong>Error processing Google Doc:</strong></p>
+                    <p class="text-danger">${data.error}</p>
+                `;
+                resultsDiv.className = 'mt-3 alert alert-danger';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            // Hide status, show error
+            statusDiv.style.display = 'none';
+            resultsDiv.style.display = 'block';
+            resultsDiv.className = 'mt-3 alert alert-danger';
+            
+            // Reset button
+            processBtn.disabled = false;
+            processBtn.innerHTML = '<i class="bi bi-play-circle"></i> Process Document';
+            
+            document.getElementById('resultsContent').innerHTML = `
+                <p><strong>Error processing Google Doc:</strong></p>
+                <p class="text-danger">Network error. Please try again.</p>
+            `;
+        });
+        });
+
+        // Clear Google Doc Form
+        document.getElementById('clearGoogleDocForm').addEventListener('click', function() {
+            document.getElementById('googleDocUrl').value = '';
+            document.getElementById('processingStatus').style.display = 'none';
+            document.getElementById('processingResults').style.display = 'none';
         });
     </script>
 

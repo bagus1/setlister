@@ -1306,14 +1306,14 @@ async function generateSQLForSingleSong() {
     // Gig document SQL
     sqlContent += `-- 1. Create gig document:\n`;
 
-        // For very long content, use regular quotes with proper escaping
+    // For very long content, use regular quotes with proper escaping
     const escapedContent = content.replace(/'/g, "''");
     if (escapedContent.length > 1000) {
       sqlContent += `-- Note: Content is very long, using regular quotes with escaping\n`;
-      
+
       // Output the complete SQL in one compact block
       const sqlStatement = `INSERT INTO gig_documents (song_id, created_by_id, type, version, content, is_active, created_at, updated_at) VALUES (${song.id}, 1, 'chords', 1, '${escapedContent.replace(/\n/g, " ").replace(/\s+/g, " ")}', true, NOW(), NOW());`;
-      
+
       sqlContent += sqlStatement + "\n";
     } else {
       sqlContent += `INSERT INTO gig_documents (song_id, created_by_id, type, version, content, is_active, created_at, updated_at) VALUES (${song.id}, 1, 'chords', 1, '${escapedContent}', true, NOW(), NOW());\n`;

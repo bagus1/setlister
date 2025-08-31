@@ -1290,31 +1290,49 @@ restore_dbackup_local() {
     
     # List available backups
     print_status "Available backups in $BACKUP_PATH:"
-    local backups=($(ls -t "$BACKUP_PATH"/*.sql.gz 2>/dev/null))
     
-    if [ ${#backups[@]} -eq 0 ]; then
-        print_error "No compressed backups found in $BACKUP_PATH"
+    # Find all backup files (SQL, compressed SQL, and tar.gz)
+    local sql_backups=($(ls -t "$BACKUP_PATH"/*.sql 2>/dev/null))
+    local sql_gz_backups=($(ls -t "$BACKUP_PATH"/*.sql.gz 2>/dev/null))
+    local tar_gz_backups=($(ls -t "$BACKUP_PATH"/*.tar.gz 2>/dev/null))
+    
+    # Combine all backups
+    local all_backups=("${sql_backups[@]}" "${sql_gz_backups[@]}" "${tar_gz_backups[@]}")
+    
+    if [ ${#all_backups[@]} -eq 0 ]; then
+        print_error "No backup files found in $BACKUP_PATH"
         print_error "Run './deploy.sh dbackup' first to create a backup"
         return 1
     fi
     
     # Show backups with numbers
-    for i in "${!backups[@]}"; do
-        local filename=$(basename "${backups[$i]}")
-        local size=$(du -h "${backups[$i]}" | cut -f1)
-        echo "  $((i+1)). $filename ($size)"
+    for i in "${!all_backups[@]}"; do
+        local filename=$(basename "${all_backups[$i]}")
+        local size=$(du -h "${all_backups[$i]}" | cut -f1)
+        local file_type=""
+        
+        # Determine file type for display
+        if [[ "$filename" == *.tar.gz ]]; then
+            file_type=" (TAR.GZ)"
+        elif [[ "$filename" == *.sql.gz ]]; then
+            file_type=" (SQL.GZ)"
+        elif [[ "$filename" == *.sql ]]; then
+            file_type=" (SQL)"
+        fi
+        
+        echo "  $((i+1)). $filename$file_type ($size)"
     done
     
     # Prompt for backup selection
     echo
-    read -p "Select backup to restore (1-${#backups[@]}): " selection
+    read -p "Select backup to restore (1-${#all_backups[@]}): " selection
     
-    if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt ${#backups[@]} ]; then
-        print_error "Invalid selection. Please choose a number between 1 and ${#backups[@]}"
+    if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt ${#all_backups[@]} ]; then
+        print_error "Invalid selection. Please choose a number between 1 and ${#all_backups[@]}"
         return 1
     fi
     
-    local selected_backup="${backups[$((selection-1))]}"
+    local selected_backup="${all_backups[$((selection-1))]}"
     local backup_filename=$(basename "$selected_backup")
     
     print_status "Selected backup: $backup_filename"
@@ -1359,10 +1377,38 @@ restore_dbackup_local() {
         print_warning "Skipping database cleaning - restore may fail due to existing data conflicts"
     fi
     
-    # Decompress backup
-    print_status "Decompressing backup..."
-    local temp_sql="${selected_backup%.gz}"
-    gunzip -c "$selected_backup" > "$temp_sql"
+    # Handle different backup file types
+    local temp_sql=""
+    
+    if [[ "$selected_backup" == *.tar.gz ]]; then
+        print_status "Extracting TAR.GZ backup..."
+        local temp_dir=$(mktemp -d)
+        tar -xzf "$selected_backup" -C "$temp_dir"
+        
+        # Find the SQL file in the extracted directory
+        local sql_file=$(find "$temp_dir" -name "*.sql" -type f | head -1)
+        if [ -z "$sql_file" ]; then
+            print_error "No SQL file found in TAR.GZ backup"
+            rm -rf "$temp_dir"
+            return 1
+        fi
+        
+        temp_sql="$sql_file"
+        print_status "Found SQL file: $(basename "$sql_file")"
+        
+    elif [[ "$selected_backup" == *.sql.gz ]]; then
+        print_status "Decompressing SQL.GZ backup..."
+        temp_sql="${selected_backup%.gz}"
+        gunzip -c "$selected_backup" > "$temp_sql"
+        
+    elif [[ "$selected_backup" == *.sql ]]; then
+        print_status "Using uncompressed SQL backup..."
+        temp_sql="$selected_backup"
+        
+    else
+        print_error "Unsupported backup file type"
+        return 1
+    fi
     
     # Restore database
     print_status "Restoring database (this may take a while)..."
@@ -1371,8 +1417,12 @@ restore_dbackup_local() {
         print_status "Check restore_output.log for details"
     }
     
-    # Clean up temp file
-    rm -f "$temp_sql"
+    # Clean up temp files
+    if [[ "$selected_backup" == *.tar.gz ]]; then
+        rm -rf "$temp_dir"
+    else
+        rm -f "$temp_sql"
+    fi
     
     # Verify restore
     print_status "Verifying restore..."
@@ -1469,55 +1519,92 @@ restore_prod_db_locally() {
     }
     print_success "Backup extracted successfully"
     
-    # Step 2: Clear current database
-    print_status "Step 2: Clearing current database..."
+    # Step 2: Clear current database and recreate schema
+    print_status "Step 2: Clearing current database and recreating schema..."
     
-    # Disable foreign key checks temporarily
-    PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -c "SET session_replication_role = replica;" || {
-        print_warning "Could not disable foreign key checks (continuing)"
+    # Drop and recreate the entire schema to ensure clean state
+    PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" || {
+        print_error "Failed to recreate database schema"
+        return 1
     }
     
-    # Clear all tables in reverse dependency order
-    local tables=("password_resets" "BandInvitations" "medley_songs" "links" "gig_documents" "setlist_songs" "setlist_sets" "setlists" "song_artists" "band_songs" "band_members" "songs" "bands" "vocalists" "artists" "users")
-    
-    for table in "${tables[@]}"; do
-        PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -c "TRUNCATE TABLE $table CASCADE;" 2>/dev/null || {
-            print_warning "Table $table doesn't exist or couldn't be cleared (continuing)"
-        }
-    done
-    
-    # Re-enable foreign key checks
-    PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -c "SET session_replication_role = DEFAULT;" || {
-        print_warning "Could not re-enable foreign key checks (continuing)"
-    }
-    
-    print_success "Database cleared successfully"
+    print_success "Database schema recreated successfully"
     
     # Step 3: Restore tables in dependency order
     print_status "Step 3: Restoring tables in dependency order..."
     
-    local restore_order=("users" "artists" "vocalists" "bands" "songs" "band_members" "band_songs" "song_artists" "setlists" "setlist_sets" "setlist_songs" "gig_documents" "links" "medley_songs" "BandInvitations" "password_resets")
+    # First, check if we have a schema file
+    local schema_file="$extract_dir/schema.sql"
+    if [ -f "$schema_file" ]; then
+        print_status "Found schema file, creating tables first..."
+        PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" < "$schema_file" 2>&1 | tee -a restore_output.log || {
+            print_warning "Schema creation had some errors (continuing)"
+        }
+        print_success "Schema created"
+    fi
     
-    for table in "${restore_order[@]}"; do
-        local sql_file="$extract_dir/migration-output/$table.sql"
+    # Look for individual table files in migration-output directory
+    local migration_dir="$extract_dir/migration-output"
+    if [ -d "$migration_dir" ]; then
+        local restore_order=("users" "artists" "vocalists" "bands" "songs" "band_members" "band_songs" "song_artists" "setlists" "setlist_sets" "setlist_songs" "gig_documents" "links" "medley_songs" "BandInvitations" "password_resets")
         
-        if [ -f "$sql_file" ]; then
-            print_status "Restoring table: $table"
-            PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" < "$sql_file" 2>&1 | tee -a restore_output.log || {
-                print_warning "Failed to restore $table (continuing with other tables)"
-            }
+        for table in "${restore_order[@]}"; do
+            local sql_file="$migration_dir/$table.sql"
             
-            # Get row count for verification
-            local count_result=$(PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM $table;" 2>/dev/null | xargs)
-            if [ -n "$count_result" ]; then
-                print_status "  📊 $table: $count_result rows restored"
+            if [ -f "$sql_file" ]; then
+                print_status "Restoring table: $table"
+                PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" < "$sql_file" 2>&1 | tee -a restore_output.log || {
+                    print_warning "Failed to restore $table (continuing with other tables)"
+                }
+                
+                # Get row count for verification
+                local count_result=$(PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM $table;" 2>/dev/null | xargs)
+                if [ -n "$count_result" ]; then
+                    print_status "  📊 $table: $count_result rows restored"
+                fi
+            else
+                print_warning "SQL file not found for $table, skipping"
             fi
+        done
+    else
+        print_warning "No migration-output directory found, checking for other SQL files..."
+        
+        # Look for any SQL files in the extracted directory
+        local sql_files=($(find "$extract_dir" -name "*.sql" -type f))
+        if [ ${#sql_files[@]} -gt 0 ]; then
+            print_status "Found ${#sql_files[@]} SQL files, attempting to restore..."
+            for sql_file in "${sql_files[@]}"; do
+                local filename=$(basename "$sql_file")
+                print_status "Processing: $filename"
+                PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" < "$sql_file" 2>&1 | tee -a restore_output.log || {
+                    print_warning "Failed to process $filename (continuing)"
+                }
+            done
         else
-            print_warning "SQL file not found for $table, skipping"
+            print_error "No SQL files found in extracted backup"
+            return 1
         fi
-    done
+    fi
     
     print_success "Table restoration completed"
+    
+    # Step 3.5: Run Prisma migrations if needed
+    print_status "Step 3.5: Running Prisma migrations..."
+    if command -v npx &> /dev/null; then
+        print_status "Running Prisma migrate deploy..."
+        npx prisma migrate deploy 2>&1 | tee -a restore_output.log || {
+            print_warning "Prisma migrations had some errors (continuing)"
+        }
+        print_success "Prisma migrations completed"
+    
+    print_status "Regenerating Prisma client..."
+    npx prisma generate 2>&1 | tee -a restore_output.log || {
+        print_warning "Prisma client generation had some errors (continuing)"
+    }
+    print_success "Prisma client regenerated"
+    else
+        print_warning "npx not found, skipping Prisma migrations and client generation"
+    fi
     
     # Step 4: Verify restore
     print_status "Step 4: Verifying restore..."

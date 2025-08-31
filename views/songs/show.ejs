@@ -260,17 +260,17 @@
     </div>
 </div>
 
-            <!-- Gig Documents Section - Visible to all users, but add form only for logged in users -->
+            <!-- Music Stand Documents Section - Visible to all users, but add form only for logged in users -->
             <div class="row mt-4">
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">
-                                <i class="bi bi-file-earmark-text"></i> Gig Documents
+                                <i class="bi bi-file-earmark-text"></i> Music Stand Documents
                             </h5>
                         </div>
                         <div class="card-body">
-                            <!-- Existing Gig Documents - Visible to all users -->
+                            <!-- Existing Music Stand Documents - Visible to all users -->
                             <% if (song.gigDocuments && song.gigDocuments.length> 0) { %>
                                 <!-- Group by type -->
                                 <% const groupedDocs={}; song.gigDocuments.forEach(doc=> {
@@ -309,13 +309,13 @@
                                             </div>
                                             <% }); %>
                                                 <% } else { %>
-                                                    <p class="text-muted mb-4">No gig documents created yet.</p>
+                                                    <p class="text-muted mb-4">No Music Stand documents created yet.</p>
                                                     <% } %>
 
-                                                        <!-- Add New Gig Document - Only for logged in users -->
+                                                        <!-- Add New Music Stand Document - Only for logged in users -->
                                                         <% if (loggedIn) { %>
                                                             <div>
-                                                                <h6>Add New Gig Document:</h6>
+                                                                <h6>Add New Music Stand Document:</h6>
                                                                 <a href="/songs/<%= song.id %>/docs/new"
                                                                     class="btn btn-primary btn-sm">
                                                                     <i class="bi bi-plus-circle"></i> Create New
@@ -325,7 +325,7 @@
                                                         <% } else { %>
                                                             <div class="text-center">
                                                                                             <p class="text-muted mb-0">
-                                <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a> to add new gig documents for this song.
+                                <a href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a> to add new Music Stand documents for this song.
                             </p>
                                                             </div>
                                                         <% } %>

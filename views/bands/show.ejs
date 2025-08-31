@@ -98,6 +98,16 @@
         transition: all 0.2s ease;
     }
 
+    /* Google Doc URL input styling */
+    #googleDocUrl {
+        border: 2px solid #6c757d !important;
+    }
+
+    /* Email input styling to match Google Doc URL */
+    input[name="email"] {
+        border: 2px solid #6c757d !important;
+    }
+
     .band-songs .song-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -284,18 +294,22 @@ Set 4:
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="bi bi-file-earmark-text"></i> Process Google Doc
+                    <i class="bi bi-question-circle text-muted ms-2" 
+                       data-bs-toggle="tooltip" 
+                       data-bs-placement="top" 
+                       title="We can't work all the miracles here. Make sure your google docs just has songs in it and that for the title of the song, each song has the same heading style like Heading 1 and only include the exact title of the song in that heading. Only have the exact title in that heading. Only do this once per Google Doc or we'll get duplicate Music Stand Docs and links created which we'll have to clean up"></i>
                 </h5>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-3">
-                    Paste a Google Doc URL to automatically extract songs and create gig documents.
-                </p>
+                            <p class="text-muted mb-3">
+                Paste a public Google Doc URL to automatically add your songs for your band and a new set.
+            </p>
                 
                 <form id="googleDocForm">
                     <div class="mb-3">
                         <label for="googleDocUrl" class="form-label">Google Doc URL:</label>
-                        <input type="url" class="form-control" id="googleDocUrl" name="googleDocUrl" 
-                            placeholder="https://docs.google.com/document/d/YOUR_DOC_ID/edit" required>
+                                        <input type="url" class="form-control" id="googleDocUrl" name="googleDocUrl"
+                    placeholder="google doc url" required>
                         <div class="form-text">
                             Paste the full URL from your Google Doc containing chord charts or setlists.
                         </div>
@@ -436,7 +450,7 @@ Set 4:
                                                     <i class="bi bi-link-45deg text-primary" title="Has links"></i>
                                                 <% } %>
                                                 <% if (song.song.gigDocuments && song.song.gigDocuments.length > 0) { %>
-                                                    <i class="bi bi-file-earmark-text text-success" title="Has gig documents"></i>
+                                                    <i class="bi bi-file-earmark-text text-success" title="Has Music Stand documents"></i>
                                                 <% } %>
                                             </div>
                                         </div>

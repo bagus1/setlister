@@ -297,7 +297,7 @@ Set 4:
                     <i class="bi bi-question-circle text-muted ms-2" 
                        data-bs-toggle="tooltip" 
                        data-bs-placement="top" 
-                       title="We can't work all the miracles here. Make sure your google docs just has songs in it and that for the title of the song, each song has the same heading style like Heading 1 and only include the exact title of the song in that heading. Only have the exact title in that heading. Only do this once per Google Doc or we'll get duplicate Music Stand Docs and links created which we'll have to clean up"></i>
+                       title="We can't work all the miracles here. Make sure your google docs just has songs in it and that for the title of the song, each song has the same heading style like Heading 1 and only include the exact title of the song in that heading. Only have the exact title in that heading. Only do this once per Google Doc or we'll get duplicate Music Stand Docs and links created. I've had luck with 150 songs (1 page per song) or less, but not too much more."></i>
                 </h5>
             </div>
             <div class="card-body">
@@ -659,11 +659,12 @@ Set 4:
                 `;
             } else if (data && data.error) {
                 // Show error results
+                resultsDiv.style.display = 'block';
+                resultsDiv.className = 'mt-3 alert alert-danger';
                 document.getElementById('resultsContent').innerHTML = `
                     <p><strong>Error processing Google Doc:</strong></p>
                     <p class="text-danger">${data.error}</p>
                 `;
-                resultsDiv.className = 'mt-3 alert alert-danger';
             }
         })
         .catch(error => {

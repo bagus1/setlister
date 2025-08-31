@@ -103,6 +103,7 @@ function processHtmlContent(htmlContent) {
     // First pass: Detect what heading levels are used for song titles
     let detectedHeadingLevel = null;
     let headingPattern = null;
+    let usePageBreakParsing = false;
 
     for (let i = 0; i < songs.length; i++) {
       const songContent = songs[i];
@@ -130,11 +131,11 @@ function processHtmlContent(htmlContent) {
         break;
       }
     }
-    console.log("cooontinuing song extraction");
+
+    // If no headings found, use page break parsing
     if (!detectedHeadingLevel) {
-      console.log(`No heading tags detected, falling back to H1 pattern`);
-      detectedHeadingLevel = "h1";
-      headingPattern = /<h1[^>]*>(.*?)<\/h1>/gi;
+      console.log(`No heading tags detected, using page break parsing`);
+      usePageBreakParsing = true;
     }
 
     // Second pass: Extract songs using detected heading pattern
@@ -149,48 +150,103 @@ function processHtmlContent(htmlContent) {
 
       // songCount will be incremented only when we find actual songs
 
-      // Extract song title using detected heading pattern
+      // Extract song title using detected heading pattern or page break parsing
       let songTitle = "untitled";
 
-      // Pattern 1: Look for the first non-empty h1 tag with content
-      const h1Matches = songContent.match(/<h1[^>]*>.*?<\/h1>/gi);
-      if (h1Matches) {
-        for (const h1Match of h1Matches) {
-          // Extract text content from h1 tag
-          const textMatch = h1Match.match(/<h1[^>]*>(.*?)<\/h1>/i);
-          if (textMatch && textMatch[1]) {
-            // Remove HTML tags and get clean text
-            const cleanText = textMatch[1].replace(/<[^>]*>/g, "").trim();
-            if (cleanText && cleanText.length > 0) {
-              songTitle = sanitizeFilename(cleanText);
+      if (usePageBreakParsing) {
+        // Page break parsing: use the first line of each section
+        console.log(
+          `Section ${index} content preview:`,
+          songContent.substring(0, 200)
+        );
+
+        // Get the first non-empty line (likely the song title)
+        const lines = songContent.split("\n").filter((line) => line.trim());
+        if (lines.length > 0) {
+          const firstLine = lines[0];
+          // Remove HTML tags and get clean text
+          const cleanText = firstLine.replace(/<[^>]*>/g, "").trim();
+          if (cleanText && cleanText.length > 0) {
+            // Extract just the song title from the beginning of the line
+            let extractedTitle = cleanText;
+
+            // Stop at common metadata indicators
+            const stopPatterns = [
+              /Chords by/i,
+              /views/i,
+              /saves/i,
+              /comments/i,
+              /Author:/i,
+              /Difficulty:/i,
+              /Speed:/i,
+              /Tuning:/i,
+              /Key:/i,
+              /Capo:/i,
+              /\[/i, // Stop at section markers like [Intro]
+              /\(/i, // Stop at parentheses
+            ];
+
+            for (const pattern of stopPatterns) {
+              const match = cleanText.match(pattern);
+              if (match) {
+                extractedTitle = cleanText.substring(0, match.index).trim();
+                break;
+              }
+            }
+
+            // Clean up any remaining artifacts
+            extractedTitle = extractedTitle.replace(/\s+/g, " ").trim();
+
+            if (extractedTitle && extractedTitle.length > 0) {
+              songTitle = sanitizeFilename(extractedTitle);
               console.log(
-                `Song ${index}: Extracted title: "${cleanText}" -> sanitized: "${songTitle}"`
+                `Song ${index}: Page break parsing - Extracted title: "${extractedTitle}" -> sanitized: "${songTitle}"`
               );
-              break; // Use the first non-empty title found
             }
           }
         }
-      }
+      } else {
+        // Heading-based parsing (existing logic)
+        // Pattern 1: Look for the first non-empty h1 tag with content
+        const h1Matches = songContent.match(/<h1[^>]*>.*?<\/h1>/gi);
+        if (h1Matches) {
+          for (const h1Match of h1Matches) {
+            // Extract text content from h1 tag
+            const textMatch = h1Match.match(/<h1[^>]*>(.*?)<\/h1>/i);
+            if (textMatch && textMatch[1]) {
+              // Remove HTML tags and get clean text
+              const cleanText = textMatch[1].replace(/<[^>]*>/g, "").trim();
+              if (cleanText && cleanText.length > 0) {
+                songTitle = sanitizeFilename(cleanText);
+                console.log(
+                  `Song ${index}: Extracted title: "${cleanText}" -> sanitized: "${songTitle}"`
+                );
+                break; // Use the first non-empty title found
+              }
+            }
+          }
+        }
 
-      // If still untitled, try alternative patterns
-      if (songTitle === "untitled") {
-        // Pattern 2: <h1...><span...>title</span>
-        const titleMatch1 = songContent.match(
-          /<h1[^>]*>.*?<span[^>]*>([^<]*?)<\/span>/i
-        );
-        if (titleMatch1 && titleMatch1[1] && titleMatch1[1].trim()) {
-          songTitle = sanitizeFilename(titleMatch1[1]);
-          console.log(
-            `Song ${index}: Extracted title: "${titleMatch1[1]}" -> sanitized: "${songTitle}"`
+        // If still untitled, try alternative patterns
+        if (songTitle === "untitled") {
+          // Pattern 2: <h1...><span...>title</span>
+          const titleMatch1 = songContent.match(
+            /<h1[^>]*>.*?<span[^>]*>([^<]*?)<\/span>/i
           );
-        } else {
-          // Pattern 3: <h1...>title</h1> (without span)
-          const titleMatch2 = songContent.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-          if (titleMatch2 && titleMatch2[1] && titleMatch2[1].trim()) {
-            songTitle = sanitizeFilename(titleMatch2[1]);
+          if (titleMatch1 && titleMatch1[1] && titleMatch1[1].trim()) {
+            songTitle = sanitizeFilename(titleMatch1[1]);
             console.log(
-              `Song ${index}: Extracted title: "${titleMatch2[1]}" -> sanitized: "${songTitle}"`
+              `Song ${index}: Extracted title: "${titleMatch1[1]}" -> sanitized: "${songTitle}"`
             );
+          } else {
+            // Pattern 3: <h1...>title</h1> (without span)
+            const titleMatch2 = songContent.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+            if (titleMatch2 && titleMatch2[1] && titleMatch2[1].trim()) {
+              songTitle = sanitizeFilename(titleMatch2[1]);
+              console.log(
+                `Song ${index}: Extracted title: "${titleMatch2[1]}" -> sanitized: "${songTitle}"`
+              );
+            }
           }
         }
       }
@@ -243,6 +299,14 @@ function processHtmlContent(htmlContent) {
 
     console.log(`=== Song extraction completed: ${songCount} songs found ===`);
     console.log("Bagus was here 2");
+
+    // Check if we found any songs
+    if (songCount === 0) {
+      throw new Error(
+        "No songs could be extracted from this document. Please ensure your Google Doc has songs separated by page breaks and each song title is clearly formatted."
+      );
+    }
+
     console.log(
       "extractedSongs BAGUS FULL LENGTH:  ",
       extractedSongs[0].fullContent.length
@@ -314,6 +378,14 @@ router.post("/admin/process-google-doc", async (req, res) => {
     // Add document title to the result
     result.documentTitle = documentTitle;
     console.log("Bagus was here 3");
+
+    // Check if we have songs before proceeding
+    if (!result.extractedSongs || result.extractedSongs.length === 0) {
+      throw new Error(
+        "No songs could be extracted from this document. Please ensure your Google Doc has songs separated by page breaks and each song title is clearly formatted."
+      );
+    }
+
     console.log(
       "result BAGUS FULL LENGTH:  ",
       result.extractedSongs[0].fullContent.length
@@ -478,9 +550,24 @@ router.post("/admin/process-google-doc", async (req, res) => {
     console.error("Error message:", error.message);
     console.error("=== END ERROR ===");
 
+    // Check for specific parsing error
+    let userFriendlyError = "Failed to process Google Doc";
+
+    if (
+      error.message &&
+      error.message.includes(
+        "Cannot read properties of undefined (reading 'fullContent')"
+      )
+    ) {
+      userFriendlyError =
+        "Sorry, we can't process that doc. Make sure your Google Doc has songs separated by page breaks and each song title is clearly formatted.";
+    } else if (error.message) {
+      userFriendlyError = error.message;
+    }
+
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to process Google Doc",
+      error: userFriendlyError,
     });
   }
 });

@@ -791,27 +791,36 @@ router.post(
       }
 
       // Parse the song list
+      console.log("=== PARSING DEBUG ===");
+      console.log("Raw input:", songList);
       const parseResult = parseQuickSetInput(songList);
+      console.log("Parse result:", {
+        sets: parseResult.sets.length,
+        songs: parseResult.songs.length,
+        setlistTitle: parseResult.setlistTitle,
+        errors: parseResult.errors,
+      });
 
       if (parseResult.errors.length > 0) {
         req.flash("error", parseResult.errors.join(", "));
         return res.redirect(`/bands/${bandId}`);
       }
 
-      // Create setlist immediately with auto-generated name
+      // Create setlist with detected title or auto-generated name
       const currentDate = new Date();
-      const defaultTitle = `Quick Set - ${currentDate.toLocaleDateString(
-        "en-US",
-        {
+      const setlistTitle =
+        parseResult.setlistTitle ||
+        `Quick Set - ${currentDate.toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
-        }
-      )}`;
+        })}`;
+
+      console.log(`Creating setlist with title: "${setlistTitle}"`);
 
       const setlist = await prisma.setlist.create({
         data: {
-          title: defaultTitle,
+          title: setlistTitle,
           bandId: bandId,
           date: currentDate,
           createdAt: new Date(),
@@ -1048,20 +1057,35 @@ router.post("/:id/quick-set/process-song", async (req, res) => {
       s.songs.some((song) => song.lineNumber === parseInt(songLine))
     );
     console.log(`Processing song ${songLine}, setData:`, setData);
+    console.log("Session data structure:", {
+      isGoogleDocImport: req.session.quickSetData.isGoogleDocImport,
+      hasGoogleDocData: !!req.session.quickSetData.googleDocData,
+      sets: req.session.quickSetData.sets.map((s) => ({
+        name: s.name,
+        songCount: s.songs.length,
+      })),
+      songs: req.session.quickSetData.songs.map((s) => ({
+        lineNumber: s.lineNumber,
+        title: s.title,
+        hasProcessedContent: !!s.processedContent,
+      })),
+    });
 
     if (setData) {
       const setName =
-        setData.name === "Set 1"
+        setData.name === "Google Doc Songs"
           ? "Set_1"
-          : setData.name === "Set 2"
-            ? "Set_2"
-            : setData.name === "Set 3"
-              ? "Set_3"
-              : setData.name === "Set 4"
-                ? "Set_4"
-                : setData.name === "Encore"
-                  ? "Set_3"
-                  : "Maybe";
+          : setData.name === "Set 1"
+            ? "Set_1"
+            : setData.name === "Set 2"
+              ? "Set_2"
+              : setData.name === "Set 3"
+                ? "Set_3"
+                : setData.name === "Set 4"
+                  ? "Set_4"
+                  : setData.name === "Encore"
+                    ? "Set_3"
+                    : "Set_1"; // Default to Set_1 for Google Doc imports
 
       console.log(
         `Looking for setlist set: setlistId=${setlistId}, name=${setName}`
@@ -1097,6 +1121,101 @@ router.post("/:id/quick-set/process-song", async (req, res) => {
           },
         });
         console.log(`Successfully added song to setlist`);
+      }
+    }
+
+    // If this is a Google Doc import and we have content, create a gig document and links
+    if (
+      req.session.quickSetData.isGoogleDocImport &&
+      req.session.quickSetData.googleDocData &&
+      originalSong.processedContent
+    ) {
+      try {
+        console.log("Creating gig document for Google Doc import:");
+        console.log("- Song title:", processedSong.title);
+        console.log("- Song ID:", processedSong.id);
+        console.log(
+          "- Processed content length:",
+          originalSong.processedContent?.length
+        );
+        console.log("- User ID:", userId);
+
+        // Auto-increment version for Google Doc imports (same logic as gig-documents route)
+        let docVersion = 1;
+        const existingDocs = await prisma.gigDocument.findMany({
+          where: { songId: processedSong.id, type: "chords" },
+          orderBy: { version: "desc" },
+          take: 1,
+        });
+        if (existingDocs.length > 0) {
+          docVersion = existingDocs[0].version + 1;
+        }
+        console.log(`- Creating gig document version: ${docVersion}`);
+
+        // Create a gig document from the processed Google Doc content (TinyMCE compatible)
+        const gigDocument = await prisma.gigDocument.create({
+          data: {
+            content: originalSong.processedContent, // Use processed content for TinyMCE
+            songId: processedSong.id,
+            type: "chords", // Default type for Google Doc imports
+            version: docVersion, // Use incremented version
+            createdById: userId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+        console.log(
+          `Created gig document for Google Doc import: ${gigDocument.id}`
+        );
+
+        // Create links from extracted URLs if any
+        if (originalSong.urls && originalSong.urls.length > 0) {
+          let linksCreated = 0;
+          for (const urlInfo of originalSong.urls) {
+            // Skip font resources and other non-music links
+            if (urlInfo.type === "font_resource" || urlInfo.type === "other") {
+              continue;
+            }
+
+            try {
+              // Check if link already exists
+              const existingLink = await prisma.link.findFirst({
+                where: {
+                  songId: processedSong.id,
+                  url: urlInfo.url,
+                },
+              });
+
+              if (!existingLink) {
+                // Create new link
+                await prisma.link.create({
+                  data: {
+                    songId: processedSong.id,
+                    type: urlInfo.type,
+                    description: urlInfo.description || urlInfo.url,
+                    url: urlInfo.url,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  },
+                });
+                linksCreated++;
+              }
+            } catch (error) {
+              console.error(`Error creating link: ${error.message}`);
+            }
+          }
+
+          console.log(
+            `Created ${linksCreated} links for Google Doc import song: ${processedSong.title}`
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Error creating gig document for Google Doc import:",
+          error
+        );
+        // Don't fail the whole operation if gig document creation fails
       }
     }
 
@@ -1333,21 +1452,29 @@ router.post("/:id/quick-set/create", async (req, res) => {
             }
 
             // Ensure song is added to band if not already
-            await prisma.bandSong.upsert({
-              where: {
-                bandId_songId: {
+            try {
+              await prisma.bandSong.upsert({
+                where: {
+                  bandId_songId: {
+                    bandId: bandId,
+                    songId: songId,
+                  },
+                },
+                update: {},
+                create: {
                   bandId: bandId,
                   songId: songId,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
                 },
-              },
-              update: {},
-              create: {
-                bandId: bandId,
-                songId: songId,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            });
+              });
+            } catch (error) {
+              // If unique constraint fails, the song is already associated with the band
+              // This is fine, just continue
+              console.log(
+                `Song ${songId} already associated with band ${bandId}`
+              );
+            }
           }
 
           return existingSong;
@@ -1434,6 +1561,116 @@ router.post("/:id/quick-set/create", async (req, res) => {
       }
     }
 
+    // Create gig documents for Google Doc imports in bulk processing
+    if (
+      req.session.quickSetData.isGoogleDocImport &&
+      req.session.quickSetData.googleDocData
+    ) {
+      console.log(
+        "Creating gig documents for Google Doc import in bulk processing..."
+      );
+
+      for (const originalSong of songs) {
+        const processedSong = validSongs.find((ps) =>
+          processedSongs.find(
+            (procSong, idx) =>
+              procSong === ps &&
+              songs[idx].lineNumber === originalSong.lineNumber
+          )
+        );
+
+        if (processedSong && originalSong.processedContent) {
+          try {
+            // Auto-increment version for Google Doc imports (same logic as individual processing)
+            let docVersion = 1;
+            const existingDocs = await prisma.gigDocument.findMany({
+              where: { songId: processedSong.id, type: "chords" },
+              orderBy: { version: "desc" },
+              take: 1,
+            });
+            if (existingDocs.length > 0) {
+              docVersion = existingDocs[0].version + 1;
+            }
+
+            console.log(
+              `Creating gig document for ${processedSong.title} - version ${docVersion}`
+            );
+            console.log(
+              `Content length: ${originalSong.processedContent?.length || 0}`
+            );
+            console.log(
+              `Content preview: ${originalSong.processedContent?.substring(0, 200) || "NO CONTENT"}`
+            );
+
+            // Create gig document
+            const gigDocument = await prisma.gigDocument.create({
+              data: {
+                content: originalSong.processedContent,
+                songId: processedSong.id,
+                type: "chords",
+                version: docVersion,
+                createdById: userId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+
+            console.log(
+              `Created gig document ${gigDocument.id} for song ${processedSong.title}`
+            );
+
+            // Create links from extracted URLs if any
+            if (originalSong.urls && originalSong.urls.length > 0) {
+              let linksCreated = 0;
+              for (const urlInfo of originalSong.urls) {
+                if (
+                  urlInfo.type === "font_resource" ||
+                  urlInfo.type === "other"
+                ) {
+                  continue;
+                }
+
+                try {
+                  const existingLink = await prisma.link.findFirst({
+                    where: {
+                      songId: processedSong.id,
+                      url: urlInfo.url,
+                    },
+                  });
+
+                  if (!existingLink) {
+                    await prisma.link.create({
+                      data: {
+                        songId: processedSong.id,
+                        type: urlInfo.type,
+                        description: urlInfo.description || urlInfo.url,
+                        url: urlInfo.url,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                      },
+                    });
+                    linksCreated++;
+                  }
+                } catch (error) {
+                  console.error(`Error creating link: ${error.message}`);
+                }
+              }
+
+              console.log(
+                `Created ${linksCreated} links for ${processedSong.title}`
+              );
+            }
+          } catch (error) {
+            console.error(
+              `Error creating gig document for ${processedSong.title}:`,
+              error
+            );
+            // Don't fail the whole operation if gig document creation fails
+          }
+        }
+      }
+    }
+
     // Clear session data
     delete req.session.quickSetData;
 
@@ -1452,15 +1689,23 @@ router.post("/:id/quick-set/create", async (req, res) => {
     });
 
     // Log to application logger if available
-    const logger = require("../utils/logger");
-    logger.error(
-      `Quick set creation failed for band ${req.params.id}: ${error.message}`,
-      {
-        userId: req.session?.user?.id,
-        bandId: req.params.id,
-        error: error.stack,
+    try {
+      const logger = require("../utils/logger");
+      if (logger && typeof logger.error === "function") {
+        logger.error(
+          `Quick set creation failed for band ${req.params.id}: ${error.message}`,
+          {
+            userId: req.session?.user?.id,
+            bandId: req.params.id,
+            error: error.stack,
+          }
+        );
       }
-    );
+    } catch (loggerError) {
+      console.error(
+        `Quick set creation failed for band ${req.params.id}: ${error.message}`
+      );
+    }
 
     req.flash(
       "error",
@@ -1547,10 +1792,188 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       sets,
       songMatches,
       totalSongs: songs.length,
+      googleDocData: req.session.quickSetData.googleDocData || null,
+      isGoogleDocImport: req.session.quickSetData.isGoogleDocImport || false,
     });
   } catch (error) {
     console.error("Quick set confirm error:", error);
     req.flash("error", "An error occurred loading the confirmation page");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// POST /bands/:id/google-doc-to-quickset - Process Google Doc and convert to quickset
+router.post("/:id/google-doc-to-quickset", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Access denied");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    // Get Google Doc data from session (from the redirect) or from request body (direct submission)
+    let parsedData;
+    if (req.session.googleDocData) {
+      // Data from session (redirected from Google Doc processing)
+      parsedData = req.session.googleDocData;
+      // Clear the session data after use
+      delete req.session.googleDocData;
+    } else {
+      // Direct submission from frontend (fallback)
+      const { googleDocData } = req.body;
+      try {
+        parsedData =
+          typeof googleDocData === "string"
+            ? JSON.parse(googleDocData)
+            : googleDocData;
+      } catch (error) {
+        console.error("Error parsing Google Doc data:", error);
+        req.flash("error", "Invalid Google Doc data");
+        return res.redirect(`/bands/${bandId}`);
+      }
+    }
+
+    // Import the sophisticated HTML processor
+    const { processGoogleDocHtml } = require("../utils/googleDocHtmlProcessor");
+
+    // Process each extracted song with the sophisticated HTML processor
+    const processedSongs = parsedData.extractedSongs.map((song, index) => {
+      console.log(`=== Processing song ${index + 1}: ${song.title} ===`);
+      console.log(`- Has fullContent: ${!!song.fullContent}`);
+      console.log(
+        `- fullContent length: ${song.fullContent?.length || "undefined"}`
+      );
+      console.log(
+        `- contentPreview length: ${song.contentPreview?.length || "undefined"}`
+      );
+      console.log(`- contentLength: ${song.contentLength}`);
+
+      // Process the HTML content to make it TinyMCE compatible
+      const contentToProcess =
+        song.fullContent || song.contentPreview.replace(/\.\.\.$/, "");
+      console.log(
+        `- Content being sent to HTML processor: ${contentToProcess?.length || "undefined"} characters`
+      );
+      console.log(
+        `- Content preview: ${contentToProcess?.substring(0, 100) || "NO CONTENT"}`
+      );
+
+      const { content: processedContent, urls } =
+        processGoogleDocHtml(contentToProcess);
+
+      return {
+        lineNumber: index + 1,
+        title: song.title,
+        artist: "", // Will be filled in during matching
+        originalContent: song.contentPreview, // Keep original for display
+        processedContent: processedContent, // TinyMCE-compatible content
+        contentLength: song.contentLength,
+        originalIndex: song.originalIndex,
+        urls: urls, // Extracted URLs for link creation
+      };
+    });
+
+    // Create a quickset-compatible structure from Google Doc data
+    const quicksetData = {
+      sets: [
+        {
+          name: "Set_1", // Use the actual database set name
+          songs: processedSongs.map((song) => ({
+            lineNumber: song.lineNumber,
+            title: song.title,
+            artist: song.artist,
+            originalContent: song.originalContent,
+            processedContent: song.processedContent,
+            contentLength: song.contentLength,
+            originalIndex: song.originalIndex,
+            urls: song.urls,
+          })),
+        },
+      ],
+      songs: processedSongs.map((song) => ({
+        lineNumber: song.lineNumber,
+        title: song.title,
+        artist: song.artist,
+        originalContent: song.originalContent,
+        processedContent: song.processedContent,
+        contentLength: song.contentLength,
+        originalIndex: song.originalIndex,
+        urls: song.urls,
+      })),
+    };
+
+    // Create a temporary setlist for the quickset workflow
+    // Use the Google Doc title if available, otherwise fall back to default
+    console.log("Parsed data for setlist title:", {
+      hasDocumentTitle: !!parsedData.documentTitle,
+      documentTitle: parsedData.documentTitle,
+      hasSetlistTitle: !!parsedData.setlistTitle,
+      setlistTitle: parsedData.setlistTitle,
+      dataKeys: Object.keys(parsedData),
+    });
+
+    // Priority: 1) Detected setlist title, 2) Google Doc title, 3) Default
+    let titleToUse = null;
+    if (parsedData.setlistTitle) {
+      titleToUse = parsedData.setlistTitle;
+    } else if (parsedData.documentTitle) {
+      titleToUse = `${parsedData.documentTitle} - ${new Date().toLocaleDateString()}`;
+    } else {
+      titleToUse = `Google Doc Import - ${new Date().toLocaleDateString()}`;
+    }
+
+    const setlistTitle = titleToUse;
+
+    console.log("Final setlist title:", setlistTitle);
+
+    const setlist = await prisma.setlist.create({
+      data: {
+        title: setlistTitle,
+        date: new Date(),
+        bandId: bandId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Create a default set for the Google Doc songs
+    await prisma.setlistSet.create({
+      data: {
+        setlistId: setlist.id,
+        name: "Set_1", // Default to Set 1
+        order: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Store the Google Doc data in session for quickset confirmation
+    req.session.quickSetData = {
+      bandId: bandId,
+      setlistId: setlist.id,
+      sets: quicksetData.sets,
+      songs: quicksetData.songs,
+      googleDocData: parsedData, // Store original Google Doc data
+      isGoogleDocImport: true, // Flag to indicate this is from Google Doc
+    };
+
+    // Redirect to quickset confirmation page
+    res.redirect(`/bands/${bandId}/quick-set/confirm`);
+  } catch (error) {
+    console.error("Google Doc to quickset error:", error);
+    req.flash("error", "An error occurred processing the Google Doc");
     res.redirect(`/bands/${req.params.id}`);
   }
 });
@@ -1847,11 +2270,34 @@ function parseBlankLineSeparatedFormat(input) {
     sets: [],
     songs: [],
     errors: [],
+    setlistTitle: null, // Add setlist title field
   };
 
-  // Split input into groups separated by blank lines
-  const groups = input.trim().split(/\n\s*\n/);
-  let lineNumber = 0;
+  // Check if first line is followed by two line breaks (indicating it's a title)
+  // Normalize line endings first (handle both \r\n and \n)
+  const normalizedInput = input.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalizedInput.trim().split("\n");
+  let startIndex = 0;
+
+  console.log("=== BLANK LINE PARSING DEBUG ===");
+  console.log("Total lines:", lines.length);
+  console.log("Line 0:", JSON.stringify(lines[0]));
+  console.log("Line 1:", JSON.stringify(lines[1]));
+  console.log("Line 2:", JSON.stringify(lines[2]));
+
+  if (lines.length >= 3 && lines[1].trim() === "" && lines[2].trim() !== "") {
+    // First line is title, followed by one blank line, then first song
+    result.setlistTitle = lines[0].trim();
+    startIndex = 2; // Skip title and one blank line
+    console.log(`Detected setlist title: "${result.setlistTitle}"`);
+  } else {
+    console.log("No setlist title detected - conditions not met");
+  }
+
+  // Split remaining input into groups separated by blank lines
+  const remainingInput = lines.slice(startIndex).join("\n");
+  const groups = remainingInput.trim().split(/\n\s*\n/);
+  let lineNumber = startIndex;
 
   for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
     const group = groups[groupIndex].trim();
@@ -1934,7 +2380,18 @@ function parseQuickSetInput(input) {
 
   // If no set headers found, use blank-line-separated format
   if (!hasSetHeaders) {
-    return parseBlankLineSeparatedFormat(input);
+    const blankLineResult = parseBlankLineSeparatedFormat(input);
+
+    // Check if we detected a setlist title in the blank-line format
+    if (blankLineResult.setlistTitle) {
+      console.log(
+        `Detected setlist title from blank-line format: "${blankLineResult.setlistTitle}"`
+      );
+      // Add the setlist title to the main result
+      blankLineResult.setlistTitle = blankLineResult.setlistTitle;
+    }
+
+    return blankLineResult;
   }
 
   // Otherwise, use the existing header-based format
@@ -1944,6 +2401,7 @@ function parseQuickSetInput(input) {
     sets: [],
     songs: [],
     errors: [],
+    setlistTitle: null, // Add setlist title field
   };
 
   let currentSet = null;
@@ -1965,6 +2423,22 @@ function parseQuickSetInput(input) {
     if (noColonFormat && !colonFormat) {
       useColonFormat = false;
     }
+  }
+
+  // Check if first line is a setlist title (followed by two blank lines in original input)
+  const originalLines = input.trim().split("\n");
+  if (
+    originalLines.length >= 3 &&
+    originalLines[1].trim() === "" &&
+    originalLines[2].trim() === "" &&
+    !/^Set\s+(\d+|[IVX]+)[\s:]*$/i.test(originalLines[0]) &&
+    !/^Encore[\s:]*$/i.test(originalLines[0]) &&
+    !/^E[\s:]*$/i.test(originalLines[0])
+  ) {
+    result.setlistTitle = originalLines[0].trim();
+    console.log(
+      `Detected setlist title from header format: "${result.setlistTitle}"`
+    );
   }
 
   for (let i = 0; i < lines.length; i++) {

@@ -2,6 +2,7 @@ const express = require("express");
 const { google } = require("googleapis");
 const path = require("path");
 const fs = require("fs");
+const { prisma } = require("../lib/prisma");
 
 const router = express.Router();
 
@@ -62,7 +63,7 @@ function sanitizeFilename(filename) {
 
 // Process HTML content directly (from Google Docs export)
 function processHtmlContent(htmlContent) {
-  console.log("=== Starting song extraction ===");
+  console.log("=== BAgus says Starting song extraction ===");
 
   try {
     // Extract the HTML structure and styles
@@ -94,7 +95,7 @@ function processHtmlContent(htmlContent) {
     const songSeparator = '<hr style="page-break-before:always;display:none;">';
     const songs = bodyContent.split(songSeparator);
 
-    console.log(`Found ${songs.length} song sections`);
+    console.log(`Found ${songs.length} sooong sections`);
 
     // First pass: Detect what heading levels are used for song titles
     let detectedHeadingLevel = null;
@@ -126,7 +127,7 @@ function processHtmlContent(htmlContent) {
         break;
       }
     }
-
+    console.log("cooontinuing song extraction");
     if (!detectedHeadingLevel) {
       console.log(`No heading tags detected, falling back to H1 pattern`);
       detectedHeadingLevel = "h1";
@@ -136,7 +137,7 @@ function processHtmlContent(htmlContent) {
     // Second pass: Extract songs using detected heading pattern
     let songCount = 0;
     const extractedSongs = [];
-
+    console.log("sooongs.length:  ", songs.length);
     songs.forEach((songContent, index) => {
       // Skip empty sections
       if (!songContent.trim()) {
@@ -205,6 +206,8 @@ function processHtmlContent(htmlContent) {
             ""
           )
           .trim();
+        console.log("title:  ", songTitle);
+        console.log("cooontent:  ", songBodyContent.length);
 
         extractedSongs.push({
           index: songCount,
@@ -213,8 +216,19 @@ function processHtmlContent(htmlContent) {
           contentPreview:
             songBodyContent.substring(0, 200) +
             (songBodyContent.length > 200 ? "..." : ""),
+          fullContent: songBodyContent, // Add the full content
           originalIndex: index,
         });
+
+        console.log(
+          `=== Successfully created extractedSongs entry ${songCount} ===`
+        );
+        console.log(
+          `=== Entry has fullContent: ${!!extractedSongs[extractedSongs.length - 1].fullContent} ===`
+        );
+        console.log(
+          `=== Entry fullContent length: ${extractedSongs[extractedSongs.length - 1].fullContent?.length || "undefined"} ===`
+        );
 
         console.log(
           `Song ${songCount}: "${songTitle}" - Content length: ${songBodyContent.length}`
@@ -225,7 +239,11 @@ function processHtmlContent(htmlContent) {
     });
 
     console.log(`=== Song extraction completed: ${songCount} songs found ===`);
-
+    console.log("Bagus was here 2");
+    console.log(
+      "extractedSongs BAGUS FULL LENGTH:  ",
+      extractedSongs[0].fullContent.length
+    );
     return {
       success: true,
       message: "Google Doc processed successfully",
@@ -265,6 +283,15 @@ router.post("/admin/process-google-doc", async (req, res) => {
     const drive = getGoogleDriveClient();
     console.log("Google Drive client created successfully");
 
+    // Get document metadata (including title) using Google Drive API FIRST
+    console.log("Fetching document metadata...");
+    const fileMetadata = await drive.files.get({
+      fileId: documentId,
+      fields: "name,createdTime,modifiedTime",
+    });
+    const documentTitle = fileMetadata.data.name;
+    console.log("Document title:", documentTitle);
+
     // Export document as HTML using Google Drive API
     console.log("Exporting document as HTML from Google Drive API...");
     const response = await drive.files.export({
@@ -277,15 +304,170 @@ router.post("/admin/process-google-doc", async (req, res) => {
       contentLength: htmlContent.length,
     });
 
+    console.log("Bagus was here");
     // Process the HTML content directly
     const result = processHtmlContent(htmlContent);
 
+    // Add document title to the result
+    result.documentTitle = documentTitle;
+    console.log("Bagus was here 3");
+    console.log(
+      "result BAGUS FULL LENGTH:  ",
+      result.extractedSongs[0].fullContent.length
+    );
     console.log("=== Google Doc processing completed successfully ===");
-    res.json({
-      success: true,
-      message: "Google Doc processed successfully",
-      data: result,
+
+    // Instead of session storage and redirect, directly render the quickset confirmation page
+    // Extract the essential data needed for quickset
+    const essentialData = {
+      success: result.success,
+      message: result.message,
+      contentLength: result.contentLength,
+      songsFound: result.songsFound,
+      documentTitle: result.documentTitle,
+      extractedSongs: result.extractedSongs.map((song) => ({
+        index: song.index,
+        title: song.title,
+        contentLength: song.contentLength,
+        contentPreview: song.contentPreview,
+        fullContent: song.fullContent, // Include the full content for gig document creation
+        originalIndex: song.originalIndex,
+      })),
+    };
+
+    // Get the band ID from the request
+    const bandId = req.body.bandId || "1";
+
+    // Import the sophisticated HTML processor
+    const { processGoogleDocHtml } = require("../utils/googleDocHtmlProcessor");
+
+    // Process each extracted song with the sophisticated HTML processor
+    const processedSongs = essentialData.extractedSongs.map((song, index) => {
+      console.log(`=== Processing song ${index + 1}: ${song.title} ===`);
+      console.log(`- Has fullContent: ${!!song.fullContent}`);
+      console.log(
+        `- fullContent length: ${song.fullContent?.length || "undefined"}`
+      );
+      console.log(
+        `- contentPreview length: ${song.contentPreview?.length || "undefined"}`
+      );
+      console.log(`- contentLength: ${song.contentLength}`);
+
+      // Process the HTML content to make it TinyMCE compatible
+      const contentToProcess =
+        song.fullContent || song.contentPreview.replace(/\.\.\.$/, "");
+      console.log(
+        `- Content being sent to HTML processor: ${contentToProcess?.length || "undefined"} characters`
+      );
+      console.log(
+        `- Content preview: ${contentToProcess?.substring(0, 100) || "NO CONTENT"}`
+      );
+
+      const { content: processedContent, urls } =
+        processGoogleDocHtml(contentToProcess);
+
+      return {
+        lineNumber: index + 1,
+        title: song.title,
+        artist: "", // Will be filled in during matching
+        originalContent: song.contentPreview, // Keep original for display
+        processedContent: processedContent, // TinyMCE-compatible content
+        contentLength: song.contentLength,
+        originalIndex: song.originalIndex,
+        urls: urls, // Extracted URLs for link creation
+      };
     });
+
+    // Create a quickset-compatible structure from Google Doc data
+    const quicksetData = {
+      sets: [
+        {
+          name: "Set_1", // Use the actual database set name
+          songs: processedSongs.map((song) => ({
+            lineNumber: song.lineNumber,
+            title: song.title,
+            artist: song.artist,
+            originalContent: song.originalContent,
+            processedContent: song.processedContent,
+            contentLength: song.contentLength,
+            originalIndex: song.originalIndex,
+            urls: song.urls,
+          })),
+        },
+      ],
+      songs: processedSongs.map((song) => ({
+        lineNumber: song.lineNumber,
+        title: song.title,
+        artist: song.artist,
+        originalContent: song.originalContent,
+        processedContent: song.processedContent,
+        contentLength: song.contentLength,
+        originalIndex: song.originalIndex,
+        urls: song.urls,
+      })),
+    };
+
+    // Create a temporary setlist for the quickset workflow
+    // Use the Google Doc title if available, otherwise fall back to default
+    console.log("Parsed data for setlist title:", {
+      hasDocumentTitle: !!essentialData.documentTitle,
+      documentTitle: essentialData.documentTitle,
+      dataKeys: Object.keys(essentialData),
+    });
+
+    // Priority: 1) Google Doc title, 2) Default
+    let titleToUse = null;
+    if (essentialData.documentTitle) {
+      titleToUse = `${essentialData.documentTitle} - ${new Date().toLocaleDateString()}`;
+    } else {
+      titleToUse = `Google Doc Import - ${new Date().toLocaleDateString()}`;
+    }
+
+    const setlistTitle = titleToUse;
+    console.log("Final setlist title:", setlistTitle);
+
+    // Create the setlist first so we have a real ID
+    try {
+      const setlist = await prisma.setlist.create({
+        data: {
+          title: setlistTitle,
+          date: new Date(),
+          bandId: parseInt(bandId),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create a default set for the Google Doc songs
+      await prisma.setlistSet.create({
+        data: {
+          setlistId: setlist.id,
+          name: "Set_1", // Default to Set 1
+          order: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Store the Google Doc data in session for quickset confirmation
+      req.session.quickSetData = {
+        bandId: parseInt(bandId),
+        setlistId: setlist.id, // Use the real setlist ID
+        sets: quicksetData.sets,
+        songs: quicksetData.songs,
+        googleDocData: essentialData, // Store original Google Doc data
+        isGoogleDocImport: true, // Flag to indicate this is from Google Doc
+      };
+
+      // Redirect to the quickset confirmation page
+      res.redirect(`/bands/${bandId}/quick-set/confirm`);
+    } catch (error) {
+      console.error("Error creating setlist:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to create setlist for Google Doc import",
+      });
+    }
   } catch (error) {
     console.error("=== ERROR processing Google Doc ===");
     console.error("Error details:", error);

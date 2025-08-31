@@ -221,20 +221,19 @@
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="bi bi-lightning"></i> Quick Set Creation
+                    <i class="bi bi-question-circle text-muted ms-2"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="top"
+                       title="Two input modes supported:&#10;&#10;Mode 1 - With set headers:&#10;Set 1:&#10;Song 1&#10;Song 2&#10;&#10;Set 2:&#10;Song 3&#10;Song 4&#10;&#10;Mode 2 - Blank line separated:&#10;Setlist Title&#10;&#10;Song 1&#10;Song 2&#10;&#10;Song 3&#10;Song 4"></i>
                 </h5>
             </div>
             <div class="card-body">
-                <button type="button" class="btn btn-primary" id="quickSetBtn">
-                    <i class="bi bi-plus-circle"></i> Create Quick Set
-                </button>
-                
-                <!-- Quick Set Form (initially hidden) -->
-                <div id="quickSetForm" class="mt-3" style="display: none;">
-                    <form action="/bands/<%= band.id %>/quick-set" method="POST">
-                        <div class="mb-3">
-                            <label for="songList" class="form-label">Paste your setlist here:</label>
-                            <textarea class="form-control" id="songList" name="songList" rows="10" 
-                                placeholder="Option 1 - Groups separated by blank lines:
+                <!-- Quick Set Form (always visible) -->
+                <form action="/bands/<%= band.id %>/quick-set" method="POST">
+                    <div class="mb-3">
+                        <label for="songList" class="form-label">Paste your setlist here:</label>
+                        <textarea class="form-control" id="songList" name="songList" rows="10" 
+                            placeholder="Option 1 - Groups separated by blank lines:
 The Music Never Stopped >
 Sugaree
 Me & My Uncle
@@ -255,7 +254,7 @@ Big River
 It Must Have Been The Roses
 
 Encore:
-Ramble On Rose">Set 1:
+Ramble On Rose" style="border-width: 2px; border-color: #6c757d;">Set 1:
 
 
 Set 2:
@@ -267,21 +266,16 @@ Set 3:
 Set 4:
 
 </textarea>
-                            <div class="form-text">
-                                Format: <strong>Song Title, Artist</strong> (Artist is optional)<br>
-                                Set headers like "Set 1:" are optional - if omitted, all songs will be put in "Set 1"
-                            </div>
+                        <div class="form-text">
+                            One song, artist per line. Artist optional
                         </div>
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-success btn-sm">
-                                <i class="bi bi-check-circle"></i> Process
-                            </button>
-                            <button type="button" class="btn btn-secondary btn-sm" id="cancelQuickSet">
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-check-circle"></i> Process
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -306,6 +300,7 @@ Set 4:
                             Paste the full URL from your Google Doc containing chord charts or setlists.
                         </div>
                     </div>
+                    <input type="hidden" name="bandId" value="<%= band.id %>">
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-sm" id="processGoogleDocBtn">
                             <i class="bi bi-play-circle"></i> Process Document
@@ -568,50 +563,7 @@ Set 4:
             });
         });
 
-        // Quick Set Form Toggle
-        document.getElementById('quickSetBtn').addEventListener('click', function() {
-            const form = document.getElementById('quickSetForm');
-            const btn = document.getElementById('quickSetBtn');
-            
-            if (form.style.display === 'none') {
-                form.style.display = 'block';
-                btn.innerHTML = '<i class="bi bi-chevron-up"></i> Hide Form';
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-outline-primary');
-                // Focus on textarea
-                document.getElementById('songList').focus();
-            } else {
-                form.style.display = 'none';
-                btn.innerHTML = '<i class="bi bi-plus-circle"></i> Create Quick Set';
-                btn.classList.remove('btn-outline-primary');
-                btn.classList.add('btn-primary');
-            }
-        });
 
-        // Cancel button
-        document.getElementById('cancelQuickSet').addEventListener('click', function() {
-            const form = document.getElementById('quickSetForm');
-            const btn = document.getElementById('quickSetBtn');
-            
-            form.style.display = 'none';
-            btn.innerHTML = '<i class="bi bi-plus-circle"></i> Create Quick Set';
-            btn.classList.remove('btn-outline-primary');
-            btn.classList.add('btn-primary');
-            
-            // Reset the textarea to default
-            document.getElementById('songList').value = `Set 1:
-
-
-Set 2:
-
-
-Set 3:
-
-
-Set 4:
-
-`;
-        });
 
         // Google Doc Processing Form
         document.getElementById('googleDocForm').addEventListener('submit', function(e) {
@@ -634,19 +586,31 @@ Set 4:
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ googleDocUrl: url })
+            body: JSON.stringify({ 
+                googleDocUrl: url,
+                bandId: '<%= band.id %>'
+            })
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if we got a redirect response
+            if (response.redirected) {
+                // Follow the redirect
+                window.location.href = response.url;
+                return;
+            }
+            
+            // If not redirected, try to parse as JSON (fallback)
+            return response.json();
+        })
         .then(data => {
-            // Hide status, show results
+            // Hide status
             statusDiv.style.display = 'none';
-            resultsDiv.style.display = 'block';
             
             // Reset button
             processBtn.disabled = false;
             processBtn.innerHTML = '<i class="bi bi-play-circle"></i> Process Document';
             
-            if (data.success) {
+            if (data && data.success) {
                 // Show success results with song extraction details
                 let songsHtml = '';
                 if (data.data.extractedSongs && data.data.extractedSongs.length > 0) {
@@ -679,7 +643,7 @@ Set 4:
                     <p><strong>Songs Found:</strong> ${data.data.songsFound}</p>
                     ${songsHtml}
                 `;
-            } else {
+            } else if (data && data.error) {
                 // Show error results
                 document.getElementById('resultsContent').innerHTML = `
                     <p><strong>Error processing Google Doc:</strong></p>

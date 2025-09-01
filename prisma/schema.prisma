@@ -10,17 +10,18 @@ datasource db {
 }
 
 model User {
-  id           Int              @id @default(autoincrement())
-  username     String           @unique @db.VarChar(255)
-  email        String           @unique @db.VarChar(255)
-  password     String           @db.VarChar(255)
-  createdAt    DateTime         @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  invitations  BandInvitation[] @relation("Inviter")
-  bands        BandMember[]
-  createdBands Band[]           @relation("BandCreator")
-  gigDocuments GigDocument[]    @relation("DocumentCreator")
-  createdSongs Song[]           @relation("SongCreator")
+  id             Int              @id @default(autoincrement())
+  username       String           @unique @db.VarChar(255)
+  email          String           @unique @db.VarChar(255)
+  password       String           @db.VarChar(255)
+  canMakePrivate Boolean          @default(true) @map("can_make_private")
+  createdAt      DateTime         @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  invitations    BandInvitation[] @relation("Inviter")
+  bands          BandMember[]
+  createdBands   Band[]           @relation("BandCreator")
+  gigDocuments   GigDocument[]    @relation("DocumentCreator")
+  createdSongs   Song[]           @relation("SongCreator")
 
   @@map("users")
 }

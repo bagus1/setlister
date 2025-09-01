@@ -557,6 +557,12 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       return res.redirect("/songs");
     }
 
+    // Get current user's permissions
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.session.user.id },
+      select: { canMakePrivate: true },
+    });
+
     const artists = await prisma.artist.findMany({
       orderBy: { name: "asc" },
     });
@@ -570,6 +576,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       song,
       artists,
       vocalists,
+      currentUser,
     });
   } catch (error) {
     logger.logError("Edit song form error", error);
@@ -620,6 +627,12 @@ router.post(
           },
         });
 
+        // Get current user's permissions
+        const currentUser = await prisma.user.findUnique({
+          where: { id: req.session.user.id },
+          select: { canMakePrivate: true },
+        });
+
         const artists = await prisma.artist.findMany({
           orderBy: { name: "asc" },
         });
@@ -633,6 +646,7 @@ router.post(
           song,
           artists,
           vocalists,
+          currentUser,
           errors: errors.array(),
           formData: req.body,
         });
@@ -654,6 +668,7 @@ router.post(
         minutes = 0,
         seconds = 0,
         bpm,
+        private,
       } = req.body;
 
       // Calculate total time in seconds
@@ -771,6 +786,7 @@ router.post(
           time: totalTime || null,
           bpm: bpmValue,
           vocalistId,
+          private: private === "true",
           updatedAt: new Date(),
         },
       });

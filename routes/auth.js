@@ -103,6 +103,7 @@ router.post(
           username,
           email: emailLower,
           password: hashedPassword,
+          canMakePrivate: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         },

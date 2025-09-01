@@ -292,18 +292,36 @@
                                                 </h6>
                                                 <div class="list-group">
                                                     <% docs.forEach(function(doc) { %>
-                                                        <a href="/songs/<%= song.id %>/docs/<%= doc.id %>"
-                                                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
-                                                            <div>
-                                                                <i class="bi bi-file-earmark-text"></i>
-                                                                <%= getTypeDisplayName(doc.type) %> - v<%= doc.version %>
-                                                            </div>
-                                                            <div>
-                                                                <small class="text-muted">Created: <%= new
-                                                                        Date(doc.createdAt).toLocaleDateString() %>
-                                                                </small>
-                                                            </div>
-                                                        </a>
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <a href="/songs/<%= song.id %>/docs/<%= doc.id %>" class="text-decoration-none flex-grow-1">
+                                                                <div class="d-flex justify-content-between align-items-center">
+                                                                    <div>
+                                                                        <i class="bi bi-file-earmark-text"></i>
+                                                                        <%= getTypeDisplayName(doc.type) %> - v<%= doc.version %>
+                                                                        <% if (doc.creator) { %>
+                                                                            <small class="text-muted ms-2">
+                                                                                by <%= doc.creator.username.includes('@') ? doc.creator.username.split('@')[0] : doc.creator.username %>
+                                                                            </small>
+                                                                        <% } %>
+                                                                    </div>
+                                                                </div>
+                                                            </a>
+                                                            <% if (loggedIn && currentUser && doc.createdById === currentUser.id) { %>
+                                                                <div class="ms-2">
+                                                                    <a href="/songs/<%= song.id %>/docs/<%= doc.id %>/edit" 
+                                                                       class="btn btn-sm btn-outline-primary me-1" 
+                                                                       title="Edit">
+                                                                        <i class="bi bi-pencil"></i>
+                                                                    </a>
+                                                                    <button type="button" 
+                                                                            class="btn btn-sm btn-outline-danger" 
+                                                                            title="Delete"
+                                                                            onclick="deleteGigDocument(<%= doc.id %>, '<%= song.id %>')">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            <% } %>
+                                                        </div>
                                                         <% }); %>
                                                 </div>
                                             </div>
@@ -341,4 +359,28 @@
     }
 
     // Initialize tooltips
+
+    // Delete gig document function
+    function deleteGigDocument(docId, songId) {
+        if (confirm('Are you sure you want to delete this gig document? This action cannot be undone.')) {
+            fetch(`/songs/${songId}/docs/${docId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Reload the page to show updated list
+                    window.location.reload();
+                } else {
+                    alert('Error deleting gig document. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting gig document. Please try again.');
+            });
+        }
+    }
 </script>

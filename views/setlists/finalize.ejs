@@ -35,6 +35,22 @@
                 </h5>
             </div>
             <div class="card-body">
+                <!-- Headers for all sets -->
+                <div class="d-flex justify-content-between align-items-center mb-2 px-5">
+                    <div class="d-flex align-items-center custom-gap">
+                        <div>
+                            <h6 class="text-muted mb-0">Title and Artist</h6>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0">Key, Tempo, Duration, Vocalist</h6>
+                        </div>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-0">Music Stand Doc</h6>
+                    </div>
+                </div>
+                <hr class="my-3 mx-5 text-muted">
+                
                 <% if (setlist.sets && setlist.sets.length> 0) { %>
                     <% setlist.sets.sort((a, b)=> a.order - b.order).forEach(set => { %>
                         <% if (set.songs && set.songs.length> 0) { %>
@@ -113,11 +129,21 @@
                                                                     <% if (preferredDoc) { %>
                                                                         <%= getTypeDisplayName(preferredDoc.type) %> v<%=
                                                                                 preferredDoc.version %>
+                                                                                <% if (preferredDoc.creator) { %>
+                                                                                    <small class="text-muted ms-1">
+                                                                                        by <%= preferredDoc.creator.username.includes('@') ? preferredDoc.creator.username.split('@')[0] : preferredDoc.creator.username %>
+                                                                                    </small>
+                                                                                <% } %>
                                                                                 <% } else if (availableDocs.length> 0) {
                                                                                     %>
                                                                                     <%= getTypeDisplayName(availableDocs[0].type)
                                                                                         %> v<%= availableDocs[0].version
                                                                                             %>
+                                                                                            <% if (availableDocs[0].creator) { %>
+                                                                                                <small class="text-muted ms-1">
+                                                                                                    by <%= availableDocs[0].creator.username.includes('@') ? availableDocs[0].creator.username.split('@')[0] : availableDocs[0].creator.username %>
+                                                                                                </small>
+                                                                                            <% } %>
                                                                                             <% } else { %>
                                                                                                 No docs
                                                                                                 <% } %>
@@ -131,6 +157,11 @@
                                                                                 onclick="setPreferredGigDocument(<%= setlistSong.song.id %>, <%= doc.id %>)">
                                                                                 <%= getTypeDisplayName(doc.type) %> v<%=
                                                                                         doc.version %>
+                                                                                        <% if (doc.creator) { %>
+                                                                                            <small class="text-muted ms-2">
+                                                                                                by <%= doc.creator.username.includes('@') ? doc.creator.username.split('@')[0] : doc.creator.username %>
+                                                                                            </small>
+                                                                                        <% } %>
                                                                                         <% if (preferredDocId===doc.id)
                                                                                             { %>
                                                                                             <i
@@ -1004,3 +1035,9 @@
         });
     }
 </script>
+
+<style>
+.custom-gap {
+    gap: 14.5rem;
+}
+</style>

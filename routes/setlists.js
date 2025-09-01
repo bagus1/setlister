@@ -1335,6 +1335,7 @@ router.get("/:id/finalize", async (req, res) => {
             title: true,
           },
         },
+        creator: true,
       },
       orderBy: {
         version: "desc",

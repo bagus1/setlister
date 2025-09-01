@@ -432,7 +432,11 @@ router.get("/:id", async (req, res) => {
         },
         vocalist: true,
         links: true,
-        gigDocuments: true,
+        gigDocuments: {
+          include: {
+            creator: true,
+          },
+        },
       },
     });
 
@@ -519,6 +523,7 @@ router.get("/:id", async (req, res) => {
       title: song.title,
       song,
       loggedIn: !!req.session.user,
+      currentUser: req.session.user,
       getLinkIcon,
       getLinkDisplayText,
       getTypeIcon,

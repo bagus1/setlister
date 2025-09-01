@@ -269,6 +269,17 @@ deploy_via_git() {
         SCHEMA_CHANGED=true
     fi
     
+    # Check if database schema matches Prisma schema (critical check)
+    print_status "Checking if database schema matches Prisma schema..."
+    DB_SYNC_CHECK=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push --skip-generate 2>&1" || echo "drift_detected")
+    if echo "$DB_SYNC_CHECK" | grep -q "Your database is now in sync"; then
+        print_status "Database schema is in sync with Prisma schema"
+    else
+        print_status "Database schema drift detected - schema changes needed"
+        print_status "Drift details: $(echo "$DB_SYNC_CHECK" | head -5)"
+        SCHEMA_CHANGED=true
+    fi
+    
     # Check for new routes that might import Prisma
     if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q '^routes/'"; then
         print_status "New routes detected - may affect Prisma initialization"

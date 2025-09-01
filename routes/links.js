@@ -126,6 +126,7 @@ router.post(
       await prisma.link.create({
         data: {
           songId: song.id,
+          createdById: req.session.user.id,
           type,
           url: url.trim(),
           description: description ? description.trim() : null,

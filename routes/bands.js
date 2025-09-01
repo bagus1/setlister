@@ -1192,6 +1192,7 @@ router.post("/:id/quick-set/process-song", async (req, res) => {
                 await prisma.link.create({
                   data: {
                     songId: processedSong.id,
+                    createdById: req.session.user.id,
                     type: urlInfo.type,
                     description: urlInfo.description || urlInfo.url,
                     url: urlInfo.url,
@@ -1642,6 +1643,7 @@ router.post("/:id/quick-set/create", async (req, res) => {
                     await prisma.link.create({
                       data: {
                         songId: processedSong.id,
+                        createdById: req.session.user.id,
                         type: urlInfo.type,
                         description: urlInfo.description || urlInfo.url,
                         url: urlInfo.url,

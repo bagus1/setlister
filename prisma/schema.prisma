@@ -22,6 +22,7 @@ model User {
   createdBands   Band[]           @relation("BandCreator")
   gigDocuments   GigDocument[]    @relation("DocumentCreator")
   createdSongs   Song[]           @relation("SongCreator")
+  createdLinks   Link[]           @relation("LinkCreator")
 
   @@map("users")
 }
@@ -234,12 +235,14 @@ model SongArtist {
 model Link {
   id          Int             @id @default(autoincrement())
   songId      Int             @map("song_id")
+  createdById Int?            @map("created_by_id")
   type        enum_links_type
   description String?         @db.VarChar(255)
   url         String          @db.VarChar(255)
   createdAt   DateTime        @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   song        Song            @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator     User?           @relation("LinkCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("links")
 }

@@ -64,6 +64,26 @@ function sanitizeFilename(filename) {
     .trim();
 }
 
+// Function to format HTML for better readability and parsing
+function formatHtml(html) {
+  if (!html || typeof html !== "string") return html;
+
+  let formatted = html
+    // Add line breaks after closing tags
+    .replace(/<\/([^>]+)>/g, "</$1>\n")
+    // Add line breaks before opening tags (but not the first one)
+    .replace(/(?<!^)(<[^\/][^>]*>)/g, "\n$1")
+    // Clean up multiple line breaks
+    .replace(/\n\s*\n/g, "\n")
+    // Trim whitespace from each line
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
+
+  return formatted;
+}
+
 // Process HTML content directly (from Google Docs export)
 function processHtmlContent(htmlContent) {
   console.log("=== BAgus says Starting song extraction ===");
@@ -96,9 +116,126 @@ function processHtmlContent(htmlContent) {
 
     // Split by the hr tags that delineate songs
     const songSeparator = '<hr style="page-break-before:always;display:none;">';
-    const songs = bodyContent.split(songSeparator);
+    let rawSongs = bodyContent.split(songSeparator);
 
-    console.log(`Found ${songs.length} sooong sections`);
+    console.log(
+      `Found ${rawSongs.length} raw sections using page break separator`
+    );
+
+    // Debug: Check if we're finding the page break separator
+    const separatorCount = (
+      bodyContent.match(
+        new RegExp(songSeparator.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")
+      ) || []
+    ).length;
+    console.log(`Page break separator occurrences: ${separatorCount}`);
+
+    // If no sections found, try alternative page break patterns
+    if (rawSongs.length <= 1) {
+      console.log(
+        "No sections found with primary separator, trying alternatives..."
+      );
+
+      // Try alternative page break patterns
+      const altSeparators = [
+        '<hr style="page-break-before:always;">',
+        '<hr style="page-break-before:always;display:none;">',
+        '<hr style="page-break-before:always;display:none;height:0;overflow:hidden;">',
+        '<div style="page-break-before:always;"></div>',
+        '<div style="page-break-before:always;height:0;overflow:hidden;"></div>',
+      ];
+
+      for (const altSep of altSeparators) {
+        const altSongs = bodyContent.split(altSep);
+        if (altSongs.length > 1) {
+          console.log(
+            `Found ${altSongs.length} sections using alternative separator: ${altSep}`
+          );
+          rawSongs = altSongs;
+          break;
+        }
+      }
+    }
+
+    // Debug: Analyze first few sections to understand HTML structure
+    console.log("=== HTML Structure Analysis ===");
+    for (let i = 0; i < Math.min(3, rawSongs.length); i++) {
+      const content = rawSongs[i].trim();
+      if (content) {
+        console.log(`Section ${i} structure:`, {
+          length: content.length,
+          hasPTags: content.includes("<p"),
+          hasDivTags: content.includes("<div"),
+          hasSpanTags: content.includes("<span"),
+          hasH1Tags: content.includes("<h1"),
+          hasH2Tags: content.includes("<h2"),
+          hasH3Tags: content.includes("<h3"),
+          firstTags: content.match(/<[^>]+>/g)?.slice(0, 5) || [],
+          preview: content.substring(0, 300),
+        });
+      }
+    }
+    console.log("=== End HTML Structure Analysis ===");
+
+    // Filter out empty sections and merge adjacent empty ones
+    const songs = [];
+    for (let i = 0; i < rawSongs.length; i++) {
+      const content = rawSongs[i].trim();
+      if (content && content.length > 0) {
+        // More lenient content checking - look for any meaningful content
+        const hasParagraph = content.match(/<p[^>]*>.*?<\/p>/i);
+        const hasDiv = content.match(/<div[^>]*>.*?<\/div>/i);
+        const hasSpan = content.match(/<span[^>]*>.*?<\/span>/i);
+        const hasTextContent =
+          content.replace(/<[^>]*>/g, "").trim().length > 0;
+
+        // Accept sections with any HTML structure that contains text
+        const hasAnyHtmlContent = hasParagraph || hasDiv || hasSpan;
+        const hasContent = hasAnyHtmlContent && hasTextContent;
+
+        // Debug logging for skipped sections
+        if (!hasContent) {
+          console.log(`\n=== SECTION ${i} SKIPPED ===`);
+          console.log(`Reason: Content validation failed`);
+          console.log(`hasParagraph: ${!!hasParagraph}`);
+          console.log(`hasDiv: ${!!hasDiv}`);
+          console.log(`hasSpan: ${!!hasSpan}`);
+          console.log(`hasTextContent: ${!!hasTextContent}`);
+          console.log(`hasAnyHtmlContent: ${hasAnyHtmlContent}`);
+          console.log(`contentLength: ${content.length}`);
+          console.log(`Content preview (first 300 chars):`);
+          console.log(content.substring(0, 300));
+          console.log(
+            `All HTML tags found:`,
+            content.match(/<[^>]+>/g)?.slice(0, 10) || []
+          );
+          console.log(`=== END SKIPPED SECTION ${i} ===\n`);
+        } else {
+          console.log(`Section ${i} ACCEPTED - hasContent: true`);
+        }
+
+        if (hasContent) {
+          songs.push(rawSongs[i]);
+        }
+      } else {
+        console.log(
+          `Section ${i} SKIPPED - Empty content (length: ${content.length})`
+        );
+      }
+    }
+
+    console.log(`\n=== CONTENT FILTERING SUMMARY ===`);
+    console.log(`Raw sections: ${rawSongs.length}`);
+    console.log(`Valid sections: ${songs.length}`);
+    console.log(`Skipped sections: ${rawSongs.length - songs.length}`);
+    console.log(`=== END FILTERING SUMMARY ===\n`);
+
+    // Store section counts for later use
+    const sectionCounts = {
+      rawSectionsCount: rawSongs.length,
+      validSectionsCount: songs.length,
+      skippedSectionsCount: rawSongs.length - songs.length,
+    };
 
     // First pass: Detect what heading levels are used for song titles
     let detectedHeadingLevel = null;
@@ -148,29 +285,61 @@ function processHtmlContent(htmlContent) {
         return;
       }
 
+      // Format the HTML for better parsing and debugging
+      const formattedContent = formatHtml(songContent);
+      console.log(`\n=== SECTION ${index} FORMATTED HTML ===`);
+      console.log(formattedContent.substring(0, 500));
+      console.log(`=== END SECTION ${index} ===\n`);
+
       // songCount will be incremented only when we find actual songs
 
       // Extract song title using detected heading pattern or page break parsing
       let songTitle = "untitled";
+      let titleParagraphIndex = -1; // Initialize here for scope
 
       if (usePageBreakParsing) {
-        // Page break parsing: use the first line of each section
+        // Page break parsing: look for the first meaningful content (likely the song title)
         console.log(
           `Section ${index} content preview:`,
           songContent.substring(0, 200)
         );
 
-        // Get the first non-empty line (likely the song title)
-        const lines = songContent.split("\n").filter((line) => line.trim());
-        if (lines.length > 0) {
-          const firstLine = lines[0];
-          // Remove HTML tags and get clean text
-          const cleanText = firstLine.replace(/<[^>]*>/g, "").trim();
+        // Find ALL paragraphs in the section
+        const allParagraphs = songContent.match(/<p[^>]*>(.*?)<\/p>/gi) || [];
+        let titleParagraph = null;
+        let titleParagraphIndex = -1;
+
+        // Skip paragraphs that are empty or only contain &nbsp; or whitespace
+        // Loop through them to find the first one with meaningful content
+        for (let i = 0; i < allParagraphs.length; i++) {
+          const paragraph = allParagraphs[i];
+          const cleanText = paragraph.replace(/<[^>]*>/g, "").trim();
+          if (
+            cleanText &&
+            cleanText.length > 0 &&
+            !cleanText.match(/^(&nbsp;|\s)+$/)
+          ) {
+            titleParagraph = paragraph;
+            titleParagraphIndex = i;
+            console.log(
+              `Section ${index} - Found title paragraph at index ${i}: "${cleanText}"`
+            );
+            break;
+          }
+        }
+
+        if (titleParagraph && titleParagraphIndex >= 0) {
+          // Use the first meaningful paragraph as the title source
+          const cleanText = titleParagraph.replace(/<[^>]*>/g, "").trim();
+          console.log(
+            `Section ${index} - Title paragraph clean text: "${cleanText}"`
+          );
+
           if (cleanText && cleanText.length > 0) {
-            // Extract just the song title from the beginning of the line
+            // Extract just the song title from the beginning of the text
             let extractedTitle = cleanText;
 
-            // Stop at common metadata indicators
+            // Stop at common metadata indicators or when we hit chord notation
             const stopPatterns = [
               /Chords by/i,
               /views/i,
@@ -184,6 +353,10 @@ function processHtmlContent(htmlContent) {
               /Capo:/i,
               /\[/i, // Stop at section markers like [Intro]
               /\(/i, // Stop at parentheses
+              /\s+[A-G][#b]?\d*\s+/i, // Stop at chord notation like " Asus2 " or " Em "
+              /\s+[A-G][#b]?\d*$/i, // Stop at chord notation at end like " G"
+              /\s+Jam\s+in\s+/i, // Stop at "Jam in" patterns
+              /\s+in\s+[A-G][#b]?\s*$/i, // Stop at "in G" patterns
             ];
 
             for (const pattern of stopPatterns) {
@@ -194,13 +367,97 @@ function processHtmlContent(htmlContent) {
               }
             }
 
-            // Clean up any remaining artifacts
-            extractedTitle = extractedTitle.replace(/\s+/g, " ").trim();
+            // Additional cleanup: stop at chord patterns that weren't caught by stopPatterns
+            // Look for patterns like "TitleAsus2" or "TitleEm" where chord notation is attached
+            // But be more careful to avoid false matches in words like "Alabama"
+            const chordAttachedMatch = extractedTitle.match(
+              /^(.+?)([A-G][#b]?\d+)([A-Z][a-z]|$)/i
+            );
+            if (
+              chordAttachedMatch &&
+              chordAttachedMatch[2] &&
+              chordAttachedMatch[2].length > 1
+            ) {
+              console.log(
+                `Section ${index} - Found attached chord: "${chordAttachedMatch[2]}" in "${chordAttachedMatch[0]}"`
+              );
+              // Take only the part before the chord
+              extractedTitle = chordAttachedMatch[1].trim();
+              console.log(
+                `Section ${index} - Title after attached chord cleanup: "${extractedTitle}"`
+              );
+            }
 
-            if (extractedTitle && extractedTitle.length > 0) {
+            // Clean up any remaining artifacts
+            extractedTitle = extractedTitle
+              .replace(/\s+/g, " ") // Normalize whitespace
+              .replace(/&nbsp;/g, " ") // Replace HTML non-breaking spaces
+              .replace(/&amp;/g, "&") // Replace HTML ampersands
+              .replace(/&lt;/g, "<") // Replace HTML less than
+              .replace(/&gt;/g, ">") // Replace HTML greater than
+              .replace(/&quot;/g, '"') // Replace HTML quotes
+              .replace(/&#39;/g, "'") // Replace HTML apostrophes
+              .trim();
+
+            // Only use this as title if it's reasonable length (not too long)
+            if (
+              extractedTitle &&
+              extractedTitle.length > 0 &&
+              extractedTitle.length < 200 // Increased from 100 to 200
+            ) {
               songTitle = sanitizeFilename(extractedTitle);
               console.log(
                 `Song ${index}: Page break parsing - Extracted title: "${extractedTitle}" -> sanitized: "${songTitle}"`
+              );
+            } else {
+              console.log(
+                `Song ${index}: Title rejected - length: ${extractedTitle?.length || 0}, content: "${extractedTitle?.substring(0, 50) || "undefined"}"`
+              );
+            }
+          } else {
+            console.log(
+              `Section ${index} - No clean text found in title paragraph`
+            );
+          }
+        } else {
+          console.log(`Section ${index} - No meaningful paragraph found`);
+        }
+
+        // If we still don't have a title, try the old line-based approach as fallback
+        if (songTitle === "untitled") {
+          const lines = songContent.split("\n").filter((line) => line.trim());
+          if (lines.length > 0) {
+            const firstLine = lines[0];
+            const cleanText = firstLine.replace(/<[^>]*>/g, "").trim();
+            if (cleanText && cleanText.length > 0 && cleanText.length < 200) {
+              // Increased from 100 to 200
+              songTitle = sanitizeFilename(cleanText);
+              console.log(
+                `Song ${index}: Page break parsing (fallback) - Extracted title: "${cleanText}" -> sanitized: "${songTitle}"`
+              );
+            } else {
+              console.log(
+                `Song ${index}: Fallback title rejected - length: ${cleanText?.length || 0}, content: "${cleanText?.substring(0, 50) || "undefined"}"`
+              );
+            }
+          }
+        }
+
+        // If we STILL don't have a title, try to extract any meaningful text from the beginning
+        if (songTitle === "untitled") {
+          // Get all text content from the section and take the first reasonable chunk
+          const allText = songContent
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (allText && allText.length > 0) {
+            // Take the first 50 characters as a potential title
+            const potentialTitle = allText.substring(0, 50).trim();
+            if (potentialTitle.length > 3) {
+              // At least 3 characters
+              songTitle = sanitizeFilename(potentialTitle);
+              console.log(
+                `Song ${index}: Page break parsing (aggressive fallback) - Extracted title: "${potentialTitle}" -> sanitized: "${songTitle}"`
               );
             }
           }
@@ -255,16 +512,29 @@ function processHtmlContent(htmlContent) {
       if (songTitle !== "untitled") {
         songCount++; // Increment the song counter!
 
-        // Extract song content (everything after the title)
-        const songBodyContent = songContent
-          .replace(
-            new RegExp(
-              `<${detectedHeadingLevel}[^>]*>.*?<\/${detectedHeadingLevel}>`,
-              "gi"
-            ),
-            ""
-          )
-          .trim();
+        // Extract song content - use the rest as song content source
+        let songBodyContent;
+        if (usePageBreakParsing && titleParagraphIndex >= 0) {
+          // For page break parsing, use all paragraphs after the title paragraph
+          const remainingParagraphs = allParagraphs.slice(
+            titleParagraphIndex + 1
+          );
+          songBodyContent = remainingParagraphs.join("\n").trim();
+          console.log(
+            `Section ${index} - Using ${remainingParagraphs.length} paragraphs after title as song content`
+          );
+        } else {
+          // For heading-based parsing, remove the heading as before
+          songBodyContent = songContent
+            .replace(
+              new RegExp(
+                `<${detectedHeadingLevel}[^>]*>.*?<\/${detectedHeadingLevel}>`,
+                "gi"
+              ),
+              ""
+            )
+            .trim();
+        }
         console.log("title:  ", songTitle);
         console.log("cooontent:  ", songBodyContent.length);
 
@@ -318,6 +588,10 @@ function processHtmlContent(htmlContent) {
       songsFound: songCount,
       extractedSongs: extractedSongs,
       htmlContentLength: htmlContent.length,
+      // Include section counts for session storage
+      rawSectionsCount: sectionCounts.rawSectionsCount,
+      validSectionsCount: sectionCounts.validSectionsCount,
+      skippedSectionsCount: sectionCounts.skippedSectionsCount,
     };
   } catch (error) {
     console.error("Error in song extraction:", error);
@@ -377,6 +651,14 @@ router.post("/admin/process-google-doc", async (req, res) => {
 
     // Add document title to the result
     result.documentTitle = documentTitle;
+
+    // Extract section counts from the result for session storage
+    const sectionCounts = {
+      rawSectionsCount: result.rawSectionsCount || 0,
+      validSectionsCount: result.validSectionsCount || 0,
+      skippedSectionsCount: result.skippedSectionsCount || 0,
+    };
+
     console.log("Bagus was here 3");
 
     // Check if we have songs before proceeding
@@ -452,6 +734,15 @@ router.post("/admin/process-google-doc", async (req, res) => {
         urls: urls, // Extracted URLs for link creation
       };
     });
+
+    // Update section counts to reflect actual processed songs
+    sectionCounts.validSectionsCount = processedSongs.length;
+    sectionCounts.rawSectionsCount = Math.max(
+      sectionCounts.rawSectionsCount,
+      processedSongs.length
+    );
+    sectionCounts.skippedSectionsCount =
+      sectionCounts.rawSectionsCount - sectionCounts.validSectionsCount;
 
     // Create a quickset-compatible structure from Google Doc data
     const quicksetData = {
@@ -530,7 +821,10 @@ router.post("/admin/process-google-doc", async (req, res) => {
         setlistId: setlist.id, // Use the real setlist ID
         sets: quicksetData.sets,
         songs: quicksetData.songs,
-        googleDocData: essentialData, // Store original Google Doc data
+        googleDocData: {
+          ...essentialData,
+          ...sectionCounts, // Include the section counts
+        }, // Store original Google Doc data plus section counts
         isGoogleDocImport: true, // Flag to indicate this is from Google Doc
       };
 

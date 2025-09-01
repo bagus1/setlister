@@ -78,13 +78,39 @@
                             <span>Sets:</span>
                             <strong><%= sets.length %></strong>
                         </div>
+                        
+                        <% if (isGoogleDocImport && googleDocData) { %>
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <span>Raw Sections:</span>
+                                <strong><%= googleDocData.rawSectionsCount %></strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Valid Songs:</span>
+                                <strong><%= googleDocData.validSectionsCount %></strong>
+                            </div>
+                            <div class="d-flex justify-content-between text-danger">
+                                <span>Sections Skipped:</span>
+                                <strong><%= googleDocData.skippedSectionsCount %></strong>
+                            </div>
+                            
+                            <% if (googleDocData.skippedSectionsCount > 0) { %>
+                                <hr>
+                                <div class="text-center">
+                                                            <a href="/legal/google-doc-formatting-guide" class="btn btn-outline-info btn-sm" target="_blank">
+                            <i class="bi bi-question-circle"></i> Formatting Guide
+                        </a>
+                                </div>
+                            <% } %>
+                        <% } %>
+                        
                         <hr>
                         <div class="d-flex justify-content-between text-success">
                             <span>Matched:</span>
                             <strong id="matchedCount">-</strong>
                         </div>
                         <div class="d-flex justify-content-between text-warning">
-                            <span>Will Create:</span>
+                            <span>Likely New Songs:</span>
                             <strong id="createCount">-</strong>
                         </div>
                     </div>

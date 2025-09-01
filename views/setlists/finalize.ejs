@@ -42,11 +42,11 @@
                             <h6 class="text-muted mb-0">Title and Artist</h6>
                         </div>
                         <div class="flex-shrink-0">
-                            <h6 class="text-muted mb-0">Key, Tempo, Duration, Vocalist</h6>
+                            <h6 class="text-muted mb-0" data-bs-toggle="tooltip" data-bs-placement="top" title="Click on the song and edit to add values">Key, Tempo, Duration, Vocalist</h6>
                         </div>
                     </div>
                     <div class="flex-shrink-0">
-                        <h6 class="text-muted mb-0">Music Stand Doc</h6>
+                        <h6 class="text-muted mb-0" data-bs-toggle="tooltip" data-bs-placement="top" title="Click on the song to view and add Music Stand Docs">Music Stand Doc</h6>
                     </div>
                 </div>
                 <hr class="my-3 mx-5 text-muted">
@@ -1034,6 +1034,19 @@
         });
         });
     }
+
+    // Initialize tooltips for headers
+    document.addEventListener('DOMContentLoaded', function() {
+        const keyHeaderTooltip = document.querySelector('h6[title="Click on the song and edit to add values"]');
+        const musicStandHeaderTooltip = document.querySelector('h6[title="Click on the song to view and add Music Stand Docs"]');
+        
+        if (keyHeaderTooltip) {
+            new bootstrap.Tooltip(keyHeaderTooltip);
+        }
+        if (musicStandHeaderTooltip) {
+            new bootstrap.Tooltip(musicStandHeaderTooltip);
+        }
+    });
 </script>
 
 <style>

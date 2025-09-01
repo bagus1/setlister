@@ -25,6 +25,71 @@
     </div>
 
     <form action="/bands/<%= band.id %>/quick-set/create" method="POST" id="confirmForm">
+        <!-- Warning Message for High Skip Rate -->
+        <% if (isGoogleDocImport && googleDocData && googleDocData.skippedSectionsCount > 0) { %>
+            <% 
+                const skipPercentage = (googleDocData.skippedSectionsCount / googleDocData.rawSectionsCount) * 100;
+                const validSongs = googleDocData.validSectionsCount || 0;
+                const skipRate = validSongs > 0 ? (googleDocData.skippedSectionsCount / validSongs) * 100 : 0;
+            %>
+            <% if (skipRate > 10) { %>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-warning" role="alert">
+                            <h5 class="alert-heading">
+                                <i class="bi bi-exclamation-triangle"></i> Processing Warning
+                            </h5>
+                            <p class="mb-2">
+                                Quite a few songs couldn't be processed (<%= Math.round(skipRate) %>% of your songs were skipped). 
+                                You might want to view the formatting document and fix your Google Doc and resubmit before continuing.
+                            </p>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <%= googleDocData.skippedSectionsCount %> out of <%= googleDocData.rawSectionsCount %> sections were skipped
+                                </small>
+                                <a href="/legal/google-doc-formatting-guide" class="btn btn-outline-warning btn-sm" target="_blank">
+                                    <i class="bi bi-question-circle"></i> View Formatting Guide
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        <% } %>
+
+        <!-- Warning Message for High "Likely New Songs" Rate -->
+        <% if (isGoogleDocImport && googleDocData) { %>
+            <% 
+                const totalSongs = googleDocData.validSectionsCount || 0;
+                const likelyNewSongs = totalSongs - (googleDocData.matchedSongs || 0);
+                const newSongsRate = totalSongs > 0 ? (likelyNewSongs / totalSongs) * 100 : 0;
+            %>
+            <% if (newSongsRate > 10) { %>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-info" role="alert">
+                            <h5 class="alert-heading">
+                                <i class="bi bi-info-circle"></i> Title Quality Check
+                            </h5>
+                            <p class="mb-2">
+                                Before continuing, check how the titles look below. If they look messed up at all, check the Google Formatting Guide and consider cleaning up your Google Doc and resubmitting before continuing.
+                            </p>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <%= likelyNewSongs %> out of <%= totalSongs %> songs appear to be new (may indicate title parsing issues)
+                                </small>
+                                <a href="/legal/google-doc-formatting-guide" class="btn btn-outline-info btn-sm" target="_blank">
+                                    <i class="bi bi-question-circle"></i> View Formatting Guide
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        <% } %>
+
         <!-- Setlist Details -->
         <div class="row mb-4">
             <div class="col-md-8">

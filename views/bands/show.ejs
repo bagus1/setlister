@@ -169,7 +169,7 @@
                     <i class="bi bi-list-check"></i> Setlists
                 </h5>
                 <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
-                    data-bs-target="#newSetlistModal">
+                    data-bs-target="#newSetlistModal" <%= (!bandSongs || bandSongs.length === 0) ? 'disabled' : '' %>>
                     <i class="bi bi-plus"></i> New Setlist
                 </button>
             </div>
@@ -218,7 +218,7 @@
                         </div>
                         <% }) %>
                             <% } else { %>
-                                <p class="text-muted">No setlists yet. Create your first setlist to get started!</p>
+                                <p class="text-muted">Use the Quick Set Creation or the Google Doc Upload methods to create your first setlist. You can also <a href="/bands/<%= band.id %>/songs">Manage Songs</a> to pick from songs already available.</p>
                                 <% } %>
             </div>
         </div>
@@ -241,7 +241,7 @@
                 <!-- Quick Set Form (always visible) -->
                 <form action="/bands/<%= band.id %>/quick-set" method="POST">
                     <div class="mb-3">
-                        <label for="songList" class="form-label">Paste your setlist here:</label>
+                        <label for="songList" class="form-label">Enter or paste your setlist here:</label>
                         <textarea class="form-control" id="songList" name="songList" rows="10" 
                             placeholder="Option 1 - Groups separated by blank lines:
 The Music Never Stopped >
@@ -292,17 +292,17 @@ Set 4:
         <!-- Google Doc Processing Panel -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="bi bi-file-earmark-text"></i> Process Google Doc
-                    <i class="bi bi-question-circle text-muted ms-2" 
-                       data-bs-toggle="tooltip" 
-                       data-bs-placement="top" 
-                       title="We can't work all the miracles here. Make sure your google docs just has songs in it and that for the title of the song, each song has the same heading style like Heading 1 and only include the exact title of the song in that heading. Only have the exact title in that heading. Only do this once per Google Doc or we'll get duplicate Music Stand Docs and links created. I've had luck with 150 songs (1 page per song) or less, but not too much more."></i>
+                                <h5 class="mb-0">
+                    <i class="bi bi-file-earmark-text"></i> Google Doc Upload
+                    <i class="bi bi-question-circle text-muted ms-2"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="top"
+                       title="We can't work all the miracles here. Make sure your google docs just has songs in it and that for the title of the song, each song has the same heading style like Heading 1 and only include the exact title of the song in that heading. Only have the exact title in that heading. Ensure your songs are separated by page breaks (Ctrl+Enter / Cmd+Enter) in your Google Doc. Only do this once per Google Doc or we'll get duplicate Music Stand Docs and links created. I've had luck with 150 songs (1 page per song) or less, but not too much more."></i>
                 </h5>
             </div>
             <div class="card-body">
                             <p class="text-muted mb-3">
-                Paste a public Google Doc URL to automatically add your songs for your band and a new set.
+                Paste a public Google Doc URL to automatically add your songs for your band and a new set. Ensure your songs are separated by page breaks (Ctrl+Enter / Cmd+Enter) in your Google Doc before entering it here.
             </p>
                 
                 <form id="googleDocForm">
@@ -311,13 +311,13 @@ Set 4:
                                         <input type="url" class="form-control" id="googleDocUrl" name="googleDocUrl"
                     placeholder="google doc url" required>
                         <div class="form-text">
-                            Paste the full URL from your Google Doc containing chord charts or setlists.
+                            Paste the full URL from your Google Doc containing chord charts or setlists. Ensure your songs are separated by page breaks (Ctrl+Enter / Cmd+Enter) in your Google Doc before entering it here.
                         </div>
                     </div>
                     <input type="hidden" name="bandId" value="<%= band.id %>">
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-sm" id="processGoogleDocBtn">
-                            <i class="bi bi-play-circle"></i> Process Document
+                            <i class="bi bi-play-circle"></i> Upload Document
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="clearGoogleDocForm">
                             Clear
@@ -622,7 +622,7 @@ Set 4:
             
             // Reset button
             processBtn.disabled = false;
-            processBtn.innerHTML = '<i class="bi bi-play-circle"></i> Process Document';
+            processBtn.innerHTML = '<i class="bi bi-play-circle"></i> Upload Document';
             
             if (data && data.success) {
                 // Show success results with song extraction details
@@ -677,7 +677,7 @@ Set 4:
             
             // Reset button
             processBtn.disabled = false;
-            processBtn.innerHTML = '<i class="bi bi-play-circle"></i> Process Document';
+            processBtn.innerHTML = '<i class="bi bi-play-circle"></i> Upload Document';
             
             document.getElementById('resultsContent').innerHTML = `
                 <p><strong>Error processing Google Doc:</strong></p>

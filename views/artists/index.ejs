@@ -20,6 +20,11 @@
                 </h5>
             </div>
             <div class="card-body">
+                <!-- Artists Filter -->
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="artistFilter" placeholder="Filter artists by name..." style="max-width: 300px;">
+                </div>
+                
                 <% if (artists && artists.length> 0) { %>
                     <div class="row" id="artistsContainer">
                         <% artists.forEach(artist=> { %>
@@ -33,7 +38,10 @@
                                             </a>
                                         </h6>
                                         <p class="text-muted mb-0">
-                                            <small>Artist</small>
+                                            <small>
+                                                <i class="bi bi-music-note"></i>
+                                                <%= artist.songCount %> song<%= artist.songCount !== 1 ? 's' : '' %>
+                                            </small>
                                         </p>
                                     </div>
                                 </div>
@@ -68,3 +76,29 @@
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterInput = document.getElementById('artistFilter');
+    const artistsContainer = document.getElementById('artistsContainer');
+    
+    if (filterInput && artistsContainer) {
+        filterInput.addEventListener('input', function() {
+            const filterValue = this.value.toLowerCase().trim();
+            const artistCards = artistsContainer.querySelectorAll('.artist-card');
+            
+            artistCards.forEach(card => {
+                const artistName = card.querySelector('.card-title a').textContent.toLowerCase();
+                if (artistName.includes(filterValue)) {
+                    card.closest('.col-md-6').style.display = '';
+                } else {
+                    card.closest('.col-md-6').style.display = 'none';
+                }
+            });
+        });
+        
+        // Focus the filter input when page loads
+        filterInput.focus();
+    }
+});
+</script>

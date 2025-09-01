@@ -23,6 +23,7 @@ model User {
   gigDocuments   GigDocument[]    @relation("DocumentCreator")
   createdSongs   Song[]           @relation("SongCreator")
   createdLinks   Link[]           @relation("LinkCreator")
+  createdSetlists Setlist[]       @relation("SetlistCreator")
 
   @@map("users")
 }
@@ -138,6 +139,7 @@ model Setlist {
   id            Int          @id @default(autoincrement())
   title         String       @db.VarChar(255)
   bandId        Int          @map("band_id")
+  createdById   Int?         @map("created_by_id")
   date          DateTime?    @db.Timestamptz(6)
   isFinalized   Boolean?     @default(false) @map("is_finalized")
   recordingsUrl String?      @map("recordings_url")
@@ -145,6 +147,7 @@ model Setlist {
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   sets          SetlistSet[]
   band          Band         @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator       User?        @relation("SetlistCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("setlists")
 }

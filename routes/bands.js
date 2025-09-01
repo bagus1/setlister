@@ -287,6 +287,7 @@ router.post(
           data: {
             title,
             bandId: parseInt(bandId),
+            createdById: req.session.user.id,
             date: date ? new Date(date) : null,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -822,6 +823,7 @@ router.post(
         data: {
           title: setlistTitle,
           bandId: bandId,
+          createdById: req.session.user.id,
           date: currentDate,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -1494,6 +1496,7 @@ router.post("/:id/quick-set/create", async (req, res) => {
         title: setlistTitle,
         date: setlistDate ? new Date(setlistDate) : new Date(),
         bandId: bandId,
+        createdById: req.session.user.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

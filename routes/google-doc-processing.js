@@ -799,6 +799,7 @@ router.post("/admin/process-google-doc", async (req, res) => {
           title: setlistTitle,
           date: new Date(),
           bandId: parseInt(bandId),
+          createdById: req.session.user.id,
           createdAt: new Date(),
           updatedAt: new Date(),
         },

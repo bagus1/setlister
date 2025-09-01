@@ -269,16 +269,7 @@ deploy_via_git() {
         SCHEMA_CHANGED=true
     fi
     
-    # Check if database schema matches Prisma schema (critical check)
-    print_status "Checking if database schema matches Prisma schema..."
-    DB_SYNC_CHECK=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push --skip-generate 2>&1" || echo "drift_detected")
-    if echo "$DB_SYNC_CHECK" | grep -q "Your database is now in sync"; then
-        print_status "Database schema is in sync with Prisma schema"
-    else
-        print_status "Database schema drift detected - schema changes needed"
-        print_status "Drift details: $(echo "$DB_SYNC_CHECK" | head -5)"
-        SCHEMA_CHANGED=true
-    fi
+
     
     # Check for new routes that might import Prisma
     if ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git diff --name-only HEAD~1 | grep -q '^routes/'"; then
@@ -303,7 +294,7 @@ deploy_via_git() {
     
     # If schema changed, run Prisma commands with Passenger restart
     if [ "$SCHEMA_CHANGED" = true ]; then
-        print_status "Schema or structural changes detected - restarting server for safe migration..."
+        print_status "Schema or structural changes detected - applying with db push..."
         
         # Generate Prisma client first
         print_status "Generating Prisma client..."
@@ -312,81 +303,14 @@ deploy_via_git() {
             return 1
         }
         
-        # Generate migrations locally if needed
-        print_status "Generating migrations locally if needed..."
-        if [ ! -d "prisma/migrations" ] || [ -z "$(ls -A prisma/migrations 2>/dev/null)" ]; then
-            print_status "No local migrations found - creating initial migration from current schema..."
-            npx prisma migrate dev --name initial_schema --create-only || {
-                print_error "Failed to create initial migration locally"
-                return 1
-            }
-            print_success "Initial migration created locally"
-        else
-            print_status "Checking for new schema changes to migrate..."
-            # Try to create a migration for any schema changes
-            npx prisma migrate dev --name schema_update --create-only 2>/dev/null || {
-                print_status "No new migrations needed"
-            }
-        fi
+        # Apply schema changes with db push
+        print_status "Applying schema changes with prisma db push..."
+        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
+            print_error "Failed to apply schema changes with db push"
+            return 1
+        }
         
-        # Find migrations that exist locally but not on production
-        print_status "Checking for missing migrations on production..."
-        LOCAL_MIGRATIONS=($(ls prisma/migrations/ 2>/dev/null | sort))
-        REMOTE_MIGRATIONS=($(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && ls prisma/migrations/ 2>/dev/null | sort" || echo ""))
-        
-        MISSING_MIGRATIONS=()
-        for migration in "${LOCAL_MIGRATIONS[@]}"; do
-            if [ "$migration" != "migration_lock.toml" ]; then
-                if ! printf '%s\n' "${REMOTE_MIGRATIONS[@]}" | grep -q "^$migration$"; then
-                    MISSING_MIGRATIONS+=("$migration")
-                fi
-            fi
-        done
-        
-        if [ ${#MISSING_MIGRATIONS[@]} -gt 0 ]; then
-            print_status "Found ${#MISSING_MIGRATIONS[@]} missing migrations on production:"
-            for migration in "${MISSING_MIGRATIONS[@]}"; do
-                print_status "  - $migration"
-            done
-            
-            # Run SQL from missing migrations directly
-            for migration in "${MISSING_MIGRATIONS[@]}"; do
-                print_status "Applying migration: $migration"
-                if [ -f "prisma/migrations/$migration/migration.sql" ]; then
-                    # Copy migration to production
-                    scp "prisma/migrations/$migration/migration.sql" "$HOST_USER@$HOST_DOMAIN:/tmp/${migration}_migration.sql" || {
-                        print_error "Failed to copy migration $migration to production"
-                        return 1
-                    }
-                    
-                    # Run SQL directly
-                    print_status "Executing SQL for migration: $migration"
-                    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && psql \$DATABASE_URL -f /tmp/${migration}_migration.sql" || {
-                        print_error "Failed to execute SQL for migration: $migration"
-                        print_error "Check the SQL file and database state manually"
-                        return 1
-                    }
-                    
-                    # Clean up temp file
-                    ssh "$HOST_USER@$HOST_DOMAIN" "rm /tmp/${migration}_migration.sql"
-                    
-                    # Mark migration as applied in Prisma's tracking table
-                    print_status "Marking migration as applied: $migration"
-                    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && psql \$DATABASE_URL -c \"INSERT INTO _prisma_migrations (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count) VALUES (gen_random_uuid(), 'manual_sql_migration', NOW(), '$migration', NULL, NULL, NOW(), 1) ON CONFLICT (migration_name) DO NOTHING;\"" || {
-                        print_warning "Failed to mark migration as applied - continuing anyway"
-                    }
-                    
-                    print_success "Migration $migration applied successfully"
-                else
-                    print_error "Migration SQL file not found: prisma/migrations/$migration/migration.sql"
-                    return 1
-                fi
-            done
-        else
-            print_status "All migrations are already present on production"
-        fi
-        
-        print_success "Schema migration completed"
+        print_success "Schema changes applied successfully"
         
         # Restart the server with new schema via Passenger
         print_status "Restarting server with new schema via Passenger..."

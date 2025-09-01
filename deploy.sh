@@ -294,23 +294,17 @@ deploy_via_git() {
     
     # If schema changed, run Prisma commands with Passenger restart
     if [ "$SCHEMA_CHANGED" = true ]; then
-        print_status "Schema or structural changes detected - applying with db push..."
+        print_status "Schema or structural changes detected - generating Prisma client..."
         
-        # Generate Prisma client first
+        # Generate Prisma client to match the new schema
         print_status "Generating Prisma client..."
         ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate" || {
             print_error "Failed to generate Prisma client on server"
             return 1
         }
         
-        # Apply schema changes with db push
-        print_status "Applying schema changes with prisma db push..."
-        ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma db push" || {
-            print_error "Failed to apply schema changes with db push"
-            return 1
-        }
-        
-        print_success "Schema changes applied successfully"
+        print_success "Prisma client generated successfully"
+        print_warning "Note: Database schema changes should be applied manually via SQL"
         
         # Restart the server with new schema via Passenger
         print_status "Restarting server with new schema via Passenger..."

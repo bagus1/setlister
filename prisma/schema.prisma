@@ -108,6 +108,7 @@ model BandSong {
   songId        Int          @map("song_id")
   gigDocumentId Int?         @map("gig_document_id")
   vocalist      String?      @db.VarChar(255)
+  bpm           Int?
   createdAt     DateTime     @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   band          Band         @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)

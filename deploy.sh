@@ -5,6 +5,7 @@
 # 
 # Modes:
 #   deploy   - Smart daily deployment (schema-aware, fast when no changes)
+#   deploy-schema - Deploy schema changes with full workflow (compare, generate SQL, apply, commit, deploy)
 #   deploy-postgres - Full PostgreSQL setup with migration (for new servers)
 #   update   - Quick deploy with PostgreSQL migration (push to git, pull on server, migrate, restart)
 #   quick    - Update files with PostgreSQL migration (auto-commit, push to git, pull on server, migrate, restart)
@@ -87,6 +88,7 @@ Usage: ./deploy.sh [mode]
 
 Modes:
   deploy   - Smart daily deployment (Prisma-aware, safe stop/start for structural changes)
+  deploy-schema - Deploy schema changes with full workflow (compare, generate SQL, apply, commit, deploy)
   deploy-simple - Deploy code changes only (no Prisma checks, fast restart)
   deploy-postgres - Full PostgreSQL setup with migration (for new servers)
   update   - Quick deploy with PostgreSQL migration (push to git, pull on server, migrate, restart)
@@ -122,6 +124,7 @@ Environment Variables (can be set before running):
 
 Examples:
   ./deploy.sh deploy       # Smart daily deployment (schema-aware)
+  ./deploy.sh deploy-schema # Deploy schema changes with full workflow
   ./deploy.sh deploy-postgres # Full PostgreSQL setup with migration
   ./deploy.sh update       # Quick deploy with restart
   ./deploy.sh quick        # Update files without restart
@@ -572,6 +575,362 @@ quick_deploy() {
     
     print_success "Files updated successfully! (No server restart)"
     print_warning "Note: Some changes may require a restart. Use './deploy.sh restart' if needed."
+}
+
+# Function to deploy schema changes with full workflow
+deploy_schema() {
+    print_status "Starting schema deployment workflow..."
+    
+    # Step 1: Check branch mismatch (reuse existing function)
+    print_status "Step 1: Checking branch alignment between local and production..."
+    check_branch_mismatch
+    
+    # Step 2: Get current production schema file
+    print_status "Step 2: Retrieving current production schema file..."
+    get_production_schema
+    
+    # Step 3: Compare local vs production schema
+    print_status "Step 3: Comparing local vs production schema files..."
+    compare_schemas
+    
+    # Step 4: Generate SQL for differences using Prisma
+    print_status "Step 4: Generating SQL for schema differences..."
+    generate_schema_sql
+    
+    # Step 5: Execute SQL on production database
+    print_status "Step 5: Executing SQL on production database..."
+    execute_schema_sql
+    
+    # Step 6: Commit and push schema changes
+    print_status "Step 6: Committing and pushing schema changes..."
+    commit_and_push_schema_changes
+    
+    # Step 7: Deploy to server (pull, generate, restart)
+    print_status "Step 7: Deploying to server..."
+    deploy_schema_to_server
+    
+    print_success "Schema deployment workflow completed successfully!"
+}
+
+# Function to get current production schema file
+get_production_schema() {
+    print_status "Downloading current production schema file..."
+    
+    # Create temporary directory for schema comparison
+    local temp_dir="./temp_schema_comparison"
+    mkdir -p "$temp_dir"
+    
+    # Download production schema file
+    scp "$HOST_USER@$HOST_DOMAIN:$SETLIST_PATH/prisma/schema.prisma" "$temp_dir/production_schema.prisma" || {
+        print_error "Failed to download production schema file"
+        rm -rf "$temp_dir"
+        return 1
+    }
+    
+    print_success "Production schema file downloaded to $temp_dir/production_schema.prisma"
+}
+
+# Function to compare local vs production schema files
+compare_schemas() {
+    print_status "Comparing local and production schema files..."
+    
+    local temp_dir="./temp_schema_comparison"
+    local local_schema="prisma/schema.prisma"
+    local prod_schema="$temp_dir/production_schema.prisma"
+    
+    if [ ! -f "$local_schema" ]; then
+        print_error "Local schema file not found: $local_schema"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    if [ ! -f "$prod_schema" ]; then
+        print_error "Production schema file not found: $prod_schema"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # Show file info
+    local local_size=$(wc -l < "$local_schema")
+    local prod_size=$(wc -l < "$prod_schema")
+    print_status "Local schema: $local_size lines"
+    print_status "Production schema: $prod_size lines"
+    
+    # Compare files using diff
+    if diff -q "$local_schema" "$prod_schema" > /dev/null; then
+        print_warning "No differences found between local and production schema files"
+        print_warning "Schema deployment workflow aborted - no changes to deploy"
+        rm -rf "$temp_dir"
+        return 1
+    else
+        print_status "Schema differences detected:"
+        echo "----------------------------------------"
+        
+        # Show a summary of changes
+        local added_lines=$(diff -u "$prod_schema" "$local_schema" | grep -c "^+" || echo "0")
+        local removed_lines=$(diff -u "$prod_schema" "$local_schema" | grep -c "^-" || echo "0")
+        local changed_lines=$(diff -u "$prod_schema" "$local_schema" | grep -c "^@@" || echo "0")
+        
+        print_status "Change summary:"
+        print_status "  - Lines added: $added_lines"
+        print_status "  - Lines removed: $removed_lines" 
+        print_status "  - Sections changed: $changed_lines"
+        echo
+        
+        # Show the actual diff
+        print_status "Detailed differences:"
+        diff -u "$prod_schema" "$local_schema" || true
+        echo "----------------------------------------"
+        print_success "Schema comparison completed - differences found"
+    fi
+}
+
+# Function to generate SQL for schema differences using Prisma
+generate_schema_sql() {
+    print_status "Generating SQL for schema differences using Prisma..."
+    
+    local temp_dir="./temp_schema_comparison"
+    
+    # Create a temporary schema file for comparison
+    local temp_schema="$temp_dir/temp_schema.prisma"
+    cp "prisma/schema.prisma" "$temp_schema"
+    
+    print_status "Source schema: $temp_dir/production_schema.prisma (production)"
+    print_status "Target schema: $temp_schema (local)"
+    
+    # Generate migration using Prisma
+    print_status "Running Prisma migrate diff to generate SQL..."
+    npx prisma migrate diff \
+        --from-schema-datamodel "$temp_dir/production_schema.prisma" \
+        --to-schema-datamodel "$temp_schema" \
+        --script > "$temp_dir/schema_changes.sql" || {
+        print_error "Failed to generate SQL for schema differences"
+        rm -rf "$temp_dir"
+        return 1
+    }
+    
+    # Check if SQL file was created and has content
+    if [ ! -s "$temp_dir/schema_changes.sql" ]; then
+        print_warning "No SQL changes generated - schema files may be identical"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # Show SQL file info
+    local sql_lines=$(wc -l < "$temp_dir/schema_changes.sql")
+    local sql_size=$(du -h "$temp_dir/schema_changes.sql" | cut -f1)
+    print_success "SQL for schema differences generated: $temp_dir/schema_changes.sql"
+    print_status "SQL file: $sql_lines lines, $sql_size"
+    
+    # Analyze the SQL to show what changes will be made
+    print_status "Analyzing SQL changes:"
+    local create_count=$(grep -c "^CREATE" "$temp_dir/schema_changes.sql" 2>/dev/null || echo "0")
+    local alter_count=$(grep -c "^ALTER" "$temp_dir/schema_changes.sql" 2>/dev/null || echo "0")
+    local drop_count=$(grep -c "^DROP" "$temp_dir/schema_changes.sql" 2>/dev/null || echo "0")
+    local insert_count=$(grep -c "^INSERT" "$temp_dir/schema_changes.sql" 2>/dev/null || echo "0")
+    
+    print_status "SQL operations summary:"
+    print_status "  - CREATE statements: $create_count"
+    print_status "  - ALTER statements: $alter_count"
+    print_status "  - DROP statements: $drop_count"
+    print_status "  - INSERT statements: $insert_count"
+    echo
+    
+    print_status "Generated SQL content:"
+    echo "----------------------------------------"
+    cat "$temp_dir/schema_changes.sql"
+    echo "----------------------------------------"
+    
+    # Ask for confirmation before proceeding
+    read -p "Do you want to proceed with applying these SQL changes to production? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "Schema deployment cancelled by user"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+}
+
+# Function to execute SQL on production database
+execute_schema_sql() {
+    print_status "Executing SQL on production database..."
+    
+    local temp_dir="./temp_schema_comparison"
+    local sql_file="$temp_dir/schema_changes.sql"
+    
+    if [ ! -f "$sql_file" ]; then
+        print_error "SQL file not found: $sql_file"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # Show what we're about to execute
+    local sql_lines=$(wc -l < "$sql_file")
+    print_status "About to execute $sql_lines lines of SQL on production database"
+    
+    # Upload SQL file to server
+    print_status "Uploading SQL file to server..."
+    scp "$sql_file" "$HOST_USER@$HOST_DOMAIN:/tmp/schema_changes.sql" || {
+        print_error "Failed to upload SQL file to server"
+        rm -rf "$temp_dir"
+        return 1
+    }
+    
+    # Execute SQL on production database with detailed logging
+    print_status "Executing SQL on production database..."
+    print_status "Database: $HOST_DOMAIN"
+    print_status "SQL file: /tmp/schema_changes.sql"
+    
+    # Execute and capture output
+    local execution_output=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -f /tmp/schema_changes.sql 2>&1")
+    local exit_code=$?
+    
+    if [ $exit_code -eq 0 ]; then
+        print_success "SQL executed successfully on production database"
+        if [ -n "$execution_output" ]; then
+            print_status "Database response:"
+            echo "$execution_output"
+        fi
+    else
+        print_error "Failed to execute SQL on production database"
+        print_error "Exit code: $exit_code"
+        print_error "Error output:"
+        echo "$execution_output"
+        ssh "$HOST_USER@$HOST_DOMAIN" "rm -f /tmp/schema_changes.sql"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # Clean up SQL file on server
+    ssh "$HOST_USER@$HOST_DOMAIN" "rm -f /tmp/schema_changes.sql"
+    
+    print_success "Database schema update completed successfully"
+}
+
+# Function to commit and push schema changes
+commit_and_push_schema_changes() {
+    print_status "Committing and pushing schema changes..."
+    
+    # Check if there are uncommitted changes
+    local uncommitted_files=$(git status --porcelain)
+    if [ -n "$uncommitted_files" ]; then
+        print_status "Uncommitted changes found:"
+        echo "$uncommitted_files"
+        echo
+        
+        print_status "Committing uncommitted changes..."
+        git add .
+        
+        # Create a more descriptive commit message
+        local commit_msg="Schema changes: $(date '+%Y-%m-%d %H:%M:%S')"
+        if [ -f "./temp_schema_comparison/schema_changes.sql" ]; then
+            local sql_summary=$(head -5 "./temp_schema_comparison/schema_changes.sql" | tr '\n' ' ' | cut -c1-100)
+            commit_msg="Schema changes: $sql_summary... ($(date '+%Y-%m-%d %H:%M:%S'))"
+        fi
+        
+        git commit -m "$commit_msg"
+        print_success "Changes committed locally with message: $commit_msg"
+    else
+        print_status "No uncommitted changes found"
+    fi
+    
+    # Get current branch name
+    local current_branch=$(git branch --show-current)
+    print_status "Current branch: $current_branch"
+    
+    # Show what we're about to push
+    local commits_ahead=$(git rev-list HEAD...origin/$current_branch --count)
+    if [ "$commits_ahead" -gt 0 ]; then
+        print_status "Commits to push: $commits_ahead"
+        print_status "Recent commits:"
+        git log --oneline -3
+        echo
+    fi
+    
+    # Push changes to GitHub
+    print_status "Pushing changes to GitHub..."
+    git push origin "$current_branch" || {
+        print_error "Failed to push changes to GitHub"
+        return 1
+    }
+    
+    print_success "Schema changes committed and pushed to GitHub"
+}
+
+# Function to deploy schema to server (pull, generate, restart)
+deploy_schema_to_server() {
+    print_status "Deploying schema changes to server..."
+    
+    # Get current branch name
+    local current_branch=$(git branch --show-current)
+    print_status "Current branch: $current_branch"
+    
+    # Ensure server is on the same branch
+    print_status "Ensuring server is on branch: $current_branch"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $current_branch" || {
+        print_error "Failed to checkout branch $current_branch on server"
+        return 1
+    }
+    
+    # Pull latest changes on server
+    print_status "Pulling latest changes on server..."
+    local pull_output=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git pull origin $current_branch 2>&1")
+    if [ $? -eq 0 ]; then
+        print_success "Server code updated successfully"
+        if [ -n "$pull_output" ]; then
+            print_status "Pull output:"
+            echo "$pull_output"
+        fi
+    else
+        print_error "Failed to pull on server"
+        print_error "Pull output:"
+        echo "$pull_output"
+        return 1
+    fi
+    
+    # Generate Prisma client on server
+    print_status "Generating Prisma client on server..."
+    local generate_output=$(ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH /opt/alt/alt-nodejs20/root/usr/bin/npx prisma generate 2>&1")
+    if [ $? -eq 0 ]; then
+        print_success "Prisma client generated successfully on server"
+        if [ -n "$generate_output" ]; then
+            print_status "Generate output:"
+            echo "$generate_output"
+        fi
+    else
+        print_error "Failed to generate Prisma client on server"
+        print_error "Generate output:"
+        echo "$generate_output"
+        return 1
+    fi
+    
+    # Restart the server
+    print_status "Restarting server with new schema..."
+    restart_server_passenger
+    
+    # Verify server is responding
+    print_status "Verifying server is responding..."
+    local attempts=0
+    while ! is_server_responding && [ $attempts -lt 10 ]; do
+        sleep 2
+        attempts=$((attempts + 1))
+        print_status "Waiting for server to respond... (attempt $attempts/10)"
+    done
+    
+    if is_server_responding; then
+        print_success "Server is responding successfully with new schema"
+    else
+        print_warning "Server may not be fully ready yet - check manually"
+    fi
+    
+    # Clean up temporary files
+    local temp_dir="./temp_schema_comparison"
+    if [ -d "$temp_dir" ]; then
+        rm -rf "$temp_dir"
+        print_status "Temporary files cleaned up"
+    fi
+    
+    print_success "Schema deployment to server completed successfully!"
 }
 
 # Function to deploy simple (no Prisma checks - code changes only)
@@ -1809,6 +2168,10 @@ main() {
             check_git_status
             check_branch_mismatch
             deploy_via_git
+            ;;
+        "deploy-schema")
+            check_git_status
+            deploy_schema
             ;;
         "deploy-simple")
             check_git_status

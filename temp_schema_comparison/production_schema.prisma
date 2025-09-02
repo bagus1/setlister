@@ -1,0 +1,421 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+  // Updated for private songs feature
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int              @id @default(autoincrement())
+  username       String           @unique @db.VarChar(255)
+  email          String           @unique @db.VarChar(255)
+  password       String           @db.VarChar(255)
+  canMakePrivate Boolean          @default(true) @map("can_make_private")
+  createdAt      DateTime         @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  invitations    BandInvitation[] @relation("Inviter")
+  bands          BandMember[]
+  createdBands   Band[]           @relation("BandCreator")
+  gigDocuments   GigDocument[]    @relation("DocumentCreator")
+  createdSongs   Song[]           @relation("SongCreator")
+  createdLinks   Link[]           @relation("LinkCreator")
+  createdSetlists Setlist[]       @relation("SetlistCreator")
+
+  @@map("users")
+}
+
+model Vocalist {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  medleys   Medley[]
+  songs     Song[]
+
+  @@map("vocalists")
+}
+
+model Artist {
+  id        Int          @id @default(autoincrement())
+  name      String       @unique @db.VarChar(255)
+  createdAt DateTime     @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  songs     SongArtist[]
+
+  @@map("artists")
+}
+
+model Band {
+  id          Int              @id @default(autoincrement())
+  name        String           @db.VarChar(255)
+  description String?
+  createdById Int              @map("created_by_id")
+  createdAt   DateTime         @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  invitations BandInvitation[]
+  members     BandMember[]
+  songs       BandSong[]
+  creator     User             @relation("BandCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  setlists    Setlist[]
+
+  @@map("bands")
+}
+
+model BandMember {
+  id        Int                     @id @default(autoincrement())
+  userId    Int                     @map("user_id")
+  bandId    Int                     @map("band_id")
+  role      enum_band_members_role? @default(member)
+  createdAt DateTime                @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  band      Band                    @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user      User                    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, bandId], map: "band_members_user_id_band_id")
+  @@map("band_members")
+}
+
+model Song {
+  id           Int             @id @default(autoincrement())
+  title        String          @db.VarChar(255)
+  key          enum_songs_key?
+  time         Int?
+  bpm          Int?
+  vocalistId   Int?            @map("vocalist_id")
+  createdById  Int?            @map("created_by_id")
+  private      Boolean         @default(false)
+  createdAt    DateTime        @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  bandSongs    BandSong[]
+  gigDocuments GigDocument[]
+  links        Link[]
+  medleySongs  MedleySong[]
+  setlistSongs SetlistSong[]
+  artists      SongArtist[]
+  vocalist     Vocalist?       @relation(fields: [vocalistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator      User?           @relation("SongCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("songs")
+}
+
+model BandSong {
+  id            Int          @id @default(autoincrement())
+  bandId        Int          @map("band_id")
+  songId        Int          @map("song_id")
+  gigDocumentId Int?         @map("gig_document_id")
+  vocalist      String?      @db.VarChar(255)
+  createdAt     DateTime     @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  band          Band         @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  gigDocument   GigDocument? @relation(fields: [gigDocumentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  song          Song         @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([bandId, songId], map: "band_songs_band_id_song_id")
+  @@map("band_songs")
+}
+
+model GigDocument {
+  id          Int                     @id @default(autoincrement())
+  songId      Int                     @map("song_id")
+  createdById Int                     @map("created_by_id")
+  type        enum_gig_documents_type
+  version     Int                     @default(1)
+  content     String?
+  isActive    Boolean?                @default(true) @map("is_active")
+  createdAt   DateTime                @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  bandSongs   BandSong[]
+  creator     User                    @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  song        Song                    @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([songId, type, version], map: "gig_documents_song_id_type_version")
+  @@map("gig_documents")
+}
+
+model Setlist {
+  id            Int          @id @default(autoincrement())
+  title         String       @db.VarChar(255)
+  bandId        Int          @map("band_id")
+  createdById   Int?         @map("created_by_id")
+  date          DateTime?    @db.Timestamptz(6)
+  isFinalized   Boolean?     @default(false) @map("is_finalized")
+  recordingsUrl String?      @map("recordings_url")
+  createdAt     DateTime     @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sets          SetlistSet[]
+  band          Band         @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator       User?        @relation("SetlistCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("setlists")
+}
+
+model SetlistSet {
+  id        Int                    @id @default(autoincrement())
+  setlistId Int                    @map("setlist_id")
+  name      enum_setlist_sets_name
+  order     Int
+  createdAt DateTime               @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  setlist   Setlist                @relation(fields: [setlistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  songs     SetlistSong[]
+
+  @@unique([setlistId, name], map: "setlist_sets_setlist_id_name")
+  @@map("setlist_sets")
+}
+
+model SetlistSong {
+  id           Int        @id @default(autoincrement())
+  setlistSetId Int        @map("setlist_set_id")
+  songId       Int        @map("song_id")
+  order        Int
+  createdAt    DateTime   @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  setlistSet   SetlistSet @relation(fields: [setlistSetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  song         Song       @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("setlist_songs")
+}
+
+model Medley {
+  id         Int               @id @default(autoincrement())
+  name       String            @db.VarChar(255)
+  key        enum_medleys_key?
+  vocalistId Int?              @map("vocalist_id")
+  createdAt  DateTime          @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  songs      MedleySong[]
+  vocalist   Vocalist?         @relation(fields: [vocalistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("medleys")
+}
+
+model MedleySong {
+  id        Int      @id @default(autoincrement())
+  medleyId  Int      @map("medley_id")
+  songId    Int      @map("song_id")
+  order     Int
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  medley    Medley   @relation(fields: [medleyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  song      Song     @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([medleyId, songId], map: "medley_songs_medley_id_song_id")
+  @@map("medley_songs")
+}
+
+model BandInvitation {
+  id         String                      @id @db.Uuid
+  bandId     Int                         @map("band_id")
+  email      String                      @db.VarChar(255)
+  token      String                      @unique @db.VarChar(255)
+  role       enum_band_invitations_role? @default(member)
+  expires_at DateTime                    @db.Timestamptz(6)
+  used_at    DateTime?                   @db.Timestamptz(6)
+  invitedBy  Int                         @map("invited_by")
+  createdAt  DateTime                    @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  band       Band                        @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  inviter    User                        @relation("Inviter", fields: [invitedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("band_invitations")
+}
+
+model SongArtist {
+  songId    Int      @map("song_id")
+  artistId  Int      @map("artist_id")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  song      Song     @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([songId, artistId])
+  @@map("song_artists")
+}
+
+model Link {
+  id          Int             @id @default(autoincrement())
+  songId      Int             @map("song_id")
+  createdById Int?            @map("created_by_id")
+  type        enum_links_type
+  description String?         @db.VarChar(255)
+  url         String          @db.VarChar(255)
+  createdAt   DateTime        @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  song        Song            @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator     User?           @relation("LinkCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("links")
+}
+
+model PasswordReset {
+  id        Int       @id @default(autoincrement())
+  email     String    @db.VarChar(255)
+  token     String    @unique @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("password_resets")
+}
+
+model SequelizeMeta {
+  name String @id @db.VarChar(255)
+}
+
+enum enum_band_invitations_role {
+  member
+}
+
+enum enum_band_members_role {
+  owner
+  member
+}
+
+enum enum_gig_documents_type {
+  chords
+  bass_tab   @map("bass-tab")
+  guitar_tab @map("guitar-tab")
+  lyrics
+}
+
+enum enum_links_type {
+  youtube
+  spotify
+  apple_music       @map("apple-music")
+  soundcloud
+  bandcamp
+  lyrics
+  tab
+  bass_tab          @map("bass tab")
+  chords
+  guitar_tutorial   @map("guitar tutorial")
+  bass_tutorial     @map("bass tutorial")
+  keyboard_tutorial @map("keyboard tutorial")
+  audio
+  sheet_music       @map("sheet-music")
+  backing_track     @map("backing-track")
+  karaoke
+  horn_chart        @map("horn chart")
+  other
+  video
+}
+
+enum enum_medleys_key {
+  C
+  C_  @map("C#")
+  Db
+  D
+  D_  @map("D#")
+  Eb
+  E
+  F
+  F_  @map("F#")
+  Gb
+  G
+  G_  @map("G#")
+  Ab
+  A
+  A_  @map("A#")
+  Bb
+  B
+  Cm
+  C_m @map("C#m")
+  Dbm
+  Dm
+  D_m @map("D#m")
+  Ebm
+  Em
+  Fm
+  F_m @map("F#m")
+  Gbm
+  Gm
+  G_m @map("G#m")
+  Abm
+  Am
+  A_m @map("A#m")
+  Bbm
+  Bm
+}
+
+enum enum_setlist_sets_name {
+  Set_1 @map("Set 1")
+  Set_2 @map("Set 2")
+  Set_3 @map("Set 3")
+  Set_4 @map("Set 4")
+  Maybe
+}
+
+enum enum_songs_key {
+  C
+  C_  @map("C#")
+  Db
+  D
+  D_  @map("D#")
+  Eb
+  E
+  F
+  F_  @map("F#")
+  Gb
+  G
+  G_  @map("G#")
+  Ab
+  A
+  A_  @map("A#")
+  Bb
+  B
+  Cm
+  C_m @map("C#m")
+  Dbm
+  Dm
+  D_m @map("D#m")
+  Ebm
+  Em
+  Fm
+  F_m @map("F#m")
+  Gbm
+  Gm
+  G_m @map("G#m")
+  Abm
+  Am
+  A_m @map("A#m")
+  Bbm
+  Bm
+}
+
+model WhitelistRequest {
+  id           Int      @id @default(autoincrement())
+  linkType     enum_links_type @map("link_type")
+  domain       String   @db.VarChar(255)
+  reason       String   @db.Text
+  exampleUrl   String   @db.VarChar(500) @map("example_url")
+  contactEmail String   @db.VarChar(255) @map("contact_email")
+  status       enum_whitelist_request_status @default(pending)
+  createdAt    DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("whitelist_requests")
+}
+
+enum enum_whitelist_request_status {
+  pending
+  approved
+  rejected
+}
+
+model WhitelistDomain {
+  id        Int      @id @default(autoincrement())
+  linkType  enum_links_type @map("link_type")
+  domain    String   @db.VarChar(255)
+  pattern   String   @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([linkType, domain])
+  @@map("whitelist_domains")
+}

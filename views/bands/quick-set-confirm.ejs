@@ -271,6 +271,21 @@
                                                                        placeholder="Enter artist name"
                                                                        style="font-size: 0.75rem;">
                                                             </div>
+                                                            
+                                                            <% if (currentUser && currentUser.canMakePrivate) { %>
+                                                            <div class="mt-2" onclick="event.stopPropagation();">
+                                                                <div class="form-check form-check-sm">
+                                                                    <input class="form-check-input" 
+                                                                           type="checkbox" 
+                                                                           id="new_private_<%= songMatch.lineNumber %>" 
+                                                                           name="new_private_<%= songMatch.lineNumber %>" 
+                                                                           value="true">
+                                                                    <label class="form-check-label small" for="new_private_<%= songMatch.lineNumber %>">
+                                                                        <i class="bi bi-lock" style="font-size: 0.8em;"></i> Private
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                            <% } %>
 
                                                         </div>
                                                     </div>
@@ -285,7 +300,7 @@
                                                             <strong>Use existing song:</strong>
                                                         </div>
                                                     
-                                                    <div class="row">
+                                                    <div class="row match-cards-row">
                                                         <% songMatch.matches.forEach((match, matchIndex) => { %>
                                                             <div class="col mb-2">
                                                                 <div class="card match-card <%= (songMatch.selectedMatch && match.id === songMatch.selectedMatch.id) ? 'selected' : '' %>" 
@@ -317,9 +332,7 @@
                                                                             <% } else { %>
                                                                                 <span class="badge bg-info">Similar (~<%= Math.round(match.confidence * 100) %>%)</span>
                                                                             <% } %>
-                                                                            <a href="/songs/<%= match.id %>" target="_blank" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">
-                                                                                <i class="bi bi-eye"></i>
-                                                                            </a>
+
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -395,6 +408,11 @@
 .match-card.selected {
     border-color: #0d6efd !important;
     background-color: #e7f3ff;
+}
+
+.match-cards-row .col {
+    flex: 0 0 20%;
+    max-width: 20%;
 }
 </style>
 
@@ -579,6 +597,12 @@ document.addEventListener('DOMContentLoaded', function() {
             songData.editedTitle = document.querySelector(`input[name="edited_title_${songLine}"]`)?.value;
             songData.newArtist = document.querySelector(`input[name="new_artist_${songLine}"]`)?.value;
             songData.originalTitle = document.querySelector(`input[name="original_title_${songLine}"]`)?.value || container.querySelector('.song-title-text').textContent;
+            
+            // Include private checkbox value
+            const privateCheckbox = document.querySelector(`input[name="new_private_${songLine}"]`);
+            if (privateCheckbox && privateCheckbox.checked) {
+                songData[`new_private_${songLine}`] = 'true';
+            }
         } else {
             // Get existing song data
             const songId = selection.replace('existing_', '');

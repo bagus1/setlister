@@ -951,13 +951,20 @@ router.post("/:id/quick-set/process-song", async (req, res) => {
         artistId = artist.id;
       }
 
-      // Check if song already exists
+      // Check if song already exists (with privacy-aware duplicate detection)
       let existingSong = null;
       if (artistId) {
         existingSong = await prisma.song.findFirst({
           where: {
             title: { equals: finalTitle.trim(), mode: "insensitive" },
             artists: { some: { artistId: artistId } },
+            // Privacy-aware duplicate detection:
+            // - Always check public songs
+            // - Only check same user's private songs
+            OR: [
+              { private: false }, // Always check public songs
+              { private: true, createdById: userId }, // Only check same user's private songs
+            ],
           },
         });
       } else {
@@ -965,9 +972,22 @@ router.post("/:id/quick-set/process-song", async (req, res) => {
           where: {
             title: { equals: finalTitle.trim(), mode: "insensitive" },
             artists: { none: {} },
+            // Privacy-aware duplicate detection:
+            // - Always check public songs
+            // - Only check same user's private songs
+            OR: [
+              { private: false }, // Always check public songs
+              { private: true, createdById: userId }, // Only check same user's private songs
+            ],
           },
         });
       }
+
+      // Check if user wants to make this song private
+      const isPrivate = req.body[`new_private_${songLine}`] === "true";
+      console.log(
+        `DEBUG AJAX: Line ${songLine} - isPrivate: ${isPrivate}, checkbox value: ${req.body[`new_private_${songLine}`]}`
+      );
 
       // Use existing song if found, otherwise create new one
       processedSong =
@@ -976,7 +996,7 @@ router.post("/:id/quick-set/process-song", async (req, res) => {
           data: {
             title: finalTitle,
             createdById: userId,
-            private: false,
+            private: isPrivate,
             createdAt: new Date(),
             updatedAt: new Date(),
             artists: artistId
@@ -1315,6 +1335,13 @@ router.post("/:id/quick-set/create", async (req, res) => {
                     artistId: artistId,
                   },
                 },
+                // Privacy-aware duplicate detection:
+                // - Always check public songs
+                // - Only check same user's private songs
+                OR: [
+                  { private: false }, // Always check public songs
+                  { private: true, createdById: userId }, // Only check same user's private songs
+                ],
               },
               include: {
                 artists: {
@@ -1335,6 +1362,13 @@ router.post("/:id/quick-set/create", async (req, res) => {
                 artists: {
                   none: {},
                 },
+                // Privacy-aware duplicate detection:
+                // - Always check public songs
+                // - Only check same user's private songs
+                OR: [
+                  { private: false }, // Always check public songs
+                  { private: true, createdById: userId }, // Only check same user's private songs
+                ],
               },
               include: {
                 artists: {
@@ -1346,6 +1380,12 @@ router.post("/:id/quick-set/create", async (req, res) => {
             });
           }
 
+          // Check if user wants to make this song private
+          const isPrivate = req.body[`new_private_${lineNumber}`] === "true";
+          console.log(
+            `DEBUG: Line ${lineNumber} - isPrivate: ${isPrivate}, checkbox value: ${req.body[`new_private_${lineNumber}`]}`
+          );
+
           // Use existing song if found, otherwise create new one
           const newSong =
             existingSong ||
@@ -1353,7 +1393,7 @@ router.post("/:id/quick-set/create", async (req, res) => {
               data: {
                 title: finalTitle,
                 createdById: userId,
-                private: false, // Quick set songs are not private by default
+                private: isPrivate,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 artists: artistId
@@ -1790,6 +1830,12 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       })
     );
 
+    // Get current user's permissions
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { canMakePrivate: true },
+    });
+
     res.render("bands/quick-set-confirm", {
       title: `Confirm Setlist - ${band.name}`,
       band,
@@ -1799,6 +1845,7 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       totalSongs: songs.length,
       googleDocData: req.session.quickSetData.googleDocData || null,
       isGoogleDocImport: req.session.quickSetData.isGoogleDocImport || false,
+      currentUser,
     });
   } catch (error) {
     console.error("Quick set confirm error:", error);

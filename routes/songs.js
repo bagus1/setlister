@@ -232,6 +232,13 @@ router.post(
                 artistId: artistId,
               },
             },
+            // Privacy-aware duplicate detection:
+            // - Always check public songs
+            // - Only check same user's private songs
+            OR: [
+              { private: false }, // Always check public songs
+              { private: true, createdById: req.session.user.id }, // Only check same user's private songs
+            ],
           },
           include: {
             artists: {
@@ -252,6 +259,13 @@ router.post(
             artists: {
               none: {},
             },
+            // Privacy-aware duplicate detection:
+            // - Always check public songs
+            // - Only check same user's private songs
+            OR: [
+              { private: false }, // Always check public songs
+              { private: true, createdById: req.session.user.id }, // Only check same user's private songs
+            ],
           },
           include: {
             artists: {
@@ -560,7 +574,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
     // Get current user's permissions
     const currentUser = await prisma.user.findUnique({
       where: { id: req.session.user.id },
-      select: { canMakePrivate: true },
+      select: { id: true, canMakePrivate: true },
     });
 
     const artists = await prisma.artist.findMany({
@@ -654,6 +668,10 @@ router.post(
 
       const song = await prisma.song.findUnique({
         where: { id: parseInt(req.params.id) },
+        include: {
+          artists: { include: { artist: true } },
+          vocalist: true,
+        },
       });
       if (!song) {
         req.flash("error", "Song not found");
@@ -668,7 +686,7 @@ router.post(
         minutes = 0,
         seconds = 0,
         bpm,
-        private,
+        makePublic,
       } = req.body;
 
       // Calculate total time in seconds
@@ -778,17 +796,87 @@ router.post(
         });
       }
 
+      // Prepare update data
+      const updateData = {
+        key: enumKey,
+        time: totalTime || null,
+        bpm: bpmValue,
+        vocalistId,
+        updatedAt: new Date(),
+      };
+
+      // If makePublic is checked and song is currently private, handle merge logic
+      if (makePublic === "true" && song.private) {
+        // Check if there's a conflict with an existing public song
+        const existingPublicSong = await prisma.song.findFirst({
+          where: {
+            title: { equals: song.title, mode: "insensitive" },
+            private: false,
+            id: { not: song.id }, // Exclude current song
+            artists: {
+              some: {
+                artist: {
+                  name: {
+                    equals: song.artists[0]?.artist?.name || "",
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+          },
+          include: {
+            artists: { include: { artist: true } },
+            vocalist: true,
+            links: true,
+            gigDocuments: true,
+          },
+        });
+
+        if (existingPublicSong) {
+          // CONFLICT: Merge private song into existing public song
+          console.log(
+            `Merging private song ${song.id} into public song ${existingPublicSong.id}`
+          );
+
+          // Smart merge: public data takes precedence, private fills gaps
+          const mergedData = {
+            // Keep public song's data, but fill gaps with private data
+            key: existingPublicSong.key || enumKey,
+            time: existingPublicSong.time || totalTime || null,
+            bpm: existingPublicSong.bpm || bpmValue,
+            vocalistId: existingPublicSong.vocalistId || vocalistId,
+            updatedAt: new Date(),
+          };
+
+          // Update the existing public song with merged data
+          await prisma.song.update({
+            where: { id: existingPublicSong.id },
+            data: mergedData,
+          });
+
+          // Update all references from private song to public song
+          await updateSongReferences(song.id, existingPublicSong.id);
+
+          // Delete the private song
+          await prisma.song.delete({
+            where: { id: song.id },
+          });
+
+          req.flash(
+            "success",
+            `Song merged with existing public song "${existingPublicSong.title}"`
+          );
+          return res.redirect(`/songs/${existingPublicSong.id}`);
+        } else {
+          // NO CONFLICT: Simply make the private song public
+          updateData.private = false;
+        }
+      }
+
       // Update song (excluding title which is read-only)
       await prisma.song.update({
         where: { id: song.id },
-        data: {
-          key: enumKey,
-          time: totalTime || null,
-          bpm: bpmValue,
-          vocalistId,
-          private: private === "true",
-          updatedAt: new Date(),
-        },
+        data: updateData,
       });
 
       // Note: Title is read-only and cannot be changed
@@ -828,6 +916,53 @@ router.delete("/:id", requireAuth, async (req, res) => {
     res.redirect("/songs");
   }
 });
+
+// Function to update all references when merging private song into public song
+async function updateSongReferences(privateSongId, publicSongId) {
+  try {
+    // Update setlist_songs references
+    await prisma.setlistSong.updateMany({
+      where: { songId: privateSongId },
+      data: { songId: publicSongId },
+    });
+
+    // Update band_songs references
+    await prisma.bandSong.updateMany({
+      where: { songId: privateSongId },
+      data: { songId: publicSongId },
+    });
+
+    // Update medley_songs references
+    await prisma.medleySong.updateMany({
+      where: { songId: privateSongId },
+      data: { songId: publicSongId },
+    });
+
+    // Update links references
+    await prisma.link.updateMany({
+      where: { songId: privateSongId },
+      data: { songId: publicSongId },
+    });
+
+    // Update gig_documents references
+    await prisma.gigDocument.updateMany({
+      where: { songId: privateSongId },
+      data: { songId: publicSongId },
+    });
+
+    // Delete song_artists references for private song (since public song already has them)
+    await prisma.songArtist.deleteMany({
+      where: { songId: privateSongId },
+    });
+
+    console.log(
+      `Updated all references from private song ${privateSongId} to public song ${publicSongId}`
+    );
+  } catch (error) {
+    console.error("Error updating song references:", error);
+    throw error;
+  }
+}
 
 // Debug route to catch all unmatched requests - REMOVED to fix route conflicts
 

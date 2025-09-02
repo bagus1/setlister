@@ -94,15 +94,28 @@
                                 </div>
                             </div>
 
-                            <% if (currentUser && currentUser.canMakePrivate) { %>
+                            <!-- DEBUG: song.private=<%= song.private %>, song.createdById=<%= song.createdById %>, currentUser.id=<%= currentUser?.id %> -->
+                            <% if (song.private && song.createdById === currentUser?.id) { %>
+                            <!-- Private song owner can make it public -->
                             <div class="mb-3">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="private" name="private" value="true"
-                                        <%= song.private ? 'checked' : '' %>>
-                                    <label class="form-check-label" for="private">
-                                        <i class="bi bi-lock"></i> Make this song private
+                                    <input class="form-check-input" type="checkbox" id="makePublic" name="makePublic" value="true">
+                                    <label class="form-check-label" for="makePublic">
+                                        <i class="bi bi-globe"></i> Make this song public
                                     </label>
-                                    <div class="form-text">Private songs are only visible to you and your band members when added to setlists</div>
+                                    <div class="form-text">Currently private - checking this will make it visible to all users</div>
+                                </div>
+                            </div>
+                            <% } else { %>
+                            <!-- Show current privacy status (read-only) -->
+                            <div class="mb-3">
+                                <div class="alert <%= song.private ? 'alert-warning' : 'alert-info' %>" role="alert">
+                                    <i class="bi <%= song.private ? 'bi-lock-fill' : 'bi-globe' %>"></i>
+                                    <strong>Privacy Status:</strong> 
+                                    <%= song.private ? 'Private' : 'Public' %>
+                                    <div class="form-text mt-1">
+                                        <%= song.private ? 'This song is only visible to you and your band members when added to setlists' : 'This song is visible to all users' %>
+                                    </div>
                                 </div>
                             </div>
                             <% } %>

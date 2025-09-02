@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>PRIVATE_SONG_FEATURES_TODO</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css" />
+</head>
+<body>
+<h1
+id="private-song-features---complete-implementation-todo-list">Private
+Song Features - Complete Implementation Todo List</h1>
+<h2 id="overview">Overview</h2>
+<p>Implement comprehensive private song features for the quickset
+functionality, including proper filtering, user permissions, editing
+capabilities, and smart merge logic for privacy changes.</p>
+<h2 id="phase-1-fix-quickset-suggestions-steps-1-2">Phase 1: Fix
+Quickset Suggestions (Steps 1-2)</h2>
+<h3
+id="step-1-fix-findsongmatches-to-exclude-private-songs-from-suggestions">Step
+1: Fix findSongMatches to exclude private songs from suggestions</h3>
+<ul>
+<li><strong>File:</strong> <code>routes/bands.js</code> -
+<code>findSongMatches()</code> function</li>
+<li><strong>Action:</strong> Add private filtering to the
+<code>allSongs</code> query</li>
+<li><strong>Filter Logic:</strong>
+<code>{ private: false } OR { private: true, createdById: userId }</code></li>
+<li><strong>Goal:</strong> Private songs should not appear as
+suggestions for other users</li>
+</ul>
+<h3
+id="step-2-test-that-private-songs-no-longer-appear-in-quickset-suggestions-for-other-users">Step
+2: Test that private songs no longer appear in quickset suggestions for
+other users</h3>
+<ul>
+<li><strong>Test:</strong> Create private song as User A, try quickset
+as User B</li>
+<li><strong>Expected:</strong> Private song should not appear in
+suggestions for User B</li>
+<li><strong>Verify:</strong> Only public songs and User B’s own private
+songs appear</li>
+</ul>
+<h2 id="phase-2-add-private-checkbox-to-quickset-steps-3-6">Phase 2: Add
+Private Checkbox to Quickset (Steps 3-6)</h2>
+<h3
+id="step-3-add-can_make_private-checkbox-to-new-song-cards-in-quickset-confirm-page">Step
+3: Add can_make_private checkbox to new song cards in quickset confirm
+page</h3>
+<ul>
+<li><strong>File:</strong>
+<code>views/bands/quick-set-confirm.ejs</code></li>
+<li><strong>Action:</strong> Add checkbox to “Create New” cards</li>
+<li><strong>Condition:</strong> Only show for users with
+<code>can_make_private=true</code></li>
+<li><strong>Location:</strong> Inside the new song card form</li>
+</ul>
+<h3
+id="step-4-test-that-users-with-can_make_privatetrue-see-the-checkbox-users-with-can_make_privatefalse-do-not">Step
+4: Test that users with can_make_private=true see the checkbox, users
+with can_make_private=false do not</h3>
+<ul>
+<li><strong>Test:</strong> Check UI with different user permission
+levels</li>
+<li><strong>Expected:</strong> Checkbox visible only for users with
+permission</li>
+<li><strong>Verify:</strong> Form submission includes private value when
+checkbox is present</li>
+</ul>
+<h3
+id="step-5-update-quickset-song-creation-logic-to-respect-the-private-checkbox-value">Step
+5: Update quickset song creation logic to respect the private checkbox
+value</h3>
+<ul>
+<li><strong>File:</strong> <code>routes/bands.js</code> - quickset
+creation route</li>
+<li><strong>Action:</strong> Replace hardcoded
+<code>private: false</code> with checkbox value</li>
+<li><strong>Logic:</strong> Use <code>req.body.private</code> or default
+to <code>false</code></li>
+</ul>
+<h3
+id="step-6-test-that-private-songs-are-created-when-checkbox-is-checked-in-quickset">Step
+6: Test that private songs are created when checkbox is checked in
+quickset</h3>
+<ul>
+<li><strong>Test:</strong> Create song via quickset with private
+checkbox checked</li>
+<li><strong>Expected:</strong> Song is created with
+<code>private: true</code></li>
+<li><strong>Verify:</strong> Check database and song visibility</li>
+</ul>
+<h2 id="phase-3-allow-private-song-editing-steps-7-8">Phase 3: Allow
+Private Song Editing (Steps 7-8)</h2>
+<h3
+id="step-7-allow-private-song-owners-to-edit-title-and-artist-fields">Step
+7: Allow private song owners to edit title and artist fields</h3>
+<ul>
+<li><strong>File:</strong> <code>routes/songs.js</code> - song edit
+route</li>
+<li><strong>Action:</strong> Modify validation to allow title/artist
+editing for private songs</li>
+<li><strong>Condition:</strong> Only for private songs owned by the
+current user</li>
+<li><strong>Logic:</strong> Check
+<code>song.private &amp;&amp; song.createdById === userId</code></li>
+</ul>
+<h3
+id="step-8-test-that-private-song-owners-can-edit-titleartist-public-song-owners-cannot">Step
+8: Test that private song owners can edit title/artist, public song
+owners cannot</h3>
+<ul>
+<li><strong>Test:</strong> Try editing private vs public songs</li>
+<li><strong>Expected:</strong> Private song owners can edit
+title/artist, public song owners cannot</li>
+<li><strong>Verify:</strong> Form fields are editable/read-only based on
+permissions</li>
+</ul>
+<h2 id="phase-4-implement-smart-merge-logic-steps-9-12">Phase 4:
+Implement Smart Merge Logic (Steps 9-12)</h2>
+<h3
+id="step-9-implement-smart-merge-logic-for-privatepublic-conflicts">Step
+9: Implement smart merge logic for private→public conflicts</h3>
+<ul>
+<li><strong>File:</strong> New merge function in
+<code>routes/songs.js</code></li>
+<li><strong>Logic:</strong> <code>publicData || privateData</code> for
+each field</li>
+<li><strong>Fields:</strong> <code>bpm</code>, <code>vocalistId</code>,
+<code>time</code>, <code>key</code></li>
+<li><strong>Relationships:</strong> Merge <code>links</code> and
+<code>gigDocuments</code> arrays</li>
+</ul>
+<h3
+id="step-10-test-privatepublic-merge-public-song-keeps-its-data-private-song-fills-missing-gaps">Step
+10: Test private→public merge: public song keeps its data, private song
+fills missing gaps</h3>
+<ul>
+<li><strong>Test Cases:</strong>
+<ul>
+<li>Public song has more data → keep public data</li>
+<li>Private song has more data → use private data</li>
+<li>Mixed data → merge best of both</li>
+</ul></li>
+<li><strong>Verify:</strong> No data loss, logical precedence</li>
+</ul>
+<h3
+id="step-11-implement-reference-updates-for-privatepublic-merge">Step
+11: Implement reference updates for private→public merge</h3>
+<ul>
+<li><strong>Action:</strong> Update all references when merging private
+song into public song</li>
+<li><strong>Tables:</strong> <code>setlist_songs</code>,
+<code>band_songs</code>, <code>links</code>, <code>gig_documents</code>,
+<code>medley_songs</code></li>
+<li><strong>Logic:</strong> Change <code>songId</code> from private song
+ID to public song ID</li>
+<li><strong>Cleanup:</strong> Delete private song after merge</li>
+</ul>
+<h3
+id="step-12-test-that-all-references-are-updated-when-private-song-merges-with-public-song">Step
+12: Test that all references are updated when private song merges with
+public song</h3>
+<ul>
+<li><strong>Test:</strong> Create private song, add to setlist, make
+public (with conflict)</li>
+<li><strong>Expected:</strong> Setlist now references public song,
+private song is deleted</li>
+<li><strong>Verify:</strong> All relationships point to correct
+song</li>
+</ul>
+<h2 id="phase-5-update-constraint-logic-steps-13-14">Phase 5: Update
+Constraint Logic (Steps 13-14)</h2>
+<h3
+id="step-13-update-duplicate-detection-logic-to-allow-private-songs-with-same-titleartist-across-different-users">Step
+13: Update duplicate detection logic to allow private songs with same
+title/artist across different users</h3>
+<ul>
+<li><strong>Files:</strong> <code>routes/songs.js</code>,
+<code>routes/bands.js</code>, <code>routes/bulk-add-songs.js</code></li>
+<li><strong>Action:</strong> Modify duplicate detection queries</li>
+<li><strong>Logic:</strong> Only check conflicts with public songs and
+same-user private songs</li>
+<li><strong>Allow:</strong> Different users to have private songs with
+same title/artist</li>
+</ul>
+<h3
+id="step-14-test-that-different-users-can-create-private-songs-with-same-titleartist">Step
+14: Test that different users can create private songs with same
+title/artist</h3>
+<ul>
+<li><strong>Test:</strong> User A creates private “Sugaree” by “Grateful
+Dead”</li>
+<li><strong>Test:</strong> User B creates private “Sugaree” by “Grateful
+Dead”</li>
+<li><strong>Expected:</strong> Both users can have their own private
+versions</li>
+<li><strong>Verify:</strong> No constraint violations</li>
+</ul>
+<h2 id="phase-6-end-to-end-testing-step-15">Phase 6: End-to-End Testing
+(Step 15)</h2>
+<h3
+id="step-15-test-end-to-end-create-private-song-in-quickset-edit-it-make-it-public-with-and-without-conflicts">Step
+15: Test end-to-end: create private song in quickset, edit it, make it
+public (with and without conflicts)</h3>
+<ul>
+<li><strong>Scenario 1 - No Conflict:</strong>
+<ol type="1">
+<li>Create private song via quickset</li>
+<li>Edit title/artist if needed</li>
+<li>Make public</li>
+<li>Verify song becomes public successfully</li>
+</ol></li>
+<li><strong>Scenario 2 - With Conflict:</strong>
+<ol type="1">
+<li>Create private song via quickset</li>
+<li>Try to make public (conflict with existing public song)</li>
+<li>Verify merge happens correctly</li>
+<li>Verify all references are updated</li>
+<li>Verify private song is deleted</li>
+</ol></li>
+</ul>
+<h2 id="testing-strategy">Testing Strategy</h2>
+<h3 id="user-accounts-needed">User Accounts Needed</h3>
+<ul>
+<li><strong>User A:</strong> <code>can_make_private=true</code></li>
+<li><strong>User B:</strong> <code>can_make_private=false</code></li>
+<li><strong>User C:</strong> <code>can_make_private=true</code> (for
+cross-user testing)</li>
+</ul>
+<h3 id="test-data">Test Data</h3>
+<ul>
+<li>Create test songs with various data combinations</li>
+<li>Test with and without artists</li>
+<li>Test with missing vs complete metadata</li>
+</ul>
+<h3 id="verification-points">Verification Points</h3>
+<ul>
+<li>Database integrity after each operation</li>
+<li>UI behavior matches permissions</li>
+<li>No data loss during merges</li>
+<li>All references properly updated</li>
+</ul>
+<h2 id="success-criteria">Success Criteria</h2>
+<ul>
+<li>✅ Private songs don’t appear in suggestions for other users</li>
+<li>✅ Users can create private songs via quickset (with
+permission)</li>
+<li>✅ Private song owners can edit title/artist</li>
+<li>✅ Private→public changes work with smart merging</li>
+<li>✅ Different users can have private songs with same
+title/artist</li>
+<li>✅ All database references are properly maintained</li>
+<li>✅ No data loss or corruption during operations</li>
+</ul>
+<h2 id="files-to-modify">Files to Modify</h2>
+<ul>
+<li><code>routes/bands.js</code> - findSongMatches, quickset
+creation</li>
+<li><code>routes/songs.js</code> - song editing, privacy changes</li>
+<li><code>views/bands/quick-set-confirm.ejs</code> - add private
+checkbox</li>
+<li><code>routes/bulk-add-songs.js</code> - duplicate detection (if
+needed)</li>
+</ul>
+<h2 id="database-considerations">Database Considerations</h2>
+<ul>
+<li>No schema changes needed</li>
+<li>Existing <code>private</code> and <code>created_by_id</code> fields
+are sufficient</li>
+<li>Focus on query logic and reference updates</li>
+</ul>
+</body>
+</html>

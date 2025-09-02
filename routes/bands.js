@@ -1765,7 +1765,7 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
     // Find song matches for each song
     const songMatches = await Promise.all(
       songs.map(async (song) => {
-        const matches = await findSongMatches(song.title, song.artist);
+        const matches = await findSongMatches(song.title, song.artist, userId);
 
         // Only pre-select if we have a high-confidence match
         let selectedMatch = null;
@@ -2117,7 +2117,7 @@ function calculateSimilarity(str1, str2) {
 }
 
 // Function to find song matches using JavaScript-based fuzzy matching
-async function findSongMatches(title, artist = "") {
+async function findSongMatches(title, artist = "", userId = null) {
   try {
     // First try exact matches
     let exactMatches = [];
@@ -2134,6 +2134,11 @@ async function findSongMatches(title, artist = "") {
               },
             },
           },
+          // Add private filtering
+          OR: [
+            { private: false }, // Show all public songs
+            { private: true, createdById: userId }, // Show private songs only if user owns them
+          ],
         },
         include: {
           artists: {
@@ -2149,6 +2154,11 @@ async function findSongMatches(title, artist = "") {
       exactMatches = await prisma.song.findMany({
         where: {
           title: { equals: title, mode: "insensitive" },
+          // Add private filtering
+          OR: [
+            { private: false }, // Show all public songs
+            { private: true, createdById: userId }, // Show private songs only if user owns them
+          ],
         },
         include: {
           artists: {
@@ -2170,6 +2180,13 @@ async function findSongMatches(title, artist = "") {
 
     // Always get additional songs for keyword and fuzzy matching
     const allSongs = await prisma.song.findMany({
+      where: {
+        // Add private filtering
+        OR: [
+          { private: false }, // Show all public songs
+          { private: true, createdById: userId }, // Show private songs only if user owns them
+        ],
+      },
       include: {
         artists: {
           include: { artist: true },

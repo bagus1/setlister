@@ -99,6 +99,9 @@ sendgrid.env
 # Migration output files - generated data, do not commit
 migration-output/ 
 
+# Schema comparison temporary files - do not commit
+temp_schema_comparison/
+
 /generated/prisma
 
 

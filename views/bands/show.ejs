@@ -160,16 +160,112 @@
     </div>
 </div>
 
+<!-- Onboarding Section - Only show when band has no songs -->
+<% if (!bandSongs || bandSongs.length === 0) { %>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-rocket-takeoff"></i> Get Started - Add Your Band's First Songs
+                </h5>
+                <small>Choose the method that works best for you to add songs to your band</small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Add Songs Only -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border-warning">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-music-note-list text-warning" style="font-size: 2.5rem;"></i>
+                                </div>
+                                <h6 class="card-title">Add Songs Only</h6>
+                                <p class="card-text small text-muted">
+                                    Add songs for your band repertoire by simply pasting in your list of songs. You'll be ready in a minute to add them to your first set lists
+                                </p>
+                                <a href="/bands/<%= band.id %>/add-songs-dedicated" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-music-note-list"></i> Add Songs
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Set Creation -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border-success">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-lightning-charge text-success" style="font-size: 2.5rem;"></i>
+                                </div>
+                                <h6 class="card-title">Quick Set Creation</h6>
+                                <p class="card-text small text-muted">
+                                    Paste your setlist and we'll create your first setlist plus add all songs to your band's repertoire for future use. Perfect if you already have a setlist ready.
+                                </p>
+                                <a href="/bands/<%= band.id %>/quick-set-dedicated" class="btn btn-success btn-sm">
+                                    <i class="bi bi-lightning-charge"></i> Create Setlist
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Google Doc Upload -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border-info">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-file-earmark-text text-info" style="font-size: 2.5rem;"></i>
+                                </div>
+                                <h6 class="card-title">Google Doc Upload</h6>
+                                <p class="card-text small text-muted">
+                                    Upload a formatted Google Doc with your songs. We'll extract songs for your band's repertoire and create a setlist with them if you like
+                                </p>
+                                <a href="/bands/<%= band.id %>/google-doc-dedicated" class="btn btn-info btn-sm">
+                                    <i class="bi bi-file-earmark-text"></i> Upload Doc
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manage Songs -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border-secondary">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-gear text-secondary" style="font-size: 2.5rem;"></i>
+                                </div>
+                                <h6 class="card-title">Manage Songs</h6>
+                                <p class="card-text small text-muted">
+                                    Easily add songs to your band's repertoire from our extensive library
+                                </p>
+                                <a href="/bands/<%= band.id %>/songs" class="btn btn-secondary btn-sm">
+                                    <i class="bi bi-gear"></i> Manage Songs
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<% } %>
+
 <div class="row">
     <!-- Left Column: Setlists -->
     <div class="col-md-8 mb-4">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="bi bi-list-check"></i> Setlists
-                </h5>
-                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
-                    data-bs-target="#newSetlistModal" <%= (!bandSongs || bandSongs.length === 0) ? 'disabled' : '' %>>
+                <div>
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check"></i> Setlists
+                    </h5>
+                    <small class="text-muted">Organized song lists for performances and rehearsals</small>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" 
+                    data-bs-toggle="<%= (!bandSongs || bandSongs.length === 0) ? 'tooltip' : 'modal' %>"
+                    data-bs-target="<%= (!bandSongs || bandSongs.length === 0) ? '' : '#newSetlistModal' %>"
+                    <%= (!bandSongs || bandSongs.length === 0) ? 'disabled data-bs-placement="top" title="You need to add songs to your band before you can create setlists this way."' : '' %>>
                     <i class="bi bi-plus"></i> New Setlist
                 </button>
             </div>
@@ -236,6 +332,7 @@
                        data-bs-placement="top"
                        title="Two input modes supported:&#10;&#10;Mode 1 - With set headers:&#10;Set 1:&#10;Song 1&#10;Song 2&#10;&#10;Set 2:&#10;Song 3&#10;Song 4&#10;&#10;Mode 2 - Blank line separated:&#10;Setlist Title&#10;&#10;Song 1&#10;Song 2&#10;&#10;Song 3&#10;Song 4"></i>
                 </h5>
+                <small class="text-muted">Paste or type your setlist to quickly create songs and organize them into sets</small>
             </div>
             <div class="card-body">
                 <!-- Quick Set Form (always visible) -->
@@ -299,6 +396,7 @@ Set 4:
                        data-bs-placement="top"
                        title="We can't work all the miracles here. Make sure your google docs just has songs in it and that for the title of the song, each song has the same heading style like Heading 1 and only include the exact title of the song in that heading. Only have the exact title in that heading. Ensure your songs are separated by page breaks (Ctrl+Enter / Cmd+Enter) in your Google Doc. Only do this once per Google Doc or we'll get duplicate Music Stand Docs and links created. I've had luck with 150 songs (1 page per song) or less, but not too much more."></i>
                 </h5>
+                <small class="text-muted">Import songs from a Google Doc with chord charts or lyrics</small>
             </div>
             <div class="card-body">
                             <p class="text-muted mb-3">
@@ -357,6 +455,7 @@ Set 4:
                 <h5 class="mb-0">
                     <i class="bi bi-people"></i> Members
                 </h5>
+                <small class="text-muted">Band members who can collaborate on setlists and songs</small>
             </div>
             <div class="card-body">
                 <% band.members.forEach(member => { %>
@@ -424,9 +523,12 @@ Set 4:
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="bi bi-music-note-list"></i> Band Songs
-                </h5>
+                <div>
+                    <h5 class="mb-0">
+                        <i class="bi bi-music-note-list"></i> Band Songs
+                    </h5>
+                    <small class="text-muted">Your band's song repertoire for creating setlists</small>
+                </div>
                 <a href="/bands/<%= band.id %>/songs" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-gear"></i> Manage Songs
                 </a>
@@ -721,3 +823,13 @@ Set 4:
         </div>
     </div>
 </div>
+
+<script>
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>

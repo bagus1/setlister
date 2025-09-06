@@ -85,8 +85,8 @@ router.get("/", (req, res) => {
   });
 });
 
-// GET /google-doc-formatting-guide - Google Doc formatting guide
-router.get("/google-doc-formatting-guide", (req, res) => {
+// GET /legal/google-doc-formatting-guide - Google Doc formatting guide
+router.get("/legal/google-doc-formatting-guide", (req, res) => {
   const htmlContent = `
     <div class="alert alert-info">
       <h3>🎵 TL;DR - Quick Formatting Rules</h3>

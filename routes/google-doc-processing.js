@@ -792,52 +792,62 @@ router.post("/admin/process-google-doc", async (req, res) => {
     const setlistTitle = titleToUse;
     console.log("Final setlist title:", setlistTitle);
 
-    // Create the setlist first so we have a real ID
-    try {
-      const setlist = await prisma.setlist.create({
-        data: {
-          title: setlistTitle,
-          date: new Date(),
-          bandId: parseInt(bandId),
-          createdById: req.session.user.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
+    // Check if this is from the new-doc flow with radio button choice
+    const listType = req.body.listType;
+    const createSetlist = listType !== "repertoire";
 
-      // Create a default set for the Google Doc songs
-      await prisma.setlistSet.create({
-        data: {
-          setlistId: setlist.id,
-          name: "Set_1", // Default to Set 1
-          order: 1,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
+    // Only create setlist if requested
+    let setlist = null;
+    if (createSetlist) {
+      try {
+        setlist = await prisma.setlist.create({
+          data: {
+            title: setlistTitle,
+            date: new Date(),
+            bandId: parseInt(bandId),
+            createdById: req.session.user.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
 
-      // Store the Google Doc data in session for quickset confirmation
-      req.session.quickSetData = {
-        bandId: parseInt(bandId),
-        setlistId: setlist.id, // Use the real setlist ID
-        sets: quicksetData.sets,
-        songs: quicksetData.songs,
-        googleDocData: {
-          ...essentialData,
-          ...sectionCounts, // Include the section counts
-        }, // Store original Google Doc data plus section counts
-        isGoogleDocImport: true, // Flag to indicate this is from Google Doc
-      };
-
-      // Redirect to the quickset confirmation page
-      res.redirect(`/bands/${bandId}/quick-set/confirm`);
-    } catch (error) {
-      console.error("Error creating setlist:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to create setlist for Google Doc import",
-      });
+        // Create a default set for the Google Doc songs
+        await prisma.setlistSet.create({
+          data: {
+            setlistId: setlist.id,
+            name: "Set_1", // Default to Set 1
+            order: 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      } catch (error) {
+        console.error("Error creating setlist:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to create setlist for Google Doc import",
+        });
+        return;
+      }
     }
+
+    // Store the Google Doc data in session for quickset confirmation
+    req.session.quickSetData = {
+      bandId: parseInt(bandId),
+      setlistId: createSetlist ? setlist.id : null, // Only create setlist if requested
+      sets: quicksetData.sets,
+      songs: quicksetData.songs,
+      googleDocData: {
+        ...essentialData,
+        ...sectionCounts, // Include the section counts
+      }, // Store original Google Doc data plus section counts
+      isGoogleDocImport: true, // Flag to indicate this is from Google Doc
+      isNewList: !!listType, // Flag to indicate this is from new-doc flow
+      createSetlist: createSetlist,
+    };
+
+    // Redirect to the quickset confirmation page
+    res.redirect(`/bands/${bandId}/quick-set/confirm`);
   } catch (error) {
     console.error("=== ERROR processing Google Doc ===");
     console.error("Error details:", error);

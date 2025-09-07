@@ -48,6 +48,7 @@
                         <% }) %>
                     <% } else { %>
                         <p class="text-muted">No bands yet. Create your first band to get started!</p>
+                        <p class="text-muted small">If you received an invitation, make sure you registered with the email address that was invited</p>
                     <% } %>
                     <% if (userBands && userBands.length >= 15) { %>
                         <div class="mt-3">
@@ -110,11 +111,17 @@
                     <p class="text-muted small">Your next great song might just have been added</p>
                     <% if (artists && artists.length> 0) { %>
                         <% artists.forEach(artist=> { %>
-                            <div class="mb-2">
-                                <a href="/artists/<%= artist.id %>" class="text-decoration-none">
-                                    <strong><%= artist.name %></strong>
-                                </a>
-                            </div>
+                            <% 
+                            // Filter out artists that only have private songs
+                            const hasPublicSongs = artist.songs && artist.songs.some(song => !song.isPrivate);
+                            %>
+                            <% if (hasPublicSongs) { %>
+                                <div class="mb-2">
+                                    <a href="/artists/<%= artist.id %>" class="text-decoration-none">
+                                        <strong><%= artist.name %></strong>
+                                    </a>
+                                </div>
+                            <% } %>
                         <% }) %>
                     <% } else { %>
                         <p class="text-muted">No artists yet. Artists are created when you add songs!</p>

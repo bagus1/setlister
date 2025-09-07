@@ -1,0 +1,98 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-rocket-takeoff"></i> 
+                    <% if (isBottom) { %>
+                        Add More Songs to Your Band
+                    <% } else { %>
+                        Get Started - Add Your Band's First Songs
+                    <% } %>
+                </h5>
+                <small>
+                    <% if (isBottom) { %>
+                        Choose from these methods to add more songs to your band's repertoire
+                    <% } else { %>
+                        Choose the method that works best for you to add songs to your band
+                    <% } %>
+                </small>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <!-- Add List -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border-warning">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-music-note-list text-warning" style="font-size: 2.5rem;"></i>
+                                </div>
+                                <h5 class="card-title">Add a List</h5>
+                                <p class="card-text">
+                                    Paste your list of songs and we'll add them to your band's repertoire. You can choose to create a setlist with them or just add them to your library.
+                                </p>
+                                <a href="/bands/<%= band.id %>/new-list" class="btn btn-warning">
+                                    <i class="bi bi-music-note-list"></i> Add List
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Doc -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border-info">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-file-earmark-text text-info" style="font-size: 2.5rem;"></i>
+                                </div>
+                                <h5 class="card-title">Add a Doc</h5>
+                                <p class="card-text">
+                                    Upload a formatted Google Doc with your songs. We'll extract songs for your band's repertoire and create a setlist with them if you like.
+                                </p>
+                                <a href="/bands/<%= band.id %>/new-doc" class="btn btn-info">
+                                    <i class="bi bi-file-earmark-text"></i> Add Doc
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Song -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border-primary">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-plus-circle text-primary" style="font-size: 2.5rem;"></i>
+                                </div>
+                                <h5 class="card-title">Add a Song</h5>
+                                <p class="card-text">
+                                    Add a single song by name or create one with chords and lyrics for your band's repertoire.
+                                </p>
+                                <a href="/bands/<%= band.id %>/songs/new" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle"></i> Add Song
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manage Songs -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border-secondary">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-gear text-secondary" style="font-size: 2.5rem;"></i>
+                                </div>
+                                <h5 class="card-title">Manage Songs</h5>
+                                <p class="card-text">
+                                    Browse our extensive library and add songs to your band's repertoire.
+                                </p>
+                                <a href="/bands/<%= band.id %>/songs" class="btn btn-secondary">
+                                    <i class="bi bi-gear"></i> Manage Songs
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

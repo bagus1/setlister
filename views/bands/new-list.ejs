@@ -1,0 +1,151 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1><i class="bi bi-music-note-list"></i> Add a List</h1>
+      <p class="text-muted">
+        Paste your list of songs and we'll add them to your band's repertoire.
+        You can choose to create a setlist with them or just add them to your
+        library.
+      </p>
+    </div>
+    <div>
+      <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Band
+      </a>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <form
+            action="/bands/<%= band.id %>/new-list"
+            method="POST"
+            id="newListForm"
+          >
+            <!-- Radio Button Options -->
+            <div class="mb-4">
+              <div class="form-check mb-3">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="listType"
+                  id="setlistOption"
+                  value="setlist"
+                  checked
+                />
+                <label class="form-check-label" for="setlistOption">
+                  <strong
+                    >Add the list to a Set List and to the Band's
+                    Repertoire</strong
+                  >
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="listType"
+                  id="repertoireOption"
+                  value="repertoire"
+                />
+                <label class="form-check-label" for="repertoireOption">
+                  <strong>Just add these to the Band's Repertoire</strong>
+                </label>
+              </div>
+            </div>
+
+            <!-- Textarea -->
+            <div class="mb-4">
+              <label for="songList" class="form-label"
+                >Enter your song list:</label
+              >
+              <textarea
+                class="form-control"
+                id="songList"
+                name="songList"
+                rows="12"
+                placeholder="Name of Setlist
+
+First Song in First Set
+Second Song in First Set
+
+First Song in Second Set
+Second Song in Second Set
+
+etc..."
+              ></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-check-circle"></i> Confirm Your List
+              </button>
+            </div>
+          </form>
+
+          <!-- Instructions -->
+          <div class="mt-4">
+            <div class="alert alert-info">
+              <h6 class="alert-heading">
+                <i class="bi bi-info-circle"></i> Instructions
+              </h6>
+              <ul class="mb-0">
+                <li>
+                  An artist can be added after a comma on the same line as a
+                  song title
+                </li>
+                <li>
+                  Songs added here can later be added to any of the band's sets
+                </li>
+                <li>
+                  After you click "Confirm Your List" you'll be asked to quickly
+                  review your list and confirm songs
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const setlistOption = document.getElementById("setlistOption");
+    const repertoireOption = document.getElementById("repertoireOption");
+    const songListTextarea = document.getElementById("songList");
+
+    const setlistPlaceholder = `Name of Setlist
+
+First Song in First Set, optional artist
+Second Song in First Set
+
+First Song in Second Set
+Second Song in Second Set
+
+etc...`;
+
+    const repertoirePlaceholder = `First Song, optional artist
+Second Song
+Third Song
+etc...`;
+
+    function updatePlaceholder() {
+      if (setlistOption.checked) {
+        songListTextarea.placeholder = setlistPlaceholder;
+      } else {
+        songListTextarea.placeholder = repertoirePlaceholder;
+      }
+    }
+
+    setlistOption.addEventListener("change", updatePlaceholder);
+    repertoireOption.addEventListener("change", updatePlaceholder);
+
+    // Initialize placeholder
+    updatePlaceholder();
+  });
+</script>

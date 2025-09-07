@@ -565,6 +565,224 @@ router.get("/:id/songs", async (req, res) => {
   }
 });
 
+// POST /bands/:id/songs/new - Process new song creation
+router.post("/:id/songs/new", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { title, artist, content, docType } = req.body;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    if (!title || !title.trim()) {
+      req.flash("error", "Song title is required");
+      return res.redirect(`/bands/${bandId}/songs/new`);
+    }
+
+    // Create or find artist if provided (case-insensitive)
+    let artistId = null;
+    if (artist && artist.trim()) {
+      // First try to find existing artist (case-insensitive)
+      const existingArtist = await prisma.artist.findFirst({
+        where: {
+          name: {
+            equals: artist.trim(),
+            mode: "insensitive",
+          },
+        },
+      });
+
+      if (existingArtist) {
+        artistId = existingArtist.id;
+      } else {
+        // Create new artist if not found
+        const artistRecord = await prisma.artist.create({
+          data: {
+            name: artist.trim(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+        artistId = artistRecord.id;
+      }
+    }
+
+    // Check if song with same title and artist already exists
+    let song;
+    let isExistingSong = false;
+
+    if (artistId) {
+      // Look for existing song with same title and artist (case insensitive)
+      const existingSong = await prisma.song.findFirst({
+        where: {
+          title: {
+            equals: title.trim(),
+            mode: "insensitive",
+          },
+          artists: {
+            some: {
+              artistId: artistId,
+            },
+          },
+          // Privacy-aware duplicate detection:
+          // - Always check public songs
+          // - Only check same user's private songs
+          OR: [
+            { private: false }, // Always check public songs
+            { private: true, createdById: userId }, // Only check same user's private songs
+          ],
+        },
+        include: {
+          artists: {
+            include: {
+              artist: true,
+            },
+          },
+        },
+      });
+
+      if (existingSong) {
+        song = existingSong;
+        isExistingSong = true;
+      }
+    } else {
+      // Look for existing song with same title and no artist (case insensitive)
+      const existingSong = await prisma.song.findFirst({
+        where: {
+          title: {
+            equals: title.trim(),
+            mode: "insensitive",
+          },
+          artists: {
+            none: {},
+          },
+          // Privacy-aware duplicate detection:
+          // - Always check public songs
+          // - Only check same user's private songs
+          OR: [
+            { private: false }, // Always check public songs
+            { private: true, createdById: userId }, // Only check same user's private songs
+          ],
+        },
+      });
+
+      if (existingSong) {
+        song = existingSong;
+        isExistingSong = true;
+      }
+    }
+
+    // Create new song if it doesn't exist
+    if (!song) {
+      song = await prisma.song.create({
+        data: {
+          title: title.trim(),
+          createdById: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Add artist relationship if artist was provided
+      if (artistId) {
+        await prisma.songArtist.create({
+          data: {
+            songId: song.id,
+            artistId: artistId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    // Add song to band (check if relationship already exists)
+    const existingBandSong = await prisma.bandSong.findFirst({
+      where: {
+        bandId: bandId,
+        songId: song.id,
+      },
+    });
+
+    if (!existingBandSong) {
+      await prisma.bandSong.create({
+        data: {
+          bandId: bandId,
+          songId: song.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    // Create gig document if content was provided
+    if (content && content.trim() && docType) {
+      // Find the next available version for this song and document type
+      const existingDocs = await prisma.gigDocument.findMany({
+        where: {
+          songId: song.id,
+          type: docType,
+        },
+        orderBy: {
+          version: "desc",
+        },
+      });
+
+      let docVersion = 1;
+      if (existingDocs.length > 0) {
+        docVersion = existingDocs[0].version + 1;
+      }
+
+      await prisma.gigDocument.create({
+        data: {
+          songId: song.id,
+          type: docType,
+          version: docVersion,
+          content: content.trim(),
+          createdById: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    let successMessage;
+    if (isExistingSong) {
+      successMessage = `Song "${song.title}" already exists and has been added to ${band.name}'s repertoire!`;
+    } else {
+      successMessage = `Song "${song.title}" created and added to ${band.name} successfully!`;
+    }
+
+    if (content && content.trim() && docType) {
+      if (isExistingSong) {
+        successMessage += ` Additional gig document added.`;
+      } else {
+        successMessage += ` Gig document created.`;
+      }
+    }
+
+    req.flash("success", successMessage);
+    res.redirect(`/bands/${bandId}`);
+  } catch (error) {
+    console.error("New song creation error:", error);
+    req.flash("error", "An error occurred creating the song");
+    res.redirect(`/bands/${req.params.id}/songs/new`);
+  }
+});
+
 // POST /bands/:id/songs/:songId - Add song to band
 router.post("/:id/songs/:songId", async (req, res) => {
   try {
@@ -1285,6 +1503,7 @@ router.post("/:id/quick-set/create", async (req, res) => {
     }
 
     const { sets, songs } = req.session.quickSetData;
+    const createSetlist = req.session.quickSetData.createSetlist !== false;
 
     // Process song selections and create new songs as needed
     const processedSongs = await Promise.all(
@@ -1530,197 +1749,222 @@ router.post("/:id/quick-set/create", async (req, res) => {
     // Filter out any null songs
     const validSongs = processedSongs.filter((song) => song !== null);
 
-    // Create the setlist
-    const setlist = await prisma.setlist.create({
-      data: {
-        title: setlistTitle,
-        date: setlistDate ? new Date(setlistDate) : new Date(),
-        bandId: bandId,
-        createdById: req.session.user.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-
-    // Create sets and add songs
-    for (let i = 0; i < sets.length; i++) {
-      const set = sets[i];
-
-      // Map set names to database enum values
-      let dbSetName;
-      if (set.setNumber === 1) {
-        dbSetName = "Set_1";
-      } else if (set.setNumber === 2) {
-        dbSetName = "Set_2";
-      } else if (set.setNumber === 3) {
-        dbSetName = "Set_3";
-      } else if (set.setNumber === 4) {
-        dbSetName = "Set_4";
-      } else {
-        dbSetName = "Maybe";
-      }
-
-      const setlistSet = await prisma.setlistSet.create({
+    // Only create setlist if we're supposed to
+    let setlist = null;
+    if (createSetlist) {
+      // Create the setlist
+      setlist = await prisma.setlist.create({
         data: {
-          setlistId: setlist.id,
-          name: dbSetName,
-          order: i + 1, // Set order based on array index
+          title: setlistTitle,
+          date: setlistDate ? new Date(setlistDate) : new Date(),
+          bandId: bandId,
+          createdById: req.session.user.id,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
+    }
 
-      // Find songs that belong to this set
-      const setOriginalSongs = songs.filter(
-        (song) => song.setNumber === set.setNumber
-      );
-      const setSongs = [];
+    // Create sets and add songs (only if creating a setlist)
+    if (createSetlist) {
+      for (let i = 0; i < sets.length; i++) {
+        const set = sets[i];
 
-      // Match processed songs to original songs by line number
-      for (const originalSong of setOriginalSongs) {
-        const processedSong = validSongs.find((ps) =>
-          processedSongs.find(
-            (procSong, idx) =>
-              procSong === ps &&
-              songs[idx].lineNumber === originalSong.lineNumber
-          )
-        );
-        if (processedSong) {
-          setSongs.push(processedSong);
+        // Map set names to database enum values
+        let dbSetName;
+        if (set.setNumber === 1) {
+          dbSetName = "Set_1";
+        } else if (set.setNumber === 2) {
+          dbSetName = "Set_2";
+        } else if (set.setNumber === 3) {
+          dbSetName = "Set_3";
+        } else if (set.setNumber === 4) {
+          dbSetName = "Set_4";
+        } else {
+          dbSetName = "Maybe";
         }
-      }
 
-      // Add songs to this set
-      for (let j = 0; j < setSongs.length; j++) {
-        const song = setSongs[j];
-        await prisma.setlistSong.create({
+        const setlistSet = await prisma.setlistSet.create({
           data: {
-            setlistSetId: setlistSet.id,
-            songId: song.id,
-            order: j + 1, // Order within the set
+            setlistId: setlist.id,
+            name: dbSetName,
+            order: i + 1, // Set order based on array index
             createdAt: new Date(),
             updatedAt: new Date(),
           },
         });
+
+        // Find songs that belong to this set
+        const setOriginalSongs = songs.filter(
+          (song) => song.setNumber === set.setNumber
+        );
+        const setSongs = [];
+
+        // Match processed songs to original songs by line number
+        for (const originalSong of setOriginalSongs) {
+          const processedSong = validSongs.find((ps) =>
+            processedSongs.find(
+              (procSong, idx) =>
+                procSong === ps &&
+                songs[idx].lineNumber === originalSong.lineNumber
+            )
+          );
+          if (processedSong) {
+            setSongs.push(processedSong);
+          }
+        }
+
+        // Add songs to this set
+        for (let j = 0; j < setSongs.length; j++) {
+          const song = setSongs[j];
+          await prisma.setlistSong.create({
+            data: {
+              setlistSetId: setlistSet.id,
+              songId: song.id,
+              order: j + 1, // Order within the set
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
       }
-    }
 
-    // Create gig documents for Google Doc imports in bulk processing
-    if (
-      req.session.quickSetData.isGoogleDocImport &&
-      req.session.quickSetData.googleDocData
-    ) {
-      console.log(
-        "Creating gig documents for Google Doc import in bulk processing..."
-      );
-
-      for (const originalSong of songs) {
-        const processedSong = validSongs.find((ps) =>
-          processedSongs.find(
-            (procSong, idx) =>
-              procSong === ps &&
-              songs[idx].lineNumber === originalSong.lineNumber
-          )
+      // Create gig documents for Google Doc imports in bulk processing
+      if (
+        req.session.quickSetData.isGoogleDocImport &&
+        req.session.quickSetData.googleDocData
+      ) {
+        console.log(
+          "Creating gig documents for Google Doc import in bulk processing..."
         );
 
-        if (processedSong && originalSong.processedContent) {
-          try {
-            // Auto-increment version for Google Doc imports (same logic as individual processing)
-            let docVersion = 1;
-            const existingDocs = await prisma.gigDocument.findMany({
-              where: { songId: processedSong.id, type: "chords" },
-              orderBy: { version: "desc" },
-              take: 1,
-            });
-            if (existingDocs.length > 0) {
-              docVersion = existingDocs[0].version + 1;
-            }
+        for (const originalSong of songs) {
+          const processedSong = validSongs.find((ps) =>
+            processedSongs.find(
+              (procSong, idx) =>
+                procSong === ps &&
+                songs[idx].lineNumber === originalSong.lineNumber
+            )
+          );
 
-            console.log(
-              `Creating gig document for ${processedSong.title} - version ${docVersion}`
-            );
-            console.log(
-              `Content length: ${originalSong.processedContent?.length || 0}`
-            );
-            console.log(
-              `Content preview: ${originalSong.processedContent?.substring(0, 200) || "NO CONTENT"}`
-            );
-
-            // Create gig document
-            const gigDocument = await prisma.gigDocument.create({
-              data: {
-                content: originalSong.processedContent,
-                songId: processedSong.id,
-                type: "chords",
-                version: docVersion,
-                createdById: userId,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            });
-
-            console.log(
-              `Created gig document ${gigDocument.id} for song ${processedSong.title}`
-            );
-
-            // Create links from extracted URLs if any
-            if (originalSong.urls && originalSong.urls.length > 0) {
-              let linksCreated = 0;
-              for (const urlInfo of originalSong.urls) {
-                if (
-                  urlInfo.type === "font_resource" ||
-                  urlInfo.type === "other"
-                ) {
-                  continue;
-                }
-
-                try {
-                  const existingLink = await prisma.link.findFirst({
-                    where: {
-                      songId: processedSong.id,
-                      url: urlInfo.url,
-                    },
-                  });
-
-                  if (!existingLink) {
-                    await prisma.link.create({
-                      data: {
-                        songId: processedSong.id,
-                        createdById: req.session.user.id,
-                        type: urlInfo.type,
-                        description: urlInfo.description || urlInfo.url,
-                        url: urlInfo.url,
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                      },
-                    });
-                    linksCreated++;
-                  }
-                } catch (error) {
-                  console.error(`Error creating link: ${error.message}`);
-                }
+          if (processedSong && originalSong.processedContent) {
+            try {
+              // Auto-increment version for Google Doc imports (same logic as individual processing)
+              let docVersion = 1;
+              const existingDocs = await prisma.gigDocument.findMany({
+                where: { songId: processedSong.id, type: "chords" },
+                orderBy: { version: "desc" },
+                take: 1,
+              });
+              if (existingDocs.length > 0) {
+                docVersion = existingDocs[0].version + 1;
               }
 
               console.log(
-                `Created ${linksCreated} links for ${processedSong.title}`
+                `Creating gig document for ${processedSong.title} - version ${docVersion}`
               );
+              console.log(
+                `Content length: ${originalSong.processedContent?.length || 0}`
+              );
+              console.log(
+                `Content preview: ${originalSong.processedContent?.substring(0, 200) || "NO CONTENT"}`
+              );
+
+              // Create gig document
+              const gigDocument = await prisma.gigDocument.create({
+                data: {
+                  content: originalSong.processedContent,
+                  songId: processedSong.id,
+                  type: "chords",
+                  version: docVersion,
+                  createdById: userId,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                },
+              });
+
+              console.log(
+                `Created gig document ${gigDocument.id} for song ${processedSong.title}`
+              );
+
+              // Create links from extracted URLs if any
+              if (originalSong.urls && originalSong.urls.length > 0) {
+                let linksCreated = 0;
+                for (const urlInfo of originalSong.urls) {
+                  if (
+                    urlInfo.type === "font_resource" ||
+                    urlInfo.type === "other"
+                  ) {
+                    continue;
+                  }
+
+                  try {
+                    const existingLink = await prisma.link.findFirst({
+                      where: {
+                        songId: processedSong.id,
+                        url: urlInfo.url,
+                      },
+                    });
+
+                    if (!existingLink) {
+                      await prisma.link.create({
+                        data: {
+                          songId: processedSong.id,
+                          createdById: req.session.user.id,
+                          type: urlInfo.type,
+                          description: urlInfo.description || urlInfo.url,
+                          url: urlInfo.url,
+                          createdAt: new Date(),
+                          updatedAt: new Date(),
+                        },
+                      });
+                      linksCreated++;
+                    }
+                  } catch (error) {
+                    console.error(`Error creating link: ${error.message}`);
+                  }
+                }
+
+                console.log(
+                  `Created ${linksCreated} links for ${processedSong.title}`
+                );
+              }
+            } catch (error) {
+              console.error(
+                `Error creating gig document for ${processedSong.title}:`,
+                error
+              );
+              // Don't fail the whole operation if gig document creation fails
             }
-          } catch (error) {
-            console.error(
-              `Error creating gig document for ${processedSong.title}:`,
-              error
-            );
-            // Don't fail the whole operation if gig document creation fails
           }
         }
       }
-    }
+    } // End of createSetlist conditional
 
     // Clear session data
+    const isNewList = req.session.quickSetData.isNewList;
     delete req.session.quickSetData;
 
-    req.flash("success", `Setlist "${setlistTitle}" created successfully!`);
-    res.redirect(`/setlists/${setlist.id}`);
+    if (isNewList && !createSetlist) {
+      // New list flow - just adding to band songs
+      const newSongsCount = processedSongs.filter((s) => s.isNew).length;
+      const existingSongsCount = processedSongs.filter((s) => !s.isNew).length;
+
+      let successMessage = `Successfully added ${processedSongs.length} songs to your band's repertoire`;
+      if (newSongsCount > 0) {
+        successMessage += ` (${newSongsCount} new songs created)`;
+      }
+      if (existingSongsCount > 0) {
+        successMessage += ` (${existingSongsCount} existing songs added)`;
+      }
+
+      req.flash("success", successMessage);
+      res.redirect(`/bands/${bandId}`);
+    } else {
+      // Regular quickset flow - creating setlist
+      req.flash("success", `Setlist "${setlistTitle}" created successfully!`);
+      res.redirect(`/setlists/${setlist.id}`);
+    }
   } catch (error) {
     console.error("Quick set creation error:", error);
     console.error("Error stack:", error.stack);
@@ -1760,6 +2004,235 @@ router.post("/:id/quick-set/create", async (req, res) => {
   }
 });
 
+// GET /bands/:id/new-list - Show new list creation page
+router.get("/:id/new-list", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    res.render("bands/new-list", {
+      title: `Add a List - ${band.name}`,
+      band,
+      currentUser: req.session.user,
+    });
+  } catch (error) {
+    console.error("New list page error:", error);
+    req.flash("error", "An error occurred while loading the page");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// New Doc routes
+router.get("/:id/new-doc", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    res.render("bands/new-doc", {
+      title: `Add a Doc - ${band.name}`,
+      band,
+    });
+  } catch (error) {
+    console.error("New doc page error:", error);
+    req.flash("error", "An error occurred while loading the page");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// POST /bands/:id/new-doc - Process new doc creation
+router.post("/:id/new-doc", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { googleDocUrl, listType } = req.body;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    if (!googleDocUrl) {
+      req.flash("error", "Google Doc URL is required");
+      return res.redirect(`/bands/${bandId}/new-doc`);
+    }
+
+    // Render a page that auto-submits to the existing Google Doc processing route
+    res.render("bands/google-doc-redirect", {
+      title: "Processing Google Doc...",
+      googleDocUrl: googleDocUrl,
+      bandId: bandId,
+      listType: listType,
+    });
+  } catch (error) {
+    console.error("New doc processing error:", error);
+    req.flash("error", "An error occurred processing the Google Doc");
+    res.redirect(`/bands/${req.params.id}/new-doc`);
+  }
+});
+
+// New Song routes
+router.get("/:id/songs/new", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    // Get artists for datalist
+    const artists = await prisma.artist.findMany({
+      orderBy: { name: "asc" },
+      take: 100, // Limit for performance
+    });
+
+    res.render("bands/songs/new", {
+      title: `Add a Song - ${band.name}`,
+      band,
+      artists,
+    });
+  } catch (error) {
+    console.error("New song page error:", error);
+    req.flash("error", "An error occurred while loading the page");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// POST /bands/:id/new-list - Process new list creation
+router.post("/:id/new-list", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { songList, listType } = req.body;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    if (!songList || !songList.trim()) {
+      req.flash("error", "Please provide a song list");
+      return res.redirect(`/bands/${bandId}/new-list`);
+    }
+
+    // Parse the song list
+    console.log("Parsing song list...");
+    const parseResult = parseQuickSetInput(songList);
+    console.log("Parse result:", parseResult);
+
+    if (!parseResult || !parseResult.songs || parseResult.songs.length === 0) {
+      console.log("Parse failed: No songs found");
+      req.flash(
+        "error",
+        "No songs found in your list. Please check the format and try again."
+      );
+      return res.redirect(`/bands/${bandId}/new-list`);
+    }
+
+    // Create a temporary setlist if creating a setlist
+    let setlistId = null;
+    if (listType === "setlist") {
+      console.log("Creating temporary setlist...");
+      const setlistTitle = parseResult.setlistTitle || "Untitled Setlist";
+      console.log("Using setlist title:", setlistTitle);
+
+      const tempSetlist = await prisma.setlist.create({
+        data: {
+          title: setlistTitle,
+          bandId: bandId,
+          createdById: userId,
+          isFinalized: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      setlistId = tempSetlist.id;
+      console.log("Created setlist with ID:", setlistId);
+    }
+
+    // Store the data in session using the same structure as quickset
+    console.log("Storing session data...");
+    req.session.quickSetData = {
+      bandId: bandId,
+      setlistId: setlistId,
+      sets: parseResult.sets,
+      songs: parseResult.songs,
+      isNewList: true, // Flag to indicate this is from new-list flow
+      createSetlist: listType === "setlist",
+    };
+    console.log("Session data stored:", req.session.quickSetData);
+
+    // Redirect to existing quickset confirmation page
+    console.log(`Redirecting to: /bands/${bandId}/quick-set/confirm`);
+    res.redirect(`/bands/${bandId}/quick-set/confirm`);
+  } catch (error) {
+    console.error("New list processing error:", error);
+    req.flash("error", "An error occurred while processing your list");
+    res.redirect(`/bands/${req.params.id}/new-list`);
+  }
+});
+
 // GET /bands/:id/quick-set/confirm - Show confirmation page with song matching
 router.get("/:id/quick-set/confirm", async (req, res) => {
   try {
@@ -1790,29 +2263,58 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       return res.redirect("/bands");
     }
 
-    const { sets, songs, setlistId } = req.session.quickSetData;
+    const { sets, songs, setlistId, isNewList, createSetlist } =
+      req.session.quickSetData;
 
-    // Get the created setlist
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-    });
+    // Get the created setlist (only if we created one)
+    let setlist = null;
+    if (setlistId) {
+      setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+      });
 
-    if (!setlist) {
-      req.flash("error", "Setlist not found. Please try again.");
-      return res.redirect(`/bands/${bandId}`);
+      if (!setlist) {
+        req.flash("error", "Setlist not found. Please try again.");
+        return res.redirect(`/bands/${bandId}`);
+      }
     }
+
+    // Debug: Check what songs exist in the database
+    const totalSongsInDb = await prisma.song.count();
+    console.log(`Total songs in database: ${totalSongsInDb}`);
 
     // Find song matches for each song
     const songMatches = await Promise.all(
       songs.map(async (song) => {
-        const matches = await findSongMatches(song.title, song.artist, userId);
+        const allMatches = await findSongMatches(
+          song.title,
+          song.artist,
+          userId
+        );
+
+        console.log(
+          `Song: "${song.title}" by "${song.artist}" - Found ${allMatches.length} matches:`,
+          allMatches.map((m) => ({
+            title: m.title,
+            matchType: m.matchType,
+            confidence: m.confidence,
+          }))
+        );
+
+        // Separate exact matches from other matches
+        const exactMatches = allMatches.filter(
+          (match) => match.matchType === "exact"
+        );
+        const otherMatches = allMatches.filter(
+          (match) => match.matchType !== "exact"
+        );
 
         // Only pre-select if we have a high-confidence match
         let selectedMatch = null;
         let shouldPreferExisting = false;
 
-        if (matches.length > 0) {
-          const bestMatch = matches[0];
+        if (allMatches.length > 0) {
+          const bestMatch = allMatches[0];
           // Pre-select if exact match OR fuzzy match with high confidence (70%+)
           if (bestMatch.matchType === "exact" || bestMatch.confidence >= 0.7) {
             selectedMatch = bestMatch;
@@ -1822,10 +2324,14 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
 
         return {
           ...song,
-          matches: matches,
+          matches: {
+            exactMatches: exactMatches,
+            otherMatches: otherMatches,
+            allMatches: allMatches,
+          },
           selectedMatch: selectedMatch,
           shouldPreferExisting: shouldPreferExisting, // Flag for frontend
-          needsCreation: matches.length === 0,
+          needsCreation: allMatches.length === 0,
         };
       })
     );
@@ -1836,15 +2342,27 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       select: { canMakePrivate: true },
     });
 
+    // Calculate summary stats
+    const matchedSongs = songMatches.filter(
+      (s) => s.matches.exactMatches.length > 0
+    ).length;
+    const likelyNewSongs = songMatches.length - matchedSongs;
+
     res.render("bands/quick-set-confirm", {
-      title: `Confirm Setlist - ${band.name}`,
+      title: req.session.quickSetData.isNewList
+        ? `Confirm List - ${band.name}`
+        : `Confirm Setlist - ${band.name}`,
       band,
       setlist,
       sets,
       songMatches,
       totalSongs: songs.length,
+      matchedSongs,
+      likelyNewSongs,
       googleDocData: req.session.quickSetData.googleDocData || null,
       isGoogleDocImport: req.session.quickSetData.isGoogleDocImport || false,
+      isNewList: req.session.quickSetData.isNewList || false,
+      createSetlist: req.session.quickSetData.createSetlist !== false, // Default to true for existing quickset flow
       currentUser,
     });
   } catch (error) {

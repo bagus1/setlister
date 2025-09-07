@@ -86,7 +86,7 @@ router.get("/", async (req, res) => {
             include: {
               song: {
                 select: {
-                  isPrivate: true,
+                  private: true,
                 },
               },
             },

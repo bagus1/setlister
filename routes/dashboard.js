@@ -29,7 +29,7 @@ router.get("/", async (req, res) => {
             },
           },
         },
-        take: 5,
+        take: 15,
         orderBy: { updatedAt: "desc" },
       });
 

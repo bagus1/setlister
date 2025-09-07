@@ -804,9 +804,124 @@ router.get("/:id", async (req, res) => {
       return res.redirect("/bands");
     }
 
+    // Get BandSong preferences for this band
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
+      include: {
+        song: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    // Create a map of songId to BandSong for quick lookup
+    const bandSongMap = {};
+    bandSongs.forEach((bandSong) => {
+      bandSongMap[bandSong.songId] = bandSong;
+    });
+
+    // Get all gig documents for songs in this setlist
+    const songIds = [];
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          songIds.push(setlistSong.song.id);
+        });
+      }
+    });
+
+    const gigDocuments = await prisma.gigDocument.findMany({
+      where: {
+        songId: { in: songIds },
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+      orderBy: [{ songId: "asc" }, { type: "asc" }, { version: "desc" }],
+    });
+
+    // Group gig documents by song ID
+    const gigDocumentsBySong = {};
+    gigDocuments.forEach((doc) => {
+      if (!gigDocumentsBySong[doc.songId]) {
+        gigDocumentsBySong[doc.songId] = [];
+      }
+      gigDocumentsBySong[doc.songId].push(doc);
+    });
+
+    // Calculate link counts for each song for tooltip functionality
+    const songLinkCounts = {};
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          const songId = setlistSong.song.id;
+          const links = setlistSong.song.links || [];
+
+          // Count different types of links
+          const audioLinks = links.filter(
+            (link) => link.type === "audio"
+          ).length;
+          const youtubeLinks = links.filter(
+            (link) => link.type === "youtube"
+          ).length;
+          const totalLinks = links.length;
+
+          // Check if song has gig documents
+          const hasGigDocs =
+            gigDocumentsBySong[songId] && gigDocumentsBySong[songId].length > 0;
+
+          songLinkCounts[songId] = {
+            audio: audioLinks,
+            youtube: youtubeLinks,
+            total: totalLinks,
+            hasGigDocs: hasGigDocs,
+            hasAnyRehearsalResource: hasGigDocs || totalLinks > 0,
+          };
+        });
+      }
+    });
+
+    // Calculate if setlist is still editable (always editable)
+    const isEditable = true;
+
+    // Helper functions for gig document type display
+    const getTypeIcon = (type) => {
+      const icons = {
+        chords: "music-note-list",
+        "bass-tab": "music-note-beamed",
+        "guitar-tab": "music-note",
+        lyrics: "file-text",
+      };
+      return icons[type] || "file-earmark-text";
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
     res.render("setlists/show", {
       title: setlist.title,
       setlist,
+      isEditable,
+      bandSongMap,
+      gigDocumentsBySong,
+      songLinkCounts,
+      getTypeIcon,
+      getTypeDisplayName,
     });
   } catch (error) {
     logger.logError("Show setlist error", error);

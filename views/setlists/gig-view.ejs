@@ -163,18 +163,39 @@
 
 <body>
     <div class="gig-header">
-        <h1>
-            <%= setlist.title %>
-        </h1>
-        <h2>
-            <%= setlist.band.name %>
-        </h2>
-        <% if (setlist.date) { %>
-            <div class="date">
-                <%= new Date(setlist.date).toLocaleDateString('en-US', { weekday: 'long' , year: 'numeric' ,
-                    month: 'long' , day: 'numeric' }) %>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+            <div style="flex: 1;">
+                <h1>
+                    <%= setlist.title %>
+                </h1>
+                <h2>
+                    <%= setlist.band.name %>
+                </h2>
+                <% if (setlist.date) { %>
+                    <div class="date">
+                        <%= new Date(setlist.date).toLocaleDateString('en-US', { weekday: 'long' , year: 'numeric' ,
+                            month: 'long' , day: 'numeric' }) %>
+                    </div>
+                    <% } %>
             </div>
-            <% } %>
+            <div style="margin-left: 20px;">
+                <a href="/setlists/<%= setlist.id %>" style="
+                    display: inline-block;
+                    padding: 8px 16px;
+                    background-color: #007bff;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    border: none;
+                    cursor: pointer;
+                    transition: background-color 0.2s;
+                " onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">
+                    ← Back to Setlist
+                </a>
+            </div>
+        </div>
     </div>
 
     <!-- Song List Section -->

@@ -107,8 +107,8 @@
                                     <div class="mb-3">
                                         <label for="setlistTitle" class="form-label">Setlist Title</label>
                                         <input type="text" class="form-control" id="setlistTitle" name="setlistTitle" 
-                                               value="<%= setlist.title %>"
-                                               data-setlist-id="<%= setlist.id %>"
+                                               value="<%= setlist ? setlist.title : '' %>"
+                                               data-setlist-id="<%= setlist ? setlist.id : '' %>"
                                                data-auto-save="title">
                                         <small class="text-muted">Changes save automatically</small>
                                     </div>
@@ -117,8 +117,8 @@
                                     <div class="mb-3">
                                         <label for="setlistDate" class="form-label">Date</label>
                                         <input type="date" class="form-control" id="setlistDate" name="setlistDate"
-                                               value="<%= setlist.date ? setlist.date.toISOString().split('T')[0] : '' %>"
-                                               data-setlist-id="<%= setlist.id %>"
+                                               value="<%= setlist && setlist.date ? setlist.date.toISOString().split('T')[0] : '' %>"
+                                               data-setlist-id="<%= setlist ? setlist.id : '' %>"
                                                data-auto-save="date">
                                         <small class="text-muted">Changes save automatically</small>
                                     </div>
@@ -284,7 +284,7 @@
                                             <button type="button" 
                                                     class="btn btn-success btn-sm me-2 process-song-btn" 
                                                     data-song-line="<%= songMatch.lineNumber %>"
-                                                    data-setlist-id="<%= setlist.id %>"
+                                                    data-setlist-id="<%= setlist ? setlist.id : '' %>"
                                                     title="Add this to my setlist">
                                                 <i class="bi bi-check-lg"></i>
                                             </button>
@@ -312,7 +312,7 @@
                                             <div class="col-2">
                                                 <div class="border border-light-subtle rounded p-2">
                                                     <div class="mb-1"><strong>Create New</strong></div>
-                                                    <div class="card border-warning new-song-card <%= (songMatch.matches.length === 0 || !songMatch.shouldPreferExisting) ? 'selected' : '' %>" 
+                                                    <div class="card border-warning new-song-card <%= (songMatch.matches.allMatches.length === 0 || !songMatch.shouldPreferExisting) ? 'selected' : '' %>" 
                                                          data-song-line="<%= songMatch.lineNumber %>" 
                                                          style="cursor: pointer;">
                                                         <div class="card-body p-2">
@@ -363,7 +363,7 @@
                                             </div>
 
                                             <!-- Right: Existing song matches -->
-                                            <% if (songMatch.matches.length > 0) { %>
+                                            <% if (songMatch.matches.allMatches.length > 0) { %>
                                                 <div class="col-10">
                                                     <div class="border border-light-subtle rounded p-2">
                                                         <div class="mb-2">
@@ -371,7 +371,7 @@
                                                         </div>
                                                     
                                                     <div class="row match-cards-row">
-                                                        <% songMatch.matches.forEach((match, matchIndex) => { %>
+                                                        <% songMatch.matches.allMatches.forEach((match, matchIndex) => { %>
                                                             <div class="col mb-2">
                                                                 <div class="card match-card <%= (songMatch.selectedMatch && match.id === songMatch.selectedMatch.id) ? 'selected' : '' %>" 
                                                                      data-song-line="<%= songMatch.lineNumber %>" 

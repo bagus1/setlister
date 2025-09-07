@@ -90,7 +90,8 @@
             <% } %>
         <% } %>
 
-        <!-- Setlist Details -->
+        <% if (createSetlist !== false) { %>
+        <!-- Setlist Details (only show when creating a setlist) -->
         <div class="row mb-4">
             <div class="col-md-8">
                 <div class="card">
@@ -100,32 +101,44 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label for="setlistTitle" class="form-label">Setlist Title</label>
-                                    <input type="text" class="form-control" id="setlistTitle" name="setlistTitle" 
-                                           value="<%= setlist.title %>"
-                                           data-setlist-id="<%= setlist.id %>"
-                                           data-auto-save="title">
-                                    <small class="text-muted">Changes save automatically</small>
+                        <% if (setlist) { %>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="setlistTitle" class="form-label">Setlist Title</label>
+                                        <input type="text" class="form-control" id="setlistTitle" name="setlistTitle" 
+                                               value="<%= setlist.title %>"
+                                               data-setlist-id="<%= setlist.id %>"
+                                               data-auto-save="title">
+                                        <small class="text-muted">Changes save automatically</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="setlistDate" class="form-label">Date</label>
+                                        <input type="date" class="form-control" id="setlistDate" name="setlistDate"
+                                               value="<%= setlist.date ? setlist.date.toISOString().split('T')[0] : '' %>"
+                                               data-setlist-id="<%= setlist.id %>"
+                                               data-auto-save="date">
+                                        <small class="text-muted">Changes save automatically</small>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="setlistDate" class="form-label">Date</label>
-                                    <input type="date" class="form-control" id="setlistDate" name="setlistDate"
-                                           value="<%= setlist.date ? setlist.date.toISOString().split('T')[0] : '' %>"
-                                           data-setlist-id="<%= setlist.id %>"
-                                           data-auto-save="date">
-                                    <small class="text-muted">Changes save automatically</small>
-                                </div>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> 
+                                Your setlist has been created! You can now process songs individually by clicking the checkmark next to each song, or remove songs completely by clicking the X button.
                             </div>
-                        </div>
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i> 
-                            Your setlist has been created! You can now process songs individually by clicking the checkmark next to each song, or remove songs completely by clicking the X button.
-                        </div>
+                        <% } else { %>
+                            <div class="mb-3">
+                                <label for="setlistTitle" class="form-label">Setlist Title</label>
+                                <input type="text" class="form-control" id="setlistTitle" name="setlistTitle" 
+                                       value="Untitled Setlist" required>
+                            </div>
+                            <div class="mb-0">
+                                <label for="setlistDate" class="form-label">Date (optional)</label>
+                                <input type="date" class="form-control" id="setlistDate" name="setlistDate">
+                            </div>
+                        <% } %>
                     </div>
                 </div>
             </div>
@@ -143,6 +156,58 @@
                             <span>Sets:</span>
                             <strong><%= sets.length %></strong>
                         </div>
+        <% } else { %>
+        <!-- List Summary (only show when adding to band songs) -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-music-note-list"></i> List Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <p class="text-muted mb-3">
+                                    Review the songs below and confirm which ones you want to add to your band's repertoire. 
+                                    Songs will be matched with existing songs in our database when possible.
+                                </p>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Total Songs:</span>
+                                            <strong><%= totalSongs %></strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex justify-content-between text-success">
+                                            <span>Matched Songs:</span>
+                                            <strong><%= matchedSongs %></strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex justify-content-between text-warning">
+                                            <span>Likely New Songs:</span>
+                                            <strong><%= likelyNewSongs %></strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    <small>
+                                        Songs added here can later be added to any of the band's sets.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
                         
                         <% if (isGoogleDocImport && googleDocData) { %>
                             <hr>
@@ -190,7 +255,12 @@
                     <i class="bi bi-music-note-list"></i> Song Matches
                 </h5>
                 <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="bi bi-arrow-right-circle"></i> Go to Setlist
+                    <i class="bi bi-arrow-right-circle"></i> 
+                    <% if (createSetlist === false) { %>
+                        Add Songs to Band Repertoire
+                    <% } else { %>
+                        Go to Setlist
+                    <% } %>
                 </button>
             </div>
             <div class="card-body">
@@ -370,7 +440,12 @@
         <div class="d-flex justify-content-end gap-2 mt-4">
             <a href="/bands/<%= band.id %>" class="btn btn-secondary">Cancel</a>
             <button type="submit" class="btn btn-success">
-                <i class="bi bi-arrow-right-circle"></i> Go to Setlist
+                <i class="bi bi-arrow-right-circle"></i> 
+                <% if (createSetlist === false) { %>
+                    Add Songs to Band Repertoire
+                <% } else { %>
+                    Go to Setlist
+                <% } %>
             </button>
         </div>
     </form>

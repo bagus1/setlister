@@ -1717,10 +1717,30 @@ router.post("/:id/quick-set/create", async (req, res) => {
     }
 
     // Clear session data
+    const isNewList = req.session.quickSetData.isNewList;
+    const createSetlist = req.session.quickSetData.createSetlist !== false;
     delete req.session.quickSetData;
 
-    req.flash("success", `Setlist "${setlistTitle}" created successfully!`);
-    res.redirect(`/setlists/${setlist.id}`);
+    if (isNewList && !createSetlist) {
+      // New list flow - just adding to band songs
+      const newSongsCount = processedSongs.filter((s) => s.isNew).length;
+      const existingSongsCount = processedSongs.filter((s) => !s.isNew).length;
+
+      let successMessage = `Successfully added ${processedSongs.length} songs to your band's repertoire`;
+      if (newSongsCount > 0) {
+        successMessage += ` (${newSongsCount} new songs created)`;
+      }
+      if (existingSongsCount > 0) {
+        successMessage += ` (${existingSongsCount} existing songs added)`;
+      }
+
+      req.flash("success", successMessage);
+      res.redirect(`/bands/${bandId}`);
+    } else {
+      // Regular quickset flow - creating setlist
+      req.flash("success", `Setlist "${setlistTitle}" created successfully!`);
+      res.redirect(`/setlists/${setlist.id}`);
+    }
   } catch (error) {
     console.error("Quick set creation error:", error);
     console.error("Error stack:", error.stack);
@@ -1757,6 +1777,123 @@ router.post("/:id/quick-set/create", async (req, res) => {
       "An error occurred creating the setlist. Please try again."
     );
     res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// GET /bands/:id/new-list - Show new list creation page
+router.get("/:id/new-list", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    res.render("bands/new-list", {
+      title: `Add a List - ${band.name}`,
+      band,
+      currentUser: req.session.user,
+    });
+  } catch (error) {
+    console.error("New list page error:", error);
+    req.flash("error", "An error occurred while loading the page");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// POST /bands/:id/new-list - Process new list creation
+router.post("/:id/new-list", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { songList, listType } = req.body;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    if (!songList || !songList.trim()) {
+      req.flash("error", "Please provide a song list");
+      return res.redirect(`/bands/${bandId}/new-list`);
+    }
+
+    // Parse the song list
+    console.log("Parsing song list...");
+    const parseResult = parseQuickSetInput(songList);
+    console.log("Parse result:", parseResult);
+
+    if (!parseResult || !parseResult.songs || parseResult.songs.length === 0) {
+      console.log("Parse failed: No songs found");
+      req.flash(
+        "error",
+        "No songs found in your list. Please check the format and try again."
+      );
+      return res.redirect(`/bands/${bandId}/new-list`);
+    }
+
+    // Create a temporary setlist if creating a setlist
+    let setlistId = null;
+    if (listType === "setlist") {
+      console.log("Creating temporary setlist...");
+      const setlistTitle = parseResult.setlistTitle || "Untitled Setlist";
+      console.log("Using setlist title:", setlistTitle);
+
+      const tempSetlist = await prisma.setlist.create({
+        data: {
+          title: setlistTitle,
+          bandId: bandId,
+          createdById: userId,
+          isFinalized: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      setlistId = tempSetlist.id;
+      console.log("Created setlist with ID:", setlistId);
+    }
+
+    // Store the data in session using the same structure as quickset
+    console.log("Storing session data...");
+    req.session.quickSetData = {
+      bandId: bandId,
+      setlistId: setlistId,
+      sets: parseResult.sets,
+      songs: parseResult.songs,
+      isNewList: true, // Flag to indicate this is from new-list flow
+      createSetlist: listType === "setlist",
+    };
+    console.log("Session data stored:", req.session.quickSetData);
+
+    // Redirect to existing quickset confirmation page
+    console.log(`Redirecting to: /bands/${bandId}/quick-set/confirm`);
+    res.redirect(`/bands/${bandId}/quick-set/confirm`);
+  } catch (error) {
+    console.error("New list processing error:", error);
+    req.flash("error", "An error occurred while processing your list");
+    res.redirect(`/bands/${req.params.id}/new-list`);
   }
 });
 
@@ -1837,7 +1974,9 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
     });
 
     res.render("bands/quick-set-confirm", {
-      title: `Confirm Setlist - ${band.name}`,
+      title: req.session.quickSetData.isNewList
+        ? `Confirm List - ${band.name}`
+        : `Confirm Setlist - ${band.name}`,
       band,
       setlist,
       sets,
@@ -1845,6 +1984,8 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       totalSongs: songs.length,
       googleDocData: req.session.quickSetData.googleDocData || null,
       isGoogleDocImport: req.session.quickSetData.isGoogleDocImport || false,
+      isNewList: req.session.quickSetData.isNewList || false,
+      createSetlist: req.session.quickSetData.createSetlist !== false, // Default to true for existing quickset flow
       currentUser,
     });
   } catch (error) {

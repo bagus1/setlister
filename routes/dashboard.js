@@ -83,8 +83,12 @@ router.get("/", async (req, res) => {
       const artists = await prisma.artist.findMany({
         include: {
           songs: {
-            select: {
-              isPrivate: true,
+            include: {
+              song: {
+                select: {
+                  isPrivate: true,
+                },
+              },
             },
           },
         },

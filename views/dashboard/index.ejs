@@ -113,7 +113,7 @@
                         <% artists.forEach(artist=> { %>
                             <% 
                             // Filter out artists that only have private songs
-                            const hasPublicSongs = artist.songs && artist.songs.some(song => !song.isPrivate);
+                            const hasPublicSongs = artist.songs && artist.songs.some(songArtist => !songArtist.song.isPrivate);
                             %>
                             <% if (hasPublicSongs) { %>
                                 <div class="mb-2">

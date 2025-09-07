@@ -199,6 +199,20 @@
         </div>
     </nav>
 
+    <!-- Band Context Header (conditional) -->
+    <% if (typeof hasBandHeader !== 'undefined' && hasBandHeader && band) { %>
+    <div class="border-bottom py-3" style="background-color: #ccc;">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center" style="padding-left: 30px;">
+                <h2 class="h5 mb-0 text-muted"><%= band.name %></h2>
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary btn-sm" style="margin-right: 30px;">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
     <!-- Flash Messages -->
     <% if (typeof success !=='undefined' && success && success.length> 0) { %>
         <div class="alert alert-success alert-dismissible fade show" role="alert">

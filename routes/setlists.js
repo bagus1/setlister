@@ -182,8 +182,9 @@ router.get("/:id/youtube-playlist", async (req, res) => {
     res.render("setlists/youtube-playlist", {
       title: `YouTube Playlist - ${setlist.title}`,
       setlist,
+      band: setlist.band,
+      hasBandHeader: true,
       youtubeLinks,
-      layout: false, // No layout for clean printing
     });
   } catch (error) {
     logger.logError("YouTube playlist error", error);
@@ -327,11 +328,12 @@ router.get("/:id/rehearsal", async (req, res) => {
     res.render("setlists/rehearsal", {
       title: `Rehearsal View - ${setlist.title}`,
       setlist,
+      band: setlist.band,
+      hasBandHeader: true,
       getLinkIcon,
       getLinkDisplayText,
       getTypeIcon,
       getTypeDisplayName,
-      layout: false, // No layout for clean printing
     });
   } catch (error) {
     logger.logError("Rehearsal view error", error);
@@ -512,6 +514,8 @@ router.get("/:id/listen", async (req, res) => {
     res.render("setlists/listen", {
       title: `Listen to Set - ${setlist.title}`,
       setlist,
+      band: setlist.band,
+      hasBandHeader: true,
       playlistData,
       externalUrl: url,
       layout: "layout",
@@ -722,6 +726,8 @@ router.get("/:id/playlist", async (req, res) => {
     res.render("setlists/playlist", {
       title: `Playlist - ${setlist.title}`,
       setlist,
+      band: setlist.band,
+      hasBandHeader: true,
       audioSongs,
       setTotals,
       totalTime,
@@ -916,6 +922,8 @@ router.get("/:id", async (req, res) => {
     res.render("setlists/show", {
       title: setlist.title,
       setlist,
+      band: setlist.band,
+      hasBandHeader: true,
       isEditable,
       bandSongMap,
       gigDocumentsBySong,
@@ -1066,6 +1074,8 @@ router.get("/:id/edit", async (req, res) => {
     res.render("setlists/edit", {
       title: `Edit ${setlist.title}`,
       setlist,
+      band: setlist.band,
+      hasBandHeader: true,
       bandSongs,
       success: req.flash("success"),
       error: req.flash("error"),

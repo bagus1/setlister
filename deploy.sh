@@ -163,8 +163,15 @@ check_git_status() {
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             git add .
-            git commit -m "Auto-commit before deployment $(date)"
-            print_success "Changes committed"
+            echo
+            read -p "Add a commit message or press Enter for auto-generated: " commit_message
+            if [[ -z $commit_message ]]; then
+                git commit -m "Auto-commit before deployment $(date)"
+                print_success "Changes committed with auto-generated message"
+            else
+                git commit -m "$commit_message"
+                print_success "Changes committed with message: $commit_message"
+            fi
         elif [[ $REPLY =~ ^[Nn]$ ]] || [[ -z $REPLY ]]; then
             print_warning "Deploying with uncommitted changes"
         else

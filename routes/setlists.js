@@ -225,23 +225,35 @@ function analyzeSetlistChanges(previousState, currentState) {
         prevOrder.every((id) => currOrder.includes(id)) &&
         JSON.stringify(prevOrder) !== JSON.stringify(currOrder)
       ) {
-        // Find which songs actually moved positions
+        // Find the song that moved the most (likely the one that was dragged)
         const movedSongs = [];
+        let maxMoveDistance = 0;
+        let movedSong = null;
+
         for (let i = 0; i < prevOrder.length; i++) {
-          if (prevOrder[i] !== currOrder[i]) {
+          const songId = prevOrder[i];
+          const newPosition = currOrder.indexOf(songId);
+          const moveDistance = Math.abs(i - newPosition);
+
+          if (moveDistance > maxMoveDistance) {
+            maxMoveDistance = moveDistance;
             const song = currentState.sets
               .find((set) => set.name === setName)
-              ?.songs.find((s) => s.songId === currOrder[i]);
+              ?.songs.find((s) => s.songId === songId);
 
             if (song) {
-              movedSongs.push({
+              movedSong = {
                 songId: song.songId,
                 title: song.title,
-                fromPosition: prevOrder.indexOf(song.songId) + 1,
-                toPosition: i + 1,
-              });
+                fromPosition: i + 1,
+                toPosition: newPosition + 1,
+              };
             }
           }
+        }
+
+        if (movedSong) {
+          movedSongs.push(movedSong);
         }
 
         changes.songsReorderedWithinSets.push({
@@ -288,7 +300,7 @@ function generateDetailedSummary(changes, totalSongs) {
   }
 
   if (parts.length === 0) {
-    return `Reordered ${totalSongs} songs`;
+    return `Reordered a song`;
   }
 
   return parts.join(", ");

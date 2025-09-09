@@ -1191,6 +1191,12 @@
 /* Song card styling */
 .song-card {
     border: none;
+    cursor: default;
+}
+
+/* Only show pointer cursor when panel is open */
+.song-card:has(.song-extended-panel[style*="block"]) {
+    cursor: pointer;
 }
 
 .song-toggle-btn {

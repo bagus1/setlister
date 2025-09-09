@@ -1038,6 +1038,58 @@ router.get("/:id/playlist", async (req, res) => {
   }
 });
 
+// GET /setlists/:id/print - Show print page with export options (public)
+router.get("/:id/print", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: true,
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      req.flash("error", "Setlist not found");
+      return res.redirect("/bands");
+    }
+
+    res.render("setlists/print", {
+      title: `Print ${setlist.title}`,
+      setlist,
+    });
+  } catch (error) {
+    console.error("Print setlist error:", error);
+    req.flash("error", "An error occurred loading the print page");
+    res.redirect("/bands");
+  }
+});
+
 // All other setlist routes require authentication
 router.use(requireAuth);
 
@@ -2300,68 +2352,6 @@ router.post("/:id/preferred-gig-document", async (req, res) => {
   } catch (error) {
     console.error("Update preferred gig document error:", error);
     res.status(500).json({ error: "Failed to update preferred gig document" });
-  }
-});
-
-// GET /setlists/:id/print - Show print page with export options
-router.get("/:id/print", async (req, res) => {
-  try {
-    const setlistId = parseInt(req.params.id);
-    const userId = req.session.user.id;
-
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
-        sets: {
-          include: {
-            songs: {
-              include: {
-                song: {
-                  include: {
-                    artists: {
-                      include: {
-                        artist: true,
-                      },
-                    },
-                    vocalist: true,
-                  },
-                },
-              },
-              orderBy: {
-                order: "asc",
-              },
-            },
-          },
-          orderBy: {
-            order: "asc",
-          },
-        },
-      },
-    });
-
-    if (!setlist) {
-      req.flash("error", "Setlist not found");
-      return res.redirect("/bands");
-    }
-
-    res.render("setlists/print", {
-      title: `Print ${setlist.title}`,
-      setlist,
-    });
-  } catch (error) {
-    console.error("Print setlist error:", error);
-    req.flash("error", "An error occurred loading the print page");
-    res.redirect("/bands");
   }
 });
 

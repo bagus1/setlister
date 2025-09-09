@@ -300,7 +300,7 @@ function generateDetailedSummary(changes, totalSongs) {
   }
 
   if (parts.length === 0) {
-    return `Reordered a song`;
+    return `Reordered a song within a set`;
   }
 
   return parts.join(", ");

@@ -34,12 +34,12 @@
                 </div>
                 <div class="col-md-8 text-end">
                     <div class="btn-group" role="group">
-                        <button id="save-setlist" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Now
-                        </button>
                         <a href="/setlists/<%= setlist.id %>" class="btn btn-success">
                             <i class="bi bi-eye"></i> View Setlist
                         </a>
+                        <button id="change-log-btn" class="btn btn-primary">
+                            <i class="bi bi-clock-history"></i> Change Log
+                        </button>
                         <a href="/bands/<%= setlist.bandId %>/songs" class="btn btn-info">
                             <i class="bi bi-music-note-list"></i> Manage Songs
                         </a>
@@ -569,6 +569,16 @@
 
     // Event listeners
     document.getElementById('refresh-versions').addEventListener('click', loadVersionHistory);
+    
+    // Change Log button - scroll to version history section
+    document.getElementById('change-log-btn').addEventListener('click', function(e) {
+        e.preventDefault();
+        const versionSection = document.querySelector('#version-list').closest('.card');
+        versionSection.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+        });
+    });
 
     // Load version history on page load
     document.addEventListener('DOMContentLoaded', loadVersionHistory);

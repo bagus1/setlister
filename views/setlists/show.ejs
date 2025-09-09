@@ -68,107 +68,121 @@
                                 <div class="list-group list-group-flush">
                                     <% set.songs.sort((a, b)=> a.order - b.order).forEach((setlistSong, index) =>
                                         { %>
-                                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div class="d-flex align-items-center">
-                                                <span class="badge bg-light text-dark me-2">
-                                                    <%= index + 1 %>
-                                                </span>
-                                                <div>
-                                                    <strong>
-                                                        <a href="/songs/<%= setlistSong.song.id %>"
-                                                            class="text-decoration-none">
-                                                            <%= setlistSong.song.title %>
-                                                        </a>
-                                                    </strong>
-                                                    <% if (setlistSong.song.artists && setlistSong.song.artists.length>
-                                                        0) { %>
-                                                        <span class="text-muted">by <%= setlistSong.song.artists[0].artist.name
-                                                                %>
-                                                        </span>
-                                                        <% } %>
+                                        <div class="song-card" data-song-id="<%= setlistSong.song.id %>">
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge bg-light text-dark me-2">
+                                                        <%= index + 1 %>
+                                                    </span>
+                                                    <div>
+                                                        <strong>
+                                                            <a href="/songs/<%= setlistSong.song.id %>"
+                                                                class="text-decoration-none">
+                                                                <%= setlistSong.song.title %>
+                                                            </a>
+                                                        </strong>
+                                                        <% if (setlistSong.song.artists && setlistSong.song.artists.length>
+                                                            0) { %>
+                                                            <span class="text-muted">by <%= setlistSong.song.artists[0].artist.name
+                                                                    %>
+                                                            </span>
+                                                            <% } %>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <!-- Song metadata (vocalist, key, time) -->
+                                                    <div class="d-flex align-items-center gap-2 me-3">
+                                                        <% if (setlistSong.song.vocalist) { %>
+                                                            <span class="badge bg-info">
+                                                                <%= setlistSong.song.vocalist.name %>
+                                                            </span>
+                                                            <% } %>
+                                                                <% if (setlistSong.song.key) { %>
+                                                                    <span class="badge bg-warning text-dark">
+                                                                        <%= setlistSong.song.key %>
+                                                                    </span>
+                                                                    <% } %>
+                                                                        <% if (setlistSong.song.time) { %>
+                                                                            <span class="text-muted small">
+                                                                                <%= Math.floor(setlistSong.song.time / 60)
+                                                                                    %>:<%= (setlistSong.song.time %
+                                                                                        60).toString().padStart(2, '0' ) %>
+                                                                            </span>
+                                                                            <% } %>
+                                                    </div>
+
+                                                    <!-- Toggle button for extended panel -->
+                                                    <button class="btn btn-sm btn-outline-secondary song-toggle-btn" 
+                                                            type="button" 
+                                                            data-song-id="<%= setlistSong.song.id %>"
+                                                            title="Show song options">
+                                                        <i class="bi bi-chevron-down"></i>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <!-- Song metadata (vocalist, key, time) -->
-                                                <div class="d-flex align-items-center gap-2 me-3">
-                                                    <% if (setlistSong.song.vocalist) { %>
-                                                        <span class="badge bg-info">
-                                                            <%= setlistSong.song.vocalist.name %>
-                                                        </span>
-                                                        <% } %>
-                                                            <% if (setlistSong.song.key) { %>
-                                                                <span class="badge bg-warning text-dark">
-                                                                    <%= setlistSong.song.key %>
-                                                                </span>
-                                                                <% } %>
-                                                                    <% if (setlistSong.song.time) { %>
-                                                                        <span class="text-muted small">
-                                                                            <%= Math.floor(setlistSong.song.time / 60)
-                                                                                %>:<%= (setlistSong.song.time %
-                                                                                    60).toString().padStart(2, '0' ) %>
-                                                                        </span>
-                                                                        <% } %>
-                                                </div>
-
-                                                <!-- Gig Document Selection -->
-                                                <div class="me-3">
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="dropdown">
-                                                            <button
-                                                                class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                                                                type="button" data-bs-toggle="dropdown"
-                                                                aria-expanded="false"
-                                                                data-song-id="<%= setlistSong.song.id %>">
-                                                                <% const bandSong=(bandSongMap &&
-                                                                    bandSongMap[setlistSong.song.id]) || null; const
-                                                                    preferredDocId=bandSong && bandSong.gigDocumentId;
-                                                                    const availableDocs=(gigDocumentsBySong &&
-                                                                    gigDocumentsBySong[setlistSong.song.id]) || [];
-                                                                    const preferredDoc=preferredDocId ?
-                                                                    availableDocs.find(d=> d.id === preferredDocId) :
-                                                                    null;
-                                                                    %>
-                                                                    <% if (preferredDoc) { %>
-                                                                        <%= getTypeDisplayName(preferredDoc.type) %> v<%=
-                                                                                preferredDoc.version %>
-                                                                                <% if (preferredDoc.creator) { %>
-                                                                                    <small class="text-muted ms-1">
-                                                                                        by <%= preferredDoc.creator.username.includes('@') ? preferredDoc.creator.username.split('@')[0] : preferredDoc.creator.username %>
-                                                                                    </small>
-                                                                                <% } %>
-                                                                                <% } else if (availableDocs.length> 0) {
-                                                                                    %>
-                                                                                    <%= getTypeDisplayName(availableDocs[0].type)
-                                                                                        %> v<%= availableDocs[0].version
-                                                                                            %>
-                                                                                            <% if (availableDocs[0].creator) { %>
-                                                                                                <small class="text-muted ms-1">
-                                                                                                    by <%= availableDocs[0].creator.username.includes('@') ? availableDocs[0].creator.username.split('@')[0] : availableDocs[0].creator.username %>
+                                            
+                                            <!-- Extended panel (hidden by default) -->
+                                            <div class="song-extended-panel" style="display: none;">
+                                                <div class="list-group-item bg-light">
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <h6 class="text-muted mb-3">Gig Documents</h6>
+                                                            <div class="dropdown">
+                                                                <button
+                                                                    class="btn btn-sm btn-outline-secondary dropdown-toggle w-100"
+                                                                    type="button" data-bs-toggle="dropdown"
+                                                                    aria-expanded="false"
+                                                                    data-song-id="<%= setlistSong.song.id %>">
+                                                                    <% const bandSong=(bandSongMap &&
+                                                                        bandSongMap[setlistSong.song.id]) || null; const
+                                                                        preferredDocId=bandSong && bandSong.gigDocumentId;
+                                                                        const availableDocs=(gigDocumentsBySong &&
+                                                                        gigDocumentsBySong[setlistSong.song.id]) || [];
+                                                                        const preferredDoc=preferredDocId ?
+                                                                        availableDocs.find(d=> d.id === preferredDocId) :
+                                                                        null;
+                                                                        %>
+                                                                        <% if (preferredDoc) { %>
+                                                                            <%= getTypeDisplayName(preferredDoc.type) %> v<%=
+                                                                                    preferredDoc.version %>
+                                                                                    <% if (preferredDoc.creator) { %>
+                                                                                        <small class="text-muted ms-1">
+                                                                                            by <%= preferredDoc.creator.username.includes('@') ? preferredDoc.creator.username.split('@')[0] : preferredDoc.creator.username %>
+                                                                                        </small>
+                                                                                    <% } %>
+                                                                                    <% } else if (availableDocs.length> 0) {
+                                                                                        %>
+                                                                                        <%= getTypeDisplayName(availableDocs[0].type)
+                                                                                            %> v<%= availableDocs[0].version
+                                                                                                %>
+                                                                                                <% if (availableDocs[0].creator) { %>
+                                                                                                    <small class="text-muted ms-1">
+                                                                                                        by <%= availableDocs[0].creator.username.includes('@') ? availableDocs[0].creator.username.split('@')[0] : availableDocs[0].creator.username %>
+                                                                                                    </small>
+                                                                                                <% } %>
+                                                                                                <% } else { %>
+                                                                                                    No docs
+                                                                                                    <% } %>
+                                                                </button>
+                                                                <ul class="dropdown-menu">
+                                                                    <% if (availableDocs.length> 0) { %>
+                                                                        <% availableDocs.forEach(doc=> { %>
+                                                                            <li>
+                                                                                <a class="dropdown-item <%= preferredDocId === doc.id ? 'active' : '' %>"
+                                                                                    href="#"
+                                                                                    onclick="setPreferredGigDocument(<%= setlistSong.song.id %>, <%= doc.id %>)">
+                                                                                    <%= getTypeDisplayName(doc.type) %> v<%=
+                                                                                            doc.version %>
+                                                                                            <% if (doc.creator) { %>
+                                                                                                <small class="text-muted ms-2">
+                                                                                                    by <%= doc.creator.username.includes('@') ? doc.creator.username.split('@')[0] : doc.creator.username %>
                                                                                                 </small>
                                                                                             <% } %>
-                                                                                            <% } else { %>
-                                                                                                No docs
+                                                                                            <% if (preferredDocId===doc.id)
+                                                                                                { %>
+                                                                                                <i
+                                                                                                    class="bi bi-check text-success ms-2"></i>
                                                                                                 <% } %>
-                                                            </button>
-                                                            <ul class="dropdown-menu">
-                                                                <% if (availableDocs.length> 0) { %>
-                                                                    <% availableDocs.forEach(doc=> { %>
-                                                                        <li>
-                                                                            <a class="dropdown-item <%= preferredDocId === doc.id ? 'active' : '' %>"
-                                                                                href="#"
-                                                                                onclick="setPreferredGigDocument(<%= setlistSong.song.id %>, <%= doc.id %>)">
-                                                                                <%= getTypeDisplayName(doc.type) %> v<%=
-                                                                                        doc.version %>
-                                                                                        <% if (doc.creator) { %>
-                                                                                            <small class="text-muted ms-2">
-                                                                                                by <%= doc.creator.username.includes('@') ? doc.creator.username.split('@')[0] : doc.creator.username %>
-                                                                                            </small>
-                                                                                        <% } %>
-                                                                                        <% if (preferredDocId===doc.id)
-                                                                                            { %>
-                                                                                            <i
-                                                                                                class="bi bi-check text-success ms-2"></i>
-                                                                                            <% } %>
                                                                             </a>
                                                                         </li>
                                                                         <% }); %>
@@ -200,7 +214,19 @@
                                                                                             Create new gig document
                                                                                         </a>
                                                                                     </li>
-                                                            </ul>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <h6 class="text-muted mb-3">Quick Actions</h6>
+                                                            <div class="d-grid gap-2">
+                                                                <a href="/songs/<%= setlistSong.song.id %>" class="btn btn-sm btn-outline-primary">
+                                                                    <i class="bi bi-eye"></i> View Song
+                                                                </a>
+                                                                <a href="/songs/<%= setlistSong.song.id %>/edit" class="btn btn-sm btn-outline-secondary">
+                                                                    <i class="bi bi-pencil"></i> Edit Song
+                                                                </a>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1047,7 +1073,102 @@
         if (musicStandHeaderTooltip) {
             new bootstrap.Tooltip(musicStandHeaderTooltip);
         }
+        
+        // Initialize song card toggle functionality
+        initializeSongCardToggles();
     });
+
+    // Song card toggle functionality
+    function initializeSongCardToggles() {
+        const toggleButtons = document.querySelectorAll('.song-toggle-btn');
+        
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleSongPanel(this);
+            });
+        });
+        
+        // Click anywhere to close all panels
+        document.addEventListener('click', function(e) {
+            // Don't close if clicking on:
+            // - Dropdown menus
+            // - Dropdown buttons
+            // - Toggle buttons
+            // - Any element inside the extended panel
+            if (e.target.closest('.dropdown-menu') || 
+                e.target.closest('.dropdown-toggle') ||
+                e.target.closest('.song-toggle-btn') ||
+                e.target.closest('.song-extended-panel')) {
+                return;
+            }
+            
+            // Close all open panels
+            const openPanels = document.querySelectorAll('.song-extended-panel[style*="block"]');
+            openPanels.forEach(panel => {
+                closeSongPanel(panel);
+            });
+        });
+    }
+
+    function toggleSongPanel(button) {
+        const songCard = button.closest('.song-card');
+        const panel = songCard.querySelector('.song-extended-panel');
+        const icon = button.querySelector('i');
+        
+        if (panel.style.display === 'none' || panel.style.display === '') {
+            // Close all other panels first
+            const openPanels = document.querySelectorAll('.song-extended-panel[style*="block"]');
+            openPanels.forEach(openPanel => {
+                if (openPanel !== panel) {
+                    closeSongPanel(openPanel);
+                }
+            });
+            
+            // Open this panel
+            openSongPanel(panel, icon);
+        } else {
+            // Close this panel
+            closeSongPanel(panel, icon);
+        }
+    }
+
+    function openSongPanel(panel, icon) {
+        panel.style.display = 'block';
+        panel.style.maxHeight = '0';
+        panel.style.overflow = 'hidden';
+        panel.style.transition = 'max-height 0.3s ease-out';
+        
+        // Trigger reflow
+        panel.offsetHeight;
+        
+        // Animate to full height
+        panel.style.maxHeight = panel.scrollHeight + 'px';
+        
+        // Update icon
+        if (icon) {
+            icon.className = 'bi bi-chevron-up';
+        }
+    }
+
+    function closeSongPanel(panel, icon) {
+        if (!icon) {
+            icon = panel.closest('.song-card').querySelector('.song-toggle-btn i');
+        }
+        
+        panel.style.maxHeight = '0';
+        panel.style.transition = 'max-height 0.3s ease-in';
+        
+        // Update icon
+        if (icon) {
+            icon.className = 'bi bi-chevron-down';
+        }
+        
+        // Hide panel after animation
+        setTimeout(() => {
+            panel.style.display = 'none';
+        }, 300);
+    }
 </script>
 
 <style>
@@ -1065,5 +1186,45 @@
     .custom-gap {
         gap: 14.5rem;
     }
+}
+
+/* Song card styling */
+.song-card {
+    border: none;
+}
+
+.song-toggle-btn {
+    transition: all 0.2s ease;
+}
+
+.song-toggle-btn:hover {
+    transform: scale(1.1);
+}
+
+.song-extended-panel {
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.song-extended-panel .list-group-item {
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+}
+
+/* Smooth transitions for the extended panel */
+.song-extended-panel {
+    transition: max-height 0.3s ease-in-out;
+    overflow: hidden;
+}
+
+/* Hover effects for quick action buttons */
+.song-extended-panel .btn {
+    transition: all 0.2s ease;
+}
+
+.song-extended-panel .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style>

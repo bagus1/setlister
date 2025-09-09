@@ -189,7 +189,7 @@
                                 <div class="list-group">
                                     <% youtubeLinks.forEach((link, index) => { %>
                                         <button class="list-group-item list-group-item-action d-flex align-items-center" 
-                                                onclick="playVideoInPlayer('<%= link.videoId %>', '<%= link.songTitle %>', '<%= link.artist || '' %>')">
+                                                onclick="playVideoInPlayer('<%= link.videoId %>', '<%= link.songTitle.replace(/'/g, "\\'") %>', '<%= (link.artist || '').replace(/'/g, "\\'") %>')">
                                             <span class="badge bg-secondary me-2"><%= index + 1 %></span>
                                             <div class="text-start">
                                                 <div class="fw-bold"><%= link.songTitle %></div>

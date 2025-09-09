@@ -450,21 +450,57 @@ router.get("/:id/youtube-playlist", async (req, res) => {
       return res.status(404).send("Setlist not found");
     }
 
-    // Collect all YouTube links from the setlist
+    // Load BandSong preferences for the band
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
+      select: {
+        songId: true,
+        youtube: true,
+      },
+    });
+
+    // Create a map of songId -> preferred YouTube URL
+    const bandSongMap = {};
+    bandSongs.forEach((bandSong) => {
+      if (bandSong.youtube) {
+        bandSongMap[bandSong.songId] = { youtube: bandSong.youtube };
+      }
+    });
+
+    // Collect YouTube links using preferred links when available
     const youtubeLinks = [];
     const seenVideoIds = new Set(); // Track seen video IDs to prevent duplicates
 
     setlist.sets.forEach((set) => {
       if (set.songs && set.name !== "Maybe") {
         set.songs.forEach((setlistSong) => {
-          if (
-            setlistSong.song &&
-            setlistSong.song.links &&
-            setlistSong.song.links.length > 0
-          ) {
-            setlistSong.song.links.forEach((link) => {
-              if (link.type === "youtube") {
-                const videoId = extractYouTubeVideoId(link.url);
+          if (setlistSong.song) {
+            const songId = setlistSong.song.id;
+            const bandSong = bandSongMap[songId];
+
+            // Get available YouTube links
+            const availableYoutubeLinks =
+              setlistSong.song.links?.filter(
+                (link) => link.type === "youtube"
+              ) || [];
+
+            if (availableYoutubeLinks.length > 0) {
+              let selectedLink = null;
+
+              // Use preferred YouTube link if available
+              if (bandSong?.youtube) {
+                selectedLink = availableYoutubeLinks.find(
+                  (link) => link.url === bandSong.youtube
+                );
+              }
+
+              // Fallback to first available if no preference or preferred not found
+              if (!selectedLink) {
+                selectedLink = availableYoutubeLinks[0];
+              }
+
+              if (selectedLink) {
+                const videoId = extractYouTubeVideoId(selectedLink.url);
                 if (videoId && !seenVideoIds.has(videoId)) {
                   seenVideoIds.add(videoId);
                   youtubeLinks.push({
@@ -476,12 +512,12 @@ router.get("/:id/youtube-playlist", async (req, res) => {
                         : null,
                     set: set.name,
                     order: setlistSong.order,
-                    url: link.url,
+                    url: selectedLink.url,
                     videoId: videoId,
                   });
                 }
               }
-            });
+            }
           }
         });
       }
@@ -1172,6 +1208,9 @@ router.get("/:id", async (req, res) => {
           select: {
             id: true,
             title: true,
+            links: {
+              where: { type: "youtube" },
+            },
           },
         },
       },
@@ -1216,6 +1255,103 @@ router.get("/:id", async (req, res) => {
       }
       gigDocumentsBySong[doc.songId].push(doc);
     });
+
+    // Process YouTube links for each song with auto-assignment
+    const youtubeLinksBySong = {};
+    let autoAssignedCount = 0;
+    const bandSongsToUpdate = [];
+
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          const songId = setlistSong.song.id;
+          const bandSong = bandSongMap[songId];
+
+          // Get available YouTube links from the song
+          const availableYoutubeLinks =
+            setlistSong.song.links?.filter((link) => link.type === "youtube") ||
+            [];
+
+          // If bandSong has a preferred YouTube link, use it
+          if (bandSong?.youtube) {
+            // Find the preferred link in available links
+            const preferredLink = availableYoutubeLinks.find(
+              (link) => link.url === bandSong.youtube
+            );
+            if (preferredLink) {
+              youtubeLinksBySong[songId] = [preferredLink];
+            } else {
+              // Preferred link not found in available links, add it as a custom entry
+              youtubeLinksBySong[songId] = [
+                {
+                  id: "preferred",
+                  url: bandSong.youtube,
+                  description: "Preferred Video",
+                  type: "youtube",
+                },
+              ];
+            }
+          } else if (availableYoutubeLinks.length > 0) {
+            // No preferred link set, auto-assign first available YouTube link
+            const firstYoutubeLink = availableYoutubeLinks[0];
+            youtubeLinksBySong[songId] = availableYoutubeLinks;
+
+            // Track for auto-assignment
+            bandSongsToUpdate.push({
+              bandId: setlist.band.id,
+              songId: songId,
+              youtube: firstYoutubeLink.url,
+            });
+            autoAssignedCount++;
+          } else {
+            // No YouTube links available
+            youtubeLinksBySong[songId] = [];
+          }
+        });
+      }
+    });
+
+    // Auto-assign first YouTube links for songs without preferences
+    if (bandSongsToUpdate.length > 0) {
+      try {
+        await Promise.all(
+          bandSongsToUpdate.map((bandSongData) =>
+            prisma.bandSong.upsert({
+              where: {
+                bandId_songId: {
+                  bandId: bandSongData.bandId,
+                  songId: bandSongData.songId,
+                },
+              },
+              update: {
+                youtube: bandSongData.youtube,
+              },
+              create: {
+                bandId: bandSongData.bandId,
+                songId: bandSongData.songId,
+                youtube: bandSongData.youtube,
+                createdAt: new Date(),
+              },
+            })
+          )
+        );
+
+        // Update bandSongMap with new assignments
+        bandSongsToUpdate.forEach((bandSongData) => {
+          if (!bandSongMap[bandSongData.songId]) {
+            bandSongMap[bandSongData.songId] = {};
+          }
+          bandSongMap[bandSongData.songId].youtube = bandSongData.youtube;
+        });
+
+        console.log(
+          `Auto-assigned ${autoAssignedCount} YouTube links for setlist ${setlistId}`
+        );
+      } catch (error) {
+        console.error("Error auto-assigning YouTube links:", error);
+        // Continue without failing the request
+      }
+    }
 
     // Calculate link counts for each song for tooltip functionality
     const songLinkCounts = {};
@@ -1279,6 +1415,7 @@ router.get("/:id", async (req, res) => {
       isEditable,
       bandSongMap,
       gigDocumentsBySong,
+      youtubeLinksBySong,
       songLinkCounts,
       getTypeIcon,
       getTypeDisplayName,
@@ -2980,6 +3117,73 @@ router.delete("/:id", async (req, res) => {
     res.json({ success: true, message: "Setlist deleted successfully" });
   } catch (error) {
     console.error("Delete setlist error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /setlists/:id/preferred-youtube - Save preferred YouTube video for a song
+router.post("/:id/preferred-youtube", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { songId, youtubeUrl } = req.body;
+
+    if (!songId || !youtubeUrl) {
+      return res
+        .status(400)
+        .json({ error: "Song ID and YouTube URL are required" });
+    }
+
+    // Find setlist and verify user has access
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Update or create BandSong record with preferred YouTube URL
+    await prisma.bandSong.upsert({
+      where: {
+        bandId_songId: {
+          bandId: setlist.band.id,
+          songId: parseInt(songId),
+        },
+      },
+      update: {
+        youtube: youtubeUrl,
+      },
+      create: {
+        bandId: setlist.band.id,
+        songId: parseInt(songId),
+        youtube: youtubeUrl,
+        createdAt: new Date(),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Preferred YouTube video saved successfully",
+    });
+  } catch (error) {
+    console.error("Save preferred YouTube error:", error);
     res.status(500).json({ error: "Server error" });
   }
 });

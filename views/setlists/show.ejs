@@ -126,11 +126,13 @@
                                                 <div class="list-group-item bg-light">
                                                     <div class="row">
                                                         <div class="col-md-6">
-                                                            <h6 class="text-muted mb-3">Gig Documents</h6>
-                                                            <div class="dropdown">
+                                                            <h6 class="text-muted mb-2 small">Gig Documents</h6>
+                                                            <div class="dropdown mb-2">
                                                                 <button
-                                                                    class="btn btn-sm btn-outline-secondary dropdown-toggle w-100"
-                                                                    type="button" data-bs-toggle="dropdown"
+                                                                    class="btn btn-xs btn-outline-secondary dropdown-toggle w-100 py-1"
+                                                                    type="button"                                                                     data-bs-toggle="dropdown"
+                                                                    data-bs-boundary="viewport"
+                                                                    data-bs-popper-config='{"strategy":"fixed"}'
                                                                     aria-expanded="false"
                                                                     data-song-id="<%= setlistSong.song.id %>">
                                                                     <% const bandSong=(bandSongMap &&
@@ -218,14 +220,75 @@
                                                             </div>
                                                         </div>
                                                         <div class="col-md-6">
-                                                            <h6 class="text-muted mb-3">Quick Actions</h6>
-                                                            <div class="d-grid gap-2">
-                                                                <a href="/songs/<%= setlistSong.song.id %>" class="btn btn-sm btn-outline-primary">
-                                                                    <i class="bi bi-eye"></i> View Song
-                                                                </a>
-                                                                <a href="/songs/<%= setlistSong.song.id %>/edit" class="btn btn-sm btn-outline-secondary">
-                                                                    <i class="bi bi-pencil"></i> Edit Song
-                                                                </a>
+                                                            <h6 class="text-muted mb-2 small">YouTube Videos</h6>
+                                                            <div class="dropdown mb-2">
+                                                                <button
+                                                                    class="btn btn-xs btn-outline-secondary dropdown-toggle w-100 py-1"
+                                                                    type="button"                                                                     data-bs-toggle="dropdown"
+                                                                    data-bs-boundary="viewport"
+                                                                    data-bs-popper-config='{"strategy":"fixed"}'
+                                                                    aria-expanded="false"
+                                                                    data-song-id="<%= setlistSong.song.id %>">
+                                                                    <% const bandSongYoutube=(bandSongMap &&
+                                                                        bandSongMap[setlistSong.song.id]) || null; const
+                                                                        preferredYoutubeUrl=bandSongYoutube && bandSongYoutube.youtube;
+                                                                        const availableYoutubeLinks=(youtubeLinksBySong &&
+                                                                        youtubeLinksBySong[setlistSong.song.id]) || [];
+                                                                        const preferredYoutubeLink=preferredYoutubeUrl ?
+                                                                        availableYoutubeLinks.find(l=> l.url === preferredYoutubeUrl) :
+                                                                        null;
+                                                                        %>
+                                                                        <% if (preferredYoutubeLink) { %>
+                                                                            <%= preferredYoutubeLink.description || 'YouTube Video' %>
+                                                                        <% } else if (availableYoutubeLinks.length> 0) { %>
+                                                                            <%= availableYoutubeLinks[0].description || 'YouTube Video' %>
+                                                                        <% } else { %>
+                                                                            No videos
+                                                                        <% } %>
+                                                                </button>
+                                                                <ul class="dropdown-menu">
+                                                                    <% if (availableYoutubeLinks.length> 0) { %>
+                                                                        <% availableYoutubeLinks.forEach(link=> { %>
+                                                                            <li>
+                                                                                <a class="dropdown-item <%= preferredYoutubeUrl === link.url ? 'active' : '' %>"
+                                                                                    href="#"
+                                                                                    onclick="setPreferredYouTube(<%= setlistSong.song.id %>, '<%= link.url %>')">
+                                                                                    <%= link.description || 'YouTube Video' %>
+                                                                                    <% if (preferredYoutubeUrl===link.url) { %>
+                                                                                        <i class="bi bi-check text-success ms-2"></i>
+                                                                                    <% } %>
+                                                                                </a>
+                                                                            </li>
+                                                                        <% }); %>
+                                                                            <li>
+                                                                                <hr class="dropdown-divider">
+                                                                            </li>
+                                                                            <li>
+                                                                                <a class="dropdown-item text-muted"
+                                                                                    href="#"
+                                                                                    onclick="setPreferredYouTube(<%= setlistSong.song.id %>, null)">
+                                                                                    <i class="bi bi-x-circle"></i> Clear
+                                                                                    preference
+                                                                                </a>
+                                                                            </li>
+                                                                            <% } else { %>
+                                                                                <li><span
+                                                                                        class="dropdown-item-text text-muted">No
+                                                                                        YouTube videos available</span>
+                                                                                </li>
+                                                                                <% } %>
+                                                                                    <li>
+                                                                                        <hr class="dropdown-divider">
+                                                                                    </li>
+                                                                                    <li>
+                                                                                        <a class="dropdown-item"
+                                                                                            href="/songs/<%= setlistSong.song.id %>/links/new?type=youtube">
+                                                                                            <i
+                                                                                                class="bi bi-plus-circle"></i>
+                                                                                            Add YouTube video
+                                                                                        </a>
+                                                                                    </li>
+                                                                </ul>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -536,6 +599,32 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Error updating preferred gig document');
+            });
+    }
+
+    function setPreferredYouTube(songId, youtubeUrl) {
+        fetch(`/setlists/<%= setlist.id %>/preferred-youtube`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                songId: songId,
+                youtubeUrl: youtubeUrl
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show updated preferences
+                    location.reload();
+                } else {
+                    alert('Error updating preferred YouTube video: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating preferred YouTube video');
             });
     }
 
@@ -1180,6 +1269,69 @@
     .custom-gap {
         gap: 12rem;
     }
+}
+
+/* Compact pulldown styling */
+.btn-xs {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.song-extended-panel .dropdown-menu {
+    font-size: 0.8rem;
+}
+
+.song-extended-panel .dropdown-item {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.song-extended-panel .dropdown-item small {
+    font-size: 0.7rem;
+}
+
+/* Fix dropdown clipping issues */
+.song-extended-panel {
+    overflow: visible !important;
+}
+
+.song-extended-panel .list-group-item {
+    overflow: visible !important;
+}
+
+.song-extended-panel .dropdown-menu {
+    z-index: 1050;
+    position: absolute;
+    /* Force dropdown to escape container bounds */
+    transform: none !important;
+}
+
+.song-extended-panel .dropdown {
+    position: relative;
+    z-index: 1040;
+}
+
+/* Fix dropdown positioning conflicts in same row */
+.song-extended-panel .col-md-6:first-child .dropdown-menu {
+    left: 0 !important;
+    right: auto !important;
+}
+
+.song-extended-panel .col-md-6:last-child .dropdown-menu {
+    right: 0 !important;
+    left: auto !important;
+}
+
+/* Ensure song cards don't interfere with dropdowns */
+.song-card {
+    position: relative;
+    z-index: 1;
+}
+
+.song-card:has(.song-extended-panel[style*="block"]) {
+    z-index: 1030;
+    overflow: visible;
 }
 
 @media (min-width: 1400px) {

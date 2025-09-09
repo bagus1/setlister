@@ -24,6 +24,7 @@ model User {
   createdSongs   Song[]           @relation("SongCreator")
   createdLinks   Link[]           @relation("LinkCreator")
   createdSetlists Setlist[]       @relation("SetlistCreator")
+  setlistVersions SetlistVersion[]
 
   @@map("users")
 }
@@ -148,6 +149,7 @@ model Setlist {
   createdAt     DateTime     @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   sets          SetlistSet[]
+  versions      SetlistVersion[]
   band          Band         @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   creator       User?        @relation("SetlistCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -419,4 +421,20 @@ model WhitelistDomain {
 
   @@unique([linkType, domain])
   @@map("whitelist_domains")
+}
+
+model SetlistVersion {
+  id             Int      @id @default(autoincrement())
+  setlistId      Int      @map("setlist_id")
+  versionNumber  Int      @map("version_number")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdById    Int?     @map("created_by_id")
+  setlistData    Json     @map("setlist_data") @db.JsonB
+  changeSummary  String?  @map("change_summary") @db.Text
+
+  setlist        Setlist  @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  createdBy      User?    @relation(fields: [createdById], references: [id])
+
+  @@unique([setlistId, versionNumber])
+  @@map("setlist_versions")
 }

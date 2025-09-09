@@ -4,6 +4,296 @@ const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
 
+// Helper function to capture complete setlist state
+async function captureSetlistState(setlistId) {
+  const setlist = await prisma.setlist.findUnique({
+    where: { id: setlistId },
+    include: {
+      sets: {
+        include: {
+          songs: {
+            include: {
+              song: {
+                select: {
+                  id: true,
+                  title: true,
+                  artists: {
+                    select: {
+                      artist: {
+                        select: {
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: { order: "asc" },
+          },
+        },
+        orderBy: { order: "asc" },
+      },
+    },
+  });
+
+  if (!setlist) return null;
+
+  // Transform to a clean JSON structure
+  const setlistData = {
+    id: setlist.id,
+    title: setlist.title,
+    date: setlist.date,
+    isFinalized: setlist.isFinalized,
+    recordingsUrl: setlist.recordingsUrl,
+    sets: setlist.sets.map((set) => ({
+      id: set.id,
+      name: set.name,
+      order: set.order,
+      songs: set.songs.map((setlistSong) => ({
+        id: setlistSong.id,
+        songId: setlistSong.songId,
+        order: setlistSong.order,
+        title: setlistSong.song.title,
+        artist: setlistSong.song.artists[0]?.artist.name || "Unknown Artist",
+      })),
+    })),
+  };
+
+  return setlistData;
+}
+
+// Helper function to generate change summary
+function generateChangeSummary(previousState, currentState) {
+  if (!previousState) {
+    const totalSongs = currentState.sets.reduce(
+      (total, set) => total + set.songs.length,
+      0
+    );
+    return `Initial setlist with ${totalSongs} songs`;
+  }
+
+  const prevSongCount = previousState.sets.reduce(
+    (total, set) => total + set.songs.length,
+    0
+  );
+  const currSongCount = currentState.sets.reduce(
+    (total, set) => total + set.songs.length,
+    0
+  );
+
+  // Analyze changes to get detailed information
+  const changes = analyzeSetlistChanges(previousState, currentState);
+
+  // If song count changed, it's an add/remove operation
+  if (currSongCount > prevSongCount) {
+    if (changes.songsAdded.length === 1) {
+      const song = changes.songsAdded[0];
+      return `Added "${song.title}" to ${song.toSet} (${currSongCount} total)`;
+    } else {
+      return `Added ${currSongCount - prevSongCount} songs (${currSongCount} total)`;
+    }
+  } else if (currSongCount < prevSongCount) {
+    if (changes.songsRemoved.length === 1) {
+      return `Removed "${changes.songsRemoved[0].title}" (${currSongCount} total)`;
+    } else {
+      return `Removed ${prevSongCount - currSongCount} songs (${currSongCount} total)`;
+    }
+  }
+
+  // Same song count - analyze what actually changed
+  return generateDetailedSummary(changes, currSongCount);
+}
+
+// Helper function to analyze specific changes between versions
+function analyzeSetlistChanges(previousState, currentState) {
+  const changes = {
+    songsAdded: [],
+    songsRemoved: [],
+    songsMovedBetweenSets: [],
+    songsReorderedWithinSets: [],
+    setNamesChanged: [],
+  };
+
+  // Create maps for easier comparison
+  const prevSongsBySet = {};
+  const currSongsBySet = {};
+
+  previousState.sets.forEach((set) => {
+    prevSongsBySet[set.name] = set.songs.map((s) => s.songId).sort();
+  });
+
+  currentState.sets.forEach((set) => {
+    currSongsBySet[set.name] = set.songs.map((s) => s.songId).sort();
+  });
+
+  // Get all song IDs from both states
+  const prevSongIds = new Set(
+    previousState.sets.flatMap((set) => set.songs.map((s) => s.songId))
+  );
+  const currSongIds = new Set(
+    currentState.sets.flatMap((set) => set.songs.map((s) => s.songId))
+  );
+  const allSongIds = new Set([...prevSongIds, ...currSongIds]);
+
+  // Find added songs
+  currSongIds.forEach((songId) => {
+    if (!prevSongIds.has(songId)) {
+      // Find which set the song was added to
+      for (const [setName, songs] of Object.entries(currSongsBySet)) {
+        if (songs.includes(songId)) {
+          const song = currentState.sets
+            .find((set) => set.name === setName)
+            ?.songs.find((s) => s.songId === songId);
+
+          if (song) {
+            changes.songsAdded.push({
+              songId,
+              title: song.title,
+              toSet: setName,
+            });
+          }
+          break;
+        }
+      }
+    }
+  });
+
+  // Find removed songs
+  prevSongIds.forEach((songId) => {
+    if (!currSongIds.has(songId)) {
+      const song = previousState.sets
+        .flatMap((set) => set.songs)
+        .find((s) => s.songId === songId);
+
+      if (song) {
+        changes.songsRemoved.push({
+          songId,
+          title: song.title,
+        });
+      }
+    }
+  });
+
+  // Find songs that moved between sets
+  allSongIds.forEach((songId) => {
+    let prevSet = null;
+    let currSet = null;
+
+    // Find which set the song was in before
+    for (const [setName, songs] of Object.entries(prevSongsBySet)) {
+      if (songs.includes(songId)) {
+        prevSet = setName;
+        break;
+      }
+    }
+
+    // Find which set the song is in now
+    for (const [setName, songs] of Object.entries(currSongsBySet)) {
+      if (songs.includes(songId)) {
+        currSet = setName;
+        break;
+      }
+    }
+
+    if (prevSet && currSet && prevSet !== currSet) {
+      // Find song title for better description
+      const song = currentState.sets
+        .flatMap((set) => set.songs)
+        .find((s) => s.songId === songId);
+
+      if (song) {
+        changes.songsMovedBetweenSets.push({
+          songId,
+          title: song.title,
+          from: prevSet,
+          to: currSet,
+        });
+      }
+    }
+  });
+
+  // Check for reordering within sets and track which songs moved
+  Object.keys(currSongsBySet).forEach((setName) => {
+    if (prevSongsBySet[setName] && currSongsBySet[setName]) {
+      const prevOrder = prevSongsBySet[setName];
+      const currOrder = currSongsBySet[setName];
+
+      // If songs are the same but order is different
+      if (
+        prevOrder.length === currOrder.length &&
+        prevOrder.every((id) => currOrder.includes(id)) &&
+        JSON.stringify(prevOrder) !== JSON.stringify(currOrder)
+      ) {
+        // Find which songs actually moved positions
+        const movedSongs = [];
+        for (let i = 0; i < prevOrder.length; i++) {
+          if (prevOrder[i] !== currOrder[i]) {
+            const song = currentState.sets
+              .find((set) => set.name === setName)
+              ?.songs.find((s) => s.songId === currOrder[i]);
+
+            if (song) {
+              movedSongs.push({
+                songId: song.songId,
+                title: song.title,
+                fromPosition: prevOrder.indexOf(song.songId) + 1,
+                toPosition: i + 1,
+              });
+            }
+          }
+        }
+
+        changes.songsReorderedWithinSets.push({
+          setName,
+          movedSongs,
+        });
+      }
+    }
+  });
+
+  return changes;
+}
+
+// Helper function to generate detailed summary from changes
+function generateDetailedSummary(changes, totalSongs) {
+  const parts = [];
+
+  if (changes.songsMovedBetweenSets.length > 0) {
+    if (changes.songsMovedBetweenSets.length === 1) {
+      const move = changes.songsMovedBetweenSets[0];
+      parts.push(`Moved "${move.title}" from ${move.from} to ${move.to}`);
+    } else {
+      parts.push(
+        `Moved ${changes.songsMovedBetweenSets.length} songs between sets`
+      );
+    }
+  }
+
+  if (changes.songsReorderedWithinSets.length > 0) {
+    changes.songsReorderedWithinSets.forEach((reorder) => {
+      if (reorder.movedSongs.length === 1) {
+        const song = reorder.movedSongs[0];
+        parts.push(
+          `Moved "${song.title}" to position ${song.toPosition} in ${reorder.setName}`
+        );
+      } else if (reorder.movedSongs.length > 1) {
+        parts.push(
+          `Reordered ${reorder.movedSongs.length} songs in ${reorder.setName}`
+        );
+      } else {
+        parts.push(`Reordered songs in ${reorder.setName}`);
+      }
+    });
+  }
+
+  if (parts.length === 0) {
+    return `Reordered ${totalSongs} songs`;
+  }
+
+  return parts.join(", ");
+}
+
 const router = express.Router();
 
 // Public gig view route (no authentication required)
@@ -1293,6 +1583,9 @@ router.post("/:id/save", async (req, res) => {
       });
     }
 
+    // Capture current state before making changes
+    const previousState = await captureSetlistState(setlistId);
+
     // Clear existing setlist songs
     // First get all SetlistSets for this setlist
     const setlistSets = await prisma.setlistSet.findMany({
@@ -1349,9 +1642,294 @@ router.post("/:id/save", async (req, res) => {
       }
     }
 
+    // Capture new state after changes
+    const currentState = await captureSetlistState(setlistId);
+
+    // Create version record
+    if (currentState) {
+      // Get next version number
+      const lastVersion = await prisma.setlistVersion.findFirst({
+        where: { setlistId },
+        orderBy: { versionNumber: "desc" },
+        select: { versionNumber: true },
+      });
+
+      const nextVersionNumber = (lastVersion?.versionNumber || 0) + 1;
+      const changeSummary = generateChangeSummary(previousState, currentState);
+
+      await prisma.setlistVersion.create({
+        data: {
+          setlistId,
+          versionNumber: nextVersionNumber,
+          createdById: userId,
+          setlistData: currentState,
+          changeSummary,
+        },
+      });
+    }
+
     res.json({ success: true });
   } catch (error) {
     logger.logError("[SAVE] Save setlist error", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /setlists/:id/versions - Get version history
+router.get("/:id/versions", requireAuth, async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Verify user has access
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Get versions
+    const versions = await prisma.setlistVersion.findMany({
+      where: { setlistId },
+      include: {
+        createdBy: {
+          select: { username: true },
+        },
+      },
+      orderBy: { versionNumber: "desc" },
+      take: 50,
+    });
+
+    res.json({
+      setlistId,
+      versions: versions.map((version) => ({
+        id: version.id,
+        versionNumber: version.versionNumber,
+        timestamp: version.createdAt,
+        user: version.createdBy?.username || "Unknown User",
+        changeSummary: version.changeSummary,
+      })),
+    });
+  } catch (error) {
+    logger.logError("Get setlist versions error", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /setlists/:id/versions/:versionId/view - View specific version
+router.get("/:id/versions/:versionId/view", requireAuth, async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const versionId = parseInt(req.params.versionId);
+    const userId = req.session.user.id;
+
+    // Verify user has access
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Get version with navigation
+    const version = await prisma.setlistVersion.findFirst({
+      where: {
+        id: versionId,
+        setlistId: setlistId,
+      },
+      include: {
+        createdBy: {
+          select: { username: true },
+        },
+      },
+    });
+
+    if (!version) {
+      return res.status(404).json({ error: "Version not found" });
+    }
+
+    // Get previous and next versions for navigation
+    const [previousVersion, nextVersion] = await Promise.all([
+      // Previous version (higher version number)
+      prisma.setlistVersion.findFirst({
+        where: {
+          setlistId: setlistId,
+          versionNumber: { gt: version.versionNumber },
+        },
+        orderBy: { versionNumber: "asc" },
+        select: { id: true, versionNumber: true },
+      }),
+      // Next version (lower version number)
+      prisma.setlistVersion.findFirst({
+        where: {
+          setlistId: setlistId,
+          versionNumber: { lt: version.versionNumber },
+        },
+        orderBy: { versionNumber: "desc" },
+        select: { id: true, versionNumber: true },
+      }),
+    ]);
+
+    res.render("setlists/version-view", {
+      title: `Version ${version.versionNumber} - ${setlist.title}`,
+      setlist: setlist,
+      version: version,
+      versionId: versionId,
+      previousVersion: previousVersion,
+      nextVersion: nextVersion,
+    });
+  } catch (error) {
+    logger.logError("View setlist version error", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /setlists/:id/restore/:versionId - Restore to specific version
+router.post("/:id/restore/:versionId", requireAuth, async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const versionId = parseInt(req.params.versionId);
+    const userId = req.session.user.id;
+
+    // Verify user has access
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Get version to restore
+    const version = await prisma.setlistVersion.findFirst({
+      where: {
+        id: versionId,
+        setlistId: setlistId,
+      },
+    });
+
+    if (!version) {
+      return res.status(404).json({ error: "Version not found" });
+    }
+
+    // Capture current state as backup
+    const currentState = await captureSetlistState(setlistId);
+
+    // Create backup version before restoring
+    if (currentState) {
+      const lastVersion = await prisma.setlistVersion.findFirst({
+        where: { setlistId },
+        orderBy: { versionNumber: "desc" },
+        select: { versionNumber: true },
+      });
+
+      await prisma.setlistVersion.create({
+        data: {
+          setlistId,
+          versionNumber: (lastVersion?.versionNumber || 0) + 1,
+          createdById: userId,
+          setlistData: currentState,
+          changeSummary: `Backup before restoring to version ${version.versionNumber}`,
+        },
+      });
+    }
+
+    // Restore from version data
+    const versionData = version.setlistData;
+
+    // Clear existing songs
+    const setlistSets = await prisma.setlistSet.findMany({
+      where: { setlistId },
+      select: { id: true },
+    });
+
+    if (setlistSets.length > 0) {
+      const setlistSetIds = setlistSets.map((set) => set.id);
+      await prisma.setlistSong.deleteMany({
+        where: { setlistSetId: { in: setlistSetIds } },
+      });
+    }
+
+    // Recreate sets and songs from version data
+    for (const setData of versionData.sets) {
+      let setlistSet = await prisma.setlistSet.findFirst({
+        where: { setlistId, name: setData.name },
+      });
+
+      if (!setlistSet) {
+        setlistSet = await prisma.setlistSet.create({
+          data: {
+            setlistId,
+            name: setData.name,
+            order: setData.order,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      // Add songs to set
+      for (const songData of setData.songs) {
+        await prisma.setlistSong.create({
+          data: {
+            setlistSetId: setlistSet.id,
+            songId: songData.songId,
+            order: songData.order,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.logError("Restore setlist version error", error);
     res.status(500).json({ error: "Server error" });
   }
 });

@@ -1,0 +1,134 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><%= setlist.title %></h2>
+        <div>
+          <button id="restore-version" class="btn btn-warning me-2">
+            <i class="bi bi-arrow-counterclockwise"></i> Restore This Version
+          </button>
+          <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
+            <i class="bi bi-arrow-left"></i> Back to Edit
+          </a>
+        </div>
+      </div>
+
+      <!-- Version Navigation -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <% if (previousVersion) { %>
+            <a href="/setlists/<%= setlist.id %>/versions/<%= previousVersion.id %>/view" class="btn btn-outline-secondary">
+              <i class="bi bi-chevron-left"></i> Previous (v<%= previousVersion.versionNumber %>)
+            </a>
+          <% } else { %>
+            <button class="btn btn-outline-secondary" disabled>
+              <i class="bi bi-chevron-left"></i> Previous
+            </button>
+          <% } %>
+        </div>
+        
+        <div class="text-center">
+          <span class="badge bg-primary fs-6">Version <%= version.versionNumber %></span>
+        </div>
+        
+        <div>
+          <% if (nextVersion) { %>
+            <a href="/setlists/<%= setlist.id %>/versions/<%= nextVersion.id %>/view" class="btn btn-outline-secondary">
+              Next (v<%= nextVersion.versionNumber %>) <i class="bi bi-chevron-right"></i>
+            </a>
+          <% } else { %>
+            <button class="btn btn-outline-secondary" disabled>
+              Next <i class="bi bi-chevron-right"></i>
+            </button>
+          <% } %>
+        </div>
+      </div>
+      
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            Version <%= version.versionNumber %> 
+            <small class="text-muted">
+              - <%= new Date(version.createdAt).toLocaleString() %> 
+              by <%= version.createdBy?.username || 'Unknown User' %>
+            </small>
+          </h5>
+          <p class="mb-0 text-muted"><%= version.changeSummary %></p>
+        </div>
+      </div>
+
+      <% const setlistData = version.setlistData; %>
+      <% const sets = setlistData.sets || []; %>
+      
+      <% if (sets.length === 0) { %>
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> No songs in this version
+        </div>
+      <% } else { %>
+        <% sets.sort((a, b) => {
+          const order = ["Set 1", "Set 2", "Set 3", "Set 4", "Maybe"];
+          return order.indexOf(a.name) - order.indexOf(b.name);
+        }).forEach((set, setIndex) => { %>
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="mb-0"><%= set.name %></h5>
+            </div>
+            <div class="card-body">
+              <% if (set.songs && set.songs.length > 0) { %>
+                <ol class="mb-0">
+                  <% set.songs.forEach((song, songIndex) => { %>
+                    <li class="mb-1">
+                      <strong><%= song.title %></strong>
+                      <% if (song.artist && song.artist !== 'Unknown Artist') { %>
+                        <span class="text-muted">by <%= song.artist %></span>
+                      <% } %>
+                    </li>
+                  <% }); %>
+                </ol>
+              <% } else { %>
+                <p class="text-muted mb-0">No songs in this set</p>
+              <% } %>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const restoreButton = document.getElementById('restore-version');
+  const setlistId = <%= setlist.id %>;
+  const versionId = <%= version.id %>;
+
+  restoreButton.addEventListener('click', async function() {
+    if (!confirm('Are you sure you want to restore this version? This will overwrite the current setlist.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/setlists/${setlistId}/restore/${versionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to restore version');
+      }
+
+      const data = await response.json();
+      alert('Setlist restored successfully!');
+      
+      // Redirect back to the edit page to see the restored setlist
+      window.location.href = `/setlists/${setlistId}/edit`;
+    } catch (error) {
+      console.error('Error restoring version:', error);
+      alert('Failed to restore version: ' + error.message);
+    }
+  });
+});
+</script>

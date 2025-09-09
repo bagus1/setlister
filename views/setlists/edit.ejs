@@ -264,6 +264,33 @@
                                                 <% } %>
                             </div>
                         </div>
+
+                        <!-- Version History Section -->
+                        <div class="col-12 mt-4">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Version History</h5>
+                                    <button id="refresh-versions" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="version-loading" class="text-center" style="display: none;">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span class="ms-2">Loading versions...</span>
+                                    </div>
+                                    <div id="version-error" class="alert alert-danger" style="display: none;">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        <span id="version-error-text">Failed to load versions</span>
+                                    </div>
+                                    <div id="version-list" class="version-list">
+                                        <!-- Versions will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
             </div>
         </div>
     </div>
@@ -288,6 +315,61 @@
 
     .setlist-song:active {
         cursor: grabbing;
+    }
+
+    /* Version History Styles */
+    .version-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .version-item {
+        display: block;
+        padding: 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s ease;
+    }
+
+    .version-item:hover {
+        background-color: #f8f9fa;
+        border-color: #007bff;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .version-item.current {
+        background-color: #e7f3ff;
+        border-color: #007bff;
+    }
+
+    .version-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .version-timestamp {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .version-user {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .version-summary {
+        font-size: 0.875rem;
+        color: #495057;
+        margin-top: 4px;
+    }
+
+    .version-actions {
+        color: #6c757d;
     }
 </style>
 
@@ -421,4 +503,73 @@
             displaySpan.classList.remove('d-none');
         }
     });
+
+    // Version History JavaScript
+    const setlistId = <%= setlist.id %>;
+
+    // Load version history
+    async function loadVersionHistory() {
+        const loadingEl = document.getElementById('version-loading');
+        const errorEl = document.getElementById('version-error');
+        const listEl = document.getElementById('version-list');
+
+        // Show loading
+        loadingEl.style.display = 'block';
+        errorEl.style.display = 'none';
+        listEl.innerHTML = '';
+
+        try {
+            const response = await fetch(`/setlists/${setlistId}/versions`);
+            if (!response.ok) {
+                throw new Error('Failed to load versions');
+            }
+
+            const data = await response.json();
+            displayVersions(data.versions);
+        } catch (error) {
+            console.error('Error loading versions:', error);
+            errorEl.style.display = 'block';
+            document.getElementById('version-error-text').textContent = error.message;
+        } finally {
+            loadingEl.style.display = 'none';
+        }
+    }
+
+    // Display versions
+    function displayVersions(versions) {
+        const listEl = document.getElementById('version-list');
+        
+        if (versions.length === 0) {
+            listEl.innerHTML = '<div class="text-muted text-center py-3">No versions yet. Make changes to create versions.</div>';
+            return;
+        }
+
+        listEl.innerHTML = versions.map(version => createVersionElement(version)).join('');
+    }
+
+    // Create version element
+    function createVersionElement(version) {
+        const timestamp = new Date(version.timestamp).toLocaleString();
+        
+        return `
+            <a href="/setlists/${setlistId}/versions/${version.id}/view" class="version-item">
+                <div class="version-header">
+                    <div>
+                        <div class="version-timestamp">Version ${version.versionNumber} - ${timestamp}</div>
+                        <div class="version-user">by ${version.user}</div>
+                        <div class="version-summary">${version.changeSummary}</div>
+                    </div>
+                    <div class="version-actions">
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    // Event listeners
+    document.getElementById('refresh-versions').addEventListener('click', loadVersionHistory);
+
+    // Load version history on page load
+    document.addEventListener('DOMContentLoaded', loadVersionHistory);
 </script>

@@ -109,8 +109,8 @@ router.post(
       .withMessage("Please select a valid document type"),
     body("content")
       .optional()
-      .isLength({ max: 25000 })
-      .withMessage("Content must be less than 25,000 characters"),
+      .isLength({ max: 500000 })
+      .withMessage("Content must be less than 500,000 characters"),
   ],
   async (req, res) => {
     try {
@@ -332,8 +332,8 @@ router.put(
   [
     body("content")
       .optional()
-      .isLength({ max: 25000 })
-      .withMessage("Content must be less than 25,000 characters"),
+      .isLength({ max: 500000 })
+      .withMessage("Content must be less than 500,000 characters"),
   ],
   async (req, res) => {
     try {

@@ -120,11 +120,11 @@ function analyzeSetlistChanges(previousState, currentState) {
   const currSongsBySet = {};
 
   previousState.sets.forEach((set) => {
-    prevSongsBySet[set.name] = set.songs.map((s) => s.songId).sort();
+    prevSongsBySet[set.name] = set.songs.map((s) => s.songId);
   });
 
   currentState.sets.forEach((set) => {
-    currSongsBySet[set.name] = set.songs.map((s) => s.songId).sort();
+    currSongsBySet[set.name] = set.songs.map((s) => s.songId);
   });
 
   // Get all song IDs from both states

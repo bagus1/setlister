@@ -452,6 +452,8 @@ router.get("/:id/youtube-playlist", async (req, res) => {
 
     // Collect all YouTube links from the setlist
     const youtubeLinks = [];
+    const seenVideoIds = new Set(); // Track seen video IDs to prevent duplicates
+
     setlist.sets.forEach((set) => {
       if (set.songs && set.name !== "Maybe") {
         set.songs.forEach((setlistSong) => {
@@ -462,18 +464,22 @@ router.get("/:id/youtube-playlist", async (req, res) => {
           ) {
             setlistSong.song.links.forEach((link) => {
               if (link.type === "youtube") {
-                youtubeLinks.push({
-                  songTitle: setlistSong.song.title,
-                  artist:
-                    setlistSong.song.artists &&
-                    setlistSong.song.artists.length > 0
-                      ? setlistSong.song.artists[0].artist.name
-                      : null,
-                  set: set.name,
-                  order: setlistSong.order,
-                  url: link.url,
-                  videoId: extractYouTubeVideoId(link.url),
-                });
+                const videoId = extractYouTubeVideoId(link.url);
+                if (videoId && !seenVideoIds.has(videoId)) {
+                  seenVideoIds.add(videoId);
+                  youtubeLinks.push({
+                    songTitle: setlistSong.song.title,
+                    artist:
+                      setlistSong.song.artists &&
+                      setlistSong.song.artists.length > 0
+                        ? setlistSong.song.artists[0].artist.name
+                        : null,
+                    set: set.name,
+                    order: setlistSong.order,
+                    url: link.url,
+                    videoId: videoId,
+                  });
+                }
               }
             });
           }

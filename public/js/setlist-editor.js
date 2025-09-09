@@ -975,6 +975,14 @@ class SetlistEditor {
         dragClass: "sortable-drag",
         filter: ".band-song", // Don't let SortableJS handle band songs
         preventOnFilter: false, // Allow our custom handler for band songs
+        
+        // Mobile-friendly options
+        touchStartThreshold: 10, // Require 10px movement before drag starts
+        delay: 200, // 200ms delay before drag starts (prevents accidental drags)
+        delayOnTouchStart: true, // Apply delay on touch devices
+        forceFallback: false, // Use native drag on desktop, fallback on mobile
+        fallbackTolerance: 5, // Tolerance for fallback mode
+        
         onStart: (evt) => {
           // Disable our custom drag handlers when SortableJS is active
           this.sortableActive = true;

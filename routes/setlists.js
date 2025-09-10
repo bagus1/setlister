@@ -1272,29 +1272,31 @@ router.get("/:id", async (req, res) => {
             setlistSong.song.links?.filter((link) => link.type === "youtube") ||
             [];
 
-          // If bandSong has a preferred YouTube link, use it
+          // Store all available YouTube links for the dropdown
+          if (availableYoutubeLinks.length > 0) {
+            youtubeLinksBySong[songId] = availableYoutubeLinks;
+          } else {
+            youtubeLinksBySong[songId] = [];
+          }
+
+          // If bandSong has a preferred YouTube link, auto-assign it
           if (bandSong?.youtube) {
             // Find the preferred link in available links
             const preferredLink = availableYoutubeLinks.find(
               (link) => link.url === bandSong.youtube
             );
-            if (preferredLink) {
-              youtubeLinksBySong[songId] = [preferredLink];
-            } else {
+            if (!preferredLink) {
               // Preferred link not found in available links, add it as a custom entry
-              youtubeLinksBySong[songId] = [
-                {
-                  id: "preferred",
-                  url: bandSong.youtube,
-                  description: "Preferred Video",
-                  type: "youtube",
-                },
-              ];
+              youtubeLinksBySong[songId].unshift({
+                id: "preferred",
+                url: bandSong.youtube,
+                description: "Preferred Video",
+                type: "youtube",
+              });
             }
           } else if (availableYoutubeLinks.length > 0) {
             // No preferred link set, auto-assign first available YouTube link
             const firstYoutubeLink = availableYoutubeLinks[0];
-            youtubeLinksBySong[songId] = availableYoutubeLinks;
 
             // Track for auto-assignment
             bandSongsToUpdate.push({

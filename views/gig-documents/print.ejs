@@ -133,9 +133,13 @@
         </div>
         <div>
             <button onclick="window.print()"
-            style="padding: 8px 16px; font-size: 12pt; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            style="padding: 8px 16px; font-size: 12pt; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
             Print
         </button>
+            <a href="/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>"
+            style="padding: 8px 16px; font-size: 12pt; background: #6c757d; color: white; text-decoration: none; border: none; border-radius: 4px; cursor: pointer; display: inline-block;">
+            Back to Gig Document
+        </a>
         </div>
         <% if (gigDocument.content && gigDocument.content.trim()) { %>
             <%- gigDocument.content %>

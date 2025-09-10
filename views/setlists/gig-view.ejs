@@ -275,6 +275,11 @@
                                     <div class="song-header">
                                         <div class="song-title">
                                             <%= songIndex + 1 %>. <%= setlistSong.song.title %>
+                                            <% if (setlistSong.song.key) { %>
+                                                <span style="font-size: 0.8em; color: #666; font-weight: normal; margin-left: 10px;">
+                                                    (Key: <%= setlistSong.song.key %>)
+                                                </span>
+                                            <% } %>
                                         </div>
                                     </div>
 

@@ -258,8 +258,18 @@
                     <% } %>
 
                         <% set.songs.sort((a, b)=> a.order - b.order).forEach((setlistSong, songIndex) => { %>
-                            <% const preferredDocId=preferredGigDocuments[setlistSong.song.id]; const
-                                gigDocument=preferredDocId ? gigDocumentMap[preferredDocId] : null; %>
+                            <% 
+                                const preferredDocId = preferredGigDocuments[setlistSong.song.id];
+                                const availableDocs = gigDocumentsBySong[setlistSong.song.id] || [];
+                                let gigDocument = null;
+                                
+                                // Use preferred document if available, otherwise use the first available document
+                                if (preferredDocId && gigDocumentMap[preferredDocId]) {
+                                    gigDocument = gigDocumentMap[preferredDocId];
+                                } else if (availableDocs.length > 0) {
+                                    gigDocument = availableDocs[0]; // First (latest version) document
+                                }
+                            %>
 
                                 <div class="song-section">
                                     <div class="song-header">

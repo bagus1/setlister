@@ -366,11 +366,23 @@ router.get("/:id/gig-view", async (req, res) => {
       }
     });
 
-    // Get all preferred gig documents
-    const gigDocumentIds = Object.values(preferredGigDocuments);
+    // Get all song IDs from the setlist
+    const songIds = [];
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          if (setlistSong.song) {
+            songIds.push(setlistSong.song.id);
+          }
+        });
+      }
+    });
 
+    // Get ALL gig documents for songs in this setlist (not just preferred ones)
     const gigDocuments = await prisma.gigDocument.findMany({
-      where: { id: { in: gigDocumentIds } },
+      where: {
+        songId: { in: songIds },
+      },
       include: {
         song: {
           select: {
@@ -381,6 +393,19 @@ router.get("/:id/gig-view", async (req, res) => {
           },
         },
       },
+      orderBy: [
+        { songId: "asc" },
+        { version: "desc" }, // Get latest version first
+      ],
+    });
+
+    // Create a map of songId to gig documents (array of docs for each song)
+    const gigDocumentsBySong = {};
+    gigDocuments.forEach((doc) => {
+      if (!gigDocumentsBySong[doc.songId]) {
+        gigDocumentsBySong[doc.songId] = [];
+      }
+      gigDocumentsBySong[doc.songId].push(doc);
     });
 
     // Create a map of gig document ID to gig document
@@ -394,6 +419,7 @@ router.get("/:id/gig-view", async (req, res) => {
       setlist,
       preferredGigDocuments,
       gigDocumentMap,
+      gigDocumentsBySong,
       layout: false, // No layout for clean printing
     });
   } catch (error) {

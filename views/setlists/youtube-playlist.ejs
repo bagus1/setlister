@@ -189,7 +189,7 @@
                                 <div class="list-group">
                                     <% youtubeLinks.forEach((link, index) => { %>
                                         <button class="list-group-item list-group-item-action d-flex align-items-center" 
-                                                onclick="playVideoInPlayer('<%= link.videoId %>', '<%= link.songTitle %>', '<%= link.artist || '' %>')">
+                                                onclick="playVideoInPlayer('<%= link.videoId %>', '<%= link.songTitle.replace(/'/g, "\\'") %>', '<%= (link.artist || '').replace(/'/g, "\\'") %>')">
                                             <span class="badge bg-secondary me-2"><%= index + 1 %></span>
                                             <div class="text-start">
                                                 <div class="fw-bold"><%= link.songTitle %></div>
@@ -251,6 +251,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
+        // Make youtubeLinks available globally
+        const youtubeLinks = <%- JSON.stringify(youtubeLinks) %>;
+        
         let player;
         let currentVideoId = null;
         let playerReady = false;
@@ -261,6 +264,15 @@
             createPlayer();
         } else {
             console.log('YouTube API not loaded yet, waiting...');
+            // Set a timeout to retry if API doesn't load
+            setTimeout(() => {
+                if (typeof YT !== 'undefined' && YT.Player) {
+                    console.log('YouTube API loaded after timeout, creating player...');
+                    createPlayer();
+                } else {
+                    console.error('YouTube API failed to load');
+                }
+            }, 3000);
         }
 
         function onYouTubeIframeAPIReady() {

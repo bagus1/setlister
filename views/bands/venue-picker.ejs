@@ -1,0 +1,426 @@
+<style>
+    .venue-selection-card {
+        position: relative;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .venue-selection-card.loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .loading-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 24px;
+        height: 24px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    @keyframes spin {
+        0% {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        100% {
+            transform: translate(-50%, -50%) rotate(360deg);
+        }
+    }
+
+    .success-flash {
+        animation: successFlash 0.6s ease-out;
+    }
+
+    @keyframes successFlash {
+        0% {
+            background-color: #d4edda;
+        }
+
+        100% {
+            background-color: transparent;
+        }
+    }
+
+    .status-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 14px;
+        z-index: 20;
+        pointer-events: none;
+        opacity: 0;
+        animation: statusMessage 1s ease-out forwards;
+    }
+
+    @keyframes statusMessage {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+        }
+        20% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        80% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+    }
+</style>
+
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <%= band.name %> - Venues
+                </h1>
+                <p class="text-muted">Pick venues you are playing at or want to play at</p>
+            </div>
+            <div>
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+                <a href="/venues" class="btn btn-outline-primary ms-2">
+                    <i class="bi bi-building"></i> View All Venues
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex gap-2">
+            <a href="/venues/new" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Venue
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="searchVenues" placeholder="Search venues...">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="filterCity">
+                            <option value="">All Cities</option>
+                            <!-- Cities will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="filterType">
+                            <option value="">All Types</option>
+                            <option value="Bar">Bar</option>
+                            <option value="Theater">Theater</option>
+                            <option value="Outdoor">Outdoor</option>
+                            <option value="Club">Club</option>
+                            <option value="Restaurant">Restaurant</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <% if (allVenues && allVenues.length > 0) { %>
+                    <div class="row" id="venuesGrid">
+                        <% allVenues.forEach(venue => { %>
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card venue-selection-card <%= bandVenueIds.includes(venue.id) ? 'border-primary bg-light' : '' %>"
+                                    data-venue-id="<%= venue.id %>" data-name="<%= venue.name.toLowerCase() %>"
+                                    data-city="<%= venue.city ? venue.city.toLowerCase() : '' %>"
+                                        data-type="<%= venue.venueType ? venue.venueType.name : '' %>" style="cursor: pointer;">
+                                    <div class="card-body">
+                                        <div class="form-check">
+                                            <input class="form-check-input venue-checkbox" type="checkbox"
+                                                id="venue_<%= venue.id %>" data-venue-id="<%= venue.id %>"
+                                                <%= bandVenueIds.includes(venue.id) ? 'checked' : '' %>
+                                            style="display: none">
+                                            <label class="form-check-label w-100" for="venue_<%= venue.id %>">
+                                                <div class="venue-title">
+                                                    <%= venue.name %>
+                                                </div>
+                                                <% if (venue.city && venue.state) { %>
+                                                    <div class="venue-location">
+                                                        <i class="bi bi-geo-alt"></i> <%= venue.city %>, <%= venue.state %>
+                                                    </div>
+                                                <% } else if (venue.city) { %>
+                                                    <div class="venue-location">
+                                                        <i class="bi bi-geo-alt"></i> <%= venue.city %>
+                                                    </div>
+                                                <% } %>
+                                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                                    <div>
+                                                        <% if (venue.venueType) { %>
+                                                            <span class="badge bg-secondary me-1">
+                                                                <%= venue.venueType.name %>
+                                                            </span>
+                                                        <% } %>
+                                                        <% if (venue.capacity) { %>
+                                                            <span class="badge bg-primary me-1">
+                                                                <i class="bi bi-people"></i>
+                                                                <%= venue.capacity.toLocaleString() %>
+                                                            </span>
+                                                        <% } %>
+                                                        <% if (venue.musicStyle) { %>
+                                                            <span class="badge bg-warning text-dark">
+                                                                <i class="bi bi-music-note"></i>
+                                                                <%= venue.musicStyle %>
+                                                            </span>
+                                                        <% } %>
+                                                    </div>
+                                                    <div>
+                                                        <% if (venue.website) { %>
+                                                            <i class="bi bi-globe text-primary me-1" title="Has website"></i>
+                                                        <% } %>
+                                                        <% if (venue.phone) { %>
+                                                            <i class="bi bi-telephone text-success me-1" title="Has phone"></i>
+                                                        <% } %>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        No venues available. <a href="/venues/new">Add some venues</a> first.
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle venue selection via clicking on cards (since checkboxes are hidden)
+        const venueCards = document.querySelectorAll('.venue-selection-card');
+
+        venueCards.forEach(card => {
+            let isLoading = false; // Prevent rapid clicks during AJAX
+
+            card.addEventListener('click', function () {
+                // Prevent multiple rapid clicks
+                if (isLoading) {
+                    return;
+                }
+
+                const venueId = this.dataset.venueId;
+                const checkbox = this.querySelector('.venue-checkbox');
+                const isChecked = checkbox.checked;
+                const bandId = <%= band.id %>;
+
+                // Set loading state with spinner
+                isLoading = true;
+                this.classList.add('loading');
+
+                // Add spinner
+                const spinner = document.createElement('div');
+                spinner.className = 'loading-spinner';
+                this.appendChild(spinner);
+
+                // Toggle the checkbox state optimistically
+                checkbox.checked = !isChecked;
+
+                // Update visual state optimistically
+                if (!isChecked) {
+                    this.classList.add('border-primary', 'bg-light');
+                } else {
+                    this.classList.remove('border-primary', 'bg-light');
+                }
+
+                // Send AJAX request
+                const operation = !isChecked ? 'add' : 'remove';
+                const method = 'POST'; // Always use POST
+                const url = !isChecked ?
+                    `/bands/${bandId}/venues/${venueId}` :
+                    `/bands/${bandId}/venues/${venueId}/remove`;
+
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // SUCCESS: Ensure visual state matches the operation that just succeeded
+                            if (operation === 'add') {
+                                // Venue was successfully added - ensure it shows as selected
+                                checkbox.checked = true;
+                                this.classList.add('border-primary', 'bg-light');
+                            } else {
+                                // Venue was successfully removed - ensure it shows as unselected  
+                                checkbox.checked = false;
+                                this.classList.remove('border-primary', 'bg-light');
+                            }
+
+                            // Success animation and status message
+                            this.classList.add('success-flash');
+                            setTimeout(() => {
+                                this.classList.remove('success-flash');
+                            }, 600);
+
+                            // Show status message
+                            const statusMessage = document.createElement('div');
+                            statusMessage.className = 'status-message';
+                            statusMessage.textContent = operation === 'add' ? 'Added' : 'Removed';
+                            this.appendChild(statusMessage);
+
+                            // Remove status message after animation
+                            setTimeout(() => {
+                                if (statusMessage.parentNode) {
+                                    statusMessage.parentNode.removeChild(statusMessage);
+                                }
+                            }, 1000);
+                        } else {
+                            console.error(`Failed to ${operation} venue:`, data);
+
+                            // Special case: If venue is already in band, sync visual state instead of error
+                            if (data.error === 'Venue already in band') {
+                                console.log('Venue already in band - syncing visual state');
+                                checkbox.checked = true;
+                                this.classList.add('border-primary', 'bg-light');
+                            } else {
+                                // Revert on actual error
+                                checkbox.checked = isChecked;
+                                if (isChecked) {
+                                    this.classList.add('border-primary', 'bg-light');
+                                } else {
+                                    this.classList.remove('border-primary', 'bg-light');
+                                }
+                                const action = operation === 'add' ? 'adding venue to' : 'removing venue from';
+                                alert(`Error ${action} band`);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`Network error ${operation}ing venue:`, error);
+
+                        // Check if it's a 400 "already in band" error
+                        if (error.message.includes('400') && operation === 'add') {
+                            console.log('Network error suggests venue already in band - syncing visual state');
+                            checkbox.checked = true;
+                            this.classList.add('border-primary', 'bg-light');
+                        } else {
+                            // Revert on other errors
+                            checkbox.checked = isChecked;
+                            if (isChecked) {
+                                this.classList.add('border-primary', 'bg-light');
+                            } else {
+                                this.classList.remove('border-primary', 'bg-light');
+                            }
+                            const action = operation === 'add' ? 'adding venue to' : 'removing venue from';
+                            alert(`Error ${action} band (Network Error)`);
+                        }
+                    })
+                    .finally(() => {
+                        // Reset loading state
+                        isLoading = false;
+                        this.classList.remove('loading');
+
+                        // Remove spinner
+                        const currentSpinner = this.querySelector('.loading-spinner');
+                        if (currentSpinner) {
+                            currentSpinner.remove();
+                        }
+                    });
+            });
+        });
+
+        // Prevent checkbox clicks from bubbling up
+        const checkboxes = document.querySelectorAll('.venue-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        });
+
+        // Filtering functionality
+        const searchInput = document.getElementById('searchVenues');
+        const cityFilter = document.getElementById('filterCity');
+        const typeFilter = document.getElementById('filterType');
+        const venueItems = document.querySelectorAll('.venue-selection-card');
+
+        // Populate city filter
+        const cities = new Set();
+        venueItems.forEach(item => {
+            const city = item.dataset.city;
+            if (city) cities.add(city);
+        });
+
+        Array.from(cities).sort().forEach(city => {
+            const option = document.createElement('option');
+            option.value = city;
+            option.textContent = city;
+            cityFilter.appendChild(option);
+        });
+
+        // Filter function
+        function filterVenues() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedCity = cityFilter.value;
+            const selectedType = typeFilter.value;
+
+            // Get all venue cards and their parent containers
+            const venueCards = document.querySelectorAll('.venue-selection-card');
+            const venueContainers = document.querySelectorAll('.col-md-6.col-lg-4.mb-3');
+
+            venueCards.forEach((card, index) => {
+                const container = venueContainers[index];
+                const name = card.dataset.name;
+                const city = card.dataset.city;
+                const type = card.dataset.type;
+
+                const matchesSearch = name.includes(searchTerm) || city.includes(searchTerm);
+                const matchesCity = !selectedCity || city === selectedCity;
+                const matchesType = !selectedType || type === selectedType;
+
+                if (matchesSearch && matchesCity && matchesType) {
+                    container.classList.remove('d-none');
+                } else {
+                    container.classList.add('d-none');
+                }
+            });
+        }
+
+        // Event listeners for filtering
+        searchInput.addEventListener('input', filterVenues);
+        cityFilter.addEventListener('change', filterVenues);
+        typeFilter.addEventListener('change', filterVenues);
+    });
+</script>

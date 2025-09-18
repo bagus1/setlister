@@ -1,0 +1,258 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Venues</h1>
+                <p class="text-muted">Browse all venues in the system</p>
+            </div>
+            <div>
+                <% if (loggedIn) { %>
+                    <a href="/venues/new" class="btn btn-primary">
+                        <i class="bi bi-plus"></i> Add Venue
+                    </a>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-2">
+                        <input type="text" class="form-control" id="searchVenues" placeholder="Search venues..." autofocus>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterCity">
+                            <option value="">All Cities</option>
+                            <!-- Cities will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterType">
+                            <option value="">All Types</option>
+                            <% if (venues && venues.length > 0) { %>
+                                <%
+                                // Get unique venue types from the venues
+                                var uniqueTypes = [];
+                                var seenTypes = {};
+                                for (var i = 0; i < venues.length; i++) {
+                                    var venue = venues[i];
+                                    if (venue.venueType && !seenTypes[venue.venueType.name]) {
+                                        uniqueTypes.push(venue.venueType.name);
+                                        seenTypes[venue.venueType.name] = true;
+                                    }
+                                }
+                                uniqueTypes.sort();
+                                %>
+                                <% for (var j = 0; j < uniqueTypes.length; j++) { %>
+                                    <option value="<%= uniqueTypes[j] %>"><%= uniqueTypes[j] %></option>
+                                <% } %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterStage">
+                            <option value="">All Stages</option>
+                            <option value="indoor">Indoor</option>
+                            <option value="outdoor">Outdoor</option>
+                            <option value="both">Both</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterState">
+                            <option value="">All States</option>
+                            <% if (venues && venues.length > 0) { %>
+                                <%
+                                // Get unique states from the venues
+                                var uniqueStates = [];
+                                var seenStates = {};
+                                for (var i = 0; i < venues.length; i++) {
+                                    var venue = venues[i];
+                                    if (venue.state && !seenStates[venue.state]) {
+                                        uniqueStates.push(venue.state);
+                                        seenStates[venue.state] = true;
+                                    }
+                                }
+                                uniqueStates.sort();
+                                %>
+                                <% for (var j = 0; j < uniqueStates.length; j++) { %>
+                                    <option value="<%= uniqueStates[j] %>"><%= uniqueStates[j] %></option>
+                                <% } %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <!-- Empty column for spacing -->
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <% if (venues && venues.length > 0) { %>
+                    <div class="row" id="venuesContainer">
+                        <% venues.forEach(venue => { %>
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <a href="/venues/<%= venue.id %>" class="text-decoration-none">
+                                    <div class="card venue-card" 
+                                        data-name="<%= venue.name.toLowerCase() %>"
+                                        data-city="<%= venue.city ? venue.city.toLowerCase() : '' %>"
+                                        data-type="<%= venue.venueType ? venue.venueType.name : '' %>"
+                                        data-stage="<%= venue.stageLocation ? venue.stageLocation.toLowerCase() : '' %>"
+                                        data-state="<%= venue.state ? venue.state.toLowerCase() : '' %>">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h6 class="card-title text-dark mb-0">
+                                                    <%= venue.name %>
+                                                </h6>
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <% if (venue.website) { %>
+                                                        <i class="bi bi-globe text-primary" title="Has website"></i>
+                                                    <% } %>
+                                                    <% if (venue.phone) { %>
+                                                        <i class="bi bi-telephone text-success" title="Has phone"></i>
+                                                    <% } %>
+                                                </div>
+                                            </div>
+                                            <% if (venue.city && venue.state) { %>
+                                                <p class="text-muted mb-1">
+                                                    <i class="bi bi-geo-alt"></i> <%= venue.city %>, <%= venue.state %>
+                                                </p>
+                                            <% } else if (venue.city) { %>
+                                                <p class="text-muted mb-1">
+                                                    <i class="bi bi-geo-alt"></i> <%= venue.city %>
+                                                </p>
+                                            <% } %>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <% if (venue.venueType) { %>
+                                                        <span class="badge bg-secondary me-1">
+                                                            <%= venue.venueType.name %>
+                                                        </span>
+                                                    <% } %>
+                                                    <% if (venue.capacity) { %>
+                                                        <span class="badge bg-primary me-1">
+                                                            <i class="bi bi-people"></i>
+                                                            <%= venue.capacity.toLocaleString() %>
+                                                        </span>
+                                                    <% } %>
+                                                    <% if (venue.musicStyle) { %>
+                                                        <span class="badge bg-warning text-dark">
+                                                            <i class="bi bi-music-note"></i>
+                                                            <%= venue.musicStyle %>
+                                                        </span>
+                                                    <% } %>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-5">
+                        <i class="bi bi-building text-muted" style="font-size: 3rem;"></i>
+                        <h4 class="text-muted mt-3">No venues yet</h4>
+                        <p class="text-muted">Start building your venue database!</p>
+                        <% if (loggedIn) { %>
+                            <a href="/venues/new" class="btn btn-primary">
+                                <i class="bi bi-plus"></i> Add Your First Venue
+                            </a>
+                        <% } %>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Make the entire venue card show pointer cursor since it's now clickable */
+    .venue-card {
+        cursor: pointer;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    
+    /* Add hover effects to make it clear the card is clickable */
+    .venue-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Ensure the venue name text color is maintained */
+    .venue-card .card-title {
+        color: #212529 !important;
+    }
+    
+    /* Reduce font size of the location line */
+    .venue-card .text-muted {
+        font-size: 0.875rem;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('searchVenues');
+        const cityFilter = document.getElementById('filterCity');
+        const typeFilter = document.getElementById('filterType');
+        const venuesContainer = document.getElementById('venuesContainer');
+        const venueItems = document.querySelectorAll('.venue-card');
+
+        // Populate city filter
+        const cities = new Set();
+        venueItems.forEach(item => {
+            const city = item.dataset.city;
+            if (city) cities.add(city);
+        });
+
+        Array.from(cities).sort().forEach(city => {
+            const option = document.createElement('option');
+            option.value = city;
+            option.textContent = city;
+            cityFilter.appendChild(option);
+        });
+
+        // Filter function
+        function filterVenues() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedCity = cityFilter.value;
+            const selectedType = typeFilter.value;
+            const selectedStage = document.getElementById('filterStage').value;
+            const selectedState = document.getElementById('filterState').value;
+
+            // Get all venue cards and their parent containers
+            const venueCards = document.querySelectorAll('.venue-card');
+            const venueContainers = document.querySelectorAll('.col-md-6.col-lg-4.mb-3');
+
+            venueCards.forEach((card, index) => {
+                const container = venueContainers[index];
+                const name = card.dataset.name;
+                const city = card.dataset.city;
+                const type = card.dataset.type;
+                const stage = card.dataset.stage;
+                const state = card.dataset.state;
+
+                const matchesSearch = name.includes(searchTerm) || city.includes(searchTerm);
+                const matchesCity = !selectedCity || city === selectedCity;
+                const matchesType = !selectedType || type === selectedType;
+                const matchesStage = !selectedStage || stage === selectedStage;
+                const matchesState = !selectedState || state === selectedState.toLowerCase();
+
+                if (matchesSearch && matchesCity && matchesType && matchesStage && matchesState) {
+                    container.classList.remove('d-none');
+                } else {
+                    container.classList.add('d-none');
+                }
+            });
+        }
+
+        // Event listeners
+        searchInput.addEventListener('input', filterVenues);
+        cityFilter.addEventListener('change', filterVenues);
+        typeFilter.addEventListener('change', filterVenues);
+        document.getElementById('filterStage').addEventListener('change', filterVenues);
+        document.getElementById('filterState').addEventListener('change', filterVenues);
+    });
+</script>

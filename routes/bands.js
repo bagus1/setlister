@@ -185,6 +185,22 @@ router.get("/:id", async (req, res) => {
       },
     });
 
+    // Get band venues (latest 3)
+    const bandVenues = await prisma.bandVenue.findMany({
+      where: { bandId: parseInt(bandId) },
+      include: {
+        venue: {
+          include: {
+            venueType: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 3,
+    });
+
     // Get pending invitations (not used, not expired)
     let pendingInvitations = [];
     try {
@@ -228,6 +244,7 @@ router.get("/:id", async (req, res) => {
       band,
       setlists,
       bandSongs,
+      bandVenues,
       pendingInvitations,
       userId,
     });
@@ -3177,5 +3194,213 @@ function parseQuickSetInput(input) {
 
   return result;
 }
+
+// GET /bands/:id/venues - Show band's venues
+router.get("/:id/venues", async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Get band details
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    // Get band's venues
+    const bandVenues = await prisma.bandVenue.findMany({
+      where: { bandId: parseInt(bandId) },
+      include: {
+        venue: {
+          include: {
+            venueType: true,
+            contacts: {
+              include: {
+                contactType: true,
+              },
+            },
+            socials: {
+              include: {
+                socialType: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.render("bands/venues", {
+      title: `${band.name} - Venues`,
+      band,
+      bandVenues,
+      loggedIn: !!req.session.user,
+    });
+  } catch (error) {
+    console.error("Band venues error:", error);
+    req.flash("error", "An error occurred loading band venues");
+    res.redirect("/bands");
+  }
+});
+
+// GET /bands/:id/venue-picker - Show band's venue picker
+router.get("/:id/venue-picker", async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+    });
+
+    // Get all venues
+    const allVenues = await prisma.venue.findMany({
+      include: {
+        venueType: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
+    // Get band's current venues
+    const bandVenues = await prisma.bandVenue.findMany({
+      where: { bandId: parseInt(bandId) },
+      include: {
+        venue: {
+          include: {
+            venueType: true,
+          },
+        },
+      },
+    });
+
+    const bandVenueIds = bandVenues.map((bv) => bv.venueId);
+
+    res.render("bands/venue-picker", {
+      title: `${band.name} - Venues`,
+      band,
+      allVenues,
+      bandVenueIds,
+    });
+  } catch (error) {
+    console.error("Band venue picker error:", error);
+    req.flash("error", "An error occurred loading band venues");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// POST /bands/:id/venues/:venueId - Add venue to band
+router.post("/:id/venues/:venueId", async (req, res) => {
+  try {
+    const { id: bandId, venueId } = req.params;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    // Check if already added
+    const existing = await prisma.bandVenue.findFirst({
+      where: { bandId: parseInt(bandId), venueId: parseInt(venueId) },
+    });
+
+    if (existing) {
+      return res.status(400).json({ error: "Venue already in band" });
+    }
+
+    await prisma.bandVenue.create({
+      data: {
+        bandId: parseInt(bandId),
+        venueId: parseInt(venueId),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Add band venue error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// DELETE /bands/:id/venues/:venueId - Remove venue from band
+router.delete("/:id/venues/:venueId", async (req, res) => {
+  try {
+    const { id: bandId, venueId } = req.params;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    await prisma.bandVenue.deleteMany({
+      where: { bandId: parseInt(bandId), venueId: parseInt(venueId) },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Remove band venue error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /bands/:id/venues/:venueId/remove - Workaround for DELETE requests
+router.post("/:id/venues/:venueId/remove", async (req, res) => {
+  try {
+    const { id: bandId, venueId } = req.params;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    await prisma.bandVenue.deleteMany({
+      where: { bandId: parseInt(bandId), venueId: parseInt(venueId) },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Remove band venue error (POST):", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 module.exports = router;

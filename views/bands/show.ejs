@@ -152,6 +152,9 @@
                 <a href="/bands/<%= band.id %>/songs" class="btn btn-outline-primary">
                     <i class="bi bi-music-note-list"></i> Manage Songs
                 </a>
+                <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-success">
+                    <i class="bi bi-geo-alt"></i> Manage Venues
+                </a>
                 <a href="/bands" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Back to Bands
                 </a>
@@ -360,6 +363,59 @@ Set 4:
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Band Venues Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-building"></i> Venues
+                </h5>
+                <small class="text-muted">Venues where this band performs</small>
+            </div>
+            <div class="card-body">
+                <% if (bandVenues && bandVenues.length > 0) { %>
+                    <% bandVenues.forEach(bandVenue => { %>
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <a href="/venues/<%= bandVenue.venue.id %>" class="text-decoration-none">
+                                    <strong><%= bandVenue.venue.name %></strong>
+                                </a>
+                                <% if (bandVenue.venue.city && bandVenue.venue.state) { %>
+                                    <br><small class="text-muted">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <%= bandVenue.venue.city %>, <%= bandVenue.venue.state %>
+                                    </small>
+                                <% } else if (bandVenue.venue.city) { %>
+                                    <br><small class="text-muted">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <%= bandVenue.venue.city %>
+                                    </small>
+                                <% } %>
+                                <% if (bandVenue.venue.venueType) { %>
+                                    <span class="badge bg-secondary ms-1"><%= bandVenue.venue.venueType.name %></span>
+                                <% } %>
+                                <% if (bandVenue.venue.capacity) { %>
+                                    <span class="badge bg-primary ms-1">
+                                        <i class="bi bi-people"></i>
+                                        <%= bandVenue.venue.capacity.toLocaleString() %>
+                                    </span>
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }) %>
+                    <div class="mt-3">
+                        <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-plus"></i> Manage Venues
+                        </a>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No venues selected yet.</p>
+                    <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus"></i> Add Venues
+                    </a>
+                <% } %>
             </div>
         </div>
 

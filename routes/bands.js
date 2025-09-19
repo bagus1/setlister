@@ -45,6 +45,7 @@ router.get("/", async (req, res) => {
 
     res.render("bands/index", {
       title: "My Bands",
+      pageTitle: "My Bands",
       bands,
     });
   } catch (error) {
@@ -241,6 +242,7 @@ router.get("/:id", async (req, res) => {
 
     res.render("bands/show", {
       title: band.name,
+      hasBandHeader: true,
       band,
       setlists,
       bandSongs,
@@ -569,8 +571,9 @@ router.get("/:id/songs", async (req, res) => {
     const bandSongIds = bandSongs.map((bs) => bs.songId);
 
     res.render("bands/songs", {
-      title: `${band.name} - Songs`,
+      pageTitle: `${band.name} Song Manager`,
       band,
+      hasBandHeader: false,
       allSongs,
       bandSongIds,
       fromSetlist,
@@ -2044,6 +2047,7 @@ router.get("/:id/new-list", async (req, res) => {
 
     res.render("bands/new-list", {
       title: `Add a List - ${band.name}`,
+      pageTitle: "Add a List of Songs For Your Band",
       band,
       currentUser: req.session.user,
     });
@@ -2076,8 +2080,9 @@ router.get("/:id/new-doc", async (req, res) => {
     }
 
     res.render("bands/new-doc", {
-      title: `Add a Doc - ${band.name}`,
+      pageTitle: "Add Your Google Doc",
       band,
+      hasBandHeader: false,
     });
   } catch (error) {
     console.error("New doc page error:", error);
@@ -2155,8 +2160,9 @@ router.get("/:id/songs/new", async (req, res) => {
     });
 
     res.render("bands/songs/new", {
-      title: `Add a Song - ${band.name}`,
+      pageTitle: "Add Your New Single",
       band,
+      hasBandHeader: false,
       artists,
     });
   } catch (error) {
@@ -2370,6 +2376,7 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
         ? `Confirm List - ${band.name}`
         : `Confirm Setlist - ${band.name}`,
       band,
+      hasBandHeader: true,
       setlist,
       sets,
       songMatches,

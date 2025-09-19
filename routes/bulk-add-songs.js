@@ -8,7 +8,7 @@ const router = express.Router();
 // GET /bulk-add-songs - Show bulk add form
 router.get("/", requireAuth, (req, res) => {
   res.render("songs/bulk-add", {
-    title: "Bulk Add Songs",
+    pageTitle: "Bulk Add Songs",
   });
 });
 

@@ -98,6 +98,7 @@ router.get("/", async (req, res) => {
 
       res.render("dashboard/index", {
         title: "Dashboard",
+        pageTitle: `Welcome, ${req.session.user.username}`,
         loggedIn: true,
         user: req.session.user,
         userBands,
@@ -136,6 +137,7 @@ router.get("/", async (req, res) => {
 
       res.render("dashboard/index", {
         title: "Setlist Manager",
+        pageTitle: "Setlist Manager",
         loggedIn: false,
         bands,
         songs,
@@ -147,6 +149,7 @@ router.get("/", async (req, res) => {
     req.flash("error", "An error occurred loading the dashboard");
     res.render("dashboard/index", {
       title: "Dashboard",
+      pageTitle: "Dashboard",
       loggedIn: !!req.session.user,
       userBands: [],
       latestBandSongs: [],

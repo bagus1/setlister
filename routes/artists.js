@@ -40,6 +40,7 @@ router.get("/", async (req, res) => {
 
     res.render("artists/index", {
       title: "Artists",
+      pageTitle: "Artists",
       artists: artistsWithCounts,
       loggedIn: !!req.session.user,
     });

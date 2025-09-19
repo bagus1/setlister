@@ -2,8 +2,6 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1>Songs</h1>
-                <p class="text-muted">Browse all songs in the system</p>
             </div>
             <div>
                 <% if (loggedIn) { %>
@@ -82,7 +80,7 @@
                         <% songs.forEach(song=> { %>
                             <div class="col-md-6 col-lg-4 mb-3">
                                 <a href="/songs/<%= song.id %>" class="text-decoration-none">
-                                    <div class="card song-card" 
+                                    <div class="card song-card clickable" 
                                         data-title="<%= song.title.toLowerCase() %>"
                                         data-artist="<%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name.toLowerCase() : '' %>"
                                         data-vocalist="<%= song.vocalist ? song.vocalist.name.toLowerCase() : '' %>"
@@ -166,29 +164,7 @@
     </div>
 </div>
 
-<style>
-    /* Make the entire song card show pointer cursor since it's now clickable */
-    .song-card {
-        cursor: pointer;
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
-    
-    /* Add hover effects to make it clear the card is clickable */
-    .song-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    
-    /* Ensure the song title text color is maintained */
-    .song-card .card-title {
-        color: #212529 !important;
-    }
-    
-    /* Reduce font size of the "by [Artist]" line */
-    .song-card .text-muted {
-        font-size: 0.875rem;
-    }
-</style>
+<!-- CSS moved to /css/main.css and /css/utilities.css -->
 
 <script>
     // Prevent hideCarousel error if called from elsewhere

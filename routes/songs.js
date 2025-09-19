@@ -130,6 +130,7 @@ router.get("/", async (req, res) => {
 
     res.render("songs/index", {
       title: "Songs",
+      pageTitle: "Songs",
       songs,
       artists,
       vocalists,
@@ -154,7 +155,7 @@ router.get("/new", requireAuth, async (req, res) => {
     });
 
     res.render("songs/new", {
-      title: "Add New Song",
+      pageTitle: "Add a Song",
       artists,
       vocalists,
     });

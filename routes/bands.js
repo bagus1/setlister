@@ -45,6 +45,7 @@ router.get("/", async (req, res) => {
 
     res.render("bands/index", {
       title: "My Bands",
+      pageTitle: "My Bands",
       bands,
     });
   } catch (error) {
@@ -225,6 +226,7 @@ router.get("/:id", async (req, res) => {
 
     res.render("bands/show", {
       title: band.name,
+      hasBandHeader: true,
       band,
       setlists,
       bandSongs,

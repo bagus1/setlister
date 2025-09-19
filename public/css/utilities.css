@@ -105,3 +105,29 @@
 .song-extended-panel .dropdown-menu {
   font-size: 0.8rem;
 }
+
+/* ========================================
+   MARQUEE HEADER STYLES
+   ======================================== */
+
+.marquee-header {
+  border-radius: 0;
+  margin-bottom: 0 !important;
+  background-image: url("/images/marquee-bg.jpg");
+  background-size: contain;
+  background-position: center;
+  background-repeat: repeat-x;
+}
+
+.marquee-header h2 {
+  font-family: "TW Cen MT Condensed Bold", "Arial Narrow", Arial, sans-serif;
+  font-weight: bold;
+  font-size: 3em;
+  letter-spacing: 1.5px;
+  color: #cc0000 !important;
+  text-shadow:
+    1px 1px 0 #990000,
+    -1px -1px 0 #990000,
+    1px -1px 0 #990000,
+    -1px 1px 0 #990000;
+}

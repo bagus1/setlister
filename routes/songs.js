@@ -130,6 +130,7 @@ router.get("/", async (req, res) => {
 
     res.render("songs/index", {
       title: "Songs",
+      pageTitle: "Songs",
       songs,
       artists,
       vocalists,

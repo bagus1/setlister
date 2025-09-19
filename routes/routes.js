@@ -111,6 +111,7 @@ router.get("/", requireAuth, (req, res) => {
 
     res.render("routes/index", {
       title: "Application Routes",
+      pageTitle: "Application Routes",
       groupedRoutes,
       totalRoutes: routeInfo.length,
       user: req.session.user,

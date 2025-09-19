@@ -36,21 +36,21 @@
                         <li class="nav-item">
                             <a class="nav-link" href="/bands">My Bands</a>
                         </li>
-                        <% } %>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/songs">Songs</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/artists">Artists</a>
-                            </li>
-                            <!-- <li class="nav-item">
-                                <a class="nav-link" href="/medleys">Medleys</a>
-                            </li> -->
-                            <li class="nav-item">
-                                <a class="nav-link"
-                                    href="https://bagus.org/setlists-manager/setlists-manager-tutorial.html"
-                                    target="_blank">Tutorial</a>
-                            </li>
+                    <% } %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/songs">Songs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/artists">Artists</a>
+                    </li>
+                    <!-- <li class="nav-item">
+                        <a class="nav-link" href="/medleys">Medleys</a>
+                    </li> -->
+                    <li class="nav-item">
+                        <a class="nav-link"
+                            href="https://bagus.org/setlists-manager/setlists-manager-tutorial.html"
+                            target="_blank">Tutorial</a>
+                    </li>
                 </ul>
 
                 <ul class="navbar-nav">
@@ -77,100 +77,103 @@
                                 </li>
                             </ul>
                         </li>
-                        <% } else { %>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/auth/register">Register</a>
-                            </li>
-                            <% } %>
+                    <% } else { %>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/auth/register">Register</a>
+                        </li>
+                    <% } %>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Band Context Header (conditional) -->
-    <% if (typeof hasBandHeader !== 'undefined' && hasBandHeader && band) { %>
-    <div class="border-bottom py-3" style="background-color: #ccc;">
-        <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center" style="padding-left: 30px;">
-                <h2 class="h5 mb-0 text-muted"><%= band.name %></h2>
-                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary btn-sm" style="margin-right: 30px;">
-                    <i class="bi bi-arrow-left"></i> Back to Band
-                </a>
+    <!-- Global Marquee Header - Updated -->
+    <div class="container-fluid px-0">
+        <div class="card special-border-card mx-0 marquee-header">
+            <div class="card-body text-center py-3">
+                <div class="text-center">
+                    <% if (typeof hasBandHeader !== 'undefined' && hasBandHeader && band) { %>
+                        <h2 class="h5 mb-0 text-dark fw-bold"><%= band.name %></h2>
+                    <% } else if (typeof pageTitle !== 'undefined' && pageTitle) { %>
+                        <h2 class="h5 mb-0 text-dark fw-bold"><%= pageTitle %></h2>
+                    <% } else { %>
+                        <h2 class="h5 mb-0 text-dark fw-bold">Setlist Manager</h2>
+                    <% } %>
+                </div>
             </div>
         </div>
     </div>
-    <% } %>
 
     <!-- Flash Messages -->
     <% if (typeof success !=='undefined' && success && success.length> 0) { %>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <%= success %>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-        <% } %>
+    <% } %>
 
-            <% if (typeof error !=='undefined' && error && error.length> 0) { %>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <%= error %>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                <% } %>
+    <% if (typeof error !=='undefined' && error && error.length> 0) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
 
-                    <!-- Main Content -->
-                    <main class="container mt-4">
-                        <%- body %>
-                    </main>
+    <!-- Main Content -->
+    <main class="container mt-4">
+        <%- body %>
+    </main>
 
-                    <!-- Footer -->
-                    <footer class="bg-dark text-light mt-5 py-4">
-                        <div class="container text-center">
-                            <p>&copy; 2024 Setlist Manager. Built for musicians, by musicians.</p>
-                            <div class="mt-2">
-                                <small class="text-muted">
-                                    <a href="/legal" class="text-muted text-decoration-none">Legal</a>
-                                </small>
-                            </div>
-                        </div>
-                    </footer>
+    <!-- Footer -->
+    <footer class="bg-dark text-light mt-5 py-4">
+        <div class="container text-center">
+            <p>&copy; 2024 Setlist Manager. Built for musicians, by musicians.</p>
+            <div class="mt-2">
+                <small class="text-muted">
+                    <a href="/legal" class="text-muted text-decoration-none">Legal</a>
+                </small>
+            </div>
+        </div>
+    </footer>
 
-                    <!-- Scripts -->
-                    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-                    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-                    <script src="/socket.io/socket.io.js"></script>
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 
-                    <!-- Custom Scripts -->
-                    <script>
-                        // Format time from seconds to MM:SS
-                        function formatTime(seconds) {
-                            if (!seconds) return '';
-                            const minutes = Math.floor(seconds / 60);
-                            const secs = seconds % 60;
-                            return `${minutes}:${secs.toString().padStart(2, '0')}`;
-                        }
+    <!-- Custom Scripts -->
+    <script>
+        // Format time from seconds to MM:SS
+        function formatTime(seconds) {
+            if (!seconds) return '';
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
 
-                        // Initialize Socket.io if on setlist pages
-                        let socket;
-                        if (window.location.pathname.includes('/setlists/') && window.location.pathname.includes('/edit')) {
-                            socket = io();
-                            const setlistId = window.location.pathname.split('/')[2];
+        // Initialize Socket.io if on setlist pages
+        let socket;
+        if (window.location.pathname.includes('/setlists/') && window.location.pathname.includes('/edit')) {
+            socket = io();
+            const setlistId = window.location.pathname.split('/')[2];
 
-                            socket.emit('join-setlist', setlistId);
+            socket.emit('join-setlist', setlistId);
 
-                            socket.on('setlist-updated', (data) => {
-                                // Handle real-time updates from other users
-                                // console.log('Setlist updated by another user:', data);
-                                // You can add specific update handling here
-                            });
+            socket.on('setlist-updated', (data) => {
+                // Handle real-time updates from other users
+                // console.log('Setlist updated by another user:', data);
+                // You can add specific update handling here
+            });
 
-                            // Leave room when page unloads
-                            window.addEventListener('beforeunload', () => {
-                                socket.emit('leave-setlist', setlistId);
-                            });
-                        }
-                    </script>
+            // Leave room when page unloads
+            window.addEventListener('beforeunload', () => {
+                socket.emit('leave-setlist', setlistId);
+            });
+        }
+    </script>
 </body>
 
 </html>

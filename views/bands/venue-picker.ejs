@@ -88,13 +88,21 @@
 
 <div class="row mb-4">
     <div class="col-12">
-        <div class="d-flex gap-2">
-            <a href="/venues/new" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Add Venue
-            </a>
-            <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-primary ms-2">
-                <i class="bi bi-building"></i> View Our Venues
-            </a>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted">Select venues to add to your band</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/venues/new" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Venue
+                </a>
+                <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-primary">
+                    <i class="bi bi-building"></i> View Our Venues
+                </a>
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -131,7 +139,7 @@
                     <div class="row" id="venuesGrid">
                         <% allVenues.forEach(venue => { %>
                             <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="card venue-selection-card <%= bandVenueIds.includes(venue.id) ? 'border-primary bg-light' : '' %>"
+                                <div class="card venue-selection-card <%= bandVenueIds.includes(venue.id) ? 'border-success border-3 bg-success bg-opacity-10' : '' %>"
                                     data-venue-id="<%= venue.id %>" data-name="<%= venue.name.toLowerCase() %>"
                                     data-city="<%= venue.city ? venue.city.toLowerCase() : '' %>"
                                         data-type="<%= venue.venueType ? venue.venueType.name : '' %>" style="cursor: pointer;">
@@ -234,9 +242,9 @@
 
                 // Update visual state optimistically
                 if (!isChecked) {
-                    this.classList.add('border-primary', 'bg-light');
+                    this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                 } else {
-                    this.classList.remove('border-primary', 'bg-light');
+                    this.classList.remove('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                 }
 
                 // Send AJAX request
@@ -264,11 +272,11 @@
                             if (operation === 'add') {
                                 // Venue was successfully added - ensure it shows as selected
                                 checkbox.checked = true;
-                                this.classList.add('border-primary', 'bg-light');
+                                this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                             } else {
                                 // Venue was successfully removed - ensure it shows as unselected  
                                 checkbox.checked = false;
-                                this.classList.remove('border-primary', 'bg-light');
+                                this.classList.remove('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                             }
 
                             // Success animation and status message
@@ -296,14 +304,14 @@
                             if (data.error === 'Venue already in band') {
                                 console.log('Venue already in band - syncing visual state');
                                 checkbox.checked = true;
-                                this.classList.add('border-primary', 'bg-light');
+                                this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                             } else {
                                 // Revert on actual error
                                 checkbox.checked = isChecked;
                                 if (isChecked) {
-                                    this.classList.add('border-primary', 'bg-light');
+                                    this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                                 } else {
-                                    this.classList.remove('border-primary', 'bg-light');
+                                    this.classList.remove('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                                 }
                                 const action = operation === 'add' ? 'adding venue to' : 'removing venue from';
                                 alert(`Error ${action} band`);
@@ -317,14 +325,14 @@
                         if (error.message.includes('400') && operation === 'add') {
                             console.log('Network error suggests venue already in band - syncing visual state');
                             checkbox.checked = true;
-                            this.classList.add('border-primary', 'bg-light');
+                            this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                         } else {
                             // Revert on other errors
                             checkbox.checked = isChecked;
                             if (isChecked) {
-                                this.classList.add('border-primary', 'bg-light');
+                                this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                             } else {
-                                this.classList.remove('border-primary', 'bg-light');
+                                this.classList.remove('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                             }
                             const action = operation === 'add' ? 'adding venue to' : 'removing venue from';
                             alert(`Error ${action} band (Network Error)`);

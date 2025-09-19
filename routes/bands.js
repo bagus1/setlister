@@ -7,6 +7,7 @@ const {
 } = require("../utils/emailService");
 const { v4: uuidv4 } = require("uuid");
 const { requireAuth } = require("./auth");
+const logger = require("../utils/logger");
 
 const router = express.Router();
 
@@ -256,6 +257,163 @@ router.get("/:id", async (req, res) => {
     res.redirect("/bands");
   }
 });
+
+// GET /bands/:id/edit - Show edit band form
+router.get("/:id/edit", async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    // Check if user is a member
+    const isMember = band.members.some((member) => member.user.id === userId);
+    if (!isMember) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    res.render("bands/edit", {
+      title: `Edit ${band.name}`,
+      band,
+    });
+  } catch (error) {
+    logger.logError("Edit band error", error);
+    req.flash("error", "An error occurred loading the band");
+    res.redirect("/bands");
+  }
+});
+
+// POST /bands/:id/update - Update band information
+router.post(
+  "/:id/update",
+  [
+    body("name")
+      .trim()
+      .isLength({ min: 1 })
+      .withMessage("Band name is required"),
+    body("description").optional().trim(),
+    body("websiteUrl")
+      .optional()
+      .isURL()
+      .withMessage("Website URL must be a valid URL"),
+    body("epkUrl")
+      .optional()
+      .isURL()
+      .withMessage("EPK URL must be a valid URL"),
+    body("bookingPitch").optional().trim(),
+    body("contactName").optional().trim(),
+    body("contactEmail")
+      .optional()
+      .isEmail()
+      .withMessage("Contact email must be a valid email"),
+    body("contactPhone").optional().trim(),
+  ],
+  async (req, res) => {
+    try {
+      const bandId = req.params.id;
+      const userId = req.session.user.id;
+
+      // Verify band exists and user is a member
+      const band = await prisma.band.findUnique({
+        where: { id: parseInt(bandId) },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!band) {
+        req.flash("error", "Band not found");
+        return res.redirect("/bands");
+      }
+
+      const isMember = band.members.some((member) => member.user.id === userId);
+      if (!isMember) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.render("bands/edit", {
+          title: `Edit ${band.name}`,
+          band,
+          errors: errors.array(),
+          name: req.body.name,
+          description: req.body.description,
+          websiteUrl: req.body.websiteUrl,
+          epkUrl: req.body.epkUrl,
+          bookingPitch: req.body.bookingPitch,
+          contactName: req.body.contactName,
+          contactEmail: req.body.contactEmail,
+          contactPhone: req.body.contactPhone,
+        });
+      }
+
+      const {
+        name,
+        description,
+        websiteUrl,
+        epkUrl,
+        bookingPitch,
+        contactName,
+        contactEmail,
+        contactPhone,
+      } = req.body;
+
+      // Update the band
+      await prisma.band.update({
+        where: { id: parseInt(bandId) },
+        data: {
+          name,
+          description,
+          websiteUrl: websiteUrl || null,
+          epkUrl: epkUrl || null,
+          bookingPitch: bookingPitch || null,
+          contactName: contactName || null,
+          contactEmail: contactEmail || null,
+          contactPhone: contactPhone || null,
+          updatedAt: new Date(),
+        },
+      });
+
+      req.flash("success", "Band updated successfully!");
+      res.redirect(`/bands/${bandId}`);
+    } catch (error) {
+      logger.logError("Update band error", error);
+      req.flash("error", "An error occurred updating the band");
+      res.redirect(`/bands/${req.params.id}/edit`);
+    }
+  }
+);
 
 // POST /bands/:id/setlists - Create a new setlist for the band
 router.post(
@@ -3437,12 +3595,26 @@ router.get("/:bandId/venues/:venueId", requireAuth, async (req, res) => {
       },
     });
 
+    // Get venue contact types that this venue actually has
+    const venueContactTypes = await prisma.venueContactType.findMany({
+      where: {
+        isActive: true,
+        contacts: {
+          some: {
+            venueId: parseInt(venueId),
+          },
+        },
+      },
+      orderBy: { sortOrder: "asc" },
+    });
+
     res.render("bands/venue-opportunity", {
       pageTitle: `${band.name} @ ${venue.name}`,
       hasBandHeader: false,
       band,
       venue,
       opportunities,
+      venueContactTypes,
     });
   } catch (error) {
     logger.logError("Band venue opportunity page error:", error);
@@ -3461,6 +3633,18 @@ router.post(
       const { name, interactionType, notes } = req.body;
       const userId = req.session.user.id;
 
+      // Map form values to InteractionType enum values
+      const interactionTypeMap = {
+        email: "EMAIL",
+        phone: "PHONE_CALL",
+        text: "TEXT",
+        in_person: "IN_PERSON",
+        note: "NOTE",
+      };
+
+      const mappedInteractionType =
+        interactionTypeMap[interactionType] || "NOTE";
+
       const opportunity = await prisma.opportunity.create({
         data: {
           name,
@@ -3469,7 +3653,7 @@ router.post(
           creator: { connect: { id: userId } },
           interactions: {
             create: {
-              type: interactionType,
+              type: mappedInteractionType,
               notes,
               interactionDate: new Date(),
               user: { connect: { id: userId } },

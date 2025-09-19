@@ -54,18 +54,24 @@ model Artist {
 }
 
 model Band {
-  id          Int              @id @default(autoincrement())
-  name        String           @db.VarChar(255)
-  description String?
-  createdById Int              @map("created_by_id")
-  createdAt   DateTime         @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  invitations BandInvitation[]
-  members     BandMember[]
-  songs       BandSong[]
-  venues      BandVenue[]
-  creator     User             @relation("BandCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  setlists    Setlist[]
+  id           Int              @id @default(autoincrement())
+  name         String           @db.VarChar(255)
+  description  String?
+  websiteUrl   String?          @db.VarChar(500) @map("website_url")
+  epkUrl       String?          @db.VarChar(500) @map("epk_url")
+  bookingPitch String?          @db.Text @map("booking_pitch")
+  contactName  String?          @db.VarChar(255) @map("contact_name")
+  contactEmail String?          @db.VarChar(255) @map("contact_email")
+  contactPhone String?          @db.VarChar(50) @map("contact_phone")
+  createdById  Int              @map("created_by_id")
+  createdAt    DateTime         @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  invitations  BandInvitation[]
+  members      BandMember[]
+  songs        BandSong[]
+  venues       BandVenue[]
+  creator      User             @relation("BandCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  setlists     Setlist[]
   opportunities Opportunity[]
 
   @@map("bands")

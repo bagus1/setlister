@@ -52,11 +52,20 @@
                     <div class="mb-3">
                         <label for="interactionType" class="form-label">Initial Interaction Type</label>
                         <select class="form-select" id="interactionType" name="interactionType">
-                            <option value="EMAIL">Email</option>
-                            <option value="PHONE_CALL">Phone Call</option>
-                            <option value="TEXT">Text</option>
-                            <option value="IN_PERSON">In-Person</option>
-                            <option value="NOTE" selected>Note</option>
+                            <% if (venueContactTypes && venueContactTypes.length > 0) { %>
+                                <% venueContactTypes.forEach(contactType => { %>
+                                    <option value="<%= contactType.name %>" <%= contactType.name === 'NOTE' ? 'selected' : '' %>>
+                                        <%= contactType.displayName %>
+                                    </option>
+                                <% }); %>
+                            <% } else { %>
+                                <!-- Fallback to hardcoded options if no data -->
+                                <option value="EMAIL">Email</option>
+                                <option value="PHONE_CALL">Phone Call</option>
+                                <option value="TEXT">Text</option>
+                                <option value="IN_PERSON">In-Person</option>
+                                <option value="NOTE" selected>Note</option>
+                            <% } %>
                         </select>
                     </div>
                     <div class="mb-3">

@@ -6,6 +6,60 @@ const logger = require("../utils/logger");
 
 const router = express.Router();
 
+// Helper function to extract username from social media handles
+function extractUsernameFromHandle(handle, platform) {
+  if (!handle) return "";
+
+  let cleanHandle = handle.trim();
+
+  // Remove common prefixes
+  cleanHandle = cleanHandle.replace(/^@/, "");
+
+  // Platform-specific URL handling
+  switch (platform) {
+    case "facebook":
+      // Handle Facebook URLs like https://facebook.com/username or just username
+      if (cleanHandle.includes("facebook.com/")) {
+        const match = cleanHandle.match(/facebook\.com\/([^\/\?]+)/);
+        if (match) {
+          cleanHandle = match[1];
+        }
+      }
+      break;
+    case "instagram":
+      // Handle Instagram URLs like https://instagram.com/username or just username
+      if (cleanHandle.includes("instagram.com/")) {
+        const match = cleanHandle.match(/instagram\.com\/([^\/\?]+)/);
+        if (match) {
+          cleanHandle = match[1];
+        }
+      }
+      break;
+    case "linkedin":
+      // Handle LinkedIn URLs like https://linkedin.com/company/username or just username
+      if (cleanHandle.includes("linkedin.com/")) {
+        const match = cleanHandle.match(
+          /linkedin\.com\/(?:company\/)?([^\/\?]+)/
+        );
+        if (match) {
+          cleanHandle = match[1];
+        }
+      }
+      break;
+    case "twitter":
+      // Handle Twitter URLs like https://twitter.com/username or just username
+      if (cleanHandle.includes("twitter.com/")) {
+        const match = cleanHandle.match(/twitter\.com\/([^\/\?]+)/);
+        if (match) {
+          cleanHandle = match[1];
+        }
+      }
+      break;
+  }
+
+  return cleanHandle;
+}
+
 // GET /venues - Show all venues
 router.get("/", async (req, res) => {
   try {
@@ -275,9 +329,26 @@ router.get("/:id", async (req, res) => {
       return res.redirect("/venues");
     }
 
+    // Get contact and social types for modals
+    const [contactTypes, socialTypes] = await Promise.all([
+      prisma.venueContactType.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      prisma.venueSocialType.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+    ]);
+
+    logger.logInfo(`Contact types found: ${contactTypes.length}`);
+    logger.logInfo(`Social types found: ${socialTypes.length}`);
+
     res.render("venues/show", {
       pageTitle: venue.name,
       venue,
+      contactTypes,
+      socialTypes,
       loggedIn: !!req.session.user,
       currentUser: req.session.user,
       currentUrl: req.originalUrl,
@@ -440,7 +511,6 @@ router.post(
           fees: fees?.trim() || null,
           leadTime: leadTime?.trim() || null,
           notes: notes?.trim() || null,
-          socialMedia: socialMedia?.trim() || null,
           updatedAt: new Date(),
         },
       });
@@ -483,6 +553,168 @@ router.delete("/:id", requireAuth, async (req, res) => {
     logger.logError("Delete venue error", error);
     req.flash("error", "Error deleting venue");
     res.redirect("/venues");
+  }
+});
+
+// POST /venues/:id/contacts - Add contact to venue
+router.post("/:id/contacts", requireAuth, async (req, res) => {
+  try {
+    const venueId = parseInt(req.params.id);
+    const { contactTypeId, value, label, url } = req.body;
+
+    // Verify venue exists and user owns it
+    const venue = await prisma.venue.findUnique({
+      where: { id: venueId },
+    });
+
+    if (!venue) {
+      return res.status(404).json({ success: false, error: "Venue not found" });
+    }
+
+    if (venue.createdById !== req.session.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: "You can only add contacts to venues you created",
+      });
+    }
+
+    // Create the contact
+    const contact = await prisma.venueContact.create({
+      data: {
+        venueId: venueId,
+        contactTypeId: parseInt(contactTypeId),
+        value: value.trim(),
+        label: label?.trim() || null,
+        url: url?.trim() || null,
+        isPrimary: false, // New contacts are not primary by default
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true, contact });
+  } catch (error) {
+    logger.logError("Add venue contact error", error);
+    res.status(500).json({ success: false, error: "Error adding contact" });
+  }
+});
+
+// POST /venues/:id/socials - Add social media to venue
+router.post("/:id/socials", requireAuth, async (req, res) => {
+  try {
+    const venueId = parseInt(req.params.id);
+    const { socialTypeId, handle, url } = req.body;
+
+    // Verify venue exists and user owns it
+    const venue = await prisma.venue.findUnique({
+      where: { id: venueId },
+    });
+
+    if (!venue) {
+      return res.status(404).json({ success: false, error: "Venue not found" });
+    }
+
+    if (venue.createdById !== req.session.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: "You can only add social media to venues you created",
+      });
+    }
+
+    // Create the social media entry
+    const social = await prisma.venueSocial.create({
+      data: {
+        venueId: venueId,
+        socialTypeId: parseInt(socialTypeId),
+        handle: handle.trim(),
+        url: url?.trim() || null,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Automation: Create corresponding contact if it's a messaging platform
+    try {
+      const socialType = await prisma.venueSocialType.findUnique({
+        where: { id: parseInt(socialTypeId) },
+      });
+
+      if (socialType) {
+        let contactTypeName = null;
+        let contactValue = handle.trim();
+
+        // Map social platforms to their corresponding message contact types
+        switch (socialType.name) {
+          case "Facebook":
+            contactTypeName = "FACEBOOK_MESSAGE";
+            // Extract username from Facebook URL or handle
+            contactValue = extractUsernameFromHandle(handle, "facebook");
+            break;
+          case "Instagram":
+            contactTypeName = "INSTAGRAM_MESSAGE";
+            contactValue = extractUsernameFromHandle(handle, "instagram");
+            break;
+          case "LinkedIn":
+            contactTypeName = "LINKEDIN_MESSAGE";
+            contactValue = extractUsernameFromHandle(handle, "linkedin");
+            break;
+          case "Twitter":
+            contactTypeName = "TWITTER_MESSAGE";
+            contactValue = extractUsernameFromHandle(handle, "twitter");
+            break;
+        }
+
+        if (contactTypeName) {
+          // Find the contact type
+          const contactType = await prisma.venueContactType.findFirst({
+            where: { name: contactTypeName },
+          });
+
+          if (contactType) {
+            // Generate URL from template
+            let contactUrl = null;
+            if (contactType.urlTemplate) {
+              contactUrl = contactType.urlTemplate.replace(
+                "{contact}",
+                contactValue
+              );
+            }
+
+            // Create the corresponding contact
+            await prisma.venueContact.create({
+              data: {
+                venueId: venueId,
+                contactTypeId: contactType.id,
+                value: contactValue,
+                label: `${socialType.displayName} Message`,
+                url: contactUrl,
+                isPrimary: false,
+                isActive: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+
+            logger.logInfo(
+              `Auto-created ${contactTypeName} contact for ${socialType.name} social`
+            );
+          }
+        }
+      }
+    } catch (autoError) {
+      // Log automation error but don't fail the main operation
+      logger.logError("Contact automation error", autoError);
+      console.error("Automation error details:", autoError);
+    }
+
+    res.json({ success: true, social });
+  } catch (error) {
+    logger.logError("Add venue social error", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Error adding social media" });
   }
 });
 

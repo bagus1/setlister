@@ -112,9 +112,9 @@
                         <% artists.forEach(artist=> { %>
                             <% 
                             // Filter out artists that only have private songs
-                            const hasPublicSongs = artist.songs && artist.songs.some(songArtist => !songArtist.song.private);
+                            const hasVisibleSongs = artist.songs && artist.songs.some(songArtist => !songArtist.song.private);
                             %>
-                            <% if (hasPublicSongs) { %>
+                            <% if (hasVisibleSongs) { %>
                                 <div class="mb-2">
                                     <a href="/artists/<%= artist.id %>" class="text-decoration-none">
                                         <strong><%= artist.name %></strong>
@@ -142,7 +142,7 @@
                         <h5 class="mb-0">
                             <i class="bi bi-people"></i> Recent Bands
                         </h5>
-                        <small class="text-muted">Public bands on the platform</small>
+                        <small class="text-muted">Bands on the platform</small>
                     </div>
                     <div class="card-body">
                         <% if (bands && bands.length> 0) { %>
@@ -170,7 +170,7 @@
                         <h5 class="mb-0">
                             <i class="bi bi-music-note"></i> Recent Songs
                         </h5>
-                        <small class="text-muted">Public songs from bands on the platform</small>
+                        <small class="text-muted">Latest songs added by users</small>
                     </div>
                     <div class="card-body">
                         <% if (songs && songs.length> 0) { %>
@@ -202,7 +202,7 @@
                         <h5 class="mb-0">
                             <i class="bi bi-person-circle"></i> Recent Artists
                         </h5>
-                        <small class="text-muted">Artists from public songs on the platform</small>
+                        <small class="text-muted">Artists with recent new songs</small>
                     </div>
                     <div class="card-body">
                         <% if (artists && artists.length> 0) { %>

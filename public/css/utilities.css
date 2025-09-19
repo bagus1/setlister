@@ -145,8 +145,8 @@ body {
 
 /* Dark theme for buttons */
 .btn-outline-primary {
-  color: #ffffff !important;
-  border-color: #ffffff !important;
+  color: #0d6efd !important;
+  border-color: #0d6efd !important;
 }
 
 .btn-outline-primary:hover {
@@ -318,6 +318,11 @@ h1 {
 /* Dark theme for close buttons */
 .btn-close {
   filter: invert(1) !important;
+}
+
+/* Navigation background images - match Bootstrap link color */
+.nav-link[style*="background-image"] {
+  filter: hue-rotate(200deg) saturate(1.5) brightness(0.8);
 }
 
 /* ========================================

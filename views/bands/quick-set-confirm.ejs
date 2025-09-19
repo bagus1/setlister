@@ -10,17 +10,12 @@
             </h1>
             <p class="text-muted">
                 <% if (isGoogleDocImport) { %>
-                    Review and confirm songs extracted from Google Doc for <strong><%= band.name %></strong>
+                    Review and confirm songs extracted from Google Doc
                     <br><small class="text-info">Google Doc content will be preserved as gig documents</small>
                 <% } else { %>
-                    Review and confirm song matches for <strong><%= band.name %></strong>
+                    Review and confirm song matches for your setlist
                 <% } %>
             </p>
-        </div>
-        <div>
-            <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Band
-            </a>
         </div>
     </div>
 

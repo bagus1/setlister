@@ -2028,6 +2028,7 @@ router.get("/:id/new-list", async (req, res) => {
     res.render("bands/new-list", {
       title: `Add a List - ${band.name}`,
       band,
+      hasBandHeader: true,
       currentUser: req.session.user,
     });
   } catch (error) {
@@ -2061,6 +2062,7 @@ router.get("/:id/new-doc", async (req, res) => {
     res.render("bands/new-doc", {
       title: `Add a Doc - ${band.name}`,
       band,
+      hasBandHeader: true,
     });
   } catch (error) {
     console.error("New doc page error:", error);
@@ -2140,6 +2142,7 @@ router.get("/:id/songs/new", async (req, res) => {
     res.render("bands/songs/new", {
       title: `Add a Song - ${band.name}`,
       band,
+      hasBandHeader: true,
       artists,
     });
   } catch (error) {
@@ -2353,6 +2356,7 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
         ? `Confirm List - ${band.name}`
         : `Confirm Setlist - ${band.name}`,
       band,
+      hasBandHeader: true,
       setlist,
       sets,
       songMatches,

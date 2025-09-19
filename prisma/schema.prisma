@@ -26,6 +26,8 @@ model User {
   createdSetlists Setlist[]       @relation("SetlistCreator")
   createdVenues  Venue[]          @relation("VenueCreator")
   setlistVersions SetlistVersion[]
+  interactions   Interaction[]
+  opportunities  Opportunity[]
 
   @@map("users")
 }
@@ -64,6 +66,7 @@ model Band {
   venues      BandVenue[]
   creator     User             @relation("BandCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   setlists    Setlist[]
+  opportunities Opportunity[]
 
   @@map("bands")
 }
@@ -469,6 +472,7 @@ model Venue {
   bandVenues  BandVenue[]
   socials     VenueSocial[]
   contacts    VenueContact[]
+  opportunities Opportunity[]
   creator     User?        @relation("VenueCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("venues")
@@ -564,4 +568,53 @@ model VenueContact {
 
   @@unique([venueId, contactTypeId, value])
   @@map("venue_contacts")
+}
+
+model Opportunity {
+  id        Int      @id @default(autoincrement())
+  name      String
+  status    OpportunityStatus @default(PROSPECTING)
+  gigDate   DateTime?
+  offerValue Float?
+  bandId    Int
+  band      Band     @relation(fields: [bandId], references: [id])
+  venueId   Int
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  createdById Int
+  creator   User     @relation(fields: [createdById], references: [id])
+  interactions Interaction[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("opportunities")
+}
+
+model Interaction {
+  id            Int      @id @default(autoincrement())
+  type          InteractionType
+  notes         String   @db.Text
+  interactionDate DateTime
+  opportunityId Int
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@map("interactions")
+}
+
+enum OpportunityStatus {
+  PROSPECTING
+  CONTACTED
+  NEGOTIATING
+  BOOKED
+  ARCHIVED
+}
+
+enum InteractionType {
+  EMAIL
+  PHONE_CALL
+  TEXT
+  IN_PERSON
+  NOTE
 }

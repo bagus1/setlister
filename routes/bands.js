@@ -3411,4 +3411,81 @@ router.post("/:id/venues/:venueId/remove", async (req, res) => {
   }
 });
 
+// GET /bands/:bandId/venues/:venueId - Show a specific venue in the context of a band, with opportunities
+router.get("/:bandId/venues/:venueId", requireAuth, async (req, res) => {
+  try {
+    const { bandId, venueId } = req.params;
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+    });
+    const venue = await prisma.venue.findUnique({
+      where: { id: parseInt(venueId) },
+    });
+
+    if (!band || !venue) {
+      req.flash("error", "Band or Venue not found");
+      return res.redirect("/bands");
+    }
+
+    const opportunities = await prisma.opportunity.findMany({
+      where: {
+        bandId: parseInt(bandId),
+        venueId: parseInt(venueId),
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.render("bands/venue-opportunity", {
+      pageTitle: `${band.name} @ ${venue.name}`,
+      hasBandHeader: false,
+      band,
+      venue,
+      opportunities,
+    });
+  } catch (error) {
+    logger.logError("Band venue opportunity page error:", error);
+    req.flash("error", "An error occurred loading the venue page");
+    res.redirect(`/bands/${req.params.bandId}/venues`);
+  }
+});
+
+// POST /bands/:bandId/venues/:venueId/opportunities - Create a new opportunity
+router.post(
+  "/:bandId/venues/:venueId/opportunities",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { bandId, venueId } = req.params;
+      const { name, interactionType, notes } = req.body;
+      const userId = req.session.user.id;
+
+      const opportunity = await prisma.opportunity.create({
+        data: {
+          name,
+          band: { connect: { id: parseInt(bandId) } },
+          venue: { connect: { id: parseInt(venueId) } },
+          creator: { connect: { id: userId } },
+          interactions: {
+            create: {
+              type: interactionType,
+              notes,
+              interactionDate: new Date(),
+              user: { connect: { id: userId } },
+            },
+          },
+        },
+      });
+
+      req.flash("success", "New opportunity started!");
+      res.redirect(`/bands/${bandId}/venues/${venueId}`);
+    } catch (error) {
+      logger.logError("Create opportunity error:", error);
+      req.flash("error", "An error occurred while starting a new opportunity");
+      res.redirect(`/bands/${req.params.bandId}/venues/${req.params.venueId}`);
+    }
+  }
+);
+
 module.exports = router;

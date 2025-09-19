@@ -1,0 +1,107 @@
+/* ========================================
+   SETLISTER - UTILITY CLASSES
+   ======================================== */
+
+/* ========================================
+   LAYOUT UTILITIES
+   ======================================== */
+
+.custom-gap {
+  gap: 6rem;
+}
+
+@media (min-width: 1200px) {
+  .custom-gap {
+    gap: 12rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .custom-gap {
+    gap: 14.5rem;
+  }
+}
+
+/* ========================================
+   BUTTON UTILITIES
+   ======================================== */
+
+/* Compact pulldown styling */
+.btn-xs {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* ========================================
+   DRAG & DROP UTILITIES
+   ======================================== */
+
+.drag-over {
+  background-color: rgba(0, 123, 255, 0.1) !important;
+  border: 2px dashed #007bff !important;
+}
+
+.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+/* Make setlist songs show they're draggable */
+.setlist-song {
+  cursor: grab;
+}
+
+.setlist-song:active {
+  cursor: grabbing;
+}
+
+/* ========================================
+   VERSION HISTORY UTILITIES
+   ======================================== */
+
+.version-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.version-item {
+  display: block;
+  padding: 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+.version-item:hover {
+  background-color: #f8f9fa;
+  border-color: #007bff;
+  text-decoration: none;
+  color: inherit;
+}
+
+.version-item.current {
+  background-color: #e7f3ff;
+  border-color: #007bff;
+}
+
+.version-header {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.version-meta {
+  font-size: 0.85em;
+  color: #6c757d;
+}
+
+/* ========================================
+   DROPDOWN UTILITIES
+   ======================================== */
+
+.song-extended-panel .dropdown-menu {
+  font-size: 0.8rem;
+}

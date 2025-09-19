@@ -1,0 +1,156 @@
+/* ========================================
+   SETLISTER - MAIN CSS
+   ======================================== */
+
+/* ========================================
+   CORE COMPONENTS
+   ======================================== */
+
+/* Song Card Component */
+.song-card {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 3px 5px;
+  margin: 3px 0;
+  cursor: grab;
+  background: white;
+  transition: all 0.2s;
+}
+
+.song-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.song-card.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.song-card.clickable {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
+}
+
+.song-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Song Card Elements */
+.song-title {
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 2px;
+}
+
+.song-artist {
+  color: #7f8c8d;
+  font-size: 0.9em;
+}
+
+.song-vocalist {
+  color: #e74c3c;
+  font-size: 0.8em;
+}
+
+.song-key {
+  background: #3498db;
+  color: white;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.75em;
+}
+
+.song-time {
+  color: #95a5a6;
+  font-size: 0.75em;
+}
+
+/* Drop Zone Component */
+.drop-zone {
+  min-height: 200px;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 10px 0;
+  background: #f8f9fa;
+  transition: all 0.2s;
+}
+
+.drop-zone.drag-over {
+  border-color: #007bff;
+  background: #e3f2fd;
+}
+
+.drop-zone.has-songs {
+  border-style: solid;
+  background: white;
+}
+
+/* Set Header Component */
+.set-header {
+  background: #495057;
+  color: white;
+  padding: 10px;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 0;
+  font-weight: bold;
+}
+
+.set-time {
+  float: right;
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+.maybe-header {
+  background: #6c757d;
+}
+
+/* ========================================
+   LAYOUT UTILITIES
+   ======================================== */
+
+/* Fixed band songs panel for desktop */
+@media (min-width: 768px) {
+  .band-songs-fixed {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+}
+
+/* ========================================
+   BOOTSTRAP OVERRIDES
+   ======================================== */
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.btn-outline-primary:hover {
+  color: white;
+}
+
+/* ========================================
+   SPECIAL COMPONENTS
+   ======================================== */
+
+.special-border-card {
+  border: 30px solid transparent;
+  padding: 15px;
+  border-image-slice: 30;
+  border-image-source: url("../images/square5.png");
+  border-image-repeat: repeat;
+  border-radius: 25px;
+  -webkit-border-radius: 25px;
+}

@@ -1,20 +1,5 @@
 <div class="row">
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2><%= band.name %> - Venues</h2>
-                <p class="text-muted">Manage venues for your band</p>
-            </div>
-            <div>
-                <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-primary">
-                    <i class="bi bi-plus"></i> Add Venues
-                </a>
-                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Band
-                </a>
-            </div>
-        </div>
-
         <% if (bandVenues && bandVenues.length > 0) { %>
             <div class="row">
                 <% bandVenues.forEach(bandVenue => { %>

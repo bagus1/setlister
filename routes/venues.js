@@ -17,7 +17,7 @@ router.get("/", async (req, res) => {
     });
 
     res.render("venues/index", {
-      title: "Venues",
+      pageTitle: "Venues",
       venues,
       loggedIn: !!req.session.user,
     });
@@ -276,7 +276,7 @@ router.get("/:id", async (req, res) => {
     }
 
     res.render("venues/show", {
-      title: venue.name,
+      pageTitle: venue.name,
       venue,
       loggedIn: !!req.session.user,
       currentUser: req.session.user,

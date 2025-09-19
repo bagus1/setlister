@@ -3252,13 +3252,13 @@ router.get("/:id/venues", async (req, res) => {
     });
 
     res.render("bands/venues", {
-      title: `${band.name} - Venues`,
+      pageTitle: "Let's Get Gigging",
       band,
+      hasBandHeader: false,
       bandVenues,
-      loggedIn: !!req.session.user,
     });
   } catch (error) {
-    console.error("Band venues error:", error);
+    logger.logError("Band venues error:", error);
     req.flash("error", "An error occurred loading band venues");
     res.redirect("/bands");
   }
@@ -3307,13 +3307,14 @@ router.get("/:id/venue-picker", async (req, res) => {
     const bandVenueIds = bandVenues.map((bv) => bv.venueId);
 
     res.render("bands/venue-picker", {
-      title: `${band.name} - Venues`,
+      pageTitle: "Venue Picker",
       band,
+      hasBandHeader: false,
       allVenues,
       bandVenueIds,
     });
   } catch (error) {
-    console.error("Band venue picker error:", error);
+    logger.logError("Band venue picker error:", error);
     req.flash("error", "An error occurred loading band venues");
     res.redirect(`/bands/${req.params.id}`);
   }

@@ -86,32 +86,14 @@
     }
 </style>
 
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1>
-                    <%= band.name %> - Venues
-                </h1>
-                <p class="text-muted">Pick venues you are playing at or want to play at</p>
-            </div>
-            <div>
-                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Band
-                </a>
-                <a href="/venues" class="btn btn-outline-primary ms-2">
-                    <i class="bi bi-building"></i> View All Venues
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex gap-2">
             <a href="/venues/new" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Add Venue
+            </a>
+            <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-primary ms-2">
+                <i class="bi bi-building"></i> View Our Venues
             </a>
         </div>
     </div>

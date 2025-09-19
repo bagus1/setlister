@@ -1,33 +1,4 @@
 <div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1><%= venue.name %></h1>
-                <% if (venue.city && venue.state) { %>
-                    <p class="text-muted">
-                        <i class="bi bi-geo-alt"></i> <%= venue.city %>, <%= venue.state %>
-                    </p>
-                <% } else if (venue.city) { %>
-                    <p class="text-muted">
-                        <i class="bi bi-geo-alt"></i> <%= venue.city %>
-                    </p>
-                <% } %>
-            </div>
-            <div>
-                <a href="/venues" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Venues
-                </a>
-                <% if (loggedIn && currentUser && venue.createdById === currentUser.id) { %>
-                    <a href="/venues/<%= venue.id %>/edit" class="btn btn-primary ms-2">
-                        <i class="bi bi-pencil"></i> Edit Venue
-                    </a>
-                <% } %>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
     <div class="col-md-8">
         <div class="card mb-4">
             <div class="card-header">
@@ -38,10 +9,11 @@
                     <% if (venue.address) { %>
                         <div class="col-md-6 mb-3">
                             <strong>Address:</strong><br>
-                            <%= venue.address %>
-                            <% if (venue.zipCode) { %>
-                                <br><%= venue.zipCode %>
-                            <% } %>
+                            <%= venue.address %><br>
+                            <% if (venue.city) { %><%= venue.city %><% } %>
+                            <% if (venue.city && venue.state) { %>, <% } %>
+                            <% if (venue.state) { %><%= venue.state %><% } %>
+                            <% if (venue.zipCode) { %> <%= venue.zipCode %><% } %>
                         </div>
                     <% } %>
                     

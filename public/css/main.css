@@ -8,12 +8,12 @@
 
 /* Song Card Component */
 .song-card {
-  border: 1px solid #ddd;
+  border: 1px solid #333333;
   border-radius: 4px;
-  padding: 3px 5px;
+  /* padding: 3px 5px; */
   margin: 3px 0;
   cursor: grab;
-  background: white;
+  /* background: white; */
   transition: all 0.2s;
 }
 
@@ -76,18 +76,18 @@
   border-radius: 8px;
   padding: 20px;
   margin: 10px 0;
-  background: #f8f9fa;
+  /* background: #f8f9fa; */
   transition: all 0.2s;
 }
 
 .drop-zone.drag-over {
   border-color: #007bff;
-  background: #e3f2fd;
+  /* background: #e3f2fd; */
 }
 
 .drop-zone.has-songs {
   border-style: solid;
-  background: white;
+  /* background: white; */
 }
 
 /* Set Header Component */

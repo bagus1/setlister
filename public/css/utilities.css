@@ -107,6 +107,216 @@
 }
 
 /* ========================================
+   DARK THEME STYLES
+   ======================================== */
+
+body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Override Bootstrap's default backgrounds */
+.container,
+.container-fluid {
+  background-color: transparent !important;
+}
+
+/* Dark theme for cards */
+.card {
+  background-color: #1a1a1a !important;
+  border-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.card-header {
+  background-color: #2d2d2d !important;
+  border-bottom-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+.card-body {
+  color: #ffffff !important;
+}
+
+/* Dark theme for navbar */
+.navbar-dark {
+  background-color: #000000 !important;
+}
+
+/* Dark theme for buttons */
+.btn-outline-primary {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.btn-outline-secondary {
+  color: #cccccc !important;
+  border-color: #cccccc !important;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #cccccc !important;
+  color: #000000 !important;
+}
+
+.btn-outline-success {
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
+
+.btn-outline-success:hover {
+  background-color: #00ff00 !important;
+  color: #000000 !important;
+}
+
+/* Dark theme for form elements */
+.form-control {
+  background-color: #2d2d2d !important;
+  border-color: #555555 !important;
+  color: #ffffff !important;
+}
+
+.form-control:focus {
+  background-color: #2d2d2d !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+}
+
+.form-select {
+  background-color: #2d2d2d !important;
+  border-color: #555555 !important;
+  color: #ffffff !important;
+}
+
+.form-select:focus {
+  background-color: #2d2d2d !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Dark theme for text */
+.text-muted {
+  color: #aaaaaa !important;
+}
+
+.text-dark {
+  color: #ffffff !important;
+}
+
+/* Dark theme for alerts */
+.alert-success {
+  background-color: #1a4d1a !important;
+  border-color: #2d5a2d !important;
+  color: #ffffff !important;
+}
+
+.alert-danger {
+  background-color: #4d1a1a !important;
+  border-color: #5a2d2d !important;
+  color: #ffffff !important;
+}
+
+/* Dark theme for tables */
+.table {
+  color: #ffffff !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td,
+.table-striped > tbody > tr:nth-of-type(odd) > th {
+  background-color: #2d2d2d !important;
+}
+
+/* Dark theme for dropdowns */
+.dropdown-menu {
+  background-color: #1a1a1a !important;
+  border-color: #333333 !important;
+}
+
+.dropdown-item {
+  color: #ffffff !important;
+}
+
+.dropdown-item:hover {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+}
+
+/* Dark theme for modals */
+.modal-content {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.modal-header {
+  border-bottom-color: #333333 !important;
+}
+
+.modal-footer {
+  border-top-color: #333333 !important;
+}
+
+/* Dark theme for pagination */
+.page-link {
+  background-color: #2d2d2d !important;
+  border-color: #555555 !important;
+  color: #ffffff !important;
+}
+
+.page-link:hover {
+  background-color: #404040 !important;
+  border-color: #777777 !important;
+  color: #ffffff !important;
+}
+
+.page-item.active .page-link {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Dark theme for badges */
+.badge {
+  color: #000000 !important;
+}
+
+/* Dark theme for list groups */
+.list-group-item {
+  background-color: #2d2d2d !important;
+  border-color: #555555 !important;
+  color: #ffffff !important;
+}
+
+.list-group-item:hover {
+  background-color: #404040 !important;
+}
+
+/* Dark theme for progress bars */
+.progress {
+  background-color: #2d2d2d !important;
+}
+
+/* Dark theme for breadcrumbs */
+.breadcrumb {
+  background-color: #2d2d2d !important;
+}
+
+.breadcrumb-item a {
+  color: #ffffff !important;
+}
+
+/* Dark theme for close buttons */
+.btn-close {
+  filter: invert(1) !important;
+}
+
+/* ========================================
    MARQUEE HEADER STYLES
    ======================================== */
 
@@ -117,6 +327,7 @@
   background-size: contain;
   background-position: center;
   background-repeat: repeat-x;
+  background-color: white !important;
 }
 
 .marquee-header h2 {

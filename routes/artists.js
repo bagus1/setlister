@@ -7,36 +7,19 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     const artists = await prisma.artist.findMany({
+      include: {
+        _count: {
+          select: { songs: true },
+        },
+      },
       orderBy: { name: "asc" },
     });
 
-    // Get song counts for each artist using a separate query
-    const artistsWithCounts = await Promise.all(
-      artists.map(async (artist) => {
-        const songCount = await prisma.songArtist.count({
-          where: { artistId: artist.id },
-        });
-        return {
-          ...artist,
-          songCount,
-        };
-      })
-    );
-
-    console.log(
-      "Artists with counts:",
-      artistsWithCounts.map((a) => ({ name: a.name, songCount: a.songCount }))
-    );
-
-    // Debug first artist structure
-    if (artistsWithCounts.length > 0) {
-      const firstArtist = artistsWithCounts[0];
-      console.log("First artist structure:", {
-        id: firstArtist.id,
-        name: firstArtist.name,
-        songCount: firstArtist.songCount,
-      });
-    }
+    // Transform the data to match the expected format 'songCount'
+    const artistsWithCounts = artists.map((artist) => ({
+      ...artist,
+      songCount: artist._count.songs,
+    }));
 
     res.render("artists/index", {
       title: "Artists",

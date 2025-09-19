@@ -68,6 +68,7 @@ router.get("/:id", async (req, res) => {
 
     res.render("artists/show", {
       title: artist.name,
+      pageTitle: artist.name,
       artist,
       loggedIn: !!req.session.user,
     });

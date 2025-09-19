@@ -87,6 +87,36 @@ app.set("layout", "layout");
 // Routes
 app.use("/auth", authRoutes);
 app.use("/routes", require("./routes/routes"));
+
+// Public all-bands route (no auth required)
+app.get("/all-bands", async (req, res) => {
+  try {
+    const { prisma } = require("./lib/prisma");
+    const bands = await prisma.band.findMany({
+      include: {
+        _count: {
+          select: {
+            songs: true,
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    res.render("bands/public", {
+      title: "Bands",
+      pageTitle: "Bands",
+      bands,
+    });
+  } catch (error) {
+    console.error("Error fetching public bands:", error);
+    res.status(500).render("error", {
+      title: "Error",
+      message: "Failed to load bands",
+    });
+  }
+});
+
 app.use("/", dashboardRoutes);
 app.use("/bands", bandRoutes);
 app.use("/artists", artistRoutes);

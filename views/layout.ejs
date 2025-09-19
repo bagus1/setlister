@@ -22,70 +22,76 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-music-note-list"></i> Setlist Manager
-            </a>
-
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <% if (user) { %>
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <!-- Center navigation group -->
+                    <ul class="navbar-nav mx-auto d-flex align-items-center" style="gap: 2rem;">
+                        <% if (user) { %>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/bands">My Bands</a>
+                            </li>
+                        <% } else { %>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/all-bands">Bands</a>
+                            </li>
+                        <% } %>
                         <li class="nav-item">
-                            <a class="nav-link" href="/bands">My Bands</a>
+                            <a class="nav-link" href="/songs">Songs</a>
                         </li>
-                    <% } %>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/songs">Songs</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/artists">Artists</a>
-                    </li>
-                    <!-- <li class="nav-item">
-                        <a class="nav-link" href="/medleys">Medleys</a>
-                    </li> -->
-                    <li class="nav-item">
-                        <a class="nav-link"
-                            href="https://bagus.org/setlists-manager/setlists-manager-tutorial.html"
-                            target="_blank">Tutorial</a>
-                    </li>
-                </ul>
-
-                <ul class="navbar-nav">
-                    <% if (user) { %>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                                data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle"></i>
-                                <%= user.username %>
+                        <li class="nav-item">
+                            <a class="nav-link navbar-brand" href="/" style="color: inherit; text-decoration: none; font-weight: bold;">
+                                <i class="bi bi-music-note-list"></i> Setlist Manager
                             </a>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a class="dropdown-item" href="/admin/whitelist-requests">
-                                        <i class="bi bi-shield-check"></i> Manage Whitelist Requests
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form action="/auth/logout" method="POST" class="d-inline">
-                                        <button type="submit" class="dropdown-item">
-                                            <i class="bi bi-box-arrow-right"></i> Sign Out
-                                        </button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </li>
-                    <% } else { %>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/auth/register">Register</a>
+                            <a class="nav-link" href="/artists">Artists</a>
                         </li>
-                    <% } %>
-                </ul>
+                        <li class="nav-item">
+                            <a class="nav-link"
+                                href="https://bagus.org/setlists-manager/setlists-manager-tutorial.html"
+                                target="_blank">Tutorial</a>
+                        </li>
+                    </ul>
+
+                    <!-- Profile dropdown - far right -->
+                    <ul class="navbar-nav">
+                        <% if (user) { %>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                                    data-bs-toggle="dropdown">
+                                    <i class="bi bi-person-circle"></i>
+                                    <%= user.username %>
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="/admin/whitelist-requests">
+                                            <i class="bi bi-shield-check"></i> Manage Whitelist Requests
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form action="/auth/logout" method="POST" class="d-inline">
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="bi bi-box-arrow-right"></i> Sign Out
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        <% } else { %>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/auth/login?returnTo=<%= encodeURIComponent(currentUrl) %>">Login</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/auth/register">Register</a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>

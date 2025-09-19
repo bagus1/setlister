@@ -210,6 +210,10 @@ body {
   color: #ffffff !important;
 }
 
+h1 {
+  color: #aaaaaa !important;
+}
+
 /* Dark theme for alerts */
 .alert-success {
   background-color: #1a4d1a !important;
@@ -328,6 +332,10 @@ body {
   background-position: center;
   background-repeat: repeat-x;
   background-color: white !important;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .marquee-header h2 {

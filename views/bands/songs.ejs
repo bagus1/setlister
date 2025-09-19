@@ -106,32 +106,6 @@
 
 <div class="row">
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1>
-                    <%= band.name %> - Songs
-                </h1>
-                <p class="text-muted">Manage which songs this band plays</p>
-            </div>
-            <div>
-                <% if (fromSetlist) { %>
-                    <a href="/setlists/<%= fromSetlist.id %>/edit" class="btn btn-primary">
-                        <i class="bi bi-arrow-left"></i> Back to Setlist
-                    </a>
-                    <% } %>
-                        <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
-                            <i class="bi bi-arrow-left"></i> Back to Band
-                        </a>
-                        <a href="/songs" class="btn btn-outline-primary ms-2">
-                            <i class="bi bi-music-note-list"></i> View All Songs
-                        </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-12">
         <div class="card mb-4">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-3">
@@ -262,7 +236,7 @@
             <a href="/songs/new" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Add Song
             </a>
-            <a href="/songs/bulk-add" class="btn btn-success">
+            <a href="/bulk-add-songs" class="btn btn-success">
                 <i class="bi bi-collection"></i> Bulk Add Songs
             </a>
         </div>

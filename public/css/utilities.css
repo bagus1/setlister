@@ -355,3 +355,8 @@ h1 {
     1px -1px 0 #990000,
     -1px 1px 0 #990000;
 }
+
+.marquee-container {
+  margin: 0 20px 0 20px;
+  width: auto;
+}

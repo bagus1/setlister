@@ -155,7 +155,7 @@ router.get("/new", requireAuth, async (req, res) => {
     });
 
     res.render("songs/new", {
-      title: "Add New Song",
+      pageTitle: "Add a Song",
       artists,
       vocalists,
     });

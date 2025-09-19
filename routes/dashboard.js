@@ -98,7 +98,7 @@ router.get("/", async (req, res) => {
 
       res.render("dashboard/index", {
         title: "Dashboard",
-        pageTitle: "Dashboard",
+        pageTitle: `Welcome, ${req.session.user.username}`,
         loggedIn: true,
         user: req.session.user,
         userBands,

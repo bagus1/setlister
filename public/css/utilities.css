@@ -322,7 +322,7 @@ h1 {
 
 /* Navigation background images - match Bootstrap link color */
 .nav-link[style*="background-image"] {
-  filter: hue-rotate(200deg) saturate(1.5) brightness(0.8);
+  filter: hue-rotate(0deg) saturate(2) brightness(0.8);
 }
 
 /* ========================================
@@ -347,7 +347,7 @@ h1 {
   font-family: "TW Cen MT Condensed Bold", "Arial Narrow", Arial, sans-serif;
   font-weight: bold;
   font-size: 3em;
-  letter-spacing: 1.5px;
+  letter-spacing: 3px;
   color: #cc0000 !important;
   text-shadow:
     1px 1px 0 #990000,

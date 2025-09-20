@@ -1,0 +1,101 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="/bands/<%= bandId %>/opportunities/<%= opportunityId %>" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-arrow-left"></i> Back to Opportunity
+                </a>
+                <a href="/bands/<%= bandId %>/opportunities/<%= opportunityId %>/interactions/new" class="btn btn-outline-secondary">
+                    <i class="bi bi-plus-circle"></i> New Interaction
+                </a>
+            </div>
+            <div>
+                <small class="text-muted">
+                    Interaction #<%= interaction.id %>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-dots"></i> Interaction Details
+                </h5>
+                <small class="text-muted">
+                    <%= interaction.opportunity.name %> - <%= interaction.opportunity.venue.name %>
+                </small>
+            </div>
+            <div class="card-body">
+                <!-- Interaction Meta -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Interaction Type</h6>
+                        <p class="text-capitalize"><%= interaction.type %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Date & Time</h6>
+                        <p><%= new Date(interaction.interactionDate).toLocaleString() %></p>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <% if (interaction.outcome) { %>
+                    <div class="mb-4">
+                        <h6>Outcome</h6>
+                        <span class="badge bg-<%= interaction.outcome === 'BOOKED' ? 'success' : interaction.outcome === 'POSITIVE' ? 'success' : interaction.outcome === 'FOLLOW_UP' ? 'warning' : interaction.outcome === 'DECLINED' ? 'danger' : 'secondary' %> fs-6">
+                            <%= interaction.outcome %>
+                        </span>
+                    </div>
+                <% } %>
+
+                <!-- Previous Response -->
+                <% if (interaction.previousResponse) { %>
+                    <div class="mb-4">
+                        <h6>Previous Response from Venue</h6>
+                        <div class="p-3 bg-info bg-opacity-10 rounded">
+                            <p class="mb-0 fst-italic">"<%= interaction.previousResponse %>"</p>
+                        </div>
+                    </div>
+                <% } %>
+
+                <!-- Our Message -->
+                <% if (interaction.messageContent) { %>
+                    <div class="mb-4">
+                        <h6>Our Response</h6>
+                        <div class="p-3 bg-light rounded">
+                            <p class="mb-0"><%= interaction.messageContent %></p>
+                        </div>
+                    </div>
+                <% } %>
+
+                <!-- Notes -->
+                <% if (interaction.notes) { %>
+                    <div class="mb-4">
+                        <h6>Notes</h6>
+                        <p><%= interaction.notes %></p>
+                    </div>
+                <% } %>
+
+                <!-- Next Steps -->
+                <% if (interaction.nextSteps) { %>
+                    <div class="mb-4">
+                        <h6>Next Steps</h6>
+                        <p><%= interaction.nextSteps %></p>
+                    </div>
+                <% } %>
+
+                <!-- Created By -->
+                <div class="border-top pt-3 mt-4">
+                    <div class="d-flex justify-content-between text-muted">
+                        <span>Created by <%= interaction.user.username %></span>
+                        <span><%= new Date(interaction.createdAt).toLocaleString() %></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

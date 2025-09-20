@@ -166,7 +166,33 @@
                     <div class="mb-3">
                         <label for="previousResponse" class="form-label">Paste in the venue's latest message</label>
                         <textarea class="form-control" id="previousResponse" name="previousResponse" rows="3"></textarea>
-                        <div class="form-text">Help us understand the context so we can craft the perfect response!</div>
+                    </div>
+
+                    <!-- Purpose of Interaction -->
+                    <div class="mb-3">
+                        <label for="outcome" class="form-label">Purpose of Interaction</label>
+                        <select class="form-select" id="outcome" name="outcome" required>
+                            <option value="">Purpose</option>
+                            <option value="FIRST_CONTACT">First Contact - Made initial contact</option>
+                            <option value="FOLLOWING_UP">Following Up - Continuing conversation</option>
+                            <option value="SCHEDULING">Scheduling - Working out dates</option>
+                            <option value="NEGOTIATING">Negotiating - Discussing terms</option>
+                            <option value="AWAITING_CONFIRMATION">Awaiting Confirmation - Waiting for final approval</option>
+                            <option value="BOOKED">Booked - Gig confirmed!</option>
+                            <option value="DETAILS">Details - Working out gig specifics</option>
+                            <option value="DECLINED">Declined - They said no</option>
+                            <option value="REJECTED">Rejected - Not interested</option>
+                            <option value="NO_RESPONSE">No Response - Haven't heard back</option>
+                            <option value="CANCELLED">Cancelled - Gig was cancelled</option>
+                            <option value="NOT_INTERESTED">Not Interested - We declined</option>
+                        </select>
+                    </div>
+
+                    <!-- Gig Date (appears when BOOKED is selected) -->
+                    <div id="gig-date-field" class="mb-3" style="display: none;">
+                        <label for="gigDate" class="form-label">Gig Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="gigDate" name="gigDate">
+                        <div class="form-text">When is this gig scheduled?</div>
                     </div>
 
                     <!-- Your Response Message -->
@@ -184,34 +210,6 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Outcome -->
-                    <div class="mb-3">
-                        <label for="outcome" class="form-label">Outcome</label>
-                        <select class="form-select" id="outcome" name="outcome" required>
-                            <option value="">Select outcome</option>
-                            <option value="CONTACTED">Contacted - Made initial contact</option>
-                            <option value="POSITIVE">Positive - Good response</option>
-                            <option value="INTERESTED">Interested - They want to book us</option>
-                            <option value="FOLLOW_UP">Follow-up needed</option>
-                            <option value="COUNTER_OFFER">Counter offer received</option>
-                            <option value="SCHEDULING">Scheduling in progress</option>
-                            <option value="AWAITING_CONFIRMATION">Awaiting confirmation</option>
-                            <option value="BOOKED">Booked - Gig confirmed!</option>
-                            <option value="DECLINED">Declined - They said no</option>
-                            <option value="REJECTED">Rejected - Not interested</option>
-                            <option value="NO_RESPONSE">No response received</option>
-                            <option value="CANCELLED">Cancelled</option>
-                            <option value="NOT_INTERESTED">Not interested</option>
-                        </select>
-                    </div>
-
-                    <!-- Gig Date (appears when BOOKED is selected) -->
-                    <div id="gig-date-field" class="mb-3" style="display: none;">
-                        <label for="gigDate" class="form-label">Gig Date <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control" id="gigDate" name="gigDate">
-                        <div class="form-text">When is this gig scheduled?</div>
                     </div>
 
                     <!-- Interaction Date -->
@@ -267,62 +265,44 @@
                     <div class="timeline">
                         <% opportunity.interactions.forEach((interaction, index) => { %>
                             <div class="timeline-item <%= index === 0 ? 'latest' : '' %>">
-                                <div class="timeline-marker">
-                                    <i class="bi bi-circle-fill text-<%= getStatusColor(interaction.outcome) %>"></i>
-                                </div>
-                                <div class="timeline-content">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <div>
-                                            <strong class="text-capitalize"><%= interaction.type %></strong>
-                                            <% if (interaction.outcome) { %>
-                                                <span class="badge bg-<%= getStatusColor(interaction.outcome) %> ms-2">
-                                                    <%= interaction.outcome %>
-                                                </span>
-                                            <% } %>
-                                        </div>
-                                        <small class="text-muted">
-                                            <%= new Date(interaction.interactionDate).toLocaleDateString() %>
-                                        </small>
+                                <div class="timeline-content" onclick="window.open('/bands/<%= bandId %>/opportunities/<%= opportunity.id %>/interactions/<%= interaction.id %>', '_blank')" style="cursor: pointer; padding: 12px;">
+                                    <!-- Date - Type -->
+                                    <div class="small text-muted mb-2">
+                                        <%= new Date(interaction.interactionDate).toLocaleDateString() %> - <%= interaction.type %>
                                     </div>
                                     
+                                    <!-- Status (centered) -->
+                                    <% if (interaction.outcome) { %>
+                                        <div class="text-center mb-2">
+                                            <span class="badge bg-<%= getStatusColor(interaction.outcome) %> small">
+                                                <%= interaction.outcome %>
+                                            </span>
+                                        </div>
+                                    <% } %>
+                                    
+                                    <!-- Client said -->
                                     <% if (interaction.previousResponse) { %>
                                         <div class="mb-2">
-                                            <strong>Previous Response:</strong>
-                                            <div class="text-muted small" style="font-style: italic;">
-                                                "<%= interaction.previousResponse.length > 150 ? interaction.previousResponse.substring(0, 150) + '...' : interaction.previousResponse %>"
+                                            <div class="small text-muted">Client said:</div>
+                                            <div class="small text-muted fst-italic">
+                                                <%= interaction.previousResponse.length > 80 ? interaction.previousResponse.substring(0, 80) + '...' : interaction.previousResponse %>
                                             </div>
                                         </div>
                                     <% } %>
                                     
+                                    <!-- Our response -->
                                     <% if (interaction.messageContent) { %>
                                         <div class="mb-2">
-                                            <strong>Message:</strong>
-                                            <div class="text-muted small">
-                                                "<%= interaction.messageContent.length > 150 ? interaction.messageContent.substring(0, 150) + '...' : interaction.messageContent %>"
+                                            <div class="small text-muted">Our response:</div>
+                                            <div class="small text-muted">
+                                                <%= interaction.messageContent.length > 80 ? interaction.messageContent.substring(0, 80) + '...' : interaction.messageContent %>
                                             </div>
                                         </div>
                                     <% } %>
                                     
-                                    <% if (interaction.notes) { %>
-                                        <div class="mb-2">
-                                            <strong>Notes:</strong>
-                                            <div class="text-muted small">
-                                                <%= interaction.notes.length > 100 ? interaction.notes.substring(0, 100) + '...' : interaction.notes %>
-                                            </div>
-                                        </div>
-                                    <% } %>
-                                    
-                                    <% if (interaction.nextSteps) { %>
-                                        <div class="mb-2">
-                                            <strong>Next Steps:</strong>
-                                            <div class="text-muted small">
-                                                <%= interaction.nextSteps %>
-                                            </div>
-                                        </div>
-                                    <% } %>
-                                    
-                                    <div class="text-muted small">
-                                        By <%= interaction.user.username %>
+                                    <!-- By user -->
+                                    <div class="small text-muted text-end">
+                                        by <%= interaction.user.username %>
                                     </div>
                                 </div>
                             </div>
@@ -389,7 +369,6 @@ function getOpportunityStatusColor(status) {
 <style>
 .timeline {
     position: relative;
-    padding-left: 30px;
 }
 
 .timeline-item {
@@ -407,40 +386,67 @@ function getOpportunityStatusColor(status) {
 
 .timeline-item.latest {
     background-color: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 2px solid #28a745;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
 }
 
-.timeline-marker {
-    position: absolute;
-    left: -30px;
-    top: 5px;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.timeline-marker::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 20px;
-    bottom: -20px;
-    width: 2px;
-    background-color: #dee2e6;
-    z-index: -1;
-}
-
-.timeline-item:last-child .timeline-marker::before {
-    display: none;
+.timeline-item.latest:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
 
 .timeline-content {
-    padding-left: 10px;
+    position: relative;
 }
+
+.timeline-content .badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+
+.timeline-content .text-capitalize {
+    font-weight: 600;
+    color: #495057;
+}
+
+.timeline-content .text-muted.small {
+    line-height: 1.4;
+    margin-top: 0.5rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .timeline-item.latest {
+        background-color: #343a40;
+        border-color: #28a745;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    
+    .timeline-item.latest:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    
+    .timeline-content .text-capitalize {
+        color: #e9ecef;
+    }
+    
+    .timeline-content .text-muted.small {
+        color: #adb5bd !important;
+    }
+    
+    .timeline-content .text-muted {
+        color: #adb5bd !important;
+    }
+    
+    .timeline-content strong {
+        color: #f8f9fa;
+    }
+}
+
+
+
 
 @media (max-width: 991px) {
     .col-lg-3, .col-lg-6 {

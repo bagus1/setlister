@@ -1733,6 +1733,47 @@ restore_dbackup_local() {
     print_status "  Users: $user_count"
     print_status "  Songs: $song_count"
     print_status "  Song-Artist relationships: $song_artist_count"
+    
+    # Step 6: Regenerate Prisma client and apply schema changes
+    print_status "Step 6: Updating local development environment..."
+    
+    print_status "Regenerating Prisma client..."
+    npx prisma generate || {
+        print_warning "Failed to regenerate Prisma client"
+    }
+    
+    print_status "Applying schema changes to local database..."
+    npx prisma db push || {
+        print_warning "Failed to apply schema changes with prisma db push"
+    }
+    
+    # Step 7: Run seeding scripts
+    print_status "Step 7: Running local seeding scripts..."
+    
+    # Check if seeding directory exists
+    if [ -d "prisma/seeds" ]; then
+        print_status "Found seeding directory, running SQL scripts..."
+        
+        # Load environment variables
+        export $(cat .env | grep -v '^#' | xargs)
+        
+        # Run all SQL files in the seeds directory
+        for sql_file in prisma/seeds/*.sql; do
+            if [ -f "$sql_file" ]; then
+                local filename=$(basename "$sql_file")
+                print_status "Running: $filename"
+                PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -f "$sql_file" || {
+                    print_warning "Failed to run $filename (continuing with other scripts)"
+                }
+            fi
+        done
+        
+        print_success "Local seeding completed"
+    else
+        print_status "No seeding directory found (prisma/seeds), skipping seeding"
+    fi
+    
+    print_success "Local development environment fully updated!"
 }
 
 # Function to restore production backup locally (step-by-step)

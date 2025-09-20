@@ -203,6 +203,23 @@ router.get("/:id", async (req, res) => {
       take: 3,
     });
 
+    // Get upcoming gigs (next 3)
+    const upcomingGigs = await prisma.gig.findMany({
+      where: {
+        bandId: parseInt(bandId),
+        gigDate: {
+          gte: new Date(),
+        },
+      },
+      include: {
+        venue: true,
+      },
+      orderBy: {
+        gigDate: "asc",
+      },
+      take: 3,
+    });
+
     // Get pending invitations (not used, not expired)
     let pendingInvitations = [];
     try {
@@ -248,6 +265,7 @@ router.get("/:id", async (req, res) => {
       setlists,
       bandSongs,
       bandVenues,
+      upcomingGigs,
       pendingInvitations,
       userId,
     });
@@ -3410,7 +3428,7 @@ router.get("/:id/venues", async (req, res) => {
     });
 
     res.render("bands/venues", {
-      pageTitle: "Let's Get Gigging",
+      pageTitle: "Get Booked",
       band,
       hasBandHeader: false,
       bandVenues,
@@ -3419,6 +3437,481 @@ router.get("/:id/venues", async (req, res) => {
     logger.logError("Band venues error:", error);
     req.flash("error", "An error occurred loading band venues");
     res.redirect("/bands");
+  }
+});
+
+// GET /bands/:id/gigs - Show band's gigs
+router.get("/:id/gigs", requireAuth, async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Get band with gigs
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+      include: {
+        gigs: {
+          include: {
+            venue: true,
+            opportunity: true,
+          },
+          orderBy: {
+            gigDate: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    res.render("bands/gigs", {
+      pageTitle: `${band.name} Gigs`,
+      band,
+      hasBandHeader: false,
+    });
+  } catch (error) {
+    logger.logError("Band gigs error:", error);
+    req.flash("error", "An error occurred loading band gigs");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// GET /bands/:id/gigs/new - Show new gig form
+router.get("/:id/gigs/new", requireAuth, async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Get band with venues
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+      include: {
+        venues: {
+          include: {
+            venue: true,
+          },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    res.render("bands/gig-new", {
+      pageTitle: `New Gig - ${band.name}`,
+      band,
+      hasBandHeader: false,
+    });
+  } catch (error) {
+    logger.logError("New gig form error:", error);
+    req.flash("error", "An error occurred loading the new gig form");
+    res.redirect(`/bands/${req.params.id}/gigs`);
+  }
+});
+
+// GET /bands/:id/gigs/:gigId - Show individual gig
+router.get("/:id/gigs/:gigId", requireAuth, async (req, res) => {
+  try {
+    const { id: bandId, gigId } = req.params;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Get gig with all details
+    const gig = await prisma.gig.findFirst({
+      where: { 
+        id: parseInt(gigId),
+        bandId: parseInt(bandId)
+      },
+      include: {
+        venue: {
+          include: {
+            venueType: true,
+            contacts: {
+              include: {
+                contactType: true,
+              },
+            },
+          },
+        },
+        band: true,
+        opportunity: {
+          include: {
+            interactions: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    username: true,
+                  },
+                },
+              },
+              orderBy: {
+                interactionDate: 'desc',
+              },
+              take: 5, // Show latest 5 interactions
+            },
+          },
+        },
+      },
+    });
+
+    if (!gig) {
+      req.flash("error", "Gig not found");
+      return res.redirect(`/bands/${bandId}/gigs`);
+    }
+
+    res.render("bands/gig-detail", {
+      pageTitle: gig.name,
+      band: gig.band,
+      gig,
+      hasBandHeader: false,
+    });
+  } catch (error) {
+    logger.logError("Gig detail error:", error);
+    req.flash("error", "An error occurred loading the gig");
+    res.redirect(`/bands/${req.params.id}/gigs`);
+  }
+});
+
+// GET /bands/:id/gigs/:gigId/edit - Show gig edit form
+router.get("/:id/gigs/:gigId/edit", requireAuth, async (req, res) => {
+  try {
+    const { id: bandId, gigId } = req.params;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Get gig with venues
+    const gig = await prisma.gig.findFirst({
+      where: { 
+        id: parseInt(gigId),
+        bandId: parseInt(bandId)
+      },
+      include: {
+        venue: true,
+        band: {
+          include: {
+            venues: {
+              include: {
+                venue: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!gig) {
+      req.flash("error", "Gig not found");
+      return res.redirect(`/bands/${bandId}/gigs`);
+    }
+
+    res.render("bands/gig-edit", {
+      pageTitle: `Edit ${gig.name}`,
+      band: gig.band,
+      gig,
+      hasBandHeader: false,
+    });
+  } catch (error) {
+    logger.logError("Gig edit form error:", error);
+    req.flash("error", "An error occurred loading the gig edit form");
+    res.redirect(`/bands/${req.params.id}/gigs/${req.params.gigId}`);
+  }
+});
+
+// POST /bands/:id/gigs/:gigId - Update gig
+router.post("/:id/gigs/:gigId", requireAuth, [
+  body("name").notEmpty().withMessage("Gig name is required"),
+  body("gigDate").notEmpty().withMessage("Gig date is required").isISO8601().withMessage("Invalid date format"),
+  body("venueId").notEmpty().withMessage("Venue is required").isInt().withMessage("Invalid venue"),
+  body("fee").optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage("Fee must be a positive number"),
+  body("loadInTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid load-in time format"),
+  body("soundCheckTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid sound check time format"),
+  body("startTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid start time format"),
+  body("endTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid end time format"),
+], async (req, res) => {
+  try {
+    const { id: bandId, gigId } = req.params;
+    const userId = req.session.user.id;
+
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      req.flash("error", errors.array()[0].msg);
+      return res.redirect(`/bands/${bandId}/gigs/${gigId}/edit`);
+    }
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Verify gig exists and belongs to band
+    const existingGig = await prisma.gig.findFirst({
+      where: { 
+        id: parseInt(gigId),
+        bandId: parseInt(bandId)
+      },
+    });
+
+    if (!existingGig) {
+      req.flash("error", "Gig not found");
+      return res.redirect(`/bands/${bandId}/gigs`);
+    }
+
+    const { name, gigDate, venueId, fee, loadInTime, soundCheckTime, startTime, endTime, notes, status, ticketLink, facebookEventLink } = req.body;
+
+    // Convert time strings to DateTime objects if provided
+    const gigDateTime = new Date(gigDate);
+    const loadInDateTime = loadInTime ? new Date(`${gigDate}T${loadInTime}:00`) : null;
+    const soundCheckDateTime = soundCheckTime ? new Date(`${gigDate}T${soundCheckTime}:00`) : null;
+    const startDateTime = startTime ? new Date(`${gigDate}T${startTime}:00`) : null;
+    const endDateTime = endTime ? new Date(`${gigDate}T${endTime}:00`) : null;
+
+    // Update the gig
+    await prisma.gig.update({
+      where: { id: parseInt(gigId) },
+      data: {
+        name,
+        gigDate: gigDateTime,
+        venueId: parseInt(venueId),
+        fee: fee ? parseFloat(fee) : null,
+        loadInTime: loadInDateTime,
+        soundCheckTime: soundCheckDateTime,
+        startTime: startDateTime,
+        endTime: endDateTime,
+        notes: notes || null,
+        ticketLink: ticketLink || null,
+        facebookEventLink: facebookEventLink || null,
+        status: status || 'CONFIRMED',
+      },
+    });
+
+    req.flash("success", "Gig updated successfully!");
+    res.redirect(`/bands/${bandId}/gigs/${gigId}`);
+  } catch (error) {
+    logger.logError("Update gig error:", error);
+    req.flash("error", "An error occurred while updating the gig");
+    res.redirect(`/bands/${req.params.id}/gigs/${req.params.gigId}/edit`);
+  }
+});
+
+// DELETE /bands/:id/gigs/:gigId - Delete gig
+router.delete("/:id/gigs/:gigId", requireAuth, async (req, res) => {
+  try {
+    const { id: bandId, gigId } = req.params;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Verify gig exists and belongs to band
+    const gig = await prisma.gig.findFirst({
+      where: { 
+        id: parseInt(gigId),
+        bandId: parseInt(bandId)
+      },
+    });
+
+    if (!gig) {
+      req.flash("error", "Gig not found");
+      return res.redirect(`/bands/${bandId}/gigs`);
+    }
+
+    // Delete the gig
+    await prisma.gig.delete({
+      where: { id: parseInt(gigId) },
+    });
+
+    req.flash("success", "Gig deleted successfully!");
+    res.redirect(`/bands/${bandId}/gigs`);
+  } catch (error) {
+    logger.logError("Delete gig error:", error);
+    req.flash("error", "An error occurred while deleting the gig");
+    res.redirect(`/bands/${req.params.id}/gigs/${req.params.gigId}`);
+  }
+});
+
+// POST /bands/:id/gigs/:gigId/delete - Workaround for DELETE requests (form compatibility)
+router.post("/:id/gigs/:gigId/delete", requireAuth, async (req, res) => {
+  try {
+    const { id: bandId, gigId } = req.params;
+    const userId = req.session.user.id;
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Verify gig exists and belongs to band
+    const gig = await prisma.gig.findFirst({
+      where: { 
+        id: parseInt(gigId),
+        bandId: parseInt(bandId)
+      },
+    });
+
+    if (!gig) {
+      req.flash("error", "Gig not found");
+      return res.redirect(`/bands/${bandId}/gigs`);
+    }
+
+    // Delete the gig
+    await prisma.gig.delete({
+      where: { id: parseInt(gigId) },
+    });
+
+    req.flash("success", "Gig deleted successfully!");
+    res.redirect(`/bands/${bandId}/gigs`);
+  } catch (error) {
+    logger.logError("Delete gig error:", error);
+    req.flash("error", "An error occurred while deleting the gig");
+    res.redirect(`/bands/${req.params.id}/gigs/${req.params.gigId}`);
+  }
+});
+
+// POST /bands/:id/gigs - Create new gig
+router.post("/:id/gigs", requireAuth, [
+  body("name").notEmpty().withMessage("Gig name is required"),
+  body("gigDate").notEmpty().withMessage("Gig date is required").isISO8601().withMessage("Invalid date format"),
+  body("venueId").notEmpty().withMessage("Venue is required").isInt().withMessage("Invalid venue"),
+  body("fee").optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage("Fee must be a positive number"),
+  body("loadInTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid load-in time format"),
+  body("soundCheckTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid sound check time format"),
+  body("startTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid start time format"),
+  body("endTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid end time format"),
+], async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+    
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      req.flash("error", errors.array().map(error => error.msg).join(", "));
+      return res.redirect(`/bands/${bandId}/gigs/new`);
+    }
+
+    // Check if user is a member
+    const membership = await prisma.bandMember.findFirst({
+      where: { bandId: parseInt(bandId), userId },
+    });
+
+    if (!membership) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    const { name, gigDate, venueId, fee, loadInTime, soundCheckTime, startTime, endTime, notes, ticketLink, facebookEventLink } = req.body;
+
+    // Verify venue belongs to band
+    const bandVenue = await prisma.bandVenue.findFirst({
+      where: {
+        bandId: parseInt(bandId),
+        venueId: parseInt(venueId),
+      },
+    });
+
+    if (!bandVenue) {
+      req.flash("error", "Selected venue is not associated with this band");
+      return res.redirect(`/bands/${bandId}/gigs/new`);
+    }
+
+    // Helper function to combine date with time
+    const combineDateTime = (dateString, timeString) => {
+      if (!timeString) return null;
+      const date = new Date(dateString);
+      const [hours, minutes] = timeString.split(':');
+      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return date;
+    };
+
+    // Create the gig
+    const gig = await prisma.gig.create({
+      data: {
+        name: name.trim(),
+        gigDate: new Date(gigDate),
+        loadInTime: combineDateTime(gigDate, loadInTime),
+        soundCheckTime: combineDateTime(gigDate, soundCheckTime),
+        startTime: combineDateTime(gigDate, startTime),
+        endTime: combineDateTime(gigDate, endTime),
+        fee: fee ? parseFloat(fee) : null,
+        notes: notes ? notes.trim() : null,
+        ticketLink: ticketLink ? ticketLink.trim() : null,
+        facebookEventLink: facebookEventLink ? facebookEventLink.trim() : null,
+        status: 'CONFIRMED',
+        bandId: parseInt(bandId),
+        venueId: parseInt(venueId),
+      },
+    });
+
+    logger.logInfo(`Created gig ${gig.id} for band ${bandId}`);
+    req.flash("success", "Gig created successfully!");
+    res.redirect(`/bands/${bandId}/gigs`);
+
+  } catch (error) {
+    logger.logError("Create gig error:", error);
+    req.flash("error", "An error occurred creating the gig");
+    res.redirect(`/bands/${req.params.id}/gigs/new`);
   }
 });
 
@@ -3465,7 +3958,7 @@ router.get("/:id/venue-picker", async (req, res) => {
     const bandVenueIds = bandVenues.map((bv) => bv.venueId);
 
     res.render("bands/venue-picker", {
-      pageTitle: "Venue Picker",
+      pageTitle: `${band.name} Venue Picker`,
       band,
       hasBandHeader: false,
       allVenues,
@@ -3986,6 +4479,76 @@ router.get(
   }
 );
 
+// Get individual interaction detail
+router.get(
+  "/:bandId/opportunities/:opportunityId/interactions/:interactionId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { bandId, opportunityId, interactionId } = req.params;
+      const userId = req.session.user.id;
+
+      // Validate interactionId
+      if (!interactionId || isNaN(parseInt(interactionId))) {
+        req.flash("error", "Invalid interaction ID");
+        return res.redirect(`/bands/${bandId}/opportunities/${opportunityId}`);
+      }
+
+      // Get interaction with all related data
+      const interaction = await prisma.interaction.findUnique({
+        where: { id: parseInt(interactionId) },
+        include: {
+          opportunity: {
+            include: {
+              band: {
+                include: {
+                  members: {
+                    include: {
+                      user: {
+                        select: { id: true },
+                      },
+                    },
+                  },
+                },
+              },
+              venue: true,
+            },
+          },
+          user: {
+            select: { id: true, username: true },
+          },
+        },
+      });
+
+      if (!interaction) {
+        req.flash("error", "Interaction not found");
+        return res.redirect(`/bands/${bandId}/opportunities/${opportunityId}`);
+      }
+
+      // Check if user is a member of the band
+      const isMember = interaction.opportunity.band.members.some(
+        (member) => member.user.id === userId
+      );
+      if (!isMember) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
+
+      res.render("bands/interaction-detail", {
+        pageTitle: `${interaction.opportunity.band.name} @ ${interaction.opportunity.venue.name}`,
+        hasBandHeader: false,
+        interaction,
+        bandId,
+        opportunityId,
+      });
+    } catch (error) {
+      logger.logError("Get interaction detail error:", error);
+      req.flash("error", "An error occurred while loading the interaction");
+      res.redirect(`/bands/${req.params.bandId}/opportunities/${req.params.opportunityId}`);
+    }
+  }
+);
+
 // POST /bands/:bandId/opportunities/:opportunityId/interactions - Create new interaction
 router.post(
   "/:bandId/opportunities/:opportunityId/interactions",
@@ -4073,11 +4636,32 @@ router.post(
         
         // Only update if there's something to update
         if (Object.keys(updateData).length > 0) {
-          await prisma.opportunity.update({
+          const updatedOpportunity = await prisma.opportunity.update({
             where: { id: parseInt(opportunityId) },
             data: updateData,
+            include: {
+              band: true,
+              venue: true,
+              gig: true,
+            },
           });
           logger.logInfo(`Updated opportunity ${opportunityId} - Status: ${updateData.status || 'unchanged'}, Gig Date: ${updateData.gigDate || 'unchanged'}`);
+          
+          // Create gig record if status is BOOKED and gigDate is set, and no gig exists yet
+          if (updatedOpportunity.status === 'BOOKED' && updatedOpportunity.gigDate && !updatedOpportunity.gig) {
+            const gig = await prisma.gig.create({
+              data: {
+                name: updatedOpportunity.name,
+                gigDate: updatedOpportunity.gigDate,
+                bandId: updatedOpportunity.bandId,
+                venueId: updatedOpportunity.venueId,
+                opportunityId: updatedOpportunity.id,
+                fee: updatedOpportunity.offerValue,
+                status: 'CONFIRMED',
+              },
+            });
+            logger.logInfo(`Created gig ${gig.id} for opportunity ${opportunityId}`);
+          }
         }
       }
 

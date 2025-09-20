@@ -73,6 +73,7 @@ model Band {
   creator      User             @relation("BandCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   setlists     Setlist[]
   opportunities Opportunity[]
+  gigs         Gig[]
 
   @@map("bands")
 }
@@ -479,6 +480,7 @@ model Venue {
   socials     VenueSocial[]
   contacts    VenueContact[]
   opportunities Opportunity[]
+  gigs        Gig[]
   creator     User?        @relation("VenueCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("venues")
@@ -589,6 +591,7 @@ model Opportunity {
   createdById Int
   creator   User     @relation(fields: [createdById], references: [id])
   interactions Interaction[]
+  gig       Gig?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -620,5 +623,40 @@ enum OpportunityStatus {
   NEED_CONFIRMATION
   BOOKED
   ARCHIVED
+}
+
+model Gig {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  gigDate     DateTime @map("gig_date")
+  loadInTime  DateTime? @map("load_in_time")
+  soundCheckTime DateTime? @map("sound_check_time")
+  startTime   DateTime? @map("start_time")
+  endTime     DateTime? @map("end_time")
+  fee         Float?
+  notes       String?  @db.Text
+  ticketLink  String?  @map("ticket_link") @db.VarChar(500)
+  facebookEventLink String? @map("facebook_event_link") @db.VarChar(500)
+  status      GigStatus @default(CONFIRMED)
+  
+  // Relationships
+  bandId      Int      @map("band_id")
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  venueId     Int      @map("venue_id")
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  opportunityId Int?   @unique @map("opportunity_id")
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("gigs")
+}
+
+enum GigStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+  COMPLETED
 }
 

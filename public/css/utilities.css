@@ -360,3 +360,8 @@ h1 {
   margin: 0 20px 0 20px;
   width: auto;
 }
+
+/* Make form-text the same color as text-muted */
+.form-text {
+  color: var(--bs-secondary) !important;
+}

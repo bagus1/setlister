@@ -1,5 +1,60 @@
--- Seed script for venue contact types and social types
+-- Seed script for venue types, venue contact types and social types
 -- Run this script against your production database to populate the tables
+
+-- Insert venue types (idempotent)
+INSERT INTO venue_types (name, description, is_active, sort_order, created_at, updated_at) VALUES
+('AMPHITHEATER', 'Amphitheater', true, 1, NOW(), NOW()),
+('ARENA', 'Arena', true, 2, NOW(), NOW()),
+('ARTS_CENTER', 'Arts Center', true, 3, NOW(), NOW()),
+('ARTS_FESTIVAL', 'Arts Festival', true, 4, NOW(), NOW()),
+('BALLROOM', 'Ballroom', true, 5, NOW(), NOW()),
+('BAR_PUB_TAVERN', 'Bar/Pub/Tavern/Saloon/Lounge', true, 6, NOW(), NOW()),
+('BAR_RESTAURANT', 'Bar/Restaurant', true, 7, NOW(), NOW()),
+('BAR_VENUE', 'Bar/Venue', true, 8, NOW(), NOW()),
+('BEER_GARDEN', 'Beer Garden', true, 9, NOW(), NOW()),
+('BLOCK_PARTY', 'Block Party', true, 10, NOW(), NOW()),
+('BREWERY', 'Brewery', true, 11, NOW(), NOW()),
+('BOWLING_ALLEY', 'Bowling Alley', true, 12, NOW(), NOW()),
+('CAFE_COFFEEHOUSE', 'Cafe/Coffeehouse', true, 13, NOW(), NOW()),
+('CAFE_VENUE', 'Cafe/Venue', true, 14, NOW(), NOW()),
+('CHURCH', 'Church', true, 15, NOW(), NOW()),
+('CIDERY', 'Cidery', true, 16, NOW(), NOW()),
+('CIVIC_COMMUNITY', 'Civic/Community Center', true, 17, NOW(), NOW()),
+('CLUB', 'Club', true, 18, NOW(), NOW()),
+('CONCERT_HALL', 'Concert Hall', true, 19, NOW(), NOW()),
+('CONVENTION_CENTER', 'Convention Center', true, 20, NOW(), NOW()),
+('DISTILLERY', 'Distillery', true, 21, NOW(), NOW()),
+('DIY_VENUE', 'DIY Venue', true, 22, NOW(), NOW()),
+('EVENT_SPACE', 'Event Space', true, 23, NOW(), NOW()),
+('FESTIVAL_GROUNDS', 'Festival Grounds', true, 24, NOW(), NOW()),
+('GALLERY', 'Gallery', true, 25, NOW(), NOW()),
+('HOUSE_CONCERT', 'House Concert', true, 26, NOW(), NOW()),
+('JAZZ_CLUB', 'Jazz Club', true, 27, NOW(), NOW()),
+('LISTENING_ROOM', 'Listening Room', true, 28, NOW(), NOW()),
+('LODGE_RESORT', 'Lodge/Resort', true, 29, NOW(), NOW()),
+('MUSEUM', 'Museum', true, 30, NOW(), NOW()),
+('MUSIC_HALL', 'Music Hall', true, 31, NOW(), NOW()),
+('MUSIC_VENUE', 'Music Venue', true, 32, NOW(), NOW()),
+('OPEN_FIELD', 'Open Field', true, 33, NOW(), NOW()),
+('OTHER', 'Other', true, 34, NOW(), NOW()),
+('OUTDOOR_VENUE', 'Outdoor Venue', true, 35, NOW(), NOW()),
+('PARKING_LOT', 'Parking Lot', true, 36, NOW(), NOW()),
+('PERFORMING_ARTS', 'Performing Arts Center', true, 37, NOW(), NOW()),
+('PRIVATE', 'Private', true, 38, NOW(), NOW()),
+('RESTAURANT', 'Restaurant', true, 39, NOW(), NOW()),
+('ROADHOUSE', 'Roadhouse', true, 40, NOW(), NOW()),
+('SCHOOL_VENUE', 'School Venue', true, 41, NOW(), NOW()),
+('SPORTS_BAR', 'Sports Bar', true, 42, NOW(), NOW()),
+('STADIUM', 'Stadium', true, 43, NOW(), NOW()),
+('THEATER', 'Theater', true, 44, NOW(), NOW()),
+('THEATER_VENUE', 'Theater/Venue', true, 45, NOW(), NOW()),
+('WINE_BAR', 'Wine Bar', true, 46, NOW(), NOW()),
+('WINERY', 'Winery', true, 47, NOW(), NOW())
+ON CONFLICT (name) DO UPDATE SET
+    description = EXCLUDED.description,
+    is_active = EXCLUDED.is_active,
+    sort_order = EXCLUDED.sort_order,
+    updated_at = NOW();
 
 -- Insert venue contact types (idempotent)
 INSERT INTO venue_contact_types (name, "displayName", "iconClass", "urlTemplate", is_active, sort_order, created_at, updated_at) VALUES

@@ -59,7 +59,7 @@
                             <div class="contact-entry mb-2">
                                 <div class="row">
                                     <div class="col-md-3">
-                                        <select class="form-select" name="contactTypes[]" required>
+                                        <select class="form-select" name="contactTypes[]">
                                             <option value="">Select Type</option>
                                             <% if (contactTypes && contactTypes.length > 0) { %>
                                                 <% contactTypes.forEach(contactType => { %>
@@ -72,7 +72,7 @@
                                     </div>
                                     <div class="col-md-4">
                                         <input type="text" class="form-control" name="contactValues[]" 
-                                               placeholder="Phone number" required>
+                                               placeholder="Phone number">
                                     </div>
                                     <div class="col-md-3">
                                         <input type="text" class="form-control" name="contactLabels[]" 
@@ -234,7 +234,7 @@
                             <div class="social-media-entry mb-2">
                                 <div class="row">
                                     <div class="col-md-4">
-                                        <select class="form-select" name="socialPlatforms[]" required>
+                                        <select class="form-select" name="socialPlatforms[]">
                                             <option value="">Select Platform</option>
                                             <% if (socialTypes && socialTypes.length > 0) { %>
                                                 <% socialTypes.forEach(socialType => { %>
@@ -247,7 +247,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <input type="text" class="form-control" name="socialHandles[]" 
-                                               placeholder="@username or page name" required>
+                                               placeholder="@username or page name">
                                     </div>
                                     <div class="col-md-2">
                                         <button type="button" class="btn btn-outline-danger btn-sm remove-social" style="display: none;">
@@ -324,13 +324,13 @@
             newEntry.innerHTML = `
                 <div class="row">
                     <div class="col-md-3">
-                        <select class="form-select" name="contactTypes[]" required>
+                        <select class="form-select" name="contactTypes[]">
                             ${optionsHtml}
                         </select>
                     </div>
                     <div class="col-md-4">
                         <input type="text" class="form-control" name="contactValues[]" 
-                               placeholder="Phone, email, handle, etc." required>
+                               placeholder="Phone, email, handle, etc.">
                     </div>
                     <div class="col-md-3">
                         <input type="text" class="form-control" name="contactLabels[]" 
@@ -362,13 +362,13 @@
             newEntry.innerHTML = `
                 <div class="row">
                     <div class="col-md-4">
-                        <select class="form-select" name="socialPlatforms[]" required>
+                        <select class="form-select" name="socialPlatforms[]">
                             ${optionsHtml}
                         </select>
                     </div>
                     <div class="col-md-6">
                         <input type="text" class="form-control" name="socialHandles[]" 
-                               placeholder="@username or page name" required>
+                               placeholder="@username or page name">
                     </div>
                     <div class="col-md-2">
                         <button type="button" class="btn btn-outline-danger btn-sm remove-social">
@@ -462,7 +462,19 @@
                         // Find the social type to get URL template
                         const socialType = socialTypes.find(st => st.id == platformId);
                         if (socialType && socialType.urlTemplate) {
-                            const url = socialType.urlTemplate.replace("{handle}", handle);
+                            // Clean the handle to remove any existing URLs
+                            let cleanHandle = handle.trim();
+                            if (cleanHandle.includes('facebook.com/')) {
+                                // Extract just the username from a full Facebook URL
+                                cleanHandle = cleanHandle.split('facebook.com/').pop().replace(/\/$/, '');
+                            } else if (cleanHandle.includes('instagram.com/')) {
+                                // Extract just the username from a full Instagram URL
+                                cleanHandle = cleanHandle.split('instagram.com/').pop().replace(/\/$/, '');
+                            } else if (cleanHandle.includes('twitter.com/')) {
+                                // Extract just the username from a full Twitter URL
+                                cleanHandle = cleanHandle.split('twitter.com/').pop().replace(/\/$/, '');
+                            }
+                            const url = socialType.urlTemplate.replace("{contact}", cleanHandle);
                             
                             // Store URL in a hidden field for later use
                             let urlInput = this.closest(".social-media-entry").querySelector("input[name=\"socialUrls[]\"]");

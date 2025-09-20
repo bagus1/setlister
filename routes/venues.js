@@ -60,6 +60,64 @@ function extractUsernameFromHandle(handle, platform) {
   return cleanHandle;
 }
 
+// Helper function to create corresponding contact when adding social media
+async function createCorrespondingContact(venueId, socialType, handle) {
+  let contactTypeName = null;
+  let contactValue = handle.trim();
+
+  // Map social platforms to their corresponding message contact types
+  switch (socialType.name) {
+    case "Facebook":
+      contactTypeName = "FACEBOOK_MESSAGE";
+      contactValue = extractUsernameFromHandle(handle, "facebook");
+      break;
+    case "Instagram":
+      contactTypeName = "INSTAGRAM_MESSAGE";
+      contactValue = extractUsernameFromHandle(handle, "instagram");
+      break;
+    case "LinkedIn":
+      contactTypeName = "LINKEDIN_MESSAGE";
+      contactValue = extractUsernameFromHandle(handle, "linkedin");
+      break;
+    case "Twitter":
+      contactTypeName = "TWITTER_MESSAGE";
+      contactValue = extractUsernameFromHandle(handle, "twitter");
+      break;
+  }
+
+  if (contactTypeName) {
+    // Find the contact type
+    const contactType = await prisma.venueContactType.findFirst({
+      where: { name: contactTypeName },
+    });
+
+    if (contactType) {
+      // Generate URL from template
+      let contactUrl = null;
+      if (contactType.urlTemplate) {
+        contactUrl = contactType.urlTemplate.replace("{contact}", contactValue);
+      }
+
+      // Create the corresponding contact
+      await prisma.venueContact.create({
+        data: {
+          venueId: venueId,
+          contactTypeId: contactType.id,
+          value: contactValue,
+          url: contactUrl,
+          label: `${socialType.name} Message`,
+          isPrimary: false,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+    }
+  } else {
+  }
+}
+
 // GET /venues - Show all venues
 router.get("/", async (req, res) => {
   try {
@@ -228,7 +286,7 @@ router.post(
             venueId: venue.id,
             contactTypeId: parseInt(typeId),
             value: contactValues[index]?.trim() || "",
-            url: contactUrls[index]?.trim() || null,
+            url: contactUrls?.[index]?.trim() || null,
             label: contactLabels[index]?.trim() || null,
             isPrimary: index === 0, // First contact is primary
             isActive: true,
@@ -251,7 +309,7 @@ router.post(
             venueId: venue.id,
             socialTypeId: parseInt(platformId),
             handle: socialHandles[index]?.trim() || "",
-            url: socialUrls[index]?.trim() || null,
+            url: socialUrls?.[index]?.trim() || null,
             isActive: true,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -262,6 +320,29 @@ router.post(
           await prisma.venueSocial.createMany({
             data: socialData,
           });
+
+          // Create corresponding contacts for messaging platforms
+          for (const social of socialData) {
+            try {
+              const socialType = await prisma.venueSocialType.findUnique({
+                where: { id: social.socialTypeId },
+              });
+
+              if (socialType) {
+                await createCorrespondingContact(
+                  venue.id,
+                  socialType,
+                  social.handle
+                );
+              }
+            } catch (autoError) {
+              // Log automation error but don't fail the main operation
+              logger.logError(
+                "Contact automation error during venue creation",
+                autoError
+              );
+            }
+          }
         }
       }
 
@@ -642,66 +723,9 @@ router.post("/:id/socials", requireAuth, async (req, res) => {
       });
 
       if (socialType) {
-        let contactTypeName = null;
-        let contactValue = handle.trim();
-
-        // Map social platforms to their corresponding message contact types
-        switch (socialType.name) {
-          case "Facebook":
-            contactTypeName = "FACEBOOK_MESSAGE";
-            // Extract username from Facebook URL or handle
-            contactValue = extractUsernameFromHandle(handle, "facebook");
-            break;
-          case "Instagram":
-            contactTypeName = "INSTAGRAM_MESSAGE";
-            contactValue = extractUsernameFromHandle(handle, "instagram");
-            break;
-          case "LinkedIn":
-            contactTypeName = "LINKEDIN_MESSAGE";
-            contactValue = extractUsernameFromHandle(handle, "linkedin");
-            break;
-          case "Twitter":
-            contactTypeName = "TWITTER_MESSAGE";
-            contactValue = extractUsernameFromHandle(handle, "twitter");
-            break;
-        }
-
-        if (contactTypeName) {
-          // Find the contact type
-          const contactType = await prisma.venueContactType.findFirst({
-            where: { name: contactTypeName },
-          });
-
-          if (contactType) {
-            // Generate URL from template
-            let contactUrl = null;
-            if (contactType.urlTemplate) {
-              contactUrl = contactType.urlTemplate.replace(
-                "{contact}",
-                contactValue
-              );
-            }
-
-            // Create the corresponding contact
-            await prisma.venueContact.create({
-              data: {
-                venueId: venueId,
-                contactTypeId: contactType.id,
-                value: contactValue,
-                label: `${socialType.displayName} Message`,
-                url: contactUrl,
-                isPrimary: false,
-                isActive: true,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            });
-
-            logger.logInfo(
-              `Auto-created ${contactTypeName} contact for ${socialType.name} social`
-            );
-          }
-        }
+        // Create corresponding contact using shared function
+        await createCorrespondingContact(venueId, socialType, handle);
+        logger.logInfo(`Auto-created contact for ${socialType.name} social`);
       }
     } catch (autoError) {
       // Log automation error but don't fail the main operation

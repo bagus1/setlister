@@ -3651,19 +3651,17 @@ router.post(
           band: { connect: { id: parseInt(bandId) } },
           venue: { connect: { id: parseInt(venueId) } },
           creator: { connect: { id: userId } },
-          interactions: {
-            create: {
-              type: mappedInteractionType,
-              notes,
-              interactionDate: new Date(),
-              user: { connect: { id: userId } },
-            },
-          },
         },
       });
 
-      req.flash("success", "New opportunity started!");
-      res.redirect(`/bands/${bandId}/venues/${venueId}`);
+      // Redirect to interaction form with the interaction type as a parameter
+      req.flash(
+        "success",
+        "New opportunity started! Now let's log your first interaction."
+      );
+      res.redirect(
+        `/bands/${bandId}/opportunities/${opportunity.id}/interactions/new?type=${encodeURIComponent(interactionType)}`
+      );
     } catch (error) {
       logger.logError("Create opportunity error:", error);
       req.flash("error", "An error occurred while starting a new opportunity");
@@ -3671,5 +3669,554 @@ router.post(
     }
   }
 );
+
+// GET /bands/:bandId/opportunities/:opportunityId - Show individual opportunity detail
+router.get(
+  "/:bandId/opportunities/:opportunityId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { bandId, opportunityId } = req.params;
+      const userId = req.session.user.id;
+
+      // Get opportunity with all related data
+      const opportunity = await prisma.opportunity.findUnique({
+        where: { id: parseInt(opportunityId) },
+        include: {
+          band: {
+            include: {
+              members: {
+                include: {
+                  user: {
+                    select: { id: true, username: true },
+                  },
+                },
+              },
+            },
+          },
+          venue: {
+            include: {
+              venueType: true,
+              contacts: {
+                include: {
+                  contactType: true,
+                },
+              },
+              socials: {
+                include: {
+                  socialType: true,
+                },
+              },
+            },
+          },
+          interactions: {
+            include: {
+              user: {
+                select: { username: true },
+              },
+            },
+            orderBy: {
+              interactionDate: "desc",
+            },
+          },
+          creator: {
+            select: { username: true },
+          },
+        },
+      });
+
+      if (!opportunity) {
+        req.flash("error", "Opportunity not found");
+        return res.redirect(`/bands/${bandId}/venues`);
+      }
+
+      // Check if user is a member of the band
+      const isMember = opportunity.band.members.some(
+        (member) => member.user.id === userId
+      );
+      if (!isMember) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
+
+      res.render("bands/opportunity-detail", {
+        pageTitle: `${opportunity.name} - ${opportunity.venue.name}`,
+        hasBandHeader: false,
+        opportunity,
+        bandId,
+      });
+    } catch (error) {
+      logger.logError("Opportunity detail error:", error);
+      req.flash("error", "An error occurred loading the opportunity");
+      res.redirect(`/bands/${req.params.bandId}/venues`);
+    }
+  }
+);
+
+// GET /bands/:bandId/opportunities/:opportunityId/edit - Show edit opportunity form
+router.get(
+  "/:bandId/opportunities/:opportunityId/edit",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { bandId, opportunityId } = req.params;
+      const userId = req.session.user.id;
+
+      // Get opportunity with basic data
+      const opportunity = await prisma.opportunity.findUnique({
+        where: { id: parseInt(opportunityId) },
+        include: {
+          band: {
+            include: {
+              members: {
+                include: {
+                  user: {
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
+          venue: true,
+        },
+      });
+
+      if (!opportunity) {
+        req.flash("error", "Opportunity not found");
+        return res.redirect(`/bands/${bandId}/venues`);
+      }
+
+      // Check if user is a member of the band
+      const isMember = opportunity.band.members.some(
+        (member) => member.user.id === userId
+      );
+      if (!isMember) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
+
+      res.render("bands/opportunity-edit", {
+        pageTitle: `Edit ${opportunity.name}`,
+        hasBandHeader: false,
+        opportunity,
+        bandId,
+      });
+    } catch (error) {
+      logger.logError("Edit opportunity form error:", error);
+      req.flash("error", "An error occurred loading the edit form");
+      res.redirect(
+        `/bands/${req.params.bandId}/opportunities/${req.params.opportunityId}`
+      );
+    }
+  }
+);
+
+// POST /bands/:bandId/opportunities/:opportunityId/update - Update opportunity
+router.post(
+  "/:bandId/opportunities/:opportunityId/update",
+  requireAuth,
+  [
+    body("name")
+      .trim()
+      .isLength({ min: 1 })
+      .withMessage("Opportunity name is required"),
+    body("status")
+      .isIn(["PROSPECTING", "CONTACTED", "NEGOTIATING", "BOOKED", "ARCHIVED"])
+      .withMessage("Invalid status"),
+    body("gigDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid gig date format"),
+    body("offerValue")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Offer value must be a positive number"),
+  ],
+  async (req, res) => {
+    try {
+      const { bandId, opportunityId } = req.params;
+      const { name, status, gigDate, offerValue } = req.body;
+      const userId = req.session.user.id;
+
+      // Verify opportunity exists and user has access
+      const opportunity = await prisma.opportunity.findUnique({
+        where: { id: parseInt(opportunityId) },
+        include: {
+          band: {
+            include: {
+              members: {
+                include: {
+                  user: {
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!opportunity) {
+        req.flash("error", "Opportunity not found");
+        return res.redirect(`/bands/${bandId}/venues`);
+      }
+
+      // Check if user is a member of the band
+      const isMember = opportunity.band.members.some(
+        (member) => member.user.id === userId
+      );
+      if (!isMember) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.render("bands/opportunity-edit", {
+          pageTitle: `Edit ${opportunity.name}`,
+          hasBandHeader: false,
+          opportunity,
+          bandId,
+          errors: errors.array(),
+          name: req.body.name,
+          status: req.body.status,
+          gigDate: req.body.gigDate,
+          offerValue: req.body.offerValue,
+        });
+      }
+
+      // Update the opportunity
+      await prisma.opportunity.update({
+        where: { id: parseInt(opportunityId) },
+        data: {
+          name: name.trim(),
+          status: status,
+          gigDate: gigDate ? new Date(gigDate) : null,
+          offerValue: offerValue ? parseFloat(offerValue) : null,
+          updatedAt: new Date(),
+        },
+      });
+
+      req.flash("success", "Opportunity updated successfully!");
+      res.redirect(`/bands/${bandId}/opportunities/${opportunityId}`);
+    } catch (error) {
+      logger.logError("Update opportunity error:", error);
+      req.flash("error", "An error occurred updating the opportunity");
+      res.redirect(
+        `/bands/${req.params.bandId}/opportunities/${req.params.opportunityId}/edit`
+      );
+    }
+  }
+);
+
+// GET /bands/:bandId/opportunities/:opportunityId/interactions/new - Show new interaction form
+router.get(
+  "/:bandId/opportunities/:opportunityId/interactions/new",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { bandId, opportunityId } = req.params;
+      const interactionType = req.query.type;
+      const userId = req.session.user.id;
+
+      // Verify opportunity exists and user has access
+      const opportunity = await prisma.opportunity.findUnique({
+        where: { id: parseInt(opportunityId) },
+        include: {
+          band: {
+            include: {
+              members: {
+                include: {
+                  user: {
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
+          venue: {
+            include: {
+              contacts: {
+                include: {
+                  contactType: true,
+                },
+              },
+            },
+          },
+          interactions: {
+            include: {
+              user: {
+                select: { id: true, username: true },
+              },
+            },
+            orderBy: {
+              interactionDate: 'desc',
+            },
+          },
+        },
+      });
+
+      if (!opportunity) {
+        req.flash("error", "Opportunity not found");
+        return res.redirect(`/bands/${bandId}/venues`);
+      }
+
+      // Check if user is a member of the band
+      const isMember = opportunity.band.members.some(
+        (member) => member.user.id === userId
+      );
+      if (!isMember) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
+
+      res.render("bands/interaction-new", {
+        pageTitle: `Log Interaction - ${opportunity.name}`,
+        hasBandHeader: false,
+        opportunity,
+        interactionType,
+        bandId,
+      });
+    } catch (error) {
+      logger.logError("Interaction form error:", error);
+      req.flash("error", "An error occurred loading the interaction form");
+      res.redirect(`/bands/${req.params.bandId}/venues`);
+    }
+  }
+);
+
+// POST /bands/:bandId/opportunities/:opportunityId/interactions - Create new interaction
+router.post(
+  "/:bandId/opportunities/:opportunityId/interactions",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { bandId, opportunityId } = req.params;
+      const {
+        type,
+        interactionDate,
+        notes,
+        outcome,
+        nextSteps,
+        messageContent,
+        previousResponse,
+      } = req.body;
+      const userId = req.session.user.id;
+
+      // Verify opportunity exists and user has access
+      const opportunity = await prisma.opportunity.findUnique({
+        where: { id: parseInt(opportunityId) },
+        include: {
+          band: {
+            include: {
+              members: {
+                include: {
+                  user: {
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!opportunity) {
+        req.flash("error", "Opportunity not found");
+        return res.redirect(`/bands/${bandId}/venues`);
+      }
+
+      // Check if user is a member of the band
+      const isMember = opportunity.band.members.some(
+        (member) => member.user.id === userId
+      );
+      if (!isMember) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
+
+      // Use the type directly (should match venue_contact_types.name)
+      const interactionType = type || "NOTE";
+
+      // Create the interaction
+      const interaction = await prisma.interaction.create({
+        data: {
+          type: interactionType,
+          notes: notes.trim(),
+          messageContent: messageContent?.trim() || null,
+          previousResponse: previousResponse?.trim() || null,
+          outcome: outcome || null,
+          nextSteps: nextSteps?.trim() || null,
+          interactionDate: new Date(interactionDate),
+          opportunity: { connect: { id: parseInt(opportunityId) } },
+          user: { connect: { id: userId } },
+          createdAt: new Date(),
+        },
+      });
+
+      // Update opportunity status based on interaction outcome
+      if (outcome) {
+        const newOpportunityStatus = mapOutcomeToOpportunityStatus(outcome);
+        if (newOpportunityStatus && newOpportunityStatus !== opportunity.status) {
+          await prisma.opportunity.update({
+            where: { id: parseInt(opportunityId) },
+            data: { status: newOpportunityStatus },
+          });
+          logger.logInfo(`Updated opportunity ${opportunityId} status from ${opportunity.status} to ${newOpportunityStatus} based on interaction outcome: ${outcome}`);
+        }
+      }
+
+      req.flash("success", "Interaction logged successfully!");
+      res.redirect(`/bands/${bandId}/venues/${opportunity.venueId}`);
+    } catch (error) {
+      logger.logError("Create interaction error:", error);
+      req.flash("error", "An error occurred while logging the interaction");
+      res.redirect(
+        `/bands/${req.params.bandId}/opportunities/${req.params.opportunityId}/interactions/new?type=${encodeURIComponent(req.body.type)}`
+      );
+    }
+  }
+);
+
+// POST /bands/:bandId/opportunities/:opportunityId/ai-suggestions - Generate AI suggestions
+router.post(
+  "/:bandId/opportunities/:opportunityId/ai-suggestions",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { bandId, opportunityId } = req.params;
+      const {
+        previousResponse,
+        currentMessage,
+        interactionType,
+        bandName,
+        venueName,
+        bandInfo,
+      } = req.body;
+
+      // Verify access
+      const opportunity = await prisma.opportunity.findFirst({
+        where: {
+          id: parseInt(opportunityId),
+          band: {
+            id: parseInt(bandId),
+            members: {
+              some: {
+                userId: req.session.user.id,
+              },
+            },
+          },
+        },
+        include: {
+          venue: true,
+          band: true,
+        },
+      });
+
+      if (!opportunity) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Opportunity not found" });
+      }
+
+      // Generate AI suggestion using Gemini
+      const suggestion = await generateAISuggestion({
+        previousResponse,
+        currentMessage,
+        interactionType,
+        bandName,
+        venueName,
+        bandInfo,
+        opportunity,
+      });
+
+      res.json({ success: true, suggestion });
+    } catch (error) {
+      logger.logError("AI suggestion error", error);
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to generate AI suggestion" });
+    }
+  }
+);
+
+// Function to map interaction outcomes to opportunity statuses
+function mapOutcomeToOpportunityStatus(outcome) {
+  const outcomeMapping = {
+    // Initial contact outcomes
+    'CONTACTED': 'CONTACTED',
+    'POSITIVE': 'NEGOTIATING',
+    'INTERESTED': 'NEGOTIATING',
+    
+    // Negotiation outcomes
+    'FOLLOW_UP': 'NEGOTIATING',
+    'COUNTER_OFFER': 'NEGOTIATING',
+    'SCHEDULING': 'NEGOTIATING',
+    
+    // Awaiting confirmation
+    'NEED_CONFIRMATION': 'NEED_CONFIRMATION',
+    'PENDING_CONFIRMATION': 'NEED_CONFIRMATION',
+    'AWAITING_CONFIRMATION': 'NEED_CONFIRMATION',
+    
+    // Success outcomes
+    'BOOKED': 'BOOKED',
+    'CONFIRMED': 'BOOKED',
+    'ACCEPTED': 'BOOKED',
+    
+    // Closure outcomes
+    'DECLINED': 'ARCHIVED',
+    'REJECTED': 'ARCHIVED',
+    'NO_RESPONSE': 'ARCHIVED',
+    'CANCELLED': 'ARCHIVED',
+    'NOT_INTERESTED': 'ARCHIVED'
+  };
+  
+  return outcomeMapping[outcome] || null;
+}
+
+// Function to generate AI suggestions using Gemini
+async function generateAISuggestion(context) {
+  const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+  // Initialize Gemini
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  // Build the prompt
+  const prompt = `You are helping a band manager craft a professional response to a venue for booking a gig.
+
+CONTEXT:
+- Band: ${context.bandName}
+- Venue: ${context.venueName}
+- Interaction Type: ${context.interactionType}
+- Band's Booking Pitch: ${context.bandInfo.bookingPitch || "Not provided"}
+- Band Website: ${context.bandInfo.websiteUrl || "Not provided"}
+- Contact Name: ${context.bandInfo.contactName || "Not provided"}
+
+VENUE'S PREVIOUS MESSAGE:
+"${context.previousResponse}"
+
+CURRENT DRAFT MESSAGE (if any):
+"${context.currentMessage || "None provided"}"
+
+Please generate a professional, friendly response that:
+1. Responds appropriately to the venue's message
+2. Maintains a professional but personable tone
+3. Includes relevant band information when appropriate
+4. Is concise but informative
+5. Moves the conversation toward booking a gig
+6. Avoids making specific commitments about dates or rates without band confirmation
+
+Generate only the suggested response text, no additional commentary.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    logger.logError("Gemini API error", error);
+    throw new Error("Failed to generate AI suggestion");
+  }
+}
 
 module.exports = router;

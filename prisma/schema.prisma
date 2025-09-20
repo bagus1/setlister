@@ -597,8 +597,12 @@ model Opportunity {
 
 model Interaction {
   id            Int      @id @default(autoincrement())
-  type          InteractionType
+  type          String   @db.VarChar(50)  // References venue_contact_types.name
   notes         String   @db.Text
+  messageContent String? @db.Text @map("message_content")
+  previousResponse String? @db.Text @map("previous_response")
+  outcome       String?  @db.VarChar(50)
+  nextSteps     String?  @db.Text @map("next_steps")
   interactionDate DateTime
   opportunityId Int
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
@@ -613,14 +617,8 @@ enum OpportunityStatus {
   PROSPECTING
   CONTACTED
   NEGOTIATING
+  NEED_CONFIRMATION
   BOOKED
   ARCHIVED
 }
 
-enum InteractionType {
-  EMAIL
-  PHONE_CALL
-  TEXT
-  IN_PERSON
-  NOTE
-}

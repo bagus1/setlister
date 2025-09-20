@@ -1,0 +1,606 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="/bands/<%= bandId %>" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+                <a href="/bands/<%= bandId %>/venues" class="btn btn-outline-secondary">
+                    <i class="bi bi-building"></i> Back to Band Venues
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Opportunity Info -->
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-target"></i> Opportunity Details
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="card-title"><%= opportunity.name %></h6>
+                <p class="card-text">
+                    <strong>Venue:</strong> <%= opportunity.venue.name %><br>
+                    <strong>Status:</strong> 
+                    <span class="badge bg-<%= getOpportunityStatusColor(opportunity.status) %>">
+                        <%= opportunity.status.replace('_', ' ') %>
+                    </span><br>
+                    <% if (opportunity.gigDate) { %>
+                        <strong>Date:</strong> <%= new Date(opportunity.gigDate).toLocaleDateString() %><br>
+                    <% } %>
+                    <% if (opportunity.offerValue) { %>
+                        <strong>Offer:</strong> $<%= opportunity.offerValue %><br>
+                    <% } %>
+                    <strong>Created:</strong> <%= new Date(opportunity.createdAt).toLocaleDateString() %>
+                </p>
+                
+                <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
+                    <hr>
+                    <h6>Venue Contacts</h6>
+                    <% opportunity.venue.contacts.forEach(contact => { %>
+                        <div class="small mb-1">
+                            <strong><%= contact.contactType.displayName %>:</strong>
+                            <% if (contact.url && contact.url !== 'mailto:{contact}') { %>
+                                <a href="<%= contact.url.replace('{contact}', contact.value) %>" target="_blank">
+                                    <%= contact.value %>
+                                </a>
+                            <% } else { %>
+                                <%= contact.value %>
+                            <% } %>
+                        </div>
+                    <% }) %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Middle Column: New Interaction Form -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-chat-dots"></i> Log New Interaction
+                </h4>
+                <small class="text-muted">
+                    <%= opportunity.name %> at <%= opportunity.venue.name %>
+                </small>
+            </div>
+            <div class="card-body">
+                <form action="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>/interactions" method="POST">
+                    <input type="hidden" name="type" id="interactionTypeInput" value="<%= interactionType %>">
+                    
+                    <!-- Interaction Type Selection -->
+                    <div class="mb-3">
+                        <label for="interactionType" class="form-label">How will you communicate?</label>
+                        <select class="form-select" id="interactionType" name="interactionType" onchange="updateInteractionType()">
+                            <option value="">Select communication method...</option>
+                            <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
+                                <% opportunity.venue.contacts.forEach(contact => { %>
+                                    <option value="<%= contact.contactType.name %>" <%= interactionType === contact.contactType.name ? 'selected' : '' %>>
+                                        <%= contact.contactType.displayName %>
+                                    </option>
+                                <% }); %>
+                            <% } %>
+                            <!-- Always include NOTE as an option -->
+                            <option value="NOTE" <%= interactionType === 'NOTE' ? 'selected' : '' %>>Note</option>
+                            <!-- Always include IN_PERSON as an option -->
+                            <option value="IN_PERSON" <%= interactionType === 'IN_PERSON' ? 'selected' : '' %>>In-Person Meeting</option>
+                            <!-- Always include OTHER as an option -->
+                            <option value="OTHER" <%= interactionType === 'OTHER' ? 'selected' : '' %>>Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Type-specific tools and links -->
+                    <div id="interaction-tools">
+                        <!-- Facebook Messenger Tool -->
+                        <div id="facebook-tool" class="mb-3" style="display: none;">
+                            <label class="form-label">Venue Facebook Messenger</label>
+                            <% 
+                                const facebookContact = opportunity.venue.contacts.find(contact => contact.contactType.name === 'FACEBOOK_MESSAGE');
+                            %>
+                            <% if (facebookContact) { %>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> 
+                                    <strong>Ready to message?</strong> 
+                                    <a href="<%= facebookContact.url %>" target="_blank" class="btn btn-primary btn-sm ms-2">
+                                        <i class="bi bi-messenger"></i> Open Messenger
+                                    </a>
+                                </div>
+                            <% } else { %>
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    No Facebook Messenger contact found for this venue.
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <!-- Email Tool -->
+                        <div id="email-tool" class="mb-3" style="display: none;">
+                            <% 
+                                const emailContacts = opportunity.venue.contacts.filter(contact => contact.contactType.name === 'EMAIL');
+                            %>
+                            <% if (emailContacts.length > 0) { %>
+                                <div class="text-center">
+                                    <% emailContacts.forEach((contact, index) => { %>
+                                        <a href="mailto:<%= contact.value %>" target="_blank" class="btn btn-primary btn-sm <%= index > 0 ? 'ms-1' : '' %>">
+                                            <i class="bi bi-envelope"></i> 
+                                            <%= contact.label ? contact.label + ' Email' : 'Email ' + (index + 1) %>
+                                        </a>
+                                    <% }); %>
+                                </div>
+                            <% } else { %>
+                                <div class="text-center text-muted">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    No email contact found for this venue.
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <% if (interactionType === 'PHONE_CALL') { %>
+                        <div class="mb-3">
+                            <label class="form-label">Venue Phone</label>
+                            <% 
+                                const phoneContact = opportunity.venue.contacts.find(contact => contact.contactType.name === 'PHONE_CALL');
+                            %>
+                            <% if (phoneContact) { %>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> 
+                                    <strong>Ready to call?</strong> 
+                                    <a href="tel:<%= phoneContact.value %>" class="btn btn-primary btn-sm ms-2">
+                                        <i class="bi bi-telephone"></i> Call Now
+                                    </a>
+                                </div>
+                            <% } else { %>
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    No phone contact found for this venue.
+                                </div>
+                            <% } %>
+                        </div>
+                    <% } %>
+
+                    <!-- Previous Response Context -->
+                    <div class="mb-3">
+                        <label for="previousResponse" class="form-label">Paste in the venue's latest message</label>
+                        <textarea class="form-control" id="previousResponse" name="previousResponse" rows="3"></textarea>
+                        <div class="form-text">Help us understand the context so we can craft the perfect response!</div>
+                    </div>
+
+                    <!-- Your Response Message -->
+                    <div class="mb-3">
+                        <label for="messageContent" class="form-label">Your Response Message</label>
+                        <textarea class="form-control" id="messageContent" name="messageContent" rows="4"></textarea>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <div class="form-text">Write the message you sent or plan to send to the venue.</div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="aiSuggestBtn">
+                                    <i class="bi bi-magic"></i> AI Suggestions
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="copyBtn" title="Copy text">
+                                    <i class="bi bi-clipboard"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Outcome -->
+                    <div class="mb-3">
+                        <label for="outcome" class="form-label">Outcome</label>
+                        <select class="form-select" id="outcome" name="outcome" required>
+                            <option value="">Select outcome</option>
+                            <option value="CONTACTED">Contacted - Made initial contact</option>
+                            <option value="POSITIVE">Positive - Good response</option>
+                            <option value="INTERESTED">Interested - They want to book us</option>
+                            <option value="FOLLOW_UP">Follow-up needed</option>
+                            <option value="COUNTER_OFFER">Counter offer received</option>
+                            <option value="SCHEDULING">Scheduling in progress</option>
+                            <option value="AWAITING_CONFIRMATION">Awaiting confirmation</option>
+                            <option value="BOOKED">Booked - Gig confirmed!</option>
+                            <option value="DECLINED">Declined - They said no</option>
+                            <option value="REJECTED">Rejected - Not interested</option>
+                            <option value="NO_RESPONSE">No response received</option>
+                            <option value="CANCELLED">Cancelled</option>
+                            <option value="NOT_INTERESTED">Not interested</option>
+                        </select>
+                    </div>
+
+                    <!-- Interaction Date -->
+                    <div class="mb-3">
+                        <label for="interactionDate" class="form-label">When did this interaction happen?</label>
+                        <input type="datetime-local" class="form-control" id="interactionDate" name="interactionDate" 
+                               value="<%= new Date().toISOString().slice(0, 16) %>" required>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Immediate response?</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4" required></textarea>
+                    </div>
+
+
+                    <!-- Next Steps -->
+                    <div class="mb-4">
+                        <label for="nextSteps" class="form-label">Next Steps</label>
+                        <textarea class="form-control" id="nextSteps" name="nextSteps" rows="3"></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="/bands/<%= bandId %>/venues" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Log Interaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Previous Interactions -->
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history"></i> Previous Interactions
+                </h5>
+                <small class="text-muted">
+                    <% if (opportunity.interactions && opportunity.interactions.length > 0) { %>
+                        <%= opportunity.interactions.length %> interaction<%= opportunity.interactions.length === 1 ? '' : 's' %>
+                    <% } else { %>
+                        No previous interactions
+                    <% } %>
+                </small>
+            </div>
+            <div class="card-body">
+                <% if (opportunity.interactions && opportunity.interactions.length > 0) { %>
+                    <div class="timeline">
+                        <% opportunity.interactions.forEach((interaction, index) => { %>
+                            <div class="timeline-item <%= index === 0 ? 'latest' : '' %>">
+                                <div class="timeline-marker">
+                                    <i class="bi bi-circle-fill text-<%= getStatusColor(interaction.outcome) %>"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <strong class="text-capitalize"><%= interaction.type %></strong>
+                                            <% if (interaction.outcome) { %>
+                                                <span class="badge bg-<%= getStatusColor(interaction.outcome) %> ms-2">
+                                                    <%= interaction.outcome %>
+                                                </span>
+                                            <% } %>
+                                        </div>
+                                        <small class="text-muted">
+                                            <%= new Date(interaction.interactionDate).toLocaleDateString() %>
+                                        </small>
+                                    </div>
+                                    
+                                    <% if (interaction.previousResponse) { %>
+                                        <div class="mb-2">
+                                            <strong>Previous Response:</strong>
+                                            <div class="text-muted small" style="font-style: italic;">
+                                                "<%= interaction.previousResponse.length > 150 ? interaction.previousResponse.substring(0, 150) + '...' : interaction.previousResponse %>"
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                    
+                                    <% if (interaction.messageContent) { %>
+                                        <div class="mb-2">
+                                            <strong>Message:</strong>
+                                            <div class="text-muted small">
+                                                "<%= interaction.messageContent.length > 150 ? interaction.messageContent.substring(0, 150) + '...' : interaction.messageContent %>"
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                    
+                                    <% if (interaction.notes) { %>
+                                        <div class="mb-2">
+                                            <strong>Notes:</strong>
+                                            <div class="text-muted small">
+                                                <%= interaction.notes.length > 100 ? interaction.notes.substring(0, 100) + '...' : interaction.notes %>
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                    
+                                    <% if (interaction.nextSteps) { %>
+                                        <div class="mb-2">
+                                            <strong>Next Steps:</strong>
+                                            <div class="text-muted small">
+                                                <%= interaction.nextSteps %>
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                    
+                                    <div class="text-muted small">
+                                        By <%= interaction.user.username %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-chat-dots display-4"></i>
+                        <p class="mt-2">No previous interactions yet.</p>
+                        <p class="small">This will be the first interaction for this opportunity.</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%
+// Helper function to get status color for outcomes
+function getStatusColor(outcome) {
+    if (!outcome) return 'secondary';
+    
+    const colors = {
+        'POSITIVE': 'success',
+        'INTERESTED': 'success',
+        'BOOKED': 'success',
+        'CONFIRMED': 'success',
+        'ACCEPTED': 'success',
+        
+        'FOLLOW_UP': 'warning',
+        'COUNTER_OFFER': 'warning',
+        'SCHEDULING': 'warning',
+        'NEED_CONFIRMATION': 'warning',
+        'PENDING_CONFIRMATION': 'warning',
+        'AWAITING_CONFIRMATION': 'warning',
+        
+        'DECLINED': 'danger',
+        'REJECTED': 'danger',
+        'NO_RESPONSE': 'danger',
+        'CANCELLED': 'danger',
+        'NOT_INTERESTED': 'danger',
+        
+        'CONTACTED': 'info'
+    };
+    
+    return colors[outcome] || 'secondary';
+}
+
+// Helper function to get status color for opportunity status
+function getOpportunityStatusColor(status) {
+    const colors = {
+        'PROSPECTING': 'secondary',
+        'CONTACTED': 'info',
+        'NEGOTIATING': 'warning',
+        'NEED_CONFIRMATION': 'warning',
+        'BOOKED': 'success',
+        'ARCHIVED': 'danger'
+    };
+    
+    return colors[status] || 'secondary';
+}
+%>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.timeline-item.latest {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #28a745;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -30px;
+    top: 5px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-marker::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 20px;
+    bottom: -20px;
+    width: 2px;
+    background-color: #dee2e6;
+    z-index: -1;
+}
+
+.timeline-item:last-child .timeline-marker::before {
+    display: none;
+}
+
+.timeline-content {
+    padding-left: 10px;
+}
+
+@media (max-width: 991px) {
+    .col-lg-3, .col-lg-6 {
+        margin-bottom: 2rem;
+    }
+    
+    .col-lg-3:last-child {
+        margin-bottom: 0;
+    }
+}
+</style>
+
+<script>
+// Set current time as default
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('interactionDate').value = localDateTime;
+    
+    // Show appropriate tools on page load
+    updateTypeSpecificTools();
+});
+
+// Update interaction type when selection changes
+function updateInteractionType() {
+    const select = document.getElementById('interactionType');
+    const hiddenInput = document.getElementById('interactionTypeInput');
+    hiddenInput.value = select.value;
+    
+    // Update type-specific tools visibility
+    updateTypeSpecificTools();
+}
+
+
+// Update type-specific tools visibility
+function updateTypeSpecificTools() {
+    const selectedType = document.getElementById('interactionType').value;
+    
+    // Hide all tools first
+    const allTools = document.querySelectorAll('#interaction-tools > div');
+    allTools.forEach(tool => {
+        tool.style.display = 'none';
+    });
+    
+    // Show the appropriate tool based on selected type
+    if (selectedType === 'FACEBOOK_MESSAGE') {
+        const facebookTool = document.getElementById('facebook-tool');
+        if (facebookTool) facebookTool.style.display = 'block';
+    } else if (selectedType === 'EMAIL') {
+        const emailTool = document.getElementById('email-tool');
+        if (emailTool) emailTool.style.display = 'block';
+    }
+    // Add more types here as needed
+}
+
+// CSS for spinning icon
+const style = document.createElement('style');
+style.textContent = `
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
+
+// AI Suggestion functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const aiSuggestBtn = document.getElementById('aiSuggestBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const messageContentTextarea = document.getElementById('messageContent');
+    const previousResponseTextarea = document.getElementById('previousResponse');
+    
+    
+    aiSuggestBtn.addEventListener('click', async function() {
+        const previousResponse = previousResponseTextarea.value.trim();
+        const currentMessage = messageContentTextarea.value.trim();
+        
+        if (!previousResponse) {
+            alert('Please enter the venue\'s previous response first to get AI suggestions.');
+            previousResponseTextarea.focus();
+            return;
+        }
+        
+        // Show loading state
+        const originalText = aiSuggestBtn.innerHTML;
+        aiSuggestBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Generating...';
+        aiSuggestBtn.disabled = true;
+        
+        try {
+            const response = await fetch(`/bands/<%= opportunity.band.id %>/opportunities/<%= opportunity.id %>/ai-suggestions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    previousResponse: previousResponse,
+                    currentMessage: currentMessage,
+                    interactionType: document.getElementById('interactionType').value,
+                    bandName: '<%= opportunity.band.name %>',
+                    venueName: '<%= opportunity.venue.name %>',
+                    bandInfo: {
+                        bookingPitch: '<%= opportunity.band.bookingPitch || "" %>',
+                        websiteUrl: '<%= opportunity.band.websiteUrl || "" %>',
+                        contactName: '<%= opportunity.band.contactName || "" %>'
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to get AI suggestions');
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.suggestion) {
+                messageContentTextarea.value = data.suggestion;
+                messageContentTextarea.focus();
+            } else {
+                alert('Failed to generate AI suggestions. Please try again.');
+            }
+            
+        } catch (error) {
+            console.error('AI suggestion error:', error);
+            alert('Error generating AI suggestions. Please try again.');
+        } finally {
+            // Restore button state
+            aiSuggestBtn.innerHTML = originalText;
+            aiSuggestBtn.disabled = false;
+        }
+    });
+    
+    // Copy button functionality
+    copyBtn.addEventListener('click', async function() {
+        const textToCopy = messageContentTextarea.value;
+        
+        if (!textToCopy.trim()) {
+            alert('No text to copy!');
+            return;
+        }
+        
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            
+            // Show success feedback
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+            copyBtn.classList.remove('btn-outline-secondary');
+            copyBtn.classList.add('btn-success');
+            
+            // Restore button after 2 seconds
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+                copyBtn.classList.remove('btn-success');
+                copyBtn.classList.add('btn-outline-secondary');
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Copy failed:', error);
+            alert('Failed to copy text. Please select and copy manually.');
+        }
+    });
+});
+
+</script>

@@ -370,7 +370,19 @@
             const socialType = socialTypes.find(st => st.id == socialTypeId);
             let url = null;
             if (socialType && socialType.urlTemplate) {
-                url = socialType.urlTemplate.replace('{handle}', handle);
+                // Clean the handle to remove any existing URLs
+                let cleanHandle = handle.trim();
+                if (cleanHandle.includes('facebook.com/')) {
+                    // Extract just the username from a full Facebook URL
+                    cleanHandle = cleanHandle.split('facebook.com/').pop().replace(/\/$/, '');
+                } else if (cleanHandle.includes('instagram.com/')) {
+                    // Extract just the username from a full Instagram URL
+                    cleanHandle = cleanHandle.split('instagram.com/').pop().replace(/\/$/, '');
+                } else if (cleanHandle.includes('twitter.com/')) {
+                    // Extract just the username from a full Twitter URL
+                    cleanHandle = cleanHandle.split('twitter.com/').pop().replace(/\/$/, '');
+                }
+                url = socialType.urlTemplate.replace('{contact}', cleanHandle);
             }
             
             // Submit the form

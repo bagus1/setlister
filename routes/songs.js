@@ -598,6 +598,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
 
     res.render("songs/edit", {
       title: `Edit ${song.title}`,
+      pageTitle: "Edit Song",
       song,
       artists,
       vocalists,
@@ -668,6 +669,7 @@ router.post(
 
         return res.render("songs/edit", {
           title: `Edit ${song.title}`,
+          pageTitle: "Edit Song",
           song,
           artists,
           vocalists,

@@ -2,7 +2,7 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <span class="text-muted">Manage venues associated with your band</span>
+                <span class="text-muted">Click on the venue to book a gig</span>
             </div>
             <div>
                 <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
@@ -23,16 +23,15 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <h5 class="card-title mb-0">
-                                        <a href="/bands/<%= band.id %>/venues/<%= bandVenue.venue.id %>" class="text-decoration-none">
-                                            <%= bandVenue.venue.name %>
-                                        </a>
+                                        <%= bandVenue.venue.name %>
                                     </h5>
-                                    <button class="btn btn-outline-danger btn-sm remove-venue" 
-                                            data-venue-id="<%= bandVenue.venue.id %>"
-                                            data-band-id="<%= band.id %>">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <a href="/venues/<%= bandVenue.venue.id %>" class="btn btn-outline-info btn-sm" title="View Venue" style="position: relative; z-index: 2;">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
                                 </div>
+                                
+                                <!-- Clickable overlay for venue booking -->
+                                <a href="/bands/<%= band.id %>/venues/<%= bandVenue.venue.id %>" class="text-decoration-none text-dark stretched-link" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1;" title="Click to book a gig at <%= bandVenue.venue.name %>"></a>
                                 
                                 <% if (bandVenue.venue.venueType) { %>
                                     <span class="badge bg-primary mb-2"><%= bandVenue.venue.venueType.name %></span>
@@ -40,15 +39,21 @@
                                 
                                 <% if (bandVenue.venue.city && bandVenue.venue.state) { %>
                                     <p class="text-muted mb-2">
-                                        <i class="bi bi-geo-alt"></i> <%= bandVenue.venue.city %>, <%= bandVenue.venue.state %>
+                                        <%
+                                            // Build Google Maps URL with full address for better accuracy
+                                            let mapsUrl = '';
+                                            if (bandVenue.venue.address) {
+                                                mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(bandVenue.venue.address + ', ' + bandVenue.venue.city + ', ' + bandVenue.venue.state + (bandVenue.venue.zipCode ? ' ' + bandVenue.venue.zipCode : ''))}`;
+                                            } else {
+                                                mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(bandVenue.venue.city + ', ' + bandVenue.venue.state + (bandVenue.venue.zipCode ? ' ' + bandVenue.venue.zipCode : ''))}`;
+                                            }
+                                        %>
+                                        <a href="<%= mapsUrl %>" target="_blank" class="text-decoration-none" style="position: relative; z-index: 2;">
+                                            <i class="bi bi-geo-alt"></i> <%= bandVenue.venue.city %>, <%= bandVenue.venue.state %>
+                                        </a>
                                     </p>
                                 <% } %>
                                 
-                                <% if (bandVenue.venue.capacity) { %>
-                                    <p class="text-muted mb-2">
-                                        <i class="bi bi-people"></i> Capacity: <%= bandVenue.venue.capacity %>
-                                    </p>
-                                <% } %>
                                 
                                 <% if (bandVenue.venue.stageLocation) { %>
                                     <p class="text-muted mb-2">
@@ -56,39 +61,17 @@
                                     </p>
                                 <% } %>
                                 
-                                <!-- Contact Information -->
-                                <% if (bandVenue.venue.contacts && bandVenue.venue.contacts.length > 0) { %>
-                                    <div class="mb-2">
-                                        <small class="text-muted">Contact:</small>
-                                        <% bandVenue.venue.contacts.slice(0, 2).forEach(contact => { %>
-                                            <div class="small">
-                                                <i class="<%= contact.contactType.iconClass || 'bi bi-telephone' %>"></i>
-                                                <%= contact.value %>
-                                                <% if (contact.label) { %>
-                                                    <span class="text-muted">(<%= contact.label %>)</span>
-                                                <% } %>
-                                            </div>
-                                        <% }); %>
-                                        <% if (bandVenue.venue.contacts.length > 2) { %>
-                                            <div class="small text-muted">+<%= bandVenue.venue.contacts.length - 2 %> more</div>
-                                        <% } %>
-                                    </div>
-                                <% } %>
                                 
                                 <!-- Social Media -->
                                 <% if (bandVenue.venue.socials && bandVenue.venue.socials.length > 0) { %>
                                     <div class="mb-2">
-                                        <small class="text-muted">Social:</small>
-                                        <% bandVenue.venue.socials.slice(0, 2).forEach(social => { %>
-                                            <div class="small">
-                                                <i class="<%= social.socialType.iconClass || 'bi bi-link' %>"></i>
-                                                <a href="<%= social.url || '#' %>" target="_blank" class="text-decoration-none">
-                                                    <%= social.handle %>
-                                                </a>
-                                            </div>
+                                        <% bandVenue.venue.socials.slice(0, 4).forEach(social => { %>
+                                            <a href="<%= social.url || '#' %>" target="_blank" class="text-decoration-none me-2" title="<%= social.socialType.name %>: <%= social.handle %>" style="position: relative; z-index: 2;">
+                                                <i class="bi bi-<%= social.socialType.iconClass || 'link' %> fs-5"></i>
+                                            </a>
                                         <% }); %>
-                                        <% if (bandVenue.venue.socials.length > 2) { %>
-                                            <div class="small text-muted">+<%= bandVenue.venue.socials.length - 2 %> more</div>
+                                        <% if (bandVenue.venue.socials.length > 4) { %>
+                                            <span class="small text-muted">+<%= bandVenue.venue.socials.length - 4 %></span>
                                         <% } %>
                                     </div>
                                 <% } %>
@@ -118,45 +101,3 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle venue removal
-    document.querySelectorAll('.remove-venue').forEach(button => {
-        button.addEventListener('click', function() {
-            const venueId = this.dataset.venueId;
-            const bandId = this.dataset.bandId;
-            
-            if (confirm('Are you sure you want to remove this venue from your band?')) {
-                fetch(`/bands/${bandId}/venues/${venueId}/remove`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Remove the card from the DOM
-                        this.closest('.col-md-6').remove();
-                        
-                        // Show success message
-                        const alert = document.createElement('div');
-                        alert.className = 'alert alert-success alert-dismissible fade show';
-                        alert.innerHTML = `
-                            ${data.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        `;
-                        document.querySelector('.row').insertBefore(alert, document.querySelector('.row').firstChild);
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while removing the venue');
-                });
-            }
-        });
-    });
-});
-</script>

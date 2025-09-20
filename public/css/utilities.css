@@ -365,3 +365,8 @@ h1 {
 .form-text {
   color: var(--bs-secondary) !important;
 }
+
+/* Add margin to alert messages */
+.alert {
+  margin: 0 20px 0 20px;
+}

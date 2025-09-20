@@ -25,7 +25,7 @@
             <div class="card-body">
                 <h6 class="card-title"><%= opportunity.name %></h6>
                 <p class="card-text">
-                    <strong>Venue:</strong> <%= opportunity.venue.name %><br>
+                    <strong>Venue:</strong> <a href="/bands/<%= opportunity.band.id %>/venues/<%= opportunity.venue.id %>" class="text-decoration-none"><%= opportunity.venue.name %></a><br>
                     <strong>Status:</strong> 
                     <span class="badge bg-<%= getOpportunityStatusColor(opportunity.status) %>">
                         <%= opportunity.status.replace('_', ' ') %>
@@ -99,20 +99,17 @@
                     <div id="interaction-tools">
                         <!-- Facebook Messenger Tool -->
                         <div id="facebook-tool" class="mb-3" style="display: none;">
-                            <label class="form-label">Venue Facebook Messenger</label>
                             <% 
                                 const facebookContact = opportunity.venue.contacts.find(contact => contact.contactType.name === 'FACEBOOK_MESSAGE');
                             %>
                             <% if (facebookContact) { %>
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle"></i> 
-                                    <strong>Ready to message?</strong> 
-                                    <a href="<%= facebookContact.url %>" target="_blank" class="btn btn-primary btn-sm ms-2">
+                                <div class="text-center">
+                                    <a href="<%= facebookContact.url %>" target="_blank" class="btn btn-primary btn-sm">
                                         <i class="bi bi-messenger"></i> Open Messenger
                                     </a>
                                 </div>
                             <% } else { %>
-                                <div class="alert alert-warning">
+                                <div class="text-center text-muted">
                                     <i class="bi bi-exclamation-triangle"></i> 
                                     No Facebook Messenger contact found for this venue.
                                 </div>
@@ -210,6 +207,13 @@
                         </select>
                     </div>
 
+                    <!-- Gig Date (appears when BOOKED is selected) -->
+                    <div id="gig-date-field" class="mb-3" style="display: none;">
+                        <label for="gigDate" class="form-label">Gig Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="gigDate" name="gigDate">
+                        <div class="form-text">When is this gig scheduled?</div>
+                    </div>
+
                     <!-- Interaction Date -->
                     <div class="mb-3">
                         <label for="interactionDate" class="form-label">When did this interaction happen?</label>
@@ -220,7 +224,7 @@
                     <!-- Notes -->
                     <div class="mb-3">
                         <label for="notes" class="form-label">Immediate response?</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="4" required></textarea>
+                        <textarea class="form-control" id="notes" name="notes" rows="4"></textarea>
                     </div>
 
 
@@ -458,6 +462,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Show appropriate tools on page load
     updateTypeSpecificTools();
+    
+    // Set up outcome change handler
+    const outcomeSelect = document.getElementById('outcome');
+    if (outcomeSelect) {
+        outcomeSelect.addEventListener('change', handleOutcomeChange);
+        // Check initial state
+        handleOutcomeChange();
+    }
 });
 
 // Update interaction type when selection changes
@@ -490,6 +502,22 @@ function updateTypeSpecificTools() {
         if (emailTool) emailTool.style.display = 'block';
     }
     // Add more types here as needed
+}
+
+// Handle outcome change to show/hide gig date field
+function handleOutcomeChange() {
+    const outcomeSelect = document.getElementById('outcome');
+    const gigDateField = document.getElementById('gig-date-field');
+    const gigDateInput = document.getElementById('gigDate');
+    
+    if (outcomeSelect.value === 'BOOKED') {
+        gigDateField.style.display = 'block';
+        gigDateInput.required = true;
+    } else {
+        gigDateField.style.display = 'none';
+        gigDateInput.required = false;
+        gigDateInput.value = ''; // Clear the value when hidden
+    }
 }
 
 // CSS for spinning icon

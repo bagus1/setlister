@@ -3824,7 +3824,7 @@ router.post(
       .isIn(["PROSPECTING", "CONTACTED", "NEGOTIATING", "BOOKED", "ARCHIVED"])
       .withMessage("Invalid status"),
     body("gigDate")
-      .optional()
+      .optional({ checkFalsy: true })
       .isISO8601()
       .withMessage("Invalid gig date format"),
     body("offerValue")
@@ -3853,6 +3853,7 @@ router.post(
               },
             },
           },
+          venue: true,
         },
       });
 
@@ -3971,7 +3972,7 @@ router.get(
       }
 
       res.render("bands/interaction-new", {
-        pageTitle: `Log Interaction - ${opportunity.name}`,
+        pageTitle: `${opportunity.band.name} @ ${opportunity.venue.name}`,
         hasBandHeader: false,
         opportunity,
         interactionType,
@@ -4000,6 +4001,7 @@ router.post(
         nextSteps,
         messageContent,
         previousResponse,
+        gigDate,
       } = req.body;
       const userId = req.session.user.id;
 
@@ -4057,12 +4059,25 @@ router.post(
       // Update opportunity status based on interaction outcome
       if (outcome) {
         const newOpportunityStatus = mapOutcomeToOpportunityStatus(outcome);
+        const updateData = {};
+        
         if (newOpportunityStatus && newOpportunityStatus !== opportunity.status) {
+          updateData.status = newOpportunityStatus;
+        }
+        
+        // If outcome is BOOKED and gigDate is provided, save it to the opportunity
+        if (outcome === 'BOOKED' && gigDate) {
+          updateData.gigDate = new Date(gigDate);
+          logger.logInfo(`Setting gig date for opportunity ${opportunityId}: ${gigDate}`);
+        }
+        
+        // Only update if there's something to update
+        if (Object.keys(updateData).length > 0) {
           await prisma.opportunity.update({
             where: { id: parseInt(opportunityId) },
-            data: { status: newOpportunityStatus },
+            data: updateData,
           });
-          logger.logInfo(`Updated opportunity ${opportunityId} status from ${opportunity.status} to ${newOpportunityStatus} based on interaction outcome: ${outcome}`);
+          logger.logInfo(`Updated opportunity ${opportunityId} - Status: ${updateData.status || 'unchanged'}, Gig Date: ${updateData.gigDate || 'unchanged'}`);
         }
       }
 

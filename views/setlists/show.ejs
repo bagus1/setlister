@@ -20,6 +20,9 @@
                         <i class="bi bi-pencil"></i> Edit Setlist
                     </a>
                 <% } %>
+                <a href="/setlists/<%= setlist.id %>/copy" class="btn btn-outline-info">
+                    <i class="bi bi-files"></i> Copy Setlist
+                </a>
                 <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-primary">
                     <i class="bi bi-people"></i> Back to Band
                 </a>
@@ -1258,6 +1261,7 @@
             panel.style.display = 'none';
         }, 300);
     }
+
 </script>
 
 <!-- CSS moved to /css/pages.css -->

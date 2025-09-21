@@ -220,6 +220,29 @@ router.get("/:id", async (req, res) => {
       take: 3,
     });
 
+    // Get open opportunities with latest interactions
+    const openOpportunities = await prisma.opportunity.findMany({
+      where: {
+        bandId: parseInt(bandId),
+        status: {
+          not: 'BOOKED'
+        }
+      },
+      include: {
+        venue: true,
+        interactions: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      },
+      take: 5
+    });
+
     // Get pending invitations (not used, not expired)
     let pendingInvitations = [];
     try {
@@ -266,6 +289,7 @@ router.get("/:id", async (req, res) => {
       bandSongs,
       bandVenues,
       upcomingGigs,
+      openOpportunities,
       pendingInvitations,
       userId,
     });

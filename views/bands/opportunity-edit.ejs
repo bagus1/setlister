@@ -40,6 +40,11 @@
                     </div>
 
                     <div class="mb-3">
+                        <label for="notes" class="form-label">Why are you starting this now?</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"><%= typeof notes !== 'undefined' ? notes : (opportunity.notes || '') %></textarea>
+                    </div>
+
+                    <div class="mb-3">
                         <label for="status" class="form-label">Status *</label>
                         <select class="form-select" id="status" name="status" required>
                             <option value="PROSPECTING" <%= (typeof status !== 'undefined' ? status : opportunity.status) === 'PROSPECTING' ? 'selected' : '' %>>Prospecting</option>

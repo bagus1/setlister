@@ -4141,6 +4141,7 @@ router.post(
       const opportunity = await prisma.opportunity.create({
         data: {
           name,
+          notes: notes || null,
           band: { connect: { id: parseInt(bandId) } },
           venue: { connect: { id: parseInt(venueId) } },
           creator: { connect: { id: userId } },
@@ -4289,7 +4290,7 @@ router.get(
       }
 
       res.render("bands/opportunity-edit", {
-        pageTitle: `Edit ${opportunity.name}`,
+        pageTitle: `${opportunity.band.name} @ ${opportunity.venue.name}`,
         hasBandHeader: false,
         opportunity,
         bandId,
@@ -4321,14 +4322,14 @@ router.post(
       .isISO8601()
       .withMessage("Invalid gig date format"),
     body("offerValue")
-      .optional()
+      .optional({ checkFalsy: true })
       .isFloat({ min: 0 })
       .withMessage("Offer value must be a positive number"),
   ],
   async (req, res) => {
     try {
       const { bandId, opportunityId } = req.params;
-      const { name, status, gigDate, offerValue } = req.body;
+      const { name, status, gigDate, offerValue, notes } = req.body;
       const userId = req.session.user.id;
 
       // Verify opportunity exists and user has access
@@ -4367,7 +4368,7 @@ router.post(
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.render("bands/opportunity-edit", {
-          pageTitle: `Edit ${opportunity.name}`,
+          pageTitle: `${opportunity.band.name} @ ${opportunity.venue.name}`,
           hasBandHeader: false,
           opportunity,
           bandId,
@@ -4376,6 +4377,7 @@ router.post(
           status: req.body.status,
           gigDate: req.body.gigDate,
           offerValue: req.body.offerValue,
+          notes: req.body.notes,
         });
       }
 
@@ -4384,6 +4386,7 @@ router.post(
         where: { id: parseInt(opportunityId) },
         data: {
           name: name.trim(),
+          notes: notes || null,
           status: status,
           gigDate: gigDate ? new Date(gigDate) : null,
           offerValue: offerValue ? parseFloat(offerValue) : null,
@@ -4688,12 +4691,13 @@ router.post(
         previousResponse,
         currentMessage,
         interactionType,
+        contactType,
         bandName,
         venueName,
         bandInfo,
       } = req.body;
 
-      // Verify access
+      // Verify access and get opportunity with interaction history
       const opportunity = await prisma.opportunity.findFirst({
         where: {
           id: parseInt(opportunityId),
@@ -4709,6 +4713,19 @@ router.post(
         include: {
           venue: true,
           band: true,
+          interactions: {
+            orderBy: {
+              interactionDate: 'asc',
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -4723,10 +4740,12 @@ router.post(
         previousResponse,
         currentMessage,
         interactionType,
+        contactType,
         bandName,
         venueName,
         bandInfo,
         opportunity,
+        interactionHistory: opportunity.interactions,
       });
 
       res.json({ success: true, suggestion });
@@ -4751,6 +4770,7 @@ function mapOutcomeToOpportunityStatus(outcome) {
     'FOLLOW_UP': 'NEGOTIATING',
     'COUNTER_OFFER': 'NEGOTIATING',
     'SCHEDULING': 'NEGOTIATING',
+    'NO_RESPONSE': 'NEGOTIATING',
     
     // Awaiting confirmation
     'NEED_CONFIRMATION': 'NEED_CONFIRMATION',
@@ -4765,7 +4785,6 @@ function mapOutcomeToOpportunityStatus(outcome) {
     // Closure outcomes
     'DECLINED': 'ARCHIVED',
     'REJECTED': 'ARCHIVED',
-    'NO_RESPONSE': 'ARCHIVED',
     'CANCELLED': 'ARCHIVED',
     'NOT_INTERESTED': 'ARCHIVED'
   };
@@ -4781,22 +4800,231 @@ async function generateAISuggestion(context) {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  // Build the prompt
-  const prompt = `You are helping a band manager craft a professional response to a venue for booking a gig.
+  // Build the prompt based on interaction type
+  let prompt;
+  
+  // Build interaction history for context
+  let interactionHistoryText = "No previous interactions";
+  if (context.interactionHistory && context.interactionHistory.length > 0) {
+    interactionHistoryText = context.interactionHistory.map((interaction, index) => {
+      const date = new Date(interaction.interactionDate).toLocaleDateString();
+      return `${index + 1}. ${date} - ${interaction.outcome} - ${interaction.notes || 'No notes'}`;
+    }).join('\n');
+  }
 
+  // Get communication method specific guidance
+  const getCommMethodGuidance = (contactType) => {
+    switch(contactType) {
+      case 'TEXT':
+      case 'WHATSAPP':
+      case 'TELEGRAM':
+        return 'TEXT/MESSAGING APP - Keep concise, friendly, under 160 characters if possible. Use casual but professional tone.';
+      case 'FACEBOOK_MESSAGE':
+      case 'INSTAGRAM_MESSAGE':
+      case 'TWITTER_MESSAGE':
+        return 'SOCIAL MEDIA MESSAGE - Conversational and friendly tone, moderate length, emoji-friendly.';
+      case 'DISCORD':
+      case 'WEBSITE_LIVE_CHAT':
+        return 'CHAT PLATFORM - Very casual and conversational, brief exchanges, can be informal.';
+      case 'EMAIL':
+      case 'WEBSITE_CONTACT_FORM':
+        return 'EMAIL/FORMAL - Can be detailed and formal. Include proper greeting and closing.';
+      case 'PHONE_CALL':
+        return 'PHONE CALL - Provide talking points and key messages for the conversation.';
+      case 'IN_PERSON':
+        return 'IN-PERSON MEETING - Provide conversation starters and key points to discuss.';
+      default:
+        return 'GENERAL COMMUNICATION - Use appropriate professional tone.';
+    }
+  };
+
+  const baseContext = `
 CONTEXT:
 - Band: ${context.bandName}
 - Venue: ${context.venueName}
-- Interaction Type: ${context.interactionType}
+- Current Interaction Type: ${context.interactionType}
+- Communication Method: ${getCommMethodGuidance(context.contactType)}
 - Band's Booking Pitch: ${context.bandInfo.bookingPitch || "Not provided"}
 - Band Website: ${context.bandInfo.websiteUrl || "Not provided"}
 - Contact Name: ${context.bandInfo.contactName || "Not provided"}
 
-VENUE'S PREVIOUS MESSAGE:
+INTERACTION HISTORY (chronological order):
+${interactionHistoryText}
+
+VENUE'S LATEST MESSAGE:
 "${context.previousResponse}"
 
 CURRENT DRAFT MESSAGE (if any):
-"${context.currentMessage || "None provided"}"
+"${context.currentMessage || "None provided"}"`;  
+
+  switch (context.interactionType) {
+    case 'FIRST_CONTACT':
+      prompt = `You are helping a band manager make an initial contact with a venue for booking a gig.
+${baseContext}
+
+Please generate a professional, engaging initial outreach message that:
+1. Introduces the band professionally and warmly
+2. Expresses genuine interest in performing at their venue
+3. Includes key band information (genre, experience, draw)
+4. Mentions specific reasons why this venue is a good fit
+5. Suggests next steps (send EPK, schedule call, etc.)
+6. Keeps it concise but compelling
+7. Avoids specific dates or rates in initial contact
+8. ADAPTS LENGTH AND TONE to the communication method specified above
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'FOLLOWING_UP':
+      prompt = `You are helping a band manager follow up on a previous inquiry with a venue.
+${baseContext}
+
+Please generate a professional, polite follow-up message that:
+1. References the previous interactions from the history above appropriately
+2. Shows awareness of how much time has passed since last contact
+3. Gently reminds them of the band's interest without repeating previous information
+4. Provides any additional information that might be helpful
+5. Shows understanding that venues are busy
+6. Suggests easy next steps for them
+7. Maintains enthusiasm while respecting their time
+8. ADAPTS LENGTH AND TONE to the communication method specified above
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'SCHEDULING':
+      prompt = `You are helping a band manager work out scheduling details with a venue.
+${baseContext}
+
+Please generate a professional response focused on scheduling that:
+1. Responds to their scheduling preferences or constraints
+2. Offers specific date options or availability windows
+3. Shows flexibility while protecting the band's interests
+4. Asks about their preferred lead times and booking process
+5. Mentions any scheduling considerations (load-in, sound check, etc.)
+6. Keeps the momentum moving toward confirmation
+7. Suggests next steps in the booking process
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'NEGOTIATING':
+      prompt = `You are helping a band manager negotiate terms with a venue for a gig.
+${baseContext}
+
+Please generate a professional negotiation response that:
+1. References previous discussions from the interaction history to show continuity
+2. Addresses their terms or proposals constructively
+3. Presents the band's position clearly but diplomatically
+4. Finds common ground and win-win solutions based on what's been discussed
+5. Shows appreciation for their business considerations
+6. Maintains a collaborative rather than adversarial tone
+7. Keeps the focus on mutual benefit and a successful show
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'AWAITING_CONFIRMATION':
+      prompt = `You are helping a band manager handle the confirmation phase with a venue.
+${baseContext}
+
+Please generate a professional message for the confirmation stage that:
+1. Acknowledges where things stand in the process
+2. Gently seeks clarity on timeline for final confirmation
+3. Confirms the band's continued interest and availability
+4. Offers to provide any additional information needed
+5. Shows understanding of their decision-making process
+6. Maintains enthusiasm while being patient
+7. Suggests clear next steps or timeline
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'BOOKED':
+      prompt = `You are helping a band manager handle post-booking communication with a venue.
+${baseContext}
+
+Please generate a professional post-booking message that:
+1. Expresses genuine excitement and gratitude for the booking
+2. Confirms key details of the arrangement (parking, loading in, sound check, bar tab, etc.)
+3. Asks about next steps in their production process
+4. Offers to provide any additional materials needed (rider, stage plot, etc.)
+5. Establishes clear communication moving forward
+6. Shows professionalism and reliability
+7. Sets a positive tone for the working relationship
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'DETAILS':
+      prompt = `You are helping a band manager work out production and logistical details for a confirmed gig.
+${baseContext}
+
+Please generate a professional message focused on gig details that:
+1. Addresses specific production or logistical questions
+2. Provides clear, organized information about band requirements
+3. Asks relevant questions about their venue and setup
+4. Shows preparation and professionalism
+5. Confirms understanding of their procedures
+6. Offers solutions to any potential challenges
+7. Maintains focus on delivering a great show
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'THANKING':
+      prompt = `You are helping a band manager send a thoughtful thank you message to a venue.
+${baseContext}
+
+Please generate a warm, genuine thank you message that:
+1. Expresses sincere gratitude for their time/opportunity/help
+2. Acknowledges any specific positive aspects of the interaction
+3. Reinforces the band's professionalism and appreciation
+4. Keeps the door open for future opportunities
+5. Is personal and specific, not generic
+6. Shows we value the relationship beyond just this interaction
+7. Ends on a positive, forward-looking note
+8. ADAPTS LENGTH AND TONE to the communication method specified above
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'DECLINED':
+      prompt = `You are helping a band manager respond professionally to a venue's decline.
+${baseContext}
+
+Please generate a gracious response to their decline that:
+1. Thanks them for their time and consideration
+2. Accepts their decision professionally and positively
+3. Leaves the door open for future opportunities
+4. Asks if there might be better timing in the future
+5. Maintains the relationship for potential referrals
+6. Shows maturity and understanding of business realities
+7. Keeps it brief but warm
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    case 'NO_RESPONSE':
+      prompt = `You are helping a band manager craft a final follow-up to a venue that hasn't responded.
+${baseContext}
+
+Please generate a professional final follow-up that:
+1. Acknowledges they may be busy or the timing might not be right
+2. Briefly restates the band's interest and value proposition
+3. Gives them an easy out while leaving the door open
+4. Shows understanding and professionalism
+5. Includes contact information for future reference
+6. Ends on a positive note about potential future opportunities
+7. Keeps it concise and non-pressuring
+
+Generate only the suggested response text, no additional commentary.`;
+      break;
+
+    default:
+      // Fallback to original generic prompt for any other cases
+      prompt = `You are helping a band manager craft a professional response to a venue for booking a gig.
+${baseContext}
 
 Please generate a professional, friendly response that:
 1. Responds appropriately to the venue's message
@@ -4807,6 +5035,8 @@ Please generate a professional, friendly response that:
 6. Avoids making specific commitments about dates or rates without band confirmation
 
 Generate only the suggested response text, no additional commentary.`;
+      break;
+  }
 
   try {
     const result = await model.generateContent(prompt);

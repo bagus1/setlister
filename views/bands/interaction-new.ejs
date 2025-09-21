@@ -39,6 +39,12 @@
                     <strong>Created:</strong> <%= new Date(opportunity.createdAt).toLocaleDateString() %>
                 </p>
                 
+                <% if (opportunity.notes && opportunity.notes.trim()) { %>
+                    <div class="mt-3 p-2 opportunity-notes rounded">
+                        <div class="text-muted small"><%= opportunity.notes %></div>
+                    </div>
+                <% } %>
+                
                 <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
                     <hr>
                     <h6>Venue Contacts</h6>
@@ -173,18 +179,19 @@
                         <label for="outcome" class="form-label">Purpose of Interaction</label>
                         <select class="form-select" id="outcome" name="outcome" required>
                             <option value="">Purpose</option>
-                            <option value="FIRST_CONTACT">First Contact - Made initial contact</option>
-                            <option value="FOLLOWING_UP">Following Up - Continuing conversation</option>
-                            <option value="SCHEDULING">Scheduling - Working out dates</option>
-                            <option value="NEGOTIATING">Negotiating - Discussing terms</option>
-                            <option value="AWAITING_CONFIRMATION">Awaiting Confirmation - Waiting for final approval</option>
-                            <option value="BOOKED">Booked - Gig confirmed!</option>
-                            <option value="DETAILS">Details - Working out gig specifics</option>
-                            <option value="DECLINED">Declined - They said no</option>
-                            <option value="REJECTED">Rejected - Not interested</option>
-                            <option value="NO_RESPONSE">No Response - Haven't heard back</option>
-                            <option value="CANCELLED">Cancelled - Gig was cancelled</option>
-                            <option value="NOT_INTERESTED">Not Interested - We declined</option>
+                <option value="FIRST_CONTACT">First Contact - Made initial contact</option>
+                <option value="FOLLOWING_UP">Following Up - Continuing conversation</option>
+                <option value="SCHEDULING">Scheduling - Working out dates</option>
+                <option value="NEGOTIATING">Negotiating - Discussing terms</option>
+                <option value="AWAITING_CONFIRMATION">Awaiting Confirmation - Waiting for final approval</option>
+                <option value="BOOKED">Booked - Gig confirmed!</option>
+                <option value="DETAILS">Details - Working out gig specifics</option>
+                <option value="THANKING">Thanking - Following up with gratitude</option>
+                <option value="DECLINED">Declined - They said no</option>
+                <option value="REJECTED">Rejected - Not interested</option>
+                <option value="NO_RESPONSE">No Response - Haven't heard back</option>
+                <option value="CANCELLED">Cancelled - Gig was cancelled</option>
+                <option value="NOT_INTERESTED">Not Interested - We declined</option>
                         </select>
                     </div>
 
@@ -366,99 +373,6 @@ function getOpportunityStatusColor(status) {
 }
 %>
 
-<style>
-.timeline {
-    position: relative;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #eee;
-}
-
-.timeline-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-
-.timeline-item.latest {
-    background-color: #f8f9fa;
-    border-radius: 12px;
-    border: 2px solid #28a745;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
-}
-
-.timeline-item.latest:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.timeline-content {
-    position: relative;
-}
-
-.timeline-content .badge {
-    font-size: 0.75rem;
-    padding: 0.35em 0.65em;
-}
-
-.timeline-content .text-capitalize {
-    font-weight: 600;
-    color: #495057;
-}
-
-.timeline-content .text-muted.small {
-    line-height: 1.4;
-    margin-top: 0.5rem;
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    .timeline-item.latest {
-        background-color: #343a40;
-        border-color: #28a745;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    
-    .timeline-item.latest:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-    }
-    
-    .timeline-content .text-capitalize {
-        color: #e9ecef;
-    }
-    
-    .timeline-content .text-muted.small {
-        color: #adb5bd !important;
-    }
-    
-    .timeline-content .text-muted {
-        color: #adb5bd !important;
-    }
-    
-    .timeline-content strong {
-        color: #f8f9fa;
-    }
-}
-
-
-
-
-@media (max-width: 991px) {
-    .col-lg-3, .col-lg-6 {
-        margin-bottom: 2rem;
-    }
-    
-    .col-lg-3:last-child {
-        margin-bottom: 0;
-    }
-}
-</style>
-
 <script>
 // Set current time as default
 document.addEventListener('DOMContentLoaded', function() {
@@ -571,7 +485,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     previousResponse: previousResponse,
                     currentMessage: currentMessage,
-                    interactionType: document.getElementById('interactionType').value,
+                    interactionType: document.getElementById('outcome').value,
+                    contactType: document.getElementById('interactionType').value,
                     bandName: '<%= opportunity.band.name %>',
                     venueName: '<%= opportunity.venue.name %>',
                     bandInfo: {

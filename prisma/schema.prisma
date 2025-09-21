@@ -581,6 +581,7 @@ model VenueContact {
 model Opportunity {
   id        Int      @id @default(autoincrement())
   name      String
+  notes     String?  @db.Text
   status    OpportunityStatus @default(PROSPECTING)
   gigDate   DateTime?
   offerValue Float?

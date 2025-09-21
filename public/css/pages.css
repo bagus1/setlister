@@ -205,3 +205,35 @@ input[name="email"] {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
+/* ========================================
+   OPPORTUNITY PAGES
+   ======================================== */
+
+.opportunity-notes {
+  background-color: #f8f9fa;
+}
+
+/* ========================================
+   RESPONSIVE OVERRIDES
+   ======================================== */
+
+@media (max-width: 991px) {
+  .col-lg-3, .col-lg-6 {
+    margin-bottom: 2rem;
+  }
+  
+  .col-lg-3:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  .opportunity-notes {
+    background-color: #343a40;
+  }
+}

@@ -4814,15 +4814,30 @@ async function generateAISuggestion(context) {
 
   // Get communication method specific guidance
   const getCommMethodGuidance = (contactType) => {
+    // Check if we have platform-specific hints in the contact info
+    const venue = context.opportunity?.venue?.name || '';
+    const previousResponse = context.previousResponse || '';
+    const platformHints = {
+      instagram: /@\w+|instagram\.com|insta/i.test(previousResponse + venue),
+      twitter: /twitter\.com|tweet|@\w+/i.test(previousResponse + venue),
+      facebook: /facebook\.com|fb\.com/i.test(previousResponse + venue)
+    };
+
     switch(contactType) {
       case 'TEXT':
       case 'WHATSAPP':
       case 'TELEGRAM':
         return 'TEXT/MESSAGING APP - Keep concise, friendly, under 160 characters if possible. Use casual but professional tone.';
       case 'FACEBOOK_MESSAGE':
+        return 'FACEBOOK MESSENGER - Conversational and friendly tone, moderate length, can use emojis.';
       case 'INSTAGRAM_MESSAGE':
+        return platformHints.instagram 
+          ? 'INSTAGRAM DM (detected @ handle) - Visual-focused, casual tone, use relevant emojis, mention their content if appropriate.'
+          : 'INSTAGRAM MESSAGE - Conversational and friendly tone, moderate length, emoji-friendly.';
       case 'TWITTER_MESSAGE':
-        return 'SOCIAL MEDIA MESSAGE - Conversational and friendly tone, moderate length, emoji-friendly.';
+        return platformHints.twitter
+          ? 'TWITTER DM (detected @ handle) - Concise, engaging, can reference their tweets, use relevant hashtags/emojis.'
+          : 'TWITTER MESSAGE - Conversational and friendly tone, moderate length, emoji-friendly.';
       case 'DISCORD':
       case 'WEBSITE_LIVE_CHAT':
         return 'CHAT PLATFORM - Very casual and conversational, brief exchanges, can be informal.';

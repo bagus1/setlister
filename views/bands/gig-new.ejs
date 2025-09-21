@@ -1,0 +1,181 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+            <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Band
+            </a>
+            <a href="/bands/<%= band.id %>/gigs" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Gigs
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-plus"></i> Create New Gig
+                </h5>
+                <small class="text-muted">Schedule a new performance for <%= band.name %></small>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/bands/<%= band.id %>/gigs">
+                    <!-- Basic Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <label for="name" class="form-label">Gig Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   placeholder="e.g., New Year's Eve Show, Summer Festival" required>
+                            <div class="form-text">What should this gig be called?</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="gigDate" class="form-label">Gig Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="gigDate" name="gigDate" required>
+                        </div>
+                    </div>
+
+                    <!-- Venue Selection -->
+                    <div class="mb-4">
+                        <label for="venueId" class="form-label">Venue <span class="text-danger">*</span></label>
+                        <% if (band.venues && band.venues.length > 0) { %>
+                            <select class="form-select" id="venueId" name="venueId" required>
+                                <option value="">Select a venue...</option>
+                                <% band.venues.forEach(bandVenue => { %>
+                                    <option value="<%= bandVenue.venue.id %>">
+                                        <%= bandVenue.venue.name %>
+                                        <% if (bandVenue.venue.city && bandVenue.venue.state) { %>
+                                            - <%= bandVenue.venue.city %>, <%= bandVenue.venue.state %>
+                                        <% } %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                            <div class="form-text">Choose from venues your band has added</div>
+                        <% } else { %>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                You need to add venues to your band before creating gigs.
+                                <a href="/bands/<%= band.id %>/venue-picker" class="alert-link">Add venues here</a>.
+                            </div>
+                        <% } %>
+                    </div>
+
+                    <!-- Times Section -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">Schedule & Times</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <label for="loadInTime" class="form-label">
+                                        <i class="bi bi-truck text-warning"></i> Load In
+                                    </label>
+                                    <input type="time" class="form-control" id="loadInTime" name="loadInTime">
+                                </div>
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <label for="soundCheckTime" class="form-label">
+                                        <i class="bi bi-volume-up text-info"></i> Sound Check
+                                    </label>
+                                    <input type="time" class="form-control" id="soundCheckTime" name="soundCheckTime">
+                                </div>
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <label for="startTime" class="form-label">
+                                        <i class="bi bi-play-circle text-success"></i> Start Time
+                                    </label>
+                                    <input type="time" class="form-control" id="startTime" name="startTime">
+                                </div>
+                                <div class="col-md-6 col-lg-3 mb-3">
+                                    <label for="endTime" class="form-label">
+                                        <i class="bi bi-stop-circle text-danger"></i> End Time
+                                    </label>
+                                    <input type="time" class="form-control" id="endTime" name="endTime">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fee and Links -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label for="fee" class="form-label">
+                                <i class="bi bi-currency-dollar text-success"></i> Fee
+                            </label>
+                            <input type="number" class="form-control" id="fee" name="fee" 
+                                   min="0" step="0.01" placeholder="0.00">
+                            <div class="form-text">Payment amount (optional)</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="ticketLink" class="form-label">
+                                <i class="bi bi-ticket text-primary"></i> Ticket Link
+                            </label>
+                            <input type="url" class="form-control" id="ticketLink" name="ticketLink" 
+                                   placeholder="https://...">
+                            <div class="form-text">Link to buy tickets (optional)</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="facebookEventLink" class="form-label">
+                                <i class="bi bi-facebook text-primary"></i> Facebook Event
+                            </label>
+                            <input type="url" class="form-control" id="facebookEventLink" name="facebookEventLink" 
+                                   placeholder="https://facebook.com/events/...">
+                            <div class="form-text">Facebook event page (optional)</div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Additional details, special requirements, etc."></textarea>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="/bands/<%= band.id %>/gigs" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <% if (band.venues && band.venues.length > 0) { %>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-calendar-plus"></i> Create Gig
+                            </button>
+                        <% } %>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set minimum date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const gigDateInput = document.getElementById('gigDate');
+    if (gigDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        gigDateInput.min = today;
+    }
+
+    // Auto-populate gig name based on venue and date
+    const venueSelect = document.getElementById('venueId');
+    const nameInput = document.getElementById('name');
+    const dateInput = document.getElementById('gigDate');
+
+    function updateGigName() {
+        if (venueSelect.value && dateInput.value && !nameInput.value.trim()) {
+            const venueName = venueSelect.options[venueSelect.selectedIndex].text.split(' - ')[0];
+            const date = new Date(dateInput.value);
+            const formattedDate = date.toLocaleDateString('en-US', { 
+                month: 'long', 
+                day: 'numeric',
+                year: 'numeric'
+            });
+            nameInput.value = `${venueName} - ${formattedDate}`;
+        }
+    }
+
+    venueSelect?.addEventListener('change', updateGigName);
+    dateInput?.addEventListener('change', updateGigName);
+});
+</script>

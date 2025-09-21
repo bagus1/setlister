@@ -1,0 +1,230 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Edit <%= venue.name %></h1>
+                <p class="text-muted">Update venue information</p>
+            </div>
+            <div>
+                <a href="/venues/<%= venue.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Venue
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Venue Information</h5>
+            </div>
+            <div class="card-body">
+                <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            <% errors.forEach(error => { %>
+                                <li><%= error.msg %></li>
+                            <% }) %>
+                        </ul>
+                    </div>
+                <% } %>
+
+                <form method="POST" action="/venues/<%= venue.id %>/update">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Venue Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.name : venue.name %>" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="venueType" class="form-label">Venue Type</label>
+                            <select class="form-select" id="venueType" name="venueType">
+                                <option value="">Select Type</option>
+                                <% if (venueTypes && venueTypes.length > 0) { %>
+                                    <% venueTypes.forEach(venueType => { %>
+                                        <option value="<%= venueType.id %>" <%= (typeof formData !== 'undefined' ? formData.venueType : venue.venueTypeId) == venueType.id ? 'selected' : '' %>>
+                                            <%= venueType.name %>
+                                        </option>
+                                    <% }) %>
+                                <% } %>
+                            </select>
+                        </div>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="2"><%= typeof formData !== 'undefined' ? formData.address : venue.address || '' %></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="city" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" name="city" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.city : venue.city || '' %>">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="state" class="form-label">State</label>
+                            <select class="form-select" id="state" name="state">
+                                <option value="">Select State</option>
+                                <option value="AL" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'AL' ? 'selected' : '' %>>Alabama</option>
+                                <option value="AK" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'AK' ? 'selected' : '' %>>Alaska</option>
+                                <option value="AZ" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'AZ' ? 'selected' : '' %>>Arizona</option>
+                                <option value="AR" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'AR' ? 'selected' : '' %>>Arkansas</option>
+                                <option value="CA" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'CA' ? 'selected' : '' %>>California</option>
+                                <option value="CO" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'CO' ? 'selected' : '' %>>Colorado</option>
+                                <option value="CT" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'CT' ? 'selected' : '' %>>Connecticut</option>
+                                <option value="DE" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'DE' ? 'selected' : '' %>>Delaware</option>
+                                <option value="FL" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'FL' ? 'selected' : '' %>>Florida</option>
+                                <option value="GA" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'GA' ? 'selected' : '' %>>Georgia</option>
+                                <option value="HI" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'HI' ? 'selected' : '' %>>Hawaii</option>
+                                <option value="ID" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'ID' ? 'selected' : '' %>>Idaho</option>
+                                <option value="IL" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'IL' ? 'selected' : '' %>>Illinois</option>
+                                <option value="IN" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'IN' ? 'selected' : '' %>>Indiana</option>
+                                <option value="IA" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'IA' ? 'selected' : '' %>>Iowa</option>
+                                <option value="KS" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'KS' ? 'selected' : '' %>>Kansas</option>
+                                <option value="KY" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'KY' ? 'selected' : '' %>>Kentucky</option>
+                                <option value="LA" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'LA' ? 'selected' : '' %>>Louisiana</option>
+                                <option value="ME" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'ME' ? 'selected' : '' %>>Maine</option>
+                                <option value="MD" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'MD' ? 'selected' : '' %>>Maryland</option>
+                                <option value="MA" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'MA' ? 'selected' : '' %>>Massachusetts</option>
+                                <option value="MI" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'MI' ? 'selected' : '' %>>Michigan</option>
+                                <option value="MN" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'MN' ? 'selected' : '' %>>Minnesota</option>
+                                <option value="MS" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'MS' ? 'selected' : '' %>>Mississippi</option>
+                                <option value="MO" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'MO' ? 'selected' : '' %>>Missouri</option>
+                                <option value="MT" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'MT' ? 'selected' : '' %>>Montana</option>
+                                <option value="NE" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'NE' ? 'selected' : '' %>>Nebraska</option>
+                                <option value="NV" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'NV' ? 'selected' : '' %>>Nevada</option>
+                                <option value="NH" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'NH' ? 'selected' : '' %>>New Hampshire</option>
+                                <option value="NJ" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'NJ' ? 'selected' : '' %>>New Jersey</option>
+                                <option value="NM" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'NM' ? 'selected' : '' %>>New Mexico</option>
+                                <option value="NY" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'NY' ? 'selected' : '' %>>New York</option>
+                                <option value="NC" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'NC' ? 'selected' : '' %>>North Carolina</option>
+                                <option value="ND" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'ND' ? 'selected' : '' %>>North Dakota</option>
+                                <option value="OH" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'OH' ? 'selected' : '' %>>Ohio</option>
+                                <option value="OK" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'OK' ? 'selected' : '' %>>Oklahoma</option>
+                                <option value="OR" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'OR' ? 'selected' : '' %>>Oregon</option>
+                                <option value="PA" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'PA' ? 'selected' : '' %>>Pennsylvania</option>
+                                <option value="RI" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'RI' ? 'selected' : '' %>>Rhode Island</option>
+                                <option value="SC" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'SC' ? 'selected' : '' %>>South Carolina</option>
+                                <option value="SD" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'SD' ? 'selected' : '' %>>South Dakota</option>
+                                <option value="TN" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'TN' ? 'selected' : '' %>>Tennessee</option>
+                                <option value="TX" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'TX' ? 'selected' : '' %>>Texas</option>
+                                <option value="UT" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'UT' ? 'selected' : '' %>>Utah</option>
+                                <option value="VT" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'VT' ? 'selected' : '' %>>Vermont</option>
+                                <option value="VA" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'VA' ? 'selected' : '' %>>Virginia</option>
+                                <option value="WA" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'WA' ? 'selected' : '' %>>Washington</option>
+                                <option value="WV" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'WV' ? 'selected' : '' %>>West Virginia</option>
+                                <option value="WI" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'WI' ? 'selected' : '' %>>Wisconsin</option>
+                                <option value="WY" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'WY' ? 'selected' : '' %>>Wyoming</option>
+                                <option value="DC" <%= (typeof formData !== 'undefined' ? formData.state : venue.state) === 'DC' ? 'selected' : '' %>>District of Columbia</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="zipCode" class="form-label">ZIP Code</label>
+                            <input type="text" class="form-control" id="zipCode" name="zipCode" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.zipCode : venue.zipCode || '' %>">
+                        </div>
+                    </div>
+
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="capacity" class="form-label">Capacity</label>
+                            <input type="number" class="form-control" id="capacity" name="capacity" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.capacity : venue.capacity || '' %>" min="1">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="musicStyle" class="form-label">Music Style</label>
+                            <input type="text" class="form-control" id="musicStyle" name="musicStyle" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.musicStyle : venue.musicStyle || '' %>" 
+                                   placeholder="e.g., Rock, Jazz, Country">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="stageLocation" class="form-label">Stage Location</label>
+                            <select class="form-select" id="stageLocation" name="stageLocation">
+                                <option value="">Select Location</option>
+                                <option value="indoor" <%= (typeof formData !== 'undefined' ? formData.stageLocation : venue.stageLocation) === 'indoor' ? 'selected' : '' %>>Indoor</option>
+                                <option value="outdoor" <%= (typeof formData !== 'undefined' ? formData.stageLocation : venue.stageLocation) === 'outdoor' ? 'selected' : '' %>>Outdoor</option>
+                                <option value="both" <%= (typeof formData !== 'undefined' ? formData.stageLocation : venue.stageLocation) === 'both' ? 'selected' : '' %>>Both</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="bookingStatus" class="form-label">Booking Status</label>
+                            <select class="form-select" id="bookingStatus" name="bookingStatus">
+                                <option value="">Select Status</option>
+                                <option value="Open" <%= (typeof formData !== 'undefined' ? formData.bookingStatus : venue.bookingStatus) === 'Open' ? 'selected' : '' %>>Open</option>
+                                <option value="Limited" <%= (typeof formData !== 'undefined' ? formData.bookingStatus : venue.bookingStatus) === 'Limited' ? 'selected' : '' %>>Limited</option>
+                                <option value="Closed" <%= (typeof formData !== 'undefined' ? formData.bookingStatus : venue.bookingStatus) === 'Closed' ? 'selected' : '' %>>Closed</option>
+                                <option value="Unknown" <%= (typeof formData !== 'undefined' ? formData.bookingStatus : venue.bookingStatus) === 'Unknown' ? 'selected' : '' %>>Unknown</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="leadTime" class="form-label">Lead Time</label>
+                            <input type="text" class="form-control" id="leadTime" name="leadTime" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.leadTime : venue.leadTime || '' %>" 
+                                   placeholder="e.g., 2-4 weeks">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="soundSystem" class="form-label">Sound System</label>
+                        <textarea class="form-control" id="soundSystem" name="soundSystem" rows="2" 
+                                  placeholder="Describe the sound system available"><%= typeof formData !== 'undefined' ? formData.soundSystem : venue.soundSystem || '' %></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="stageSize" class="form-label">Stage Size</label>
+                        <textarea class="form-control" id="stageSize" name="stageSize" rows="2" 
+                                  placeholder="Describe the stage size and setup"><%= typeof formData !== 'undefined' ? formData.stageSize : venue.stageSize || '' %></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="fees" class="form-label">Fees & Payment</label>
+                        <textarea class="form-control" id="fees" name="fees" rows="2" 
+                                  placeholder="Describe booking fees, payment terms, etc."><%= typeof formData !== 'undefined' ? formData.fees : venue.fees || '' %></textarea>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4" 
+                                  placeholder="Additional notes about the venue"><%= typeof formData !== 'undefined' ? formData.notes : venue.notes || '' %></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check"></i> Update Venue
+                        </button>
+                        <a href="/venues/<%= venue.id %>" class="btn btn-outline-secondary">
+                            <i class="bi bi-x"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Tips</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Update any information that has changed</li>
+                    <li>Keep contact information current for easier booking</li>
+                    <li>Add new details as you learn more about the venue</li>
+                    <li>Use notes to track your experiences and observations</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+

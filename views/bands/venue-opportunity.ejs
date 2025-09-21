@@ -1,0 +1,93 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+                <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-secondary">
+                    <i class="bi bi-building"></i> Back to Band Venues
+                </a>
+            </div>
+            <div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newOpportunityModal">
+                    <i class="bi bi-plus-circle"></i> Start New Opportunity
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Opportunity History</h5>
+            </div>
+            <div class="card-body">
+                <% if (opportunities && opportunities.length > 0) { %>
+                    <div class="list-group">
+                        <% opportunities.forEach(opportunity => { %>
+                            <a href="/bands/<%= band.id %>/opportunities/<%= opportunity.id %>" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1"><%= opportunity.name %></h6>
+                                    <small><%= new Date(opportunity.createdAt).toLocaleDateString() %></small>
+                                </div>
+                                <p class="mb-1">Status: <span class="badge bg-info"><%= opportunity.status %></span></p>
+                            </a>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No opportunities started for this venue yet. Click the button above to get started!</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Opportunity Modal -->
+<div class="modal fade" id="newOpportunityModal" tabindex="-1" aria-labelledby="newOpportunityModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newOpportunityModalLabel">Start New Opportunity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/bands/<%= band.id %>/venues/<%= venue.id %>/opportunities" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Opportunity Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="Q4 2024 Gig" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="interactionType" class="form-label">Initial Interaction Type</label>
+                        <select class="form-select" id="interactionType" name="interactionType">
+                            <% if (venueContactTypes && venueContactTypes.length > 0) { %>
+                                <% venueContactTypes.forEach(contactType => { %>
+                                    <option value="<%= contactType.name %>" <%= contactType.name === 'NOTE' ? 'selected' : '' %>>
+                                        <%= contactType.displayName %>
+                                    </option>
+                                <% }); %>
+                            <% } else { %>
+                                <!-- Fallback to hardcoded options if no data -->
+                                <option value="EMAIL">Email</option>
+                                <option value="PHONE_CALL">Phone Call</option>
+                                <option value="TEXT">Text</option>
+                                <option value="IN_PERSON">In-Person</option>
+                                <option value="NOTE" selected>Note</option>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Why are you starting this now?</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Log your first interaction..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Opportunity</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

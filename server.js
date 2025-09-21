@@ -27,6 +27,7 @@ const linkRoutes = require("./routes/links");
 const legalRoutes = require("./routes/legal");
 const whitelistRequestRoutes = require("./routes/whitelist-requests");
 const googleDocProcessingRoutes = require("./routes/google-doc-processing");
+const venueRoutes = require("./routes/venues");
 
 const app = express();
 const server = http.createServer(app);
@@ -130,6 +131,7 @@ app.use("/songs", songRoutes);
 app.use("/legal", legalRoutes);
 app.use("/whitelist-request", whitelistRequestRoutes);
 app.use("/google-docs", googleDocProcessingRoutes);
+app.use("/venues", venueRoutes);
 app.use("/admin", require("./routes/admin"));
 
 // Socket.io for real-time collaboration

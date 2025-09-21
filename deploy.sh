@@ -13,6 +13,7 @@
 #   test-migration - Test PostgreSQL migration locally (no server deployment)
 #   migrate  - Run database migrations on server (Prisma, with server stop/start)
 #   safe-migrate - Run migrations with extra safety checks and rollback capability
+#   seed     - Run database seeding scripts on production
 #   restart  - Just restart the server
 #   restart-demo - Just restart the demo server
 #   stop     - Stop the server (kill Passenger process)
@@ -97,6 +98,7 @@ Modes:
   test-migration - Test PostgreSQL migration locally (no server deployment)
   migrate  - Run database migrations on server (Prisma, with server stop/start)
   safe-migrate - Run migrations with extra safety checks and rollback capability
+  seed     - Run database seeding scripts on production
   restart  - Just restart the server
   restart-demo - Just restart the demo server
   stop     - Stop the server (kill Passenger process)
@@ -130,6 +132,7 @@ Examples:
   ./deploy.sh quick        # Update files without restart
   ./deploy.sh deploy-demo  # Deploy to demo with PostgreSQL migration
   ./deploy.sh migrate      # Run database migrations (Prisma)
+  ./deploy.sh seed         # Run database seeding scripts
   ./deploy.sh restart      # Just restart server
   ./deploy.sh stop         # Stop server
   ./deploy.sh start        # Start server
@@ -1730,6 +1733,47 @@ restore_dbackup_local() {
     print_status "  Users: $user_count"
     print_status "  Songs: $song_count"
     print_status "  Song-Artist relationships: $song_artist_count"
+    
+    # Step 6: Regenerate Prisma client and apply schema changes
+    print_status "Step 6: Updating local development environment..."
+    
+    print_status "Regenerating Prisma client..."
+    npx prisma generate || {
+        print_warning "Failed to regenerate Prisma client"
+    }
+    
+    print_status "Applying schema changes to local database..."
+    npx prisma db push || {
+        print_warning "Failed to apply schema changes with prisma db push"
+    }
+    
+    # Step 7: Run seeding scripts
+    print_status "Step 7: Running local seeding scripts..."
+    
+    # Check if seeding directory exists
+    if [ -d "prisma/seeds" ]; then
+        print_status "Found seeding directory, running SQL scripts..."
+        
+        # Load environment variables
+        export $(cat .env | grep -v '^#' | xargs)
+        
+        # Run all SQL files in the seeds directory
+        for sql_file in prisma/seeds/*.sql; do
+            if [ -f "$sql_file" ]; then
+                local filename=$(basename "$sql_file")
+                print_status "Running: $filename"
+                PGPASSWORD="$DB_PASSWORD" psql -h localhost -U "$DB_USER" -d "$DB_NAME" -f "$sql_file" || {
+                    print_warning "Failed to run $filename (continuing with other scripts)"
+                }
+            fi
+        done
+        
+        print_success "Local seeding completed"
+    else
+        print_status "No seeding directory found (prisma/seeds), skipping seeding"
+    fi
+    
+    print_success "Local development environment fully updated!"
 }
 
 # Function to restore production backup locally (step-by-step)
@@ -2083,6 +2127,63 @@ restore_prod_db_locally() {
     print_status "Check restore_output.log for any error details"
 }
 
+# Function to run database seeding scripts
+run_seeding() {
+    print_status "Running database seeding scripts on production..."
+    
+    # Get current branch name
+    CURRENT_BRANCH=$(git branch --show-current)
+    print_status "Current branch: $CURRENT_BRANCH"
+    
+    # First ensure we have the latest code
+    print_status "Pulling latest code on server..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && git checkout $CURRENT_BRANCH && git pull origin $CURRENT_BRANCH" || {
+        print_error "Failed to pull latest code on server"
+        return 1
+    }
+    
+    # Check if seeding directory exists
+    print_status "Checking for seeding scripts..."
+    if ! ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && [ -d 'prisma/seeds' ]"; then
+        print_error "Seeding directory not found: prisma/seeds"
+        print_error "Please ensure seeding scripts are in the correct location"
+        return 1
+    fi
+    
+    # List available seeding scripts
+    print_status "Available seeding scripts:"
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && find prisma/seeds -name '*.sql' -type f" || {
+        print_error "No SQL seeding scripts found in prisma/seeds"
+        return 1
+    }
+    
+    # Ask for confirmation
+    echo
+    read -p "This will run seeding scripts on the production database. Continue? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "Seeding cancelled by user"
+        return 0
+    fi
+    
+    # Run all SQL files in the seeds directory
+    print_status "Running seeding scripts..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && for sql_file in prisma/seeds/*.sql; do echo \"Running: \$sql_file\"; PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -f \"\$sql_file\" || { echo \"Error running \$sql_file\"; exit 1; }; done" || {
+        print_error "Failed to run seeding scripts on production database"
+        return 1
+    }
+    
+    print_success "Database seeding completed successfully!"
+    
+    # Verify the seeding worked by checking record counts
+    print_status "Verifying seeding results..."
+    ssh "$HOST_USER@$HOST_DOMAIN" "cd $SETLIST_PATH && export \$(cat .env | xargs) && echo 'Venue Contact Types:' && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -t -c 'SELECT COUNT(*) FROM venue_contact_types;' && echo 'Venue Social Types:' && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -t -c 'SELECT COUNT(*) FROM venue_social_types;'" || {
+        print_warning "Could not verify seeding results"
+    }
+    
+    print_success "Seeding verification completed!"
+}
+
 # Function to rollback
 rollback() {
     print_warning "Rolling back to previous commit..."
@@ -2218,6 +2319,9 @@ main() {
             ;;
         "safe-migrate")
             safe_migrate
+            ;;
+        "seed")
+            run_seeding
             ;;
         *)
             print_error "Unknown mode: $MODE"

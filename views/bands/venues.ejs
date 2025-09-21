@@ -1,0 +1,103 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted">Click on the venue to book a gig</span>
+            </div>
+            <div>
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <% if (bandVenues && bandVenues.length > 0) { %>
+            <div class="row">
+                <% bandVenues.forEach(bandVenue => { %>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title mb-0">
+                                        <%= bandVenue.venue.name %>
+                                    </h5>
+                                    <a href="/venues/<%= bandVenue.venue.id %>" class="btn btn-outline-info btn-sm" title="View Venue" style="position: relative; z-index: 2;">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                                
+                                <!-- Clickable overlay for venue booking -->
+                                <a href="/bands/<%= band.id %>/venues/<%= bandVenue.venue.id %>" class="text-decoration-none text-dark stretched-link" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1;" title="Click to book a gig at <%= bandVenue.venue.name %>"></a>
+                                
+                                <% if (bandVenue.venue.venueType) { %>
+                                    <span class="badge bg-primary mb-2"><%= bandVenue.venue.venueType.name %></span>
+                                <% } %>
+                                
+                                <% if (bandVenue.venue.city && bandVenue.venue.state) { %>
+                                    <p class="text-muted mb-2">
+                                        <%
+                                            // Build Google Maps URL with full address for better accuracy
+                                            let mapsUrl = '';
+                                            if (bandVenue.venue.address) {
+                                                mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(bandVenue.venue.address + ', ' + bandVenue.venue.city + ', ' + bandVenue.venue.state + (bandVenue.venue.zipCode ? ' ' + bandVenue.venue.zipCode : ''))}`;
+                                            } else {
+                                                mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(bandVenue.venue.city + ', ' + bandVenue.venue.state + (bandVenue.venue.zipCode ? ' ' + bandVenue.venue.zipCode : ''))}`;
+                                            }
+                                        %>
+                                        <a href="<%= mapsUrl %>" target="_blank" class="text-decoration-none" style="position: relative; z-index: 2;">
+                                            <i class="bi bi-geo-alt"></i> <%= bandVenue.venue.city %>, <%= bandVenue.venue.state %>
+                                        </a>
+                                    </p>
+                                <% } %>
+                                
+                                
+                                <% if (bandVenue.venue.stageLocation) { %>
+                                    <p class="text-muted mb-2">
+                                        <i class="bi bi-house"></i> Stage: <%= bandVenue.venue.stageLocation.charAt(0).toUpperCase() + bandVenue.venue.stageLocation.slice(1) %>
+                                    </p>
+                                <% } %>
+                                
+                                
+                                <!-- Social Media -->
+                                <% if (bandVenue.venue.socials && bandVenue.venue.socials.length > 0) { %>
+                                    <div class="mb-2">
+                                        <% bandVenue.venue.socials.slice(0, 4).forEach(social => { %>
+                                            <a href="<%= social.url || '#' %>" target="_blank" class="text-decoration-none me-2" title="<%= social.socialType.name %>: <%= social.handle %>" style="position: relative; z-index: 2;">
+                                                <i class="bi bi-<%= social.socialType.iconClass || 'link' %> fs-5"></i>
+                                            </a>
+                                        <% }); %>
+                                        <% if (bandVenue.venue.socials.length > 4) { %>
+                                            <span class="small text-muted">+<%= bandVenue.venue.socials.length - 4 %></span>
+                                        <% } %>
+                                    </div>
+                                <% } %>
+                                
+                                <% if (bandVenue.venue.notes) { %>
+                                    <p class="card-text small text-muted">
+                                        <%= bandVenue.venue.notes.length > 100 ? 
+                                            bandVenue.venue.notes.substring(0, 100) + '...' : 
+                                            bandVenue.venue.notes %>
+                                    </p>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } else { %>
+            <div class="text-center py-5">
+                <i class="bi bi-geo-alt display-1 text-muted"></i>
+                <h4 class="mt-3">No Venues Yet</h4>
+                <p class="text-muted">Start building your venue network by adding venues to your band.</p>
+                <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-primary">
+                    <i class="bi bi-plus"></i> Add Your First Venue
+                </a>
+            </div>
+        <% } %>
+    </div>
+</div>
+

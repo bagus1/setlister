@@ -3,6 +3,35 @@
    ======================================== */
 
 /* ========================================
+   GLOBAL TEXT COLOR DEFAULTS
+   ======================================== */
+
+/* Set default text color for all text elements */
+body, p, span, div, td, th, li, 
+.text-muted, .small, .form-text,
+.timeline-content, .card-text, .card-body {
+  color: #aaaaaa !important;
+}
+
+/* Keep specific elements with their intended colors */
+h1, h2, h3, h4, h5, h6, .card-title, 
+.navbar-brand, .nav-link, .btn, 
+.badge, .alert, .text-danger, .text-success, 
+.text-warning, .text-info, .text-primary,
+a, a:hover, a:focus {
+  color: inherit; /* Use Bootstrap's original colors */
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  body, p, span, div, td, th, li, 
+  .text-muted, .small, .form-text,
+  .timeline-content, .card-text, .card-body {
+    color: #aaaaaa !important;
+  }
+}
+
+/* ========================================
    CORE COMPONENTS
    ======================================== */
 
@@ -153,4 +182,250 @@
   border-image-repeat: repeat;
   border-radius: 25px;
   -webkit-border-radius: 25px;
+}
+
+/* ========================================
+   TIMELINE COMPONENTS
+   ======================================== */
+
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.timeline-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.timeline-item.latest {
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #28a745;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+
+.timeline-item.latest:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -35px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #007bff;
+}
+
+.timeline-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: -29px;
+  top: 17px;
+  width: 2px;
+  height: calc(100% + 15px);
+  background-color: #dee2e6;
+}
+
+.timeline-content {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 3px solid #007bff;
+  position: relative;
+}
+
+.timeline-content .badge {
+  font-size: 0.75rem;
+  padding: 0.35em 0.65em;
+}
+
+.timeline-content .text-capitalize {
+  font-weight: 600;
+  color: #495057;
+}
+
+.timeline-content .text-muted.small {
+  line-height: 1.4;
+  margin-top: 0.5rem;
+}
+
+/* ========================================
+   CARD COMPONENTS
+   ======================================== */
+
+.gig-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #dee2e6;
+}
+
+.gig-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.gig-card .card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.gig-card .card-footer {
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+.artist-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 100%;
+}
+
+.artist-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.venue-card {
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.venue-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.match-card {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* ========================================
+   SELECTION COMPONENTS
+   ======================================== */
+
+.song-selection-card {
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.song-selection-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.song-selection-card.selected {
+  border-color: #007bff;
+  background-color: #e7f3ff;
+}
+
+.venue-selection-card {
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.venue-selection-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.venue-selection-card.selected {
+  border-color: #007bff;
+  background-color: #e7f3ff;
+}
+
+/* ========================================
+   MEDIA COMPONENTS
+   ======================================== */
+
+.playlist-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.playlist-item:hover {
+  background-color: #f8f9fa;
+}
+
+.audio-player {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  .timeline-content {
+    background: #343a40;
+  }
+  
+  .timeline-marker {
+    border-color: #343a40;
+  }
+  
+  .timeline-item:not(:last-child)::before {
+    background-color: #495057;
+  }
+  
+  .timeline-item.latest {
+    background-color: #343a40;
+    border-color: #28a745;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  
+  .timeline-item.latest:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  
+  .timeline-content strong {
+    color: #f8f9fa;
+  }
+  
+  .song-selection-card.selected {
+    background-color: #1a365d;
+  }
+  
+  .venue-selection-card.selected {
+    background-color: #1a365d;
+  }
+  
+  .playlist-item:hover {
+    background-color: #343a40;
+  }
+  
+  .audio-player {
+    background: #343a40;
+  }
+  
+  .gig-card {
+    background-color: #343a40;
+    border-color: #495057;
+  }
+  
+  .gig-card .card-header,
+  .gig-card .card-footer {
+    background-color: #495057;
+    border-color: #6c757d;
+  }
 }

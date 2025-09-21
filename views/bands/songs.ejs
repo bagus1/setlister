@@ -104,6 +104,21 @@
     }
 </style>
 
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-muted">Select songs to add to your band's repertoire</span>
+            </div>
+            <div>
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card mb-4">
@@ -181,7 +196,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="h4 text-primary mb-3">Step 4</div>
-                                    <p class="lead">Use the Add Song or Bulk Add Songs buttons if the songs you want aren't listed here</p>
+                                    <p class="lead">If the songs you want aren't listed here, you can add them from the main Songs page</p>
                                 </div>
                             </div>
                         </div>
@@ -232,14 +247,6 @@
 
 <div class="row mb-4">
     <div class="col-12">
-        <div class="d-flex gap-2">
-            <a href="/songs/new" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Add Song
-            </a>
-            <a href="/bulk-add-songs" class="btn btn-success">
-                <i class="bi bi-collection"></i> Bulk Add Songs
-            </a>
-        </div>
     </div>
 </div>
 
@@ -303,7 +310,7 @@
                     <div class="row" id="songsGrid">
                         <% allSongs.forEach(song=> { %>
                             <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="card song-selection-card <%= bandSongIds.includes(song.id) ? 'border-primary bg-light' : '' %>"
+                                <div class="card song-selection-card <%= bandSongIds.includes(song.id) ? 'border-success border-3 bg-success bg-opacity-10' : '' %>"
                                     data-song-id="<%= song.id %>" data-title="<%= song.title.toLowerCase() %>"
                                     data-artist="<%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name.toLowerCase() : '' %>"
                                     data-key="<%= song.key || '' %>" style="cursor: pointer;">
@@ -314,7 +321,7 @@
                                                 <%=bandSongIds.includes(song.id) ? 'checked' : '' %>
                                             style="display: none">
                                             <label class="form-check-label w-100" for="song_<%= song.id %>">
-                                                <div class="song-title">
+                                                <div class="song-title text-muted">
                                                     <%= song.title %>
                                                 </div>
                                                 <% if (song.artists && song.artists.length> 0) { %>
@@ -420,9 +427,9 @@
 
                 // Update visual state optimistically
                 if (!isChecked) {
-                    this.classList.add('border-primary', 'bg-light');
+                    this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                 } else {
-                    this.classList.remove('border-primary', 'bg-light');
+                    this.classList.remove('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                 }
 
                 // Send AJAX request
@@ -451,11 +458,11 @@
                             if (operation === 'add') {
                                 // Song was successfully added - ensure it shows as selected
                                 checkbox.checked = true;
-                                this.classList.add('border-primary', 'bg-light');
+                                this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                             } else {
                                 // Song was successfully removed - ensure it shows as unselected  
                                 checkbox.checked = false;
-                                this.classList.remove('border-primary', 'bg-light');
+                                this.classList.remove('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                             }
 
                             // Success animation and status message
@@ -483,14 +490,14 @@
                             if (data.error === 'Song already in band') {
                                 console.log('Song already in band - syncing visual state');
                                 checkbox.checked = true;
-                                this.classList.add('border-primary', 'bg-light');
+                                this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                             } else {
                                 // Revert on actual error
                                 checkbox.checked = isChecked;
                                 if (isChecked) {
-                                    this.classList.add('border-primary', 'bg-light');
+                                    this.classList.add('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                                 } else {
-                                    this.classList.remove('border-primary', 'bg-light');
+                                    this.classList.remove('border-success', 'border-3', 'bg-success', 'bg-opacity-10');
                                 }
                                 const action = operation === 'add' ? 'adding song to' : 'removing song from';
                                 alert(`Error ${action} band`);

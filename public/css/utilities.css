@@ -125,17 +125,17 @@ body {
 .card {
   background-color: #1a1a1a !important;
   border-color: #333333 !important;
-  color: #ffffff !important;
+  color: #aaaaaa !important;
 }
 
 .card-header {
   background-color: #2d2d2d !important;
   border-bottom-color: #333333 !important;
-  color: #ffffff !important;
+  color: #aaaaaa !important;
 }
 
 .card-body {
-  color: #ffffff !important;
+  color: #aaaaaa !important;
 }
 
 /* Dark theme for navbar */
@@ -359,4 +359,28 @@ h1 {
 .marquee-container {
   margin: 0 20px 0 20px;
   width: auto;
+}
+
+/* Make form-text the same color as text-muted */
+.form-text {
+  color: var(--bs-secondary) !important;
+}
+
+/* Add margin to alert messages */
+.alert {
+  margin: 0 20px 0 20px;
+}
+
+/* Timeline content dark mode background */
+.timeline-content {
+  background-color: #e9ecef !important;
+  padding: 1rem;
+  border-radius: 0.375rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .timeline-content {
+    background-color: #343a40 !important;
+  }
 }

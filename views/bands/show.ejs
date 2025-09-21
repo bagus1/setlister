@@ -4,11 +4,20 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
+                <a href="/bands/<%= band.id %>/edit" class="btn btn-outline-warning">
+                    <i class="bi bi-pencil"></i> Edit Band
+                </a>
                 <a href="/bands/<%= band.id %>/songs" class="btn btn-outline-primary">
                     <i class="bi bi-music-note-list"></i> Manage Songs
                 </a>
                 <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-success">
                     <i class="bi bi-geo-alt"></i> Our Venues
+                </a>
+                <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-outline-info">
+                    <i class="bi bi-plus-circle"></i> Pick Venues
+                </a>
+                <a href="/bands/<%= band.id %>/gigs" class="btn btn-outline-dark">
+                    <i class="bi bi-calendar-event"></i> Gigs
                 </a>
                 <a href="/bands" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Back to Bands
@@ -94,6 +103,82 @@
 
     <!-- Right Column: Quick Set + Members -->
     <div class="col-md-4">
+        <!-- Dynamic Action Panel -->
+        <div class="card mb-4 action-panel">
+            <% if (upcomingGigs && upcomingGigs.length > 0) { %>
+                <!-- Next Gigs Panel -->
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-calendar-event"></i> Next Gigs
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="small text-muted mb-2">Your upcoming performances</div>
+                    <% upcomingGigs.forEach((gig, index) => { %>
+                        <div class="d-flex justify-content-between align-items-center <%= index < upcomingGigs.length - 1 ? 'mb-2 pb-2 border-bottom' : '' %>">
+                            <div>
+                                <div class="fw-bold small"><%= gig.venue.name %></div>
+                                <div class="text-muted" style="font-size: 0.8em;">
+                                    <%= new Date(gig.gigDate).toLocaleDateString('en-US', { 
+                                        weekday: 'short',
+                                        month: 'short', 
+                                        day: 'numeric' 
+                                    }) %>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <% if (gig.startTime) { %>
+                                    <div class="small text-muted">
+                                        <%= new Date(gig.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %>
+                                    </div>
+                                <% } %>
+                                <% if (gig.fee) { %>
+                                    <div class="small text-success fw-bold">$<%= gig.fee.toLocaleString() %></div>
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }); %>
+                    <div class="mt-3">
+                        <a href="/bands/<%= band.id %>/gigs" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="bi bi-calendar-check"></i> View All Gigs
+                        </a>
+                    </div>
+                </div>
+            <% } else if (bandVenues && bandVenues.length > 0) { %>
+                <!-- Get Gigs Panel -->
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightning-charge"></i> Get Gigs
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="small text-muted mb-3">Contact your venues</div>
+                    <a href="/bands/<%= band.id %>/venues" class="btn btn-success btn-sm w-100 mb-2">
+                        <i class="bi bi-geo-alt"></i> Book at Your Venues
+                    </a>
+                    <a href="/bands/<%= band.id %>/gigs/new" class="btn btn-outline-success btn-sm w-100">
+                        <i class="bi bi-calendar-plus"></i> Schedule a Gig
+                    </a>
+                </div>
+            <% } else { %>
+                <!-- Find Venues Panel -->
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-search"></i> Find Venues to Play
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="small text-muted mb-3">Start by adding venues where you'd like to perform</div>
+                    <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-info btn-sm w-100 mb-2">
+                        <i class="bi bi-plus-circle"></i> Add Venues
+                    </a>
+                    <div class="small text-muted mt-2">
+                        <i class="bi bi-lightbulb"></i> Tip: You can also browse all venues and add them to your band
+                    </div>
+                </div>
+            <% } %>
+        </div>
+
         <!-- Quick Set Creation Section -->
         <div class="card mb-4">
             <div class="card-header">
@@ -218,6 +303,59 @@ Set 4:
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Band Venues Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-building"></i> Venues
+                </h5>
+                <small class="text-muted">Venues where this band performs</small>
+            </div>
+            <div class="card-body">
+                <% if (bandVenues && bandVenues.length > 0) { %>
+                    <% bandVenues.forEach(bandVenue => { %>
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <a href="/venues/<%= bandVenue.venue.id %>" class="text-decoration-none">
+                                    <strong><%= bandVenue.venue.name %></strong>
+                                </a>
+                                <% if (bandVenue.venue.city && bandVenue.venue.state) { %>
+                                    <br><small class="text-muted">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <%= bandVenue.venue.city %>, <%= bandVenue.venue.state %>
+                                    </small>
+                                <% } else if (bandVenue.venue.city) { %>
+                                    <br><small class="text-muted">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <%= bandVenue.venue.city %>
+                                    </small>
+                                <% } %>
+                                <% if (bandVenue.venue.venueType) { %>
+                                    <span class="badge bg-secondary ms-1"><%= bandVenue.venue.venueType.name %></span>
+                                <% } %>
+                                <% if (bandVenue.venue.capacity) { %>
+                                    <span class="badge bg-primary ms-1">
+                                        <i class="bi bi-people"></i>
+                                        <%= bandVenue.venue.capacity.toLocaleString() %>
+                                    </span>
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }) %>
+                    <div class="mt-3">
+                        <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-geo-alt"></i> Our Venues
+                        </a>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No venues selected yet.</p>
+                    <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus"></i> Add Venues
+                    </a>
+                <% } %>
             </div>
         </div>
 

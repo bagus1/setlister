@@ -1,0 +1,104 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Opportunity
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-pencil"></i> Edit Opportunity: <%= opportunity.name %>
+                </h4>
+                <small class="text-muted">
+                    <%= opportunity.venue.name %>
+                </small>
+            </div>
+            <div class="card-body">
+                <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            <% errors.forEach(error => { %>
+                                <li><%= error.msg %></li>
+                            <% }); %>
+                        </ul>
+                    </div>
+                <% } %>
+
+                <form action="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>/update" method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Opportunity Name *</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="<%= typeof name !== 'undefined' ? name : (opportunity.name || '') %>" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Why are you starting this now?</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"><%= typeof notes !== 'undefined' ? notes : (opportunity.notes || '') %></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status *</label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="PROSPECTING" <%= (typeof status !== 'undefined' ? status : opportunity.status) === 'PROSPECTING' ? 'selected' : '' %>>Prospecting</option>
+                            <option value="CONTACTED" <%= (typeof status !== 'undefined' ? status : opportunity.status) === 'CONTACTED' ? 'selected' : '' %>>Contacted</option>
+                            <option value="NEGOTIATING" <%= (typeof status !== 'undefined' ? status : opportunity.status) === 'NEGOTIATING' ? 'selected' : '' %>>Negotiating</option>
+                            <option value="BOOKED" <%= (typeof status !== 'undefined' ? status : opportunity.status) === 'BOOKED' ? 'selected' : '' %>>Booked</option>
+                            <option value="ARCHIVED" <%= (typeof status !== 'undefined' ? status : opportunity.status) === 'ARCHIVED' ? 'selected' : '' %>>Archived</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="gigDate" class="form-label">Gig Date</label>
+                        <input type="date" class="form-control" id="gigDate" name="gigDate" 
+                               value="<%= typeof gigDate !== 'undefined' ? gigDate : (opportunity.gigDate ? new Date(opportunity.gigDate).toISOString().split('T')[0] : '') %>">
+                        <div class="form-text">When is the gig scheduled? (Leave blank if not booked yet)</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="offerValue" class="form-label">Offer Value ($)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="offerValue" name="offerValue" 
+                                   step="0.01" min="0"
+                                   value="<%= typeof offerValue !== 'undefined' ? offerValue : (opportunity.offerValue || '') %>">
+                        </div>
+                        <div class="form-text">What's the venue offering to pay? (Leave blank if not discussed yet)</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-set gig date based on status
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelect = document.getElementById('status');
+    const gigDateInput = document.getElementById('gigDate');
+    
+    statusSelect.addEventListener('change', function() {
+        if (this.value === 'BOOKED' && !gigDateInput.value) {
+            // If status is BOOKED and no gig date set, suggest today's date
+            const today = new Date().toISOString().split('T')[0];
+            gigDateInput.value = today;
+        }
+    });
+});
+</script>

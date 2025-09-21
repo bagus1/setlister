@@ -24,7 +24,10 @@ model User {
   createdSongs   Song[]           @relation("SongCreator")
   createdLinks   Link[]           @relation("LinkCreator")
   createdSetlists Setlist[]       @relation("SetlistCreator")
+  createdVenues  Venue[]          @relation("VenueCreator")
   setlistVersions SetlistVersion[]
+  interactions   Interaction[]
+  opportunities  Opportunity[]
 
   @@map("users")
 }
@@ -51,17 +54,26 @@ model Artist {
 }
 
 model Band {
-  id          Int              @id @default(autoincrement())
-  name        String           @db.VarChar(255)
-  description String?
-  createdById Int              @map("created_by_id")
-  createdAt   DateTime         @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  invitations BandInvitation[]
-  members     BandMember[]
-  songs       BandSong[]
-  creator     User             @relation("BandCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  setlists    Setlist[]
+  id           Int              @id @default(autoincrement())
+  name         String           @db.VarChar(255)
+  description  String?
+  websiteUrl   String?          @db.VarChar(500) @map("website_url")
+  epkUrl       String?          @db.VarChar(500) @map("epk_url")
+  bookingPitch String?          @db.Text @map("booking_pitch")
+  contactName  String?          @db.VarChar(255) @map("contact_name")
+  contactEmail String?          @db.VarChar(255) @map("contact_email")
+  contactPhone String?          @db.VarChar(50) @map("contact_phone")
+  createdById  Int              @map("created_by_id")
+  createdAt    DateTime         @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  invitations  BandInvitation[]
+  members      BandMember[]
+  songs        BandSong[]
+  venues       BandVenue[]
+  creator      User             @relation("BandCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  setlists     Setlist[]
+  opportunities Opportunity[]
+  gigs         Gig[]
 
   @@map("bands")
 }
@@ -439,3 +451,213 @@ model SetlistVersion {
   @@unique([setlistId, versionNumber])
   @@map("setlist_versions")
 }
+
+model Venue {
+  id          Int          @id @default(autoincrement())
+  name        String       @db.VarChar(255)
+  address     String?      @db.Text
+  city        String?      @db.VarChar(255)
+  state       String?      @db.VarChar(100)
+  zipCode     String?      @db.VarChar(20) @map("zip_code")
+  phone       String?      @db.VarChar(50)
+  email       String?      @db.VarChar(255)
+  website     String?      @db.VarChar(500)
+  capacity    Int?
+  venueTypeId Int?         @map("venue_type_id")
+  venueType   VenueType?   @relation(fields: [venueTypeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  musicStyle  String?      @db.VarChar(255) @map("music_style")
+  stageLocation String?    @db.VarChar(20) @map("stage_location")
+  soundSystem String?      @db.Text @map("sound_system")
+  stageSize   String?      @db.Text @map("stage_size")
+  bookingStatus String?    @db.VarChar(100) @map("booking_status")
+  fees        String?      @db.Text
+  leadTime    String?      @db.VarChar(100) @map("lead_time")
+  notes       String?      @db.Text
+  createdById Int?         @map("created_by_id")
+  createdAt   DateTime     @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  bandVenues  BandVenue[]
+  socials     VenueSocial[]
+  contacts    VenueContact[]
+  opportunities Opportunity[]
+  gigs        Gig[]
+  creator     User?        @relation("VenueCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("venues")
+}
+
+model BandVenue {
+  id        Int      @id @default(autoincrement())
+  bandId    Int      @map("band_id")
+  venueId   Int      @map("venue_id")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  band      Band     @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([bandId, venueId], map: "band_venues_band_id_venue_id")
+  @@map("band_venues")
+}
+
+model VenueType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  venues      Venue[]
+
+  @@map("venue_types")
+}
+
+model VenueSocialType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  displayName String   @db.VarChar(100)
+  iconClass   String?  @db.VarChar(50) // Bootstrap icon class
+  urlTemplate String?  @db.VarChar(500) // URL template for auto-generation
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  socials     VenueSocial[]
+
+  @@map("venue_social_types")
+}
+
+model VenueSocial {
+  id        Int      @id @default(autoincrement())
+  venueId   Int      @map("venue_id")
+  socialTypeId Int   @map("social_type_id")
+  handle    String   @db.VarChar(255) // @username or page name
+  url       String?  @db.VarChar(500) // Full URL
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  socialType VenueSocialType @relation(fields: [socialTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, socialTypeId, handle])
+  @@map("venue_socials")
+}
+
+model VenueContactType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  displayName String   @db.VarChar(100)
+  iconClass   String?  @db.VarChar(50) // Bootstrap icon class
+  urlTemplate String?  @db.VarChar(500) // URL template for auto-generation
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contacts    VenueContact[]
+
+  @@map("venue_contact_types")
+}
+
+model VenueContact {
+  id          Int      @id @default(autoincrement())
+  venueId     Int      @map("venue_id")
+  contactTypeId Int    @map("contact_type_id")
+  value       String   @db.VarChar(255) // The actual phone/email/website/handle
+  url         String?  @db.VarChar(500) // Full URL if applicable
+  label       String?  @db.VarChar(100) // 'Booking', 'General', 'Press', etc.
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  contactType VenueContactType @relation(fields: [contactTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, contactTypeId, value])
+  @@map("venue_contacts")
+}
+
+model Opportunity {
+  id        Int      @id @default(autoincrement())
+  name      String
+  notes     String?  @db.Text
+  status    OpportunityStatus @default(PROSPECTING)
+  gigDate   DateTime?
+  offerValue Float?
+  bandId    Int
+  band      Band     @relation(fields: [bandId], references: [id])
+  venueId   Int
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  createdById Int
+  creator   User     @relation(fields: [createdById], references: [id])
+  interactions Interaction[]
+  gig       Gig?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("opportunities")
+}
+
+model Interaction {
+  id            Int      @id @default(autoincrement())
+  type          String   @db.VarChar(50)  // References venue_contact_types.name
+  notes         String   @db.Text
+  messageContent String? @db.Text @map("message_content")
+  previousResponse String? @db.Text @map("previous_response")
+  outcome       String?  @db.VarChar(50)
+  nextSteps     String?  @db.Text @map("next_steps")
+  interactionDate DateTime
+  opportunityId Int
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@map("interactions")
+}
+
+enum OpportunityStatus {
+  PROSPECTING
+  CONTACTED
+  NEGOTIATING
+  NEED_CONFIRMATION
+  BOOKED
+  ARCHIVED
+}
+
+model Gig {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  gigDate     DateTime @map("gig_date")
+  loadInTime  DateTime? @map("load_in_time")
+  soundCheckTime DateTime? @map("sound_check_time")
+  startTime   DateTime? @map("start_time")
+  endTime     DateTime? @map("end_time")
+  fee         Float?
+  notes       String?  @db.Text
+  ticketLink  String?  @map("ticket_link") @db.VarChar(500)
+  facebookEventLink String? @map("facebook_event_link") @db.VarChar(500)
+  status      GigStatus @default(CONFIRMED)
+  
+  // Relationships
+  bandId      Int      @map("band_id")
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  venueId     Int      @map("venue_id")
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  opportunityId Int?   @unique @map("opportunity_id")
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("gigs")
+}
+
+enum GigStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+  COMPLETED
+}
+

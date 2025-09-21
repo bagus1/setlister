@@ -1405,7 +1405,9 @@ async function showMenu() {
   log("13. Show statistics", "cyan");
   log("14. Merge artists", "yellow");
   log("15. Manage whitelist domains", "green");
-  log("16. Exit (or type q/quit)", "reset");
+  log("16. Manage venue types", "green");
+  log("17. Manage social media types", "green");
+  log("18. Exit (or type q/quit)", "reset");
   log("=====================================", "magenta");
 }
 
@@ -1642,6 +1644,442 @@ async function reactivateWhitelistDomain(client) {
   }
 }
 
+async function manageVenueTypes() {
+  log("\n=== Manage Venue Types ===", "cyan");
+  const client = createDbClient();
+
+  try {
+    await client.connect();
+
+    while (true) {
+      log("\n1. List venue types", "blue");
+      log("2. Add venue type", "green");
+      log("3. Update venue type", "yellow");
+      log("4. Deactivate venue type", "red");
+      log("5. Reactivate venue type", "green");
+      log("6. Back to main menu", "reset");
+
+      const choice = await question("Enter your choice (1-6): ");
+
+      switch (choice) {
+        case "1":
+          await listVenueTypes(client);
+          break;
+        case "2":
+          await addVenueType(client);
+          break;
+        case "3":
+          await updateVenueType(client);
+          break;
+        case "4":
+          await deactivateVenueType(client);
+          break;
+        case "5":
+          await reactivateVenueType(client);
+          break;
+        case "6":
+          return;
+        default:
+          log("Invalid choice. Please try again.", "red");
+      }
+    }
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
+  }
+}
+
+async function listVenueTypes(client) {
+  log("\n=== Venue Types ===", "cyan");
+
+  try {
+    const result = await client.query(`
+      SELECT id, name, description, is_active, sort_order, created_at
+      FROM venue_types 
+      ORDER BY sort_order ASC, name ASC
+    `);
+
+    if (result.rows.length === 0) {
+      log("No venue types found.", "yellow");
+      return;
+    }
+
+    result.rows.forEach((row) => {
+      const status = row.is_active ? "✓" : "✗";
+      const description = row.description ? ` - ${row.description}` : "";
+      log(
+        `${status} [${row.id}] ${row.name}${description} (Order: ${row.sort_order})`,
+        row.is_active ? "green" : "red"
+      );
+    });
+  } catch (error) {
+    log(`Error listing venue types: ${error.message}`, "red");
+  }
+}
+
+async function addVenueType(client) {
+  log("\n=== Add Venue Type ===", "cyan");
+
+  try {
+    const name = await question("Enter venue type name: ");
+    const description = await question("Enter description (optional): ");
+    const sortOrder = await question("Enter sort order (0-999): ");
+
+    if (!name.trim()) {
+      log("Name is required.", "red");
+      return;
+    }
+
+    const result = await client.query(
+      `
+      INSERT INTO venue_types (name, description, sort_order, is_active, created_at, updated_at)
+      VALUES ($1, $2, $3, true, NOW(), NOW())
+      RETURNING id
+    `,
+      [name.trim(), description.trim() || null, parseInt(sortOrder) || 0]
+    );
+
+    log(`✓ Venue type '${name}' added with ID ${result.rows[0].id}`, "green");
+  } catch (error) {
+    if (error.code === "23505") {
+      log("Error: A venue type with this name already exists.", "red");
+    } else {
+      log(`Error adding venue type: ${error.message}`, "red");
+    }
+  }
+}
+
+async function updateVenueType(client) {
+  log("\n=== Update Venue Type ===", "cyan");
+
+  try {
+    const id = await question("Enter venue type ID to update: ");
+    const name = await question("Enter new name: ");
+    const description = await question("Enter new description (optional): ");
+    const sortOrder = await question("Enter new sort order (0-999): ");
+
+    if (!name.trim()) {
+      log("Name is required.", "red");
+      return;
+    }
+
+    const result = await client.query(
+      `
+      UPDATE venue_types 
+      SET name = $1, description = $2, sort_order = $3, updated_at = NOW()
+      WHERE id = $4
+      RETURNING name
+    `,
+      [
+        name.trim(),
+        description.trim() || null,
+        parseInt(sortOrder) || 0,
+        parseInt(id),
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      log("Venue type not found.", "red");
+    } else {
+      log(
+        `✓ Venue type '${result.rows[0].name}' updated successfully`,
+        "green"
+      );
+    }
+  } catch (error) {
+    if (error.code === "23505") {
+      log("Error: A venue type with this name already exists.", "red");
+    } else {
+      log(`Error updating venue type: ${error.message}`, "red");
+    }
+  }
+}
+
+async function deactivateVenueType(client) {
+  log("\n=== Deactivate Venue Type ===", "cyan");
+
+  try {
+    const id = await question("Enter venue type ID to deactivate: ");
+
+    const result = await client.query(
+      `
+      UPDATE venue_types 
+      SET is_active = false, updated_at = NOW()
+      WHERE id = $1
+      RETURNING name
+    `,
+      [parseInt(id)]
+    );
+
+    if (result.rows.length === 0) {
+      log("Venue type not found.", "red");
+    } else {
+      log(`✓ Venue type '${result.rows[0].name}' deactivated`, "yellow");
+    }
+  } catch (error) {
+    log(`Error deactivating venue type: ${error.message}`, "red");
+  }
+}
+
+async function reactivateVenueType(client) {
+  log("\n=== Reactivate Venue Type ===", "cyan");
+
+  try {
+    const id = await question("Enter venue type ID to reactivate: ");
+
+    const result = await client.query(
+      `
+      UPDATE venue_types 
+      SET is_active = true, updated_at = NOW()
+      WHERE id = $1
+      RETURNING name
+    `,
+      [parseInt(id)]
+    );
+
+    if (result.rows.length === 0) {
+      log("Venue type not found.", "red");
+    } else {
+      log(`✓ Venue type '${result.rows[0].name}' reactivated`, "green");
+    }
+  } catch (error) {
+    log(`Error reactivating venue type: ${error.message}`, "red");
+  }
+}
+
+async function manageSocialMediaTypes() {
+  log("\n=== Manage Social Media Types ===", "cyan");
+  const client = createDbClient();
+
+  try {
+    await client.connect();
+
+    while (true) {
+      log("\n1. List social media types", "blue");
+      log("2. Add social media type", "green");
+      log("3. Update social media type", "yellow");
+      log("4. Deactivate social media type", "red");
+      log("5. Reactivate social media type", "green");
+      log("6. Back to main menu", "reset");
+
+      const choice = await question("Enter your choice (1-6): ");
+
+      switch (choice) {
+        case "1":
+          await listSocialMediaTypes(client);
+          break;
+        case "2":
+          await addSocialMediaType(client);
+          break;
+        case "3":
+          await updateSocialMediaType(client);
+          break;
+        case "4":
+          await deactivateSocialMediaType(client);
+          break;
+        case "5":
+          await reactivateSocialMediaType(client);
+          break;
+        case "6":
+          return;
+        default:
+          log("Invalid choice. Please try again.", "red");
+      }
+    }
+  } catch (error) {
+    log(`Error: ${error.message}`, "red");
+  } finally {
+    await client.end();
+  }
+}
+
+async function listSocialMediaTypes(client) {
+  log("\n=== Social Media Types ===", "cyan");
+
+  try {
+    const result = await client.query(`
+      SELECT id, name, display_name, icon_class, url_template, is_active, sort_order, created_at
+      FROM venue_social_types 
+      ORDER BY sort_order ASC, display_name ASC
+    `);
+
+    if (result.rows.length === 0) {
+      log("No social media types found.", "yellow");
+      return;
+    }
+
+    result.rows.forEach((row) => {
+      const status = row.is_active ? "✓" : "✗";
+      const icon = row.icon_class ? ` (${row.icon_class})` : "";
+      const template = row.url_template ? ` - ${row.url_template}` : "";
+      log(
+        `${status} [${row.id}] ${row.display_name}${icon}${template} (Order: ${row.sort_order})`,
+        row.is_active ? "green" : "red"
+      );
+    });
+  } catch (error) {
+    log(`Error listing social media types: ${error.message}`, "red");
+  }
+}
+
+async function addSocialMediaType(client) {
+  log("\n=== Add Social Media Type ===", "cyan");
+
+  try {
+    const name = await question("Enter platform name (e.g., 'facebook'): ");
+    const displayName = await question(
+      "Enter display name (e.g., 'Facebook'): "
+    );
+    const iconClass = await question(
+      "Enter icon class (e.g., 'bi bi-facebook'): "
+    );
+    const urlTemplate = await question(
+      "Enter URL template (e.g., 'https://facebook.com/{handle}'): "
+    );
+    const sortOrder = await question("Enter sort order (0-999): ");
+
+    if (!name.trim() || !displayName.trim()) {
+      log("Name and display name are required.", "red");
+      return;
+    }
+
+    const result = await client.query(
+      `
+      INSERT INTO venue_social_types (name, display_name, icon_class, url_template, sort_order, is_active, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+      RETURNING id
+    `,
+      [
+        name.trim(),
+        displayName.trim(),
+        iconClass.trim() || null,
+        urlTemplate.trim() || null,
+        parseInt(sortOrder) || 0,
+      ]
+    );
+
+    log(
+      `✓ Social media type '${displayName}' added with ID ${result.rows[0].id}`,
+      "green"
+    );
+  } catch (error) {
+    if (error.code === "23505") {
+      log("Error: A social media type with this name already exists.", "red");
+    } else {
+      log(`Error adding social media type: ${error.message}`, "red");
+    }
+  }
+}
+
+async function updateSocialMediaType(client) {
+  log("\n=== Update Social Media Type ===", "cyan");
+
+  try {
+    const id = await question("Enter social media type ID to update: ");
+    const name = await question("Enter new platform name: ");
+    const displayName = await question("Enter new display name: ");
+    const iconClass = await question("Enter new icon class: ");
+    const urlTemplate = await question("Enter new URL template: ");
+    const sortOrder = await question("Enter new sort order (0-999): ");
+
+    if (!name.trim() || !displayName.trim()) {
+      log("Name and display name are required.", "red");
+      return;
+    }
+
+    const result = await client.query(
+      `
+      UPDATE venue_social_types 
+      SET name = $1, display_name = $2, icon_class = $3, url_template = $4, sort_order = $5, updated_at = NOW()
+      WHERE id = $6
+      RETURNING display_name
+    `,
+      [
+        name.trim(),
+        displayName.trim(),
+        iconClass.trim() || null,
+        urlTemplate.trim() || null,
+        parseInt(sortOrder) || 0,
+        parseInt(id),
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      log("Social media type not found.", "red");
+    } else {
+      log(
+        `✓ Social media type '${result.rows[0].display_name}' updated successfully`,
+        "green"
+      );
+    }
+  } catch (error) {
+    if (error.code === "23505") {
+      log("Error: A social media type with this name already exists.", "red");
+    } else {
+      log(`Error updating social media type: ${error.message}`, "red");
+    }
+  }
+}
+
+async function deactivateSocialMediaType(client) {
+  log("\n=== Deactivate Social Media Type ===", "cyan");
+
+  try {
+    const id = await question("Enter social media type ID to deactivate: ");
+
+    const result = await client.query(
+      `
+      UPDATE venue_social_types 
+      SET is_active = false, updated_at = NOW()
+      WHERE id = $1
+      RETURNING display_name
+    `,
+      [parseInt(id)]
+    );
+
+    if (result.rows.length === 0) {
+      log("Social media type not found.", "red");
+    } else {
+      log(
+        `✓ Social media type '${result.rows[0].display_name}' deactivated`,
+        "yellow"
+      );
+    }
+  } catch (error) {
+    log(`Error deactivating social media type: ${error.message}`, "red");
+  }
+}
+
+async function reactivateSocialMediaType(client) {
+  log("\n=== Reactivate Social Media Type ===", "cyan");
+
+  try {
+    const id = await question("Enter social media type ID to reactivate: ");
+
+    const result = await client.query(
+      `
+      UPDATE venue_social_types 
+      SET is_active = true, updated_at = NOW()
+      WHERE id = $1
+      RETURNING display_name
+    `,
+      [parseInt(id)]
+    );
+
+    if (result.rows.length === 0) {
+      log("Social media type not found.", "red");
+    } else {
+      log(
+        `✓ Social media type '${result.rows[0].display_name}' reactivated`,
+        "green"
+      );
+    }
+  } catch (error) {
+    log(`Error reactivating social media type: ${error.message}`, "red");
+  }
+}
+
 async function main() {
   try {
     await showServerInstructions();
@@ -1651,7 +2089,7 @@ async function main() {
 
     while (true) {
       await showMenu();
-      const choice = await question("Enter your choice (1-16, q to quit): ");
+      const choice = await question("Enter your choice (1-18, q to quit): ");
 
       switch (choice.toLowerCase()) {
         case "1":
@@ -1698,6 +2136,12 @@ async function main() {
           break;
         case "15":
           await manageWhitelistDomains();
+          break;
+        case "16":
+          await manageVenueTypes();
+          break;
+        case "17":
+          await manageSocialMediaTypes();
           break;
         case "q":
         case "quit":

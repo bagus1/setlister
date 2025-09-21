@@ -1,0 +1,171 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="/bands/<%= bandId %>" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+                <a href="/bands/<%= bandId %>/venues" class="btn btn-outline-secondary">
+                    <i class="bi bi-building"></i> Back to Band Venues
+                </a>
+            </div>
+            <div>
+                <a href="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>/edit" class="btn btn-outline-warning me-2">
+                    <i class="bi bi-pencil"></i> Edit Opportunity
+                </a>
+                <a href="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>/interactions/new" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Log New Interaction
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Opportunity Summary -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Opportunity Details</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="card-title"><%= opportunity.name %></h6>
+                <p class="text-muted mb-2">
+                    <i class="bi bi-building"></i> <a href="/bands/<%= bandId %>/venues/<%= opportunity.venue.id %>" class="text-decoration-none"><%= opportunity.venue.name %></a>
+                </p>
+                <p class="text-muted mb-2">
+                    <i class="bi bi-person"></i> Created by <%= opportunity.creator.username %>
+                </p>
+                <p class="text-muted mb-2">
+                    <i class="bi bi-calendar"></i> Started <%= new Date(opportunity.createdAt).toLocaleDateString() %>
+                </p>
+                
+                <% if (opportunity.notes && opportunity.notes.trim()) { %>
+                    <div class="mt-3 mb-3 p-2 opportunity-notes rounded border-start border-primary border-3">
+                        <div class="text-muted small"><%= opportunity.notes %></div>
+                    </div>
+                <% } %>
+                
+                <div class="mb-2">
+                    <span class="badge bg-<%= opportunity.status === 'BOOKED' ? 'success' : opportunity.status === 'PROSPECTING' ? 'primary' : 'warning' %>">
+                        <%= opportunity.status %>
+                    </span>
+                </div>
+                <% if (opportunity.gigDate) { %>
+                    <p class="text-muted mb-2">
+                        <i class="bi bi-calendar-event"></i> Gig Date: <%= new Date(opportunity.gigDate).toLocaleDateString() %>
+                    </p>
+                <% } %>
+                <% if (opportunity.offerValue) { %>
+                    <p class="text-muted mb-2">
+                        <i class="bi bi-currency-dollar"></i> Offer: $<%= opportunity.offerValue.toLocaleString() %>
+                    </p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Venue Contact Info -->
+        <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Venue Contacts</h6>
+                </div>
+                <div class="card-body">
+                    <% opportunity.venue.contacts.forEach(contact => { %>
+                        <div class="mb-2">
+                            <small class="text-muted"><%= contact.contactType.displayName %>:</small><br>
+                            <% if (contact.url) { %>
+                                <a href="<%= contact.url %>" target="_blank" class="text-decoration-none">
+                                    <%= contact.value %>
+                                </a>
+                            <% } else { %>
+                                <%= contact.value %>
+                            <% } %>
+                            <% if (contact.label) { %>
+                                <small class="text-muted">(<%= contact.label %>)</small>
+                            <% } %>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Interaction Timeline -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Interaction Timeline</h5>
+            </div>
+            <div class="card-body">
+                <% if (opportunity.interactions && opportunity.interactions.length > 0) { %>
+                    <div class="timeline">
+                        <% opportunity.interactions.forEach((interaction, index) => { %>
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-primary"></div>
+                                <div class="timeline-content">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="mb-0">
+                                            <% if (interaction.type === 'EMAIL') { %>
+                                                <i class="bi bi-envelope"></i> Email
+                                            <% } else if (interaction.type === 'PHONE_CALL') { %>
+                                                <i class="bi bi-telephone"></i> Phone Call
+                                            <% } else if (interaction.type === 'FACEBOOK_MESSAGE') { %>
+                                                <i class="bi bi-messenger"></i> Facebook Message
+                                            <% } else if (interaction.type === 'INSTAGRAM_MESSAGE') { %>
+                                                <i class="bi bi-instagram"></i> Instagram Message
+                                            <% } else if (interaction.type === 'IN_PERSON') { %>
+                                                <i class="bi bi-person"></i> In-Person
+                                            <% } else { %>
+                                                <i class="bi bi-sticky"></i> Note
+                                            <% } %>
+                                        </h6>
+                                        <small class="text-muted">
+                                            <%= new Date(interaction.interactionDate).toLocaleString() %>
+                                        </small>
+                                    </div>
+                                    <p class="mb-1"><%= interaction.notes %></p>
+                                    <% if (interaction.previousResponse) { %>
+                                        <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
+                                            <strong>Previous response received:</strong><br>
+                                            <small class="text-muted fst-italic">"<%= interaction.previousResponse %>"</small>
+                                        </div>
+                                    <% } %>
+                                    <% if (interaction.messageContent) { %>
+                                        <div class="mt-2 p-2 bg-light rounded">
+                                            <strong>Message sent:</strong><br>
+                                            <small class="text-muted"><%= interaction.messageContent %></small>
+                                        </div>
+                                    <% } %>
+                                    <small class="text-muted">by <%= interaction.user.username %></small>
+                                    <% if (interaction.outcome) { %>
+                                        <div class="mt-2">
+                                            <span class="badge bg-<%= interaction.outcome === 'POSITIVE' ? 'success' : interaction.outcome === 'NEGATIVE' ? 'danger' : 'warning' %>">
+                                                <%= interaction.outcome %>
+                                            </span>
+                                        </div>
+                                    <% } %>
+                                    <% if (interaction.nextSteps) { %>
+                                        <div class="mt-2">
+                                            <small class="text-muted"><strong>Next:</strong> <%= interaction.nextSteps %></small>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-4">
+                        <i class="bi bi-chat-dots display-1 text-muted"></i>
+                        <h5 class="mt-3">No Interactions Yet</h5>
+                        <p class="text-muted">Start by logging your first interaction with this venue.</p>
+                        <a href="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>/interactions/new" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Log First Interaction
+                        </a>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+

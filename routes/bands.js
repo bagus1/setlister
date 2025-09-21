@@ -4071,6 +4071,19 @@ router.get("/:bandId/venues/:venueId", requireAuth, async (req, res) => {
     });
     const venue = await prisma.venue.findUnique({
       where: { id: parseInt(venueId) },
+      include: {
+        venueType: true,
+        contacts: {
+          include: {
+            contactType: true,
+          },
+        },
+        socials: {
+          include: {
+            socialType: true,
+          },
+        },
+      },
     });
 
     if (!band || !venue) {
@@ -4085,6 +4098,25 @@ router.get("/:bandId/venues/:venueId", requireAuth, async (req, res) => {
       },
       orderBy: {
         createdAt: "desc",
+      },
+    });
+
+    // Get gig history for this band at this venue
+    const gigs = await prisma.gig.findMany({
+      where: {
+        bandId: parseInt(bandId),
+        venueId: parseInt(venueId),
+      },
+      include: {
+        opportunity: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        gigDate: "desc",
       },
     });
 
@@ -4107,6 +4139,7 @@ router.get("/:bandId/venues/:venueId", requireAuth, async (req, res) => {
       band,
       venue,
       opportunities,
+      gigs,
       venueContactTypes,
     });
   } catch (error) {

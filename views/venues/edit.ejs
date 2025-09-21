@@ -32,6 +32,9 @@
                 <% } %>
 
                 <form method="POST" action="/venues/<%= venue.id %>/update">
+                    <% if (typeof returnUrl !== 'undefined' && returnUrl) { %>
+                        <input type="hidden" name="returnUrl" value="<%= returnUrl %>">
+                    <% } %>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="name" class="form-label">Venue Name *</label>

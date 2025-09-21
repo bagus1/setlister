@@ -16,6 +16,9 @@ database.sqlite
 *.db
 *.sqlite3
 
+# Session storage
+data/sessions.db
+
 # Logs
 logs
 *.log

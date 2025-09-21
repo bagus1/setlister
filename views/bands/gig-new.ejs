@@ -149,13 +149,9 @@
 </div>
 
 <script>
-// Set minimum date to today
+// Allow any date (including past dates for gig history)
 document.addEventListener('DOMContentLoaded', function() {
-    const gigDateInput = document.getElementById('gigDate');
-    if (gigDateInput) {
-        const today = new Date().toISOString().split('T')[0];
-        gigDateInput.min = today;
-    }
+    // No minimum date restriction - users can add historical gigs
 
     // Auto-populate gig name based on venue and date
     const venueSelect = document.getElementById('venueId');

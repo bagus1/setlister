@@ -480,6 +480,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       venueTypes,
       socialTypes,
       contactTypes,
+      returnUrl: req.query.returnUrl || null,
     });
   } catch (error) {
     logger.logError("Edit venue form error", error);
@@ -514,11 +515,30 @@ router.post(
           where: { id: parseInt(req.params.id) },
         });
 
+        const [venueTypes, socialTypes, contactTypes] = await Promise.all([
+          prisma.venueType.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: "asc" },
+          }),
+          prisma.venueSocialType.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: "asc" },
+          }),
+          prisma.venueContactType.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: "asc" },
+          }),
+        ]);
+
         return res.render("venues/edit", {
           title: `Edit ${venue.name}`,
           venue,
+          venueTypes,
+          socialTypes,
+          contactTypes,
           errors: errors.array(),
           formData: req.body,
+          returnUrl: req.query.returnUrl || req.body.returnUrl || null,
         });
       }
 
@@ -597,7 +617,14 @@ router.post(
       });
 
       req.flash("success", "Venue updated successfully");
-      res.redirect(`/venues/${venue.id}`);
+      
+      // Check if there's a return URL parameter
+      const returnUrl = req.query.returnUrl || req.body.returnUrl;
+      if (returnUrl && returnUrl.startsWith('/bands/')) {
+        res.redirect(returnUrl);
+      } else {
+        res.redirect(`/venues/${venue.id}`);
+      }
     } catch (error) {
       logger.logError("Update venue error", error);
       req.flash("error", "Error updating venue");

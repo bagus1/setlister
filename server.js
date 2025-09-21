@@ -47,7 +47,7 @@ app.use(
   session({
     store: new SQLiteStore({
       db: "sessions.db",
-      dir: "./",
+      dir: "./data/",
       table: "sessions",
     }),
     secret: process.env.SESSION_SECRET || "setlist-manager-secret-key",

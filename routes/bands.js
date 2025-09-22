@@ -4755,6 +4755,7 @@ router.post(
         bandInfo,
         userInfo,
         contactInfo,
+        additionalInstructions,
       } = req.body;
 
       // Verify access and get opportunity with interaction history
@@ -4806,6 +4807,7 @@ router.post(
         bandInfo,
         userInfo,
         contactInfo,
+        additionalInstructions,
         opportunity,
         interactionHistory: opportunity.interactions,
       });
@@ -4946,7 +4948,10 @@ VENUE'S LATEST MESSAGE:
 "${context.previousResponse}"
 
 CURRENT DRAFT MESSAGE (if any):
-"${context.currentMessage || "None provided"}"`;  
+"${context.currentMessage || "None provided"}"
+
+ADDITIONAL REFINEMENT INSTRUCTIONS:
+"${context.additionalInstructions || "None provided"}"`;  
 
   switch (context.interactionType) {
     case 'FIRST_CONTACT':
@@ -4964,6 +4969,7 @@ Please generate a professional, engaging initial outreach message that:
 8. Avoids specific dates or rates in initial contact
 9. ADAPTS LENGTH AND TONE to the communication method specified above
 10. Ends with proper signature: "Best regards, [Your Name]" followed by "[Band Name]" on the next line
+11. If additional refinement instructions are provided above, incorporate them into the message
 
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
@@ -5146,6 +5152,7 @@ Please generate a professional, friendly response that:
 5. Moves the conversation toward booking a gig
 6. Avoids making specific commitments about dates or rates without band confirmation
 7. Ends with proper signature: "Best regards, [Your Name]" followed by "[Band Name]" on the next line
+8. If additional refinement instructions are provided above, incorporate them into the message
 
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;

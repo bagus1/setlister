@@ -277,4 +277,50 @@ input[name="email"] {
     .dark-mode-message-sent small {
         color: #cccccc !important;
     }
+    
+    /* Rehearsal page dark mode styles */
+    .set-section {
+        background-color: #343a40 !important;
+        border: 1px solid #495057 !important;
+        color: #ffffff !important;
+    }
+    
+    .set-title {
+        color: #ffffff !important;
+    }
+    
+    .song-card {
+        background-color: #2c3034 !important;
+        border: 1px solid #495057 !important;
+        color: #ffffff !important;
+    }
+    
+    .song-title {
+        color: #ffffff !important;
+    }
+    
+    .song-artist {
+        color: #aaaaaa !important;
+    }
+    
+    .song-number {
+        background-color: #495057 !important;
+        color: #ffffff !important;
+        border: 1px solid #6c757d !important;
+    }
+    
+    .list-group-item {
+        background-color: #343a40 !important;
+        border: 1px solid #495057 !important;
+        color: #ffffff !important;
+    }
+    
+    .list-group-item:hover {
+        background-color: #495057 !important;
+    }
+    
+    .badge.bg-secondary {
+        background-color: #6c757d !important;
+        color: #ffffff !important;
+    }
 }

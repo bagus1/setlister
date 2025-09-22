@@ -45,11 +45,12 @@ app.use(express.static("public"));
 // Session configuration
 app.use(
   session({
-    store: new SQLiteStore({
-      db: "sessions.db",
-      dir: "./data/",
-      table: "sessions",
-    }),
+    // Temporarily using memory store instead of SQLite to fix production issue
+    // store: new SQLiteStore({
+    //   db: "sessions.db",
+    //   dir: "./data/",
+    //   table: "sessions",
+    // }),
     secret: process.env.SESSION_SECRET || "setlist-manager-secret-key",
     resave: true,
     saveUninitialized: false,

@@ -236,4 +236,45 @@ input[name="email"] {
   .opportunity-notes {
     background-color: #343a40;
   }
+  
+  .dark-mode-phone-tool,
+  .dark-mode-text-tool {
+    background-color: #1e3a5f !important;
+    border-color: #4a90e2 !important;
+    color: #ffffff !important;
+  }
+  
+  .dark-mode-phone-tool strong,
+  .dark-mode-text-tool strong {
+    color: #ffffff !important;
+  }
+  
+  .dark-mode-phone-tool small,
+  .dark-mode-text-tool small {
+    color: #cccccc !important;
+  }
+  
+  .dark-mode-instructions {
+    background-color: #1e3a5f !important;
+    border-color: #4a90e2 !important;
+    color: #ffffff !important;
+  }
+  
+.dark-mode-instructions i {
+        color: #4a90e2 !important;
+    }
+    
+    .dark-mode-message-sent {
+        background-color: #343a40 !important;
+        border: 1px solid #495057 !important;
+        color: #ffffff !important;
+    }
+    
+    .dark-mode-message-sent strong {
+        color: #ffffff !important;
+    }
+    
+    .dark-mode-message-sent small {
+        color: #cccccc !important;
+    }
 }

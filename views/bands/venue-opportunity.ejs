@@ -262,14 +262,18 @@
                                         <%= contactType.displayName %>
                                     </option>
                                 <% }); %>
-                            <% } else { %>
-                                <!-- Fallback to hardcoded options if no data -->
-                                <option value="EMAIL">Email</option>
-                                <option value="PHONE_CALL">Phone Call</option>
-                                <option value="TEXT">Text</option>
-                                <option value="IN_PERSON">In-Person</option>
-                                <option value="NOTE" selected>Note</option>
                             <% } %>
+                            <!-- Add phone options if venue has a phone number -->
+                            <% if (venue.phone && venue.phone.trim()) { %>
+                                <option value="PHONE_CALL">Phone Call</option>
+                                <option value="TEXT_MESSAGE">Text Message</option>
+                            <% } %>
+                            <!-- Always include NOTE as an option -->
+                            <option value="NOTE" selected>Note</option>
+                            <!-- Always include IN_PERSON as an option -->
+                            <option value="IN_PERSON">In-Person</option>
+                            <!-- Always include OTHER as an option -->
+                            <option value="OTHER">Other</option>
                         </select>
                     </div>
                     <div class="mb-3">

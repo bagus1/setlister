@@ -686,14 +686,71 @@ router.post("/:id/contacts", requireAuth, async (req, res) => {
       });
     }
 
+    // Parse the value to extract handle from URL if needed
+    let parsedValue = value.trim();
+    let parsedUrl = url?.trim() || null;
+    
+    // Get the contact type to determine if we need URL parsing
+    const contactType = await prisma.venueContactType.findUnique({
+      where: { id: parseInt(contactTypeId) },
+    });
+    
+    if (contactType) {
+      // Parse Facebook URLs
+      if (contactType.name === 'FACEBOOK_MESSAGE' && parsedValue.includes('facebook.com/')) {
+        parsedValue = extractUsernameFromHandle(parsedValue, 'facebook');
+        // Generate URL from template if available
+        if (contactType.urlTemplate) {
+          parsedUrl = contactType.urlTemplate.replace('{contact}', parsedValue);
+        }
+      }
+      // Parse Instagram URLs
+      else if (contactType.name === 'INSTAGRAM_MESSAGE' && parsedValue.includes('instagram.com/')) {
+        parsedValue = extractUsernameFromHandle(parsedValue, 'instagram');
+        if (contactType.urlTemplate) {
+          parsedUrl = contactType.urlTemplate.replace('{contact}', parsedValue);
+        }
+      }
+      // Parse Twitter URLs
+      else if (contactType.name === 'TWITTER_MESSAGE' && parsedValue.includes('twitter.com/')) {
+        parsedValue = extractUsernameFromHandle(parsedValue, 'twitter');
+        if (contactType.urlTemplate) {
+          parsedUrl = contactType.urlTemplate.replace('{contact}', parsedValue);
+        }
+      }
+      // Parse LinkedIn URLs
+      else if (contactType.name === 'LINKEDIN_MESSAGE' && parsedValue.includes('linkedin.com/')) {
+        parsedValue = extractUsernameFromHandle(parsedValue, 'linkedin');
+        if (contactType.urlTemplate) {
+          parsedUrl = contactType.urlTemplate.replace('{contact}', parsedValue);
+        }
+      }
+    }
+
+    // Check if contact already exists
+    const existingContact = await prisma.venueContact.findFirst({
+      where: {
+        venueId: venueId,
+        contactTypeId: parseInt(contactTypeId),
+        value: parsedValue,
+      },
+    });
+
+    if (existingContact) {
+      return res.status(400).json({
+        success: false,
+        error: "A contact with this information already exists for this venue",
+      });
+    }
+
     // Create the contact
     const contact = await prisma.venueContact.create({
       data: {
         venueId: venueId,
         contactTypeId: parseInt(contactTypeId),
-        value: value.trim(),
+        value: parsedValue,
         label: label?.trim() || null,
-        url: url?.trim() || null,
+        url: parsedUrl,
         isPrimary: false, // New contacts are not primary by default
         isActive: true,
         createdAt: new Date(),
@@ -704,6 +761,15 @@ router.post("/:id/contacts", requireAuth, async (req, res) => {
     res.json({ success: true, contact });
   } catch (error) {
     logger.logError("Add venue contact error", error);
+    
+    // Handle unique constraint violation specifically
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        error: "A contact with this information already exists for this venue",
+      });
+    }
+    
     res.status(500).json({ success: false, error: "Error adding contact" });
   }
 });

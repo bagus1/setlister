@@ -70,7 +70,7 @@
         <div class="card">
             <div class="card-header">
                 <h4 class="mb-0">
-                    <i class="bi bi-chat-dots"></i> Log New Interaction
+                    <i class="bi bi-chat-dots"></i> New Interaction
                 </h4>
                 <small class="text-muted">
                     <%= opportunity.name %> at <%= opportunity.venue.name %>
@@ -80,70 +80,14 @@
                 <form action="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>/interactions" method="POST">
                     <input type="hidden" name="type" id="interactionTypeInput" value="<%= interactionType %>">
                     
-                    <!-- Interaction Type Selection -->
+                    <!-- Instructions -->
                     <div class="mb-3">
-                        <label for="interactionType" class="form-label">How will you communicate?</label>
-                        <select class="form-select" id="interactionType" name="interactionType" onchange="updateInteractionType()">
-                            <option value="">Select communication method...</option>
-                            <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
-                                <% opportunity.venue.contacts.forEach(contact => { %>
-                                    <option value="<%= contact.contactType.name %>" <%= interactionType === contact.contactType.name ? 'selected' : '' %>>
-                                        <%= contact.contactType.displayName %>
-                                    </option>
-                                <% }); %>
-                            <% } %>
-                            <!-- Always include NOTE as an option -->
-                            <option value="NOTE" <%= interactionType === 'NOTE' ? 'selected' : '' %>>Note</option>
-                            <!-- Always include IN_PERSON as an option -->
-                            <option value="IN_PERSON" <%= interactionType === 'IN_PERSON' ? 'selected' : '' %>>In-Person Meeting</option>
-                            <!-- Always include OTHER as an option -->
-                            <option value="OTHER" <%= interactionType === 'OTHER' ? 'selected' : '' %>>Other</option>
-                        </select>
-                    </div>
-
-                    <!-- Type-specific tools and links -->
-                    <div id="interaction-tools">
-                        <!-- Facebook Messenger Tool -->
-                        <div id="facebook-tool" class="mb-3" style="display: none;">
-                            <% 
-                                const facebookContact = opportunity.venue.contacts.find(contact => contact.contactType.name === 'FACEBOOK_MESSAGE');
-                            %>
-                            <% if (facebookContact) { %>
-                                <div class="text-center">
-                                    <a href="<%= facebookContact.url %>" target="_blank" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-messenger"></i> Open Messenger
-                                    </a>
-                                </div>
-                            <% } else { %>
-                                <div class="text-center text-muted">
-                                    <i class="bi bi-exclamation-triangle"></i> 
-                                    No Facebook Messenger contact found for this venue.
-                                </div>
-                            <% } %>
-                        </div>
-
-                        <!-- Email Tool -->
-                        <div id="email-tool" class="mb-3" style="display: none;">
-                            <% 
-                                const emailContacts = opportunity.venue.contacts.filter(contact => contact.contactType.name === 'EMAIL');
-                            %>
-                            <% if (emailContacts.length > 0) { %>
-                                <div class="text-center">
-                                    <% emailContacts.forEach((contact, index) => { %>
-                                        <a href="mailto:<%= contact.value %>" target="_blank" class="btn btn-primary btn-sm <%= index > 0 ? 'ms-1' : '' %>">
-                                            <i class="bi bi-envelope"></i> 
-                                            <%= contact.label ? contact.label + ' Email' : 'Email ' + (index + 1) %>
-                                        </a>
-                                    <% }); %>
-                                </div>
-                            <% } else { %>
-                                <div class="text-center text-muted">
-                                    <i class="bi bi-exclamation-triangle"></i> 
-                                    No email contact found for this venue.
-                                </div>
-                            <% } %>
+                        <div class="alert alert-info dark-mode-instructions">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Here we'll help you craft an interaction and connect with the venue. Be sure to provide a summary or transcript of the venue's response in the Venue Response field.
                         </div>
                     </div>
+
 
                     <% if (interactionType === 'PHONE_CALL') { %>
                         <div class="mb-3">
@@ -168,10 +112,15 @@
                         </div>
                     <% } %>
 
-                    <!-- Previous Response Context -->
+                    <!-- Venue Response Context -->
                     <div class="mb-3">
-                        <label for="previousResponse" class="form-label">Paste in the venue's latest message</label>
-                        <textarea class="form-control" id="previousResponse" name="previousResponse" rows="3"></textarea>
+                        <label for="previousResponse" class="form-label">Previous Venue Response</label>
+                        <textarea class="form-control" id="previousResponse" name="previousResponse" rows="3"><%= opportunity.interactions && opportunity.interactions.length > 0 ? opportunity.interactions[0].notes || '' : '' %></textarea>
+                        <% if (opportunity.interactions && opportunity.interactions.length > 0 && opportunity.interactions[0].notes) { %>
+                            <div class="form-text text-info">
+                                <i class="bi bi-info-circle"></i> Pre-populated with notes from the last interaction
+                            </div>
+                        <% } %>
                     </div>
 
                     <!-- Purpose of Interaction -->
@@ -180,11 +129,12 @@
                         <select class="form-select" id="outcome" name="outcome" required>
                             <option value="">Purpose</option>
                 <option value="FIRST_CONTACT">First Contact - Made initial contact</option>
+                <option value="REBOOKING">Initiate Rebooking - Requesting another gig</option>
                 <option value="FOLLOWING_UP">Following Up - Continuing conversation</option>
                 <option value="SCHEDULING">Scheduling - Working out dates</option>
                 <option value="NEGOTIATING">Negotiating - Discussing terms</option>
                 <option value="AWAITING_CONFIRMATION">Awaiting Confirmation - Waiting for final approval</option>
-                <option value="BOOKED">Booked - Gig confirmed!</option>
+                <option value="BOOKED">Confirm Booking - Accepting the gig offer</option>
                 <option value="DETAILS">Details - Working out gig specifics</option>
                 <option value="THANKING">Thanking - Following up with gratitude</option>
                 <option value="DECLINED">Declined - They said no</option>
@@ -202,10 +152,36 @@
                         <div class="form-text">When is this gig scheduled?</div>
                     </div>
 
+                    <!-- Interaction Type Selection -->
+                    <div class="mb-3">
+                        <label for="interactionType" class="form-label">How will you communicate?</label>
+                        <select class="form-select" id="interactionType" name="interactionType" onchange="updateInteractionType()">
+                            <option value="">Select communication method...</option>
+                            <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
+                                <% opportunity.venue.contacts.forEach(contact => { %>
+                                    <option value="<%= contact.contactType.name %>_<%= contact.id %>" <%= interactionType === contact.contactType.name + '_' + contact.id ? 'selected' : '' %>>
+                                        <%= contact.contactType.displayName %><% if (contact.label) { %> (<%= contact.label %>)<% } %>
+                                    </option>
+                                <% }); %>
+                            <% } %>
+                            <!-- Add phone options if venue has a phone number -->
+                            <% if (opportunity.venue.phone && opportunity.venue.phone.trim()) { %>
+                                <option value="PHONE_CALL_VENUE" <%= interactionType === 'PHONE_CALL_VENUE' ? 'selected' : '' %>>Phone Call (Venue)</option>
+                                <option value="TEXT_MESSAGE" <%= interactionType === 'TEXT_MESSAGE' ? 'selected' : '' %>>Text Message</option>
+                            <% } %>
+                            <!-- Always include NOTE as an option -->
+                            <option value="NOTE" <%= interactionType === 'NOTE' ? 'selected' : '' %>>Note</option>
+                            <!-- Always include IN_PERSON as an option -->
+                            <option value="IN_PERSON" <%= interactionType === 'IN_PERSON' ? 'selected' : '' %>>In-Person Meeting</option>
+                            <!-- Always include OTHER as an option -->
+                            <option value="OTHER" <%= interactionType === 'OTHER' ? 'selected' : '' %>>Other</option>
+                        </select>
+                    </div>
+
                     <!-- Your Response Message -->
                     <div class="mb-3">
                         <label for="messageContent" class="form-label">Your Response Message</label>
-                        <textarea class="form-control" id="messageContent" name="messageContent" rows="4"></textarea>
+                        <textarea class="form-control" id="messageContent" name="messageContent" rows="25"></textarea>
                         <div class="d-flex justify-content-between align-items-center mt-2">
                             <div class="form-text">Write the message you sent or plan to send to the venue.</div>
                             <div class="d-flex gap-2">
@@ -218,6 +194,107 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Type-specific tools and links -->
+                    <div id="interaction-tools">
+                        <!-- Facebook Messenger Tool -->
+                        <div id="facebook-tool" class="mb-3" style="display: none;">
+                            <div id="facebook-tool-content">
+                                <!-- This will be populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Email Tool -->
+                        <div id="email-tool" class="mb-3" style="display: none;">
+                            <% 
+                                const emailContacts = opportunity.venue.contacts.filter(contact => contact.contactType.name === 'EMAIL');
+                            %>
+                            <% if (emailContacts.length > 0) { %>
+                                <div class="text-center">
+                                    <% emailContacts.forEach((contact, index) => { %>
+                                        <a href="#" 
+                                           class="btn btn-primary btn-sm email-btn <%= index > 0 ? 'ms-1' : '' %>"
+                                           data-email="<%= contact.value %>"
+                                           data-label="<%= contact.label ? contact.label + ' Email' : 'Email ' + (index + 1) %>"
+                                           onclick="openEmailWithContent(this); return false;">
+                                            <i class="bi bi-envelope"></i> 
+                                            <%= contact.label ? contact.label + ' Email' : 'Email ' + (index + 1) %>
+                                        </a>
+                                    <% }); %>
+                                </div>
+                            <% } else { %>
+                                <div class="text-center text-muted">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    No email contact found for this venue.
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <!-- Phone Tool -->
+                        <div id="phone-tool" class="mb-3" style="display: none;">
+                            <div id="phone-tool-content">
+                                <!-- This will be populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Text Message Tool -->
+                        <div id="text-tool" class="mb-3" style="display: none;">
+                            <% if (opportunity.venue.phone && opportunity.venue.phone.trim()) { %>
+                                <div class="alert alert-info dark-mode-text-tool">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-chat-dots me-2"></i>
+                                        <div>
+                                            <strong>Text Message</strong><br>
+                                            <small><%= opportunity.venue.phone %></small>
+                                        </div>
+                                        <div class="ms-auto">
+                                            <a href="#" 
+                                               class="btn btn-primary btn-sm"
+                                               data-phone="<%= opportunity.venue.phone %>"
+                                               onclick="openSMSWithContent(this); return false;">
+                                                <i class="bi bi-chat-dots"></i> Text
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% } else { %>
+                                <div class="text-center text-muted">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    No phone number found for this venue.
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <!-- Website Contact Tool -->
+                        <div id="website-tool" class="mb-3" style="display: none;">
+                            <% 
+                                const websiteContact = opportunity.venue.contacts?.find(contact => contact.contactType?.name === 'WEBSITE');
+                            %>
+                            <% if (websiteContact && websiteContact.url) { %>
+                                <div class="alert alert-info">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-globe me-2"></i>
+                                        <div>
+                                            <strong>Contact Form</strong><br>
+                                            <small>Click to open the contact form</small>
+                                        </div>
+                                        <div class="ms-auto">
+                                            <a href="<%= websiteContact.url %>" target="_blank" class="btn btn-primary btn-sm">
+                                                <i class="bi bi-globe"></i> Open Contact Form
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% } else { %>
+                                <div class="text-center text-muted">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    No contact form found for this venue.
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+
 
                     <!-- Interaction Date -->
                     <div class="mb-3">
@@ -389,6 +466,9 @@ document.addEventListener('DOMContentLoaded', function() {
         outcomeSelect.addEventListener('change', handleOutcomeChange);
         // Check initial state
         handleOutcomeChange();
+        
+        // Set initial message content rows
+        updateMessageContentRows();
     }
 });
 
@@ -400,6 +480,12 @@ function updateInteractionType() {
     
     // Update type-specific tools visibility
     updateTypeSpecificTools();
+    
+    // Auto-populate message content for email contacts on first contact or rebooking
+    autoPopulateMessageContent();
+    
+    // Update message content rows based on interaction type
+    updateMessageContentRows();
 }
 
 
@@ -414,12 +500,27 @@ function updateTypeSpecificTools() {
     });
     
     // Show the appropriate tool based on selected type
-    if (selectedType === 'FACEBOOK_MESSAGE') {
+    if (selectedType.startsWith('FACEBOOK_MESSAGE_')) {
         const facebookTool = document.getElementById('facebook-tool');
-        if (facebookTool) facebookTool.style.display = 'block';
-    } else if (selectedType === 'EMAIL') {
+        if (facebookTool) {
+            facebookTool.style.display = 'block';
+            updateFacebookToolContent(selectedType);
+        }
+    } else if (selectedType.startsWith('EMAIL_')) {
         const emailTool = document.getElementById('email-tool');
         if (emailTool) emailTool.style.display = 'block';
+    } else if (selectedType.startsWith('PHONE_CALL_')) {
+        const phoneTool = document.getElementById('phone-tool');
+        if (phoneTool) {
+            phoneTool.style.display = 'block';
+            updatePhoneToolContent(selectedType);
+        }
+    } else if (selectedType === 'TEXT_MESSAGE') {
+        const textTool = document.getElementById('text-tool');
+        if (textTool) textTool.style.display = 'block';
+    } else if (selectedType.startsWith('WEBSITE_')) {
+        const websiteTool = document.getElementById('website-tool');
+        if (websiteTool) websiteTool.style.display = 'block';
     }
     // Add more types here as needed
 }
@@ -438,6 +539,109 @@ function handleOutcomeChange() {
         gigDateInput.required = false;
         gigDateInput.value = ''; // Clear the value when hidden
     }
+    
+    // Auto-populate message content when outcome changes
+    autoPopulateMessageContent();
+}
+
+// Auto-populate message content with booking pitch for email contacts on first contact or rebooking
+function autoPopulateMessageContent() {
+    const outcomeSelect = document.getElementById('outcome');
+    const interactionTypeSelect = document.getElementById('interactionType');
+    const messageContentTextarea = document.getElementById('messageContent');
+    
+    // Only auto-populate if no content exists and conditions are met
+    if (messageContentTextarea.value.trim() === '') {
+        const outcome = outcomeSelect.value;
+        const interactionType = interactionTypeSelect.value;
+        
+        // Check if it's first contact or rebooking
+        if (outcome === 'FIRST_CONTACT' || outcome === 'REBOOKING') {
+            // Check if it's an email contact
+            if (interactionType.startsWith('EMAIL_') || interactionType === 'EMAIL') {
+                // Get the booking pitch from the band info
+                <% if (opportunity.band.bookingPitch) { %>
+                    messageContentTextarea.value = <%- JSON.stringify(opportunity.band.bookingPitch) %>;
+                <% } %>
+            }
+        }
+    }
+}
+
+function updateFacebookToolContent(selectedType) {
+    const facebookToolContent = document.getElementById('facebook-tool-content');
+    
+    if (!selectedType || !selectedType.startsWith('FACEBOOK_MESSAGE_')) {
+        facebookToolContent.innerHTML = '<div class="text-center text-muted"><i class="bi bi-exclamation-triangle"></i> No Facebook Messenger contact found.</div>';
+        return;
+    }
+    
+    const contactId = selectedType.split('_')[2]; // FACEBOOK_MESSAGE_15 -> 15
+    
+    // Find the contact in the venue contacts array
+    <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
+        <% opportunity.venue.contacts.forEach(contact => { %>
+            if ('<%= contact.id %>' === contactId && '<%= contact.contactType.name %>' === 'FACEBOOK_MESSAGE') {
+                <% if (contact.url) { %>
+                    facebookToolContent.innerHTML = 
+                        '<div class="alert alert-info">' +
+                            '<div class="d-flex align-items-center">' +
+                                '<i class="bi bi-messenger me-2"></i>' +
+                                '<div>' +
+                                    '<strong>Facebook Messenger</strong><br>' +
+                                    '<small>Copy your message below, then click to open Messenger</small>' +
+                                '</div>' +
+                                '<div class="ms-auto d-flex gap-2">' +
+                                    '<button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyMessageContent()">' +
+                                        '<i class="bi bi-clipboard"></i> Copy' +
+                                    '</button>' +
+                                    '<a href="<%= contact.url %>" target="_blank" class="btn btn-primary btn-sm">' +
+                                        '<i class="bi bi-messenger"></i> Open Messenger' +
+                                    '</a>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                <% } else { %>
+                    facebookToolContent.innerHTML = '<div class="text-center text-muted"><i class="bi bi-exclamation-triangle"></i> No Facebook Messenger URL available.</div>';
+                <% } %>
+                return;
+            }
+        <% }); %>
+    <% } %>
+    
+    // Fallback if contact not found
+    facebookToolContent.innerHTML = '<div class="text-center text-muted"><i class="bi bi-exclamation-triangle"></i> No Facebook Messenger contact found.</div>';
+}
+
+// Update message content rows based on interaction type
+function updateMessageContentRows() {
+    const selectedType = document.getElementById('interactionType').value;
+    const messageContentTextarea = document.getElementById('messageContent');
+    
+    // Define row counts for different interaction types
+    const rowCounts = {
+        'LINKEDIN_MESSAGE': 10,
+        'TWITTER_MESSAGE': 8,
+        'WHATSAPP': 8,
+        'TELEGRAM': 8,
+        'DISCORD': 8,
+        'FACEBOOK_MESSAGE': 12,
+        'EMAIL': 20,
+        'PHONE_CALL': 20,
+        'TEXT': 6,
+        'IN_PERSON': 20,
+        'NOTE': 20,
+        'WEBSITE_CONTACT_FORM': 15,
+        'WEBSITE_LIVE_CHAT': 8,
+        'INSTAGRAM_MESSAGE': 8
+    };
+    
+    // Get the base interaction type (remove the _ID suffix if present)
+    const baseType = selectedType.split('_').slice(0, -1).join('_');
+    
+    // Set rows based on interaction type, default to 25 if not found
+    const rows = rowCounts[baseType] || rowCounts[selectedType] || 25;
+    messageContentTextarea.rows = rows;
 }
 
 // CSS for spinning icon
@@ -465,11 +669,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const previousResponse = previousResponseTextarea.value.trim();
         const currentMessage = messageContentTextarea.value.trim();
         
-        if (!previousResponse) {
-            alert('Please enter the venue\'s previous response first to get AI suggestions.');
-            previousResponseTextarea.focus();
-            return;
-        }
+        // Previous response is now optional - AI can generate suggestions without it
         
         // Show loading state
         const originalText = aiSuggestBtn.innerHTML;
@@ -490,10 +690,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     bandName: '<%= opportunity.band.name %>',
                     venueName: '<%= opportunity.venue.name %>',
                     bandInfo: {
-                        bookingPitch: '<%= opportunity.band.bookingPitch || "" %>',
+                        bookingPitch: <%- JSON.stringify(opportunity.band.bookingPitch || "") %>,
                         websiteUrl: '<%= opportunity.band.websiteUrl || "" %>',
                         contactName: '<%= opportunity.band.contactName || "" %>'
-                    }
+                    },
+                    userInfo: {
+                        name: '<%= currentUser.username %>',
+                        email: '<%= currentUser.email %>'
+                    },
+                    contactInfo: getSelectedContactInfo()
                 })
             });
             
@@ -551,5 +756,167 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Phone contact data for JavaScript
+const phoneContacts = [
+    <% if (opportunity.venue.phone && opportunity.venue.phone.trim()) { %>
+        {
+            id: 'PHONE_CALL_VENUE',
+            label: 'Phone Number',
+            value: '<%= opportunity.venue.phone %>',
+            isVenuePhone: true
+        },
+    <% } %>
+    <% if (opportunity.venue.contacts) { %>
+        <% opportunity.venue.contacts.filter(c => c.contactType.name === 'PHONE_CALL').forEach(contact => { %>
+            {
+                id: 'PHONE_CALL_<%= contact.id %>',
+                label: '<%= contact.label || "Phone Number" %>',
+                value: '<%= contact.value %>',
+                isVenuePhone: false
+            },
+        <% }); %>
+    <% } %>
+];
+
+function updatePhoneToolContent(selectedType) {
+    const phoneToolContent = document.getElementById('phone-tool-content');
+    
+    if (!selectedType || !selectedType.startsWith('PHONE_CALL_')) {
+        phoneToolContent.innerHTML = '<div class="text-center text-muted"><i class="bi bi-exclamation-triangle"></i> No phone number found for this venue.</div>';
+        return;
+    }
+    
+    const selectedContact = phoneContacts.find(contact => contact.id === selectedType);
+    
+    if (selectedContact) {
+        phoneToolContent.innerHTML = 
+            '<div class="alert alert-info dark-mode-phone-tool">' +
+                '<div class="d-flex align-items-center">' +
+                    '<i class="bi bi-telephone me-2"></i>' +
+                    '<div>' +
+                        '<strong>' + selectedContact.label + '</strong><br>' +
+                        '<small>' + selectedContact.value + '</small>' +
+                    '</div>' +
+                    '<div class="ms-auto">' +
+                        '<a href="tel:' + selectedContact.value + '" class="btn btn-primary btn-sm">' +
+                            '<i class="bi bi-telephone"></i> Call' +
+                        '</a>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+    } else {
+        phoneToolContent.innerHTML = '<div class="text-center text-muted"><i class="bi bi-exclamation-triangle"></i> No phone number found for this venue.</div>';
+    }
+}
+
+// Open email with pre-populated content
+function openEmailWithContent(button) {
+    const email = button.getAttribute('data-email');
+    const messageContent = document.getElementById('messageContent').value;
+    
+    // URL encode the message content for the mailto link
+    const encodedContent = encodeURIComponent(messageContent);
+    
+    // Create mailto link with subject and body
+    const mailtoLink = `mailto:${email}?body=${encodedContent}`;
+    
+    // Open the email client
+    window.open(mailtoLink, '_blank');
+}
+
+// Open SMS with pre-populated content
+function openSMSWithContent(button) {
+    const phone = button.getAttribute('data-phone');
+    const messageContent = document.getElementById('messageContent').value;
+    
+    // URL encode the message content for the SMS link
+    const encodedContent = encodeURIComponent(messageContent);
+    
+    // Create SMS link with body
+    const smsLink = `sms:${phone}?body=${encodedContent}`;
+    
+    // Open the messages app
+    window.open(smsLink, '_blank');
+}
+
+// Copy message content to clipboard
+function copyMessageContent() {
+    const messageContent = document.getElementById('messageContent');
+    messageContent.select();
+    messageContent.setSelectionRange(0, 99999); // For mobile devices
+    
+    try {
+        document.execCommand('copy');
+        // Show temporary feedback
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-success');
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    } catch (err) {
+        // Fallback for modern browsers
+        navigator.clipboard.writeText(messageContent.value).then(() => {
+            const button = event.target.closest('button');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+            button.classList.remove('btn-outline-secondary');
+            button.classList.add('btn-success');
+            
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-secondary');
+            }, 2000);
+        }).catch(() => {
+            alert('Failed to copy message. Please select and copy manually.');
+        });
+    }
+}
+
+// Get contact information for the selected interaction type
+function getSelectedContactInfo() {
+    const selectedType = document.getElementById('interactionType').value;
+    
+    // Check if it's a venue contact (format: CONTACT_TYPE_ID)
+    if (selectedType.includes('_') && selectedType !== 'PHONE_CALL_VENUE' && selectedType !== 'TEXT_MESSAGE') {
+        const contactId = selectedType.split('_')[1];
+        
+        // Find the contact in the venue contacts array
+        <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
+            <% opportunity.venue.contacts.forEach(contact => { %>
+                if ('<%= contact.id %>' === contactId) {
+                    return {
+                        name: '<%= contact.label || "" %>',
+                        type: '<%= contact.contactType.displayName %>',
+                        value: '<%= contact.value %>'
+                    };
+                }
+            <% }); %>
+        <% } %>
+    }
+    
+    // For venue phone or text message, return venue info
+    if (selectedType === 'PHONE_CALL_VENUE' || selectedType === 'TEXT_MESSAGE') {
+        return {
+            name: '<%= opportunity.venue.name %>',
+            type: selectedType === 'PHONE_CALL_VENUE' ? 'Phone Call' : 'Text Message',
+            value: '<%= opportunity.venue.phone || "" %>'
+        };
+    }
+    
+    // Default fallback
+    return {
+        name: '',
+        type: 'Contact',
+        value: ''
+    };
+}
 
 </script>

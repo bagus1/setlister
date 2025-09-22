@@ -14,7 +14,7 @@
                     <i class="bi bi-pencil"></i> Edit Opportunity
                 </a>
                 <a href="/bands/<%= bandId %>/opportunities/<%= opportunity.id %>/interactions/new" class="btn btn-primary">
-                    <i class="bi bi-plus-circle"></i> Log New Interaction
+                    <i class="bi bi-plus-circle"></i> New Interaction
                 </a>
             </div>
         </div>
@@ -132,7 +132,7 @@
                                         </div>
                                     <% } %>
                                     <% if (interaction.messageContent) { %>
-                                        <div class="mt-2 p-2 bg-light rounded">
+                                        <div class="mt-2 p-2 bg-light rounded dark-mode-message-sent">
                                             <strong>Message sent:</strong><br>
                                             <small class="text-muted"><%= interaction.messageContent %></small>
                                         </div>

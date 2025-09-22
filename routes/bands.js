@@ -4530,6 +4530,7 @@ router.get(
         opportunity,
         interactionType,
         bandId,
+        currentUser: req.session.user,
       });
     } catch (error) {
       logger.logError("Interaction form error:", error);
@@ -4752,6 +4753,8 @@ router.post(
         bandName,
         venueName,
         bandInfo,
+        userInfo,
+        contactInfo,
       } = req.body;
 
       // Verify access and get opportunity with interaction history
@@ -4801,6 +4804,8 @@ router.post(
         bandName,
         venueName,
         bandInfo,
+        userInfo,
+        contactInfo,
         opportunity,
         interactionHistory: opportunity.interactions,
       });
@@ -4882,9 +4887,10 @@ async function generateAISuggestion(context) {
 
     switch(contactType) {
       case 'TEXT':
+      case 'TEXT_MESSAGE':
       case 'WHATSAPP':
       case 'TELEGRAM':
-        return 'TEXT/MESSAGING APP - Keep concise, friendly, under 160 characters if possible. Use casual but professional tone.';
+        return 'TEXT/SMS - Keep concise, friendly, under 160 characters if possible. Use casual but professional tone.';
       case 'FACEBOOK_MESSAGE':
         return 'FACEBOOK MESSENGER - Conversational and friendly tone, moderate length, can use emojis.';
       case 'INSTAGRAM_MESSAGE':
@@ -4910,15 +4916,28 @@ async function generateAISuggestion(context) {
     }
   };
 
+  // Build personalized salutation
+  const getSalutation = () => {
+    if (context.contactInfo?.name && context.contactInfo.name.trim()) {
+      return `Hi ${context.contactInfo.name}`;
+    }
+    return `Dear ${context.venueName} Team`;
+  };
+
   const baseContext = `
 CONTEXT:
 - Band: ${context.bandName}
 - Venue: ${context.venueName}
 - Current Interaction Type: ${context.interactionType}
 - Communication Method: ${getCommMethodGuidance(context.contactType)}
+- Contact Person: ${context.contactInfo?.name || "Not specified"}
+- Contact Type: ${context.contactInfo?.type || "General"}
 - Band's Booking Pitch: ${context.bandInfo.bookingPitch || "Not provided"}
 - Band Website: ${context.bandInfo.websiteUrl || "Not provided"}
-- Contact Name: ${context.bandInfo.contactName || "Not provided"}
+- Band Contact Name: ${context.bandInfo.contactName || "Not provided"}
+- Your Name: ${context.userInfo?.name || "Not provided"}
+- Your Email: ${context.userInfo?.email || "Not provided"}
+- Salutation to use: ${getSalutation()}
 
 INTERACTION HISTORY (chronological order):
 ${interactionHistoryText}
@@ -4935,16 +4954,18 @@ CURRENT DRAFT MESSAGE (if any):
 ${baseContext}
 
 Please generate a professional, engaging initial outreach message that:
-1. Introduces the band professionally and warmly
-2. Expresses genuine interest in performing at their venue
-3. Includes key band information (genre, experience, draw)
-4. Mentions specific reasons why this venue is a good fit
-5. Suggests next steps (send EPK, schedule call, etc.)
-6. Keeps it concise but compelling
-7. Avoids specific dates or rates in initial contact
-8. ADAPTS LENGTH AND TONE to the communication method specified above
+1. Starts with the exact salutation provided above (e.g., "Hi Rodney" or "Dear Woodcellar Team")
+2. Introduces the band professionally and warmly
+3. Expresses genuine interest in performing at their venue
+4. Includes key band information (genre, experience, draw)
+5. Mentions specific reasons why this venue is a good fit
+6. Suggests next steps (send EPK, schedule call, etc.)
+7. Keeps it concise but compelling
+8. Avoids specific dates or rates in initial contact
+9. ADAPTS LENGTH AND TONE to the communication method specified above
+10. Ends with proper signature: "Best regards, [Your Name]" followed by "[Band Name]" on the next line
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'FOLLOWING_UP':
@@ -4961,7 +4982,7 @@ Please generate a professional, polite follow-up message that:
 7. Maintains enthusiasm while respecting their time
 8. ADAPTS LENGTH AND TONE to the communication method specified above
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'SCHEDULING':
@@ -4977,7 +4998,7 @@ Please generate a professional response focused on scheduling that:
 6. Keeps the momentum moving toward confirmation
 7. Suggests next steps in the booking process
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'NEGOTIATING':
@@ -4993,7 +5014,7 @@ Please generate a professional negotiation response that:
 6. Maintains a collaborative rather than adversarial tone
 7. Keeps the focus on mutual benefit and a successful show
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'AWAITING_CONFIRMATION':
@@ -5009,23 +5030,24 @@ Please generate a professional message for the confirmation stage that:
 6. Maintains enthusiasm while being patient
 7. Suggests clear next steps or timeline
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'BOOKED':
-      prompt = `You are helping a band manager handle post-booking communication with a venue.
+      prompt = `You are helping a band manager confirm and accept a gig booking with a venue.
 ${baseContext}
 
-Please generate a professional post-booking message that:
-1. Expresses genuine excitement and gratitude for the booking
-2. Confirms key details of the arrangement (parking, loading in, sound check, bar tab, etc.)
-3. Asks about next steps in their production process
-4. Offers to provide any additional materials needed (rider, stage plot, etc.)
-5. Establishes clear communication moving forward
-6. Shows professionalism and reliability
-7. Sets a positive tone for the working relationship
+Please generate a professional booking confirmation message that:
+1. Clearly confirms acceptance of the gig offer
+2. Expresses genuine excitement and gratitude for the opportunity
+3. Confirms all band members are available for the date
+4. Acknowledges any key terms that were discussed (fee, set times, etc.)
+5. Shows professionalism and reliability
+6. Sets a positive tone for the working relationship
+7. Indicates readiness to move forward with planning
+8. ADAPTS LENGTH AND TONE to the communication method specified above
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'DETAILS':
@@ -5041,7 +5063,7 @@ Please generate a professional message focused on gig details that:
 6. Offers solutions to any potential challenges
 7. Maintains focus on delivering a great show
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'THANKING':
@@ -5058,7 +5080,25 @@ Please generate a warm, genuine thank you message that:
 7. Ends on a positive, forward-looking note
 8. ADAPTS LENGTH AND TONE to the communication method specified above
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
+      break;
+
+    case 'REBOOKING':
+      prompt = `You are helping a band manager reach out to a venue for a repeat booking.
+${baseContext}
+
+Please generate a professional rebooking request that:
+1. Starts with the exact salutation provided above (e.g., "Hi Rodney" or "Dear Woodcellar Team")
+2. References the positive experience from the previous gig(s)
+3. Expresses enthusiasm about returning to perform
+4. Mentions any improvements or new material since the last show
+5. Suggests potential dates or asks about availability
+6. Highlights what made the previous experience successful
+7. Shows respect for their booking process and timeline
+8. Demonstrates the band's continued professionalism and reliability
+9. ADAPTS LENGTH AND TONE to the communication method specified above
+
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'DECLINED':
@@ -5074,7 +5114,7 @@ Please generate a gracious response to their decline that:
 6. Shows maturity and understanding of business realities
 7. Keeps it brief but warm
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     case 'NO_RESPONSE':
@@ -5090,7 +5130,7 @@ Please generate a professional final follow-up that:
 6. Ends on a positive note about potential future opportunities
 7. Keeps it concise and non-pressuring
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
     default:
@@ -5105,8 +5145,9 @@ Please generate a professional, friendly response that:
 4. Is concise but informative
 5. Moves the conversation toward booking a gig
 6. Avoids making specific commitments about dates or rates without band confirmation
+7. Ends with proper signature: "Best regards, [Your Name]" followed by "[Band Name]" on the next line
 
-Generate only the suggested response text, no additional commentary.`;
+Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
   }
 

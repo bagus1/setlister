@@ -17,16 +17,64 @@
                         </div>
                     <% } %>
                     
-                    <% if (venue.contacts && venue.contacts.length > 0) { %>
+                    <!-- Direct venue phone number -->
+                    <% if (venue.phone) { %>
+                        <div class="col-md-6 mb-3">
+                            <strong>Phone:</strong><br>
+                            <i class="bi bi-telephone"></i>
+                            <a href="tel:<%= venue.phone %>" class="text-decoration-none ms-1">
+                                <%= venue.phone %>
+                            </a>
+                        </div>
+                    <% } %>
+
+                    <!-- Direct venue email -->
+                    <% if (venue.email) { %>
+                        <div class="col-md-6 mb-3">
+                            <strong>Email:</strong><br>
+                            <i class="bi bi-envelope"></i>
+                            <a href="mailto:<%= venue.email %>" class="text-decoration-none ms-1">
+                                <%= venue.email %>
+                            </a>
+                        </div>
+                    <% } %>
+
+                    <!-- Main venue website (from socials) -->
+                    <% 
+                        const mainWebsite = venue.socials?.find(social => social.socialType?.name === 'Website');
+                    %>
+                    <% if (mainWebsite && mainWebsite.url) { %>
                         <div class="col-12 mb-3">
-                            <strong>Contact Information:</strong><br>
-                            <% venue.contacts.forEach(contact => { %>
+                            <strong>Website:</strong><br>
+                            <i class="bi bi-globe"></i>
+                            <a href="<%= mainWebsite.url.startsWith('http') ? mainWebsite.url : 'https://' + mainWebsite.url %>" 
+                               target="_blank" class="text-decoration-none ms-1">
+                                <%= mainWebsite.url %>
+                            </a>
+                        </div>
+                    <% } %>
+
+                    <% 
+                        // Filter out website contacts as they're for interactions, not display
+                        const displayContacts = venue.contacts?.filter(contact => contact.contactType?.name !== 'WEBSITE') || [];
+                    %>
+                    <% if (displayContacts.length > 0) { %>
+                        <div class="col-12 mb-3">
+                            <strong>Additional Contact Information:</strong><br>
+                            <% displayContacts.forEach(contact => { %>
                                 <div class="mb-2">
-                                    <i class="bi bi-<%= contact.contactType.iconClass || 'envelope' %>"></i>
+                                    <% 
+                                        // Fix icon class to avoid duplicate 'bi-'
+                                        let iconClass = contact.contactType.iconClass || 'envelope';
+                                        if (iconClass.startsWith('bi-')) {
+                                            iconClass = iconClass.substring(3); // Remove 'bi-' prefix
+                                        }
+                                    %>
+                                    <i class="bi bi-<%= iconClass %>"></i>
                                     <strong><%= contact.contactType.displayName %>:</strong>
                                     <% if (contact.url) { %>
-                                        <a href="<%= contact.url %>" class="text-decoration-none ms-1">
-                                            <%= contact.value %>
+                                        <a href="<%= contact.url %>" target="_blank" class="text-decoration-none ms-1">
+                                            <%= contact.url %>
                                         </a>
                                     <% } else { %>
                                         <span class="ms-1"><%= contact.value %></span>
@@ -218,6 +266,7 @@
                             <label for="contactValue" class="form-label">Value *</label>
                             <input type="text" class="form-control" id="contactValue" name="value" 
                                    placeholder="Phone, email, handle, etc." required>
+                            <div id="contactValueHelp" class="form-text"></div>
                         </div>
                         <div class="mb-3">
                             <label for="contactLabel" class="form-label">Label</label>
@@ -294,11 +343,81 @@
             const contactTypeSelect = document.getElementById('contactType');
             if (contactTypeSelect && contactTypes && contactTypes.length > 0) {
                 contactTypes.forEach(contactType => {
+                    // Filter out contact types that don't make sense for venue contacts
+                    if (contactType.name === 'IN_PERSON' || contactType.name === 'NOTE') {
+                        return; // Skip these contact types
+                    }
+                    
                     const option = document.createElement('option');
                     option.value = contactType.id;
                     option.textContent = contactType.displayName;
                     contactTypeSelect.appendChild(option);
                 });
+                
+                // Add change handler for validation hints
+                contactTypeSelect.addEventListener('change', updateContactValueHelp);
+            }
+        }
+        
+        // Update help text and validation based on contact type
+        function updateContactValueHelp() {
+            const contactTypeSelect = document.getElementById('contactType');
+            const contactValueInput = document.getElementById('contactValue');
+            const helpDiv = document.getElementById('contactValueHelp');
+            
+            if (!contactTypeSelect.value) {
+                helpDiv.textContent = '';
+                contactValueInput.placeholder = 'Phone, email, handle, etc.';
+                return;
+            }
+            
+            const contactType = contactTypes.find(ct => ct.id == contactTypeSelect.value);
+            if (!contactType) return;
+            
+            // Update placeholder and help text based on contact type
+            switch (contactType.name) {
+                case 'EMAIL':
+                    contactValueInput.placeholder = 'email@example.com';
+                    helpDiv.textContent = 'Enter a valid email address';
+                    break;
+                case 'PHONE_CALL':
+                case 'TEXT':
+                case 'WHATSAPP':
+                    contactValueInput.placeholder = '+1234567890';
+                    helpDiv.textContent = 'Enter phone number with country code (e.g., +1234567890)';
+                    break;
+                case 'FACEBOOK_MESSAGE':
+                    contactValueInput.placeholder = 'Woodcellar or https://facebook.com/Woodcellar';
+                    helpDiv.textContent = 'Enter Facebook username/page name or full URL';
+                    break;
+                case 'INSTAGRAM_MESSAGE':
+                    contactValueInput.placeholder = 'woodcellardenver or https://instagram.com/woodcellardenver';
+                    helpDiv.textContent = 'Enter Instagram username or full URL';
+                    break;
+                case 'LINKEDIN_MESSAGE':
+                    contactValueInput.placeholder = 'company-name or https://linkedin.com/company/company-name';
+                    helpDiv.textContent = 'Enter LinkedIn username/company name or full URL';
+                    break;
+                case 'TWITTER_MESSAGE':
+                    contactValueInput.placeholder = 'woodcellar or https://twitter.com/woodcellar';
+                    helpDiv.textContent = 'Enter Twitter username or full URL';
+                    break;
+                case 'TELEGRAM':
+                    contactValueInput.placeholder = '@username or username';
+                    helpDiv.textContent = 'Enter Telegram username (with or without @)';
+                    break;
+                case 'DISCORD':
+                    contactValueInput.placeholder = 'username#1234 or server invite link';
+                    helpDiv.textContent = 'Enter Discord username or server invite link';
+                    break;
+                case 'WEBSITE_CONTACT_FORM':
+                case 'WEBSITE_LIVE_CHAT':
+                    contactValueInput.placeholder = 'https://example.com/contact';
+                    helpDiv.textContent = 'Enter the full URL to the contact form or chat';
+                    break;
+                default:
+                    contactValueInput.placeholder = 'Enter contact information';
+                    helpDiv.textContent = '';
             }
         }
 

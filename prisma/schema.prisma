@@ -661,3 +661,11 @@ enum GigStatus {
   COMPLETED
 }
 
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamptz(6)
+
+  @@map("sessions")
+}
+

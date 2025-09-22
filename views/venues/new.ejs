@@ -96,6 +96,13 @@
                         <textarea class="form-control" id="address" name="address" rows="2"><%= typeof formData !== 'undefined' ? formData.address : '' %></textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="<%= typeof formData !== 'undefined' ? formData.email : '' %>" 
+                               placeholder="venue@example.com">
+                    </div>
+
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="city" class="form-label">City</label>

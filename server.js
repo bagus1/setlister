@@ -1,6 +1,7 @@
 const express = require("express");
 const session = require("express-session");
 const SQLiteStore = require("connect-sqlite3")(session);
+const PgStore = require("connect-pg-simple")(session);
 const methodOverride = require("method-override");
 const flash = require("connect-flash");
 const expressLayouts = require("express-ejs-layouts");
@@ -45,23 +46,22 @@ app.use(express.static("public"));
 // Session configuration
 app.use(
   session({
-    // Temporarily using memory store instead of SQLite to fix production issue
-    // store: new SQLiteStore({
-    //   db: "sessions.db",
-    //   dir: "./data/",
-    //   table: "sessions",
-    // }),
+    store: new PgStore({
+      conString: process.env.DATABASE_URL,
+      tableName: "sessions", // optional, defaults to 'session'
+      createTableIfMissing: true, // automatically create the sessions table
+    }),
     secret: process.env.SESSION_SECRET || "setlist-manager-secret-key",
-    resave: true,
+    resave: false, // set to false for PostgreSQL store
     saveUninitialized: false,
     cookie: {
-      secure: false,
+      secure: false, // set to true in production with HTTPS
       httpOnly: true,
       sameSite: "lax",
       // Make cookies last for 1 year (effectively permanent)
       maxAge: 365 * 24 * 60 * 60 * 1000,
     },
-    // Sessions will persist in SQLite database and survive server restarts
+    // Sessions will persist in PostgreSQL database and survive server restarts
     // 1 year maxAge ensures cookies don't expire in the browser
   })
 );

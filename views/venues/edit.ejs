@@ -62,11 +62,19 @@
                         <textarea class="form-control" id="address" name="address" rows="2"><%= typeof formData !== 'undefined' ? formData.address : venue.address || '' %></textarea>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" 
-                               value="<%= typeof formData !== 'undefined' ? formData.email : venue.email || '' %>" 
-                               placeholder="venue@example.com">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.email : venue.email || '' %>" 
+                                   placeholder="venue@example.com">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.phone : venue.phone || '' %>" 
+                                   placeholder="(555) 123-4567">
+                        </div>
                     </div>
 
                     <div class="row">
@@ -144,7 +152,8 @@
                         <div class="col-md-4 mb-3">
                             <label for="capacity" class="form-label">Capacity</label>
                             <input type="number" class="form-control" id="capacity" name="capacity" 
-                                   value="<%= typeof formData !== 'undefined' ? formData.capacity : venue.capacity || '' %>" min="1">
+                                   value="<%= typeof formData !== 'undefined' ? formData.capacity : venue.capacity || '' %>" 
+                                   placeholder="e.g., 100">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="musicStyle" class="form-label">Music Style</label>

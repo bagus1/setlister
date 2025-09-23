@@ -7,7 +7,7 @@
           <button id="restore-version" class="btn btn-warning me-2">
             <i class="bi bi-arrow-counterclockwise"></i> Restore This Version
           </button>
-          <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
+          <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
             <i class="bi bi-arrow-left"></i> Back to Edit
           </a>
         </div>
@@ -17,7 +17,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <% if (previousVersion) { %>
-            <a href="/setlists/<%= setlist.id %>/versions/<%= previousVersion.id %>/view" class="btn btn-outline-secondary">
+            <a href="/bands/<%= bandId %>/setlists/<%= setlist.id %>/versions/<%= previousVersion.id %>/view" class="btn btn-outline-secondary">
               <i class="bi bi-chevron-left"></i> Previous (v<%= previousVersion.versionNumber %>)
             </a>
           <% } else { %>
@@ -33,7 +33,7 @@
         
         <div>
           <% if (nextVersion) { %>
-            <a href="/setlists/<%= setlist.id %>/versions/<%= nextVersion.id %>/view" class="btn btn-outline-secondary">
+            <a href="/bands/<%= bandId %>/setlists/<%= setlist.id %>/versions/<%= nextVersion.id %>/view" class="btn btn-outline-secondary">
               Next (v<%= nextVersion.versionNumber %>) <i class="bi bi-chevron-right"></i>
             </a>
           <% } else { %>
@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const restoreButton = document.getElementById('restore-version');
   const setlistId = <%= setlist.id %>;
   const versionId = <%= version.id %>;
+  const bandId = <%= bandId %>;
 
   restoreButton.addEventListener('click', async function() {
     if (!confirm('Are you sure you want to restore this version? This will overwrite the current setlist.')) {
@@ -108,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     try {
-      const response = await fetch(`/setlists/${setlistId}/restore/${versionId}`, {
+      const response = await fetch(`/bands/${bandId}/setlists/${setlistId}/versions/${versionId}/restore`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
       alert('Setlist restored successfully!');
       
       // Redirect back to the edit page to see the restored setlist
-      window.location.href = `/setlists/${setlistId}/edit`;
+      window.location.href = `/bands/${bandId}/setlists/${setlistId}/edit`;
     } catch (error) {
       console.error('Error restoring version:', error);
       alert('Failed to restore version: ' + error.message);

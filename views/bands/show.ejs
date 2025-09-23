@@ -245,7 +245,7 @@
                     <% setlists.forEach(setlist=> { %>
                         <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
                             <div class="flex-grow-1" style="min-width: 0; margin-right: 16px;">
-                                <a href="/setlists/<%= setlist.id %>" class="text-decoration-none">
+                                <a href="/bands/<%= band.id %>/setlists/<%= setlist.id %>" class="text-decoration-none">
                                     <strong>
                                         <%= setlist.title %>
                                     </strong>
@@ -261,15 +261,15 @@
                                             <% } %>
                             </div>
                             <div class="d-flex gap-2" style="flex-shrink: 0; width: 232px; justify-content: flex-end;">
-                                <a href="/setlists/<%= setlist.id %>/copy" class="btn btn-outline-info btn-sm">
+                                <a href="/bands/<%= band.id %>/setlists/<%= setlist.id %>/copy" class="btn btn-outline-info btn-sm">
                                     <i class="bi bi-files"></i> Copy
                                 </a>
                                 <% if (setlist.isFinalized) { %>
-                                    <a href="/setlists/<%= setlist.id %>/print" class="btn btn-outline-success btn-sm">
+                                    <a href="/bands/<%= band.id %>/setlists/<%= setlist.id %>/print" class="btn btn-outline-success btn-sm">
                                         <i class="bi bi-printer"></i> Print
                                     </a>
                                     <% } else { %>
-                                        <a href="/setlists/<%= setlist.id %>"
+                                        <a href="/bands/<%= band.id %>/setlists/<%= setlist.id %>"
                                             class="btn btn-outline-warning btn-sm">
                                             <i class="bi bi-eye"></i> View Setlist
                                         </a>

@@ -9,10 +9,816 @@ const { v4: uuidv4 } = require("uuid");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
 
+// Helper function to capture complete setlist state
+async function captureSetlistState(setlistId) {
+  const setlist = await prisma.setlist.findUnique({
+    where: { id: setlistId },
+    include: {
+      sets: {
+        include: {
+          songs: {
+            include: {
+              song: {
+                select: {
+                  id: true,
+                  title: true,
+                  artists: {
+                    select: {
+                      artist: {
+                        select: {
+                          name: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: { order: "asc" },
+          },
+        },
+        orderBy: { order: "asc" },
+      },
+    },
+  });
+
+  if (!setlist) return null;
+
+  // Transform to a clean JSON structure
+  const setlistData = {
+    id: setlist.id,
+    title: setlist.title,
+    date: setlist.date,
+    isFinalized: setlist.isFinalized,
+    recordingsUrl: setlist.recordingsUrl,
+    sets: setlist.sets.map((set) => ({
+      id: set.id,
+      name: set.name,
+      order: set.order,
+      songs: set.songs.map((setlistSong) => ({
+        id: setlistSong.id,
+        songId: setlistSong.songId,
+        order: setlistSong.order,
+        title: setlistSong.song.title,
+        artist: setlistSong.song.artists[0]?.artist.name || "Unknown Artist",
+      })),
+    })),
+  };
+
+  return setlistData;
+}
+
+// Helper function to generate change summary
+function generateChangeSummary(previousState, currentState) {
+  if (!previousState) {
+    const totalSongs = currentState.sets.reduce(
+      (total, set) => total + set.songs.length,
+      0
+    );
+    return `Initial setlist with ${totalSongs} songs`;
+  }
+
+  const changes = [];
+  const prevSets = new Map(previousState.sets.map(set => [set.name, set]));
+  const currSets = new Map(currentState.sets.map(set => [set.name, set]));
+
+  // Check for songs added/removed/moved
+  for (const [setName, currSet] of currSets) {
+    const prevSet = prevSets.get(setName);
+    const prevSongs = prevSet ? new Set(prevSet.songs.map(s => s.songId)) : new Set();
+    const currSongs = new Set(currSet.songs.map(s => s.songId));
+
+    // Songs added to this set
+    for (const songId of currSongs) {
+      if (!prevSongs.has(songId)) {
+        const song = currSet.songs.find(s => s.songId === songId);
+        changes.push(`Added "${song.title}" to ${setName}`);
+      }
+    }
+
+    // Songs removed from this set
+    for (const songId of prevSongs) {
+      if (!currSongs.has(songId)) {
+        const song = prevSet.songs.find(s => s.songId === songId);
+        changes.push(`Removed "${song.title}" from ${setName}`);
+      }
+    }
+  }
+
+  // Check for songs moved between sets
+  for (const [setName, currSet] of currSets) {
+    const prevSet = prevSets.get(setName);
+    if (!prevSet) continue;
+
+    const prevSongs = prevSet.songs.map(s => ({ id: s.songId, title: s.title }));
+    const currSongs = currSet.songs.map(s => ({ id: s.songId, title: s.title }));
+
+    // Check if songs were reordered within the set
+    const prevOrder = prevSongs.map(s => s.id).join(',');
+    const currOrder = currSongs.map(s => s.id).join(',');
+    
+    if (prevOrder !== currOrder && prevSongs.length === currSongs.length) {
+      changes.push(`Reordered songs in ${setName}`);
+    }
+  }
+
+  if (changes.length === 0) {
+    return "No changes detected";
+  }
+
+  return changes.join(", ");
+}
+
 const router = express.Router();
 
-// All band routes require authentication
+// Helper function for setlist editability
+function isSetlistEditable(setlist) {
+  return true; // Setlists are always editable
+}
+
+// PUBLIC ROUTES (no authentication required)
+// These routes are accessible without login
+
+// GET /bands/:bandId/setlists/:setlistId/rehearsal - Public rehearsal view
+router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                    links: true,
+                    gigDocuments: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Helper functions for display
+    const getLinkIcon = (type) => {
+      const icons = {
+        youtube: "youtube",
+        spotify: "spotify",
+        soundcloud: "soundcloud",
+        audio: "music-note",
+        video: "play-circle",
+        chord: "music-note-beamed",
+        tab: "music-note-list",
+        lyrics: "file-text",
+        other: "link-45deg",
+      };
+      return icons[type] || "link-45deg";
+    };
+
+    const getLinkDisplayText = (link) => {
+      if (link.title && link.title.trim()) {
+        return link.title;
+      }
+      return link.url;
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
+    res.render("setlists/rehearsal", {
+      title: `Rehearsal View - ${setlist.title}`,
+      pageTitle: setlist.title,
+      setlist,
+      band: setlist.band,
+      hasBandHeader: true,
+      user: req.session.user || null, // Pass user if logged in, null if not
+      getLinkIcon,
+      getLinkDisplayText,
+      getTypeDisplayName,
+    });
+  } catch (error) {
+    logger.logError("Rehearsal view error", error);
+    res.status(500).send("Error loading rehearsal view");
+  }
+});
+
+// GET /bands/:bandId/setlists/:setlistId/listen - Public listen view
+router.get("/:bandId/setlists/:setlistId/listen", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const { url } = req.query;
+
+    if (!url) {
+      return res.status(400).send("URL parameter is required");
+    }
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Fetch the external playlist (keeping the original logic)
+    let playlistData;
+    try {
+      const response = await fetch(url);
+      const contentType = response.headers.get("content-type");
+
+      if (contentType && contentType.includes("application/json")) {
+        playlistData = await response.json();
+      } else {
+        // Handle HTML content - try to extract audio links
+        const html = await response.text();
+        const audioLinks = [];
+
+        // Create a base URL for resolving relative paths
+        const baseUrl = new URL(url);
+
+        // Extract total summary information
+        let totalSummary = "";
+        const summaryMatch = html.match(
+          /Total Length: ([^(]+) \((\d+) songs\)/
+        );
+        if (summaryMatch) {
+          totalSummary = {
+            duration: summaryMatch[1].trim(),
+            songCount: parseInt(summaryMatch[2]),
+          };
+        }
+
+        // Site-specific scraping logic
+        let linkRegex;
+        let match;
+
+        // Determine the site and use appropriate scraping logic
+        const hostname = baseUrl.hostname.toLowerCase();
+
+        switch (hostname) {
+          case "www.bagus.org":
+          case "bagus.org":
+            // Bagus.org format: href="/path/file.wav">Song Title</a><span class="duration">(duration)
+            linkRegex =
+              /href=["']([^"']+\.(?:mp3|wav|ogg|m4a|flac))["'][^>]*>([^<]+)<\/a><span class="duration">\(([^)]+)\)/gi;
+            break;
+
+          default:
+            // Generic pattern for most sites
+            linkRegex =
+              /href=["']([^"']+\.(?:mp3|wav|ogg|m4a|flac))["'][^>]*>([^<]+)<\/a>(?:[^<]*<[^>]*>)*\(([^)]+)\)/gi;
+        }
+
+        // Extract audio links
+        while ((match = linkRegex.exec(html)) !== null) {
+          const [, relativePath, title, duration] = match;
+          let fullUrl;
+
+          try {
+            fullUrl = new URL(relativePath, baseUrl).href;
+          } catch (urlError) {
+            console.warn("Invalid URL:", relativePath);
+            continue;
+          }
+
+          audioLinks.push({
+            url: fullUrl,
+            title: title.trim(),
+            duration: duration.trim(),
+          });
+        }
+
+        // Create playlistData structure
+        playlistData = {
+          links: audioLinks,
+          summary: totalSummary,
+        };
+      }
+    } catch (fetchError) {
+      logger.logError("Failed to fetch external playlist", fetchError);
+      return res
+        .status(500)
+        .send("Failed to fetch or parse the external recordings playlist");
+    }
+    
+    res.render("setlists/listen", {
+      title: `Listen - ${setlist.title}`,
+      setlist,
+      band: setlist.band,
+      playlistData,
+      externalUrl: url,
+      hasBandHeader: true,
+      user: req.session.user || null, // Pass user if logged in, null if not
+    });
+  } catch (error) {
+    logger.logError("Listen setlist error", error);
+    res.status(500).send("Error loading listen page");
+  }
+});
+
+// GET /bands/:bandId/setlists/:setlistId/print - Public print view (standalone)
+router.get("/:bandId/setlists/:setlistId/print", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: true,
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    res.render("setlists/print", {
+      title: `Print ${setlist.title}`,
+      setlist,
+      layout: false, // Standalone print layout
+    });
+  } catch (error) {
+    logger.logError("Print setlist error", error);
+    res.status(500).send("Error loading print page");
+  }
+});
+
+// GET /bands/:bandId/setlists/:setlistId/gig-view - Public gig view (standalone)
+router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Get BandSong preferences for this band
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
+    });
+
+    // Create a map of songId to preferred gig document
+    const preferredGigDocuments = {};
+    bandSongs.forEach((bandSong) => {
+      if (bandSong.gigDocumentId) {
+        preferredGigDocuments[bandSong.songId] = bandSong.gigDocumentId;
+      }
+    });
+
+    // Get all song IDs from the setlist
+    const songIds = [];
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          if (setlistSong.song) {
+            songIds.push(setlistSong.song.id);
+          }
+        });
+      }
+    });
+
+    // Get ALL gig documents for songs in this setlist (not just preferred ones)
+    const gigDocuments = await prisma.gigDocument.findMany({
+      where: {
+        songId: { in: songIds },
+      },
+      include: {
+        song: {
+          select: {
+            id: true,
+            title: true,
+            key: true,
+            time: true,
+          },
+        },
+      },
+      orderBy: [
+        { songId: "asc" },
+        { version: "desc" }, // Get latest version first
+      ],
+    });
+
+    // Create a map of songId to gig documents (array of docs for each song)
+    const gigDocumentsBySong = {};
+    gigDocuments.forEach((doc) => {
+      if (!gigDocumentsBySong[doc.songId]) {
+        gigDocumentsBySong[doc.songId] = [];
+      }
+      gigDocumentsBySong[doc.songId].push(doc);
+    });
+
+    // Create a map of gig document ID to gig document
+    const gigDocumentMap = {};
+    gigDocuments.forEach((doc) => {
+      gigDocumentMap[doc.id] = doc;
+    });
+
+    res.render("setlists/gig-view", {
+      title: `Gig View - ${setlist.title}`,
+      setlist,
+      preferredGigDocuments,
+      gigDocumentMap,
+      gigDocumentsBySong,
+      layout: false, // No layout for clean printing
+    });
+  } catch (error) {
+    logger.logError("Gig view error", error);
+    res.status(500).send("Error loading gig view");
+  }
+});
+
+// AUTHENTICATED ROUTES (authentication required)
 router.use(requireAuth);
+
+// GET /bands/:bandId/setlists/:setlistId/edit - Show setlist edit page with drag-drop
+router.get("/:bandId/setlists/:setlistId/edit", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const userId = req.session.user.id;
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                    links: {
+                      include: {
+                        song: true,
+                      },
+                    },
+                    gigDocuments: {
+                      include: {
+                        song: true,
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      req.flash("error", "Setlist not found");
+      return res.redirect("/bands");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      req.flash("error", "Setlist not found or access denied");
+      return res.redirect("/bands");
+    }
+
+    // Check if user is a member of this band
+    if (setlist.band.members.length === 0) {
+      req.flash("error", "Access denied");
+      return res.redirect("/bands");
+    }
+
+    // Check if setlist date is in the past and show warning
+    if (setlist.date && new Date(setlist.date) < new Date()) {
+      req.flash(
+        "warning",
+        "The date for this setlist is in the past, are you sure you want to mess with history?"
+      );
+    }
+
+    // Check if setlist date has passed (allow editing until one week after setlist date)
+    if (!isSetlistEditable(setlist)) {
+      req.flash(
+        "error",
+        "This setlist cannot be edited as it has been more than one week since the performance date"
+      );
+      return res.redirect(`/bands/${bandId}/setlists/${setlistId}`);
+    }
+
+    // Get all band's songs through BandSong relationship
+    const allBandSongs = await prisma.song.findMany({
+      where: {
+        bandSongs: {
+          some: {
+            bandId: setlist.bandId,
+          },
+        },
+      },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+        links: {
+          include: {
+            song: true,
+          },
+        },
+        gigDocuments: {
+          include: {
+            song: true,
+          },
+        },
+      },
+      orderBy: {
+        title: "asc",
+      },
+    });
+
+    // Get songs already in this setlist through SetlistSong relationships
+    const setlistSongs = await prisma.setlistSong.findMany({
+      where: {
+        setlistSet: {
+          setlistId: setlist.id,
+        },
+      },
+      select: {
+        songId: true,
+      },
+    });
+
+    // Extract used song IDs (from all sets including Maybe)
+    const usedSongIds = [];
+    setlistSongs.forEach((setlistSong) => {
+      usedSongIds.push(setlistSong.songId);
+    });
+
+    // Filter out songs already in any set (including Maybe)
+    const bandSongs = allBandSongs.filter(
+      (song) => !usedSongIds.includes(song.id)
+    );
+
+    res.render("setlists/edit", {
+      title: `Edit ${setlist.title}`,
+      setlist,
+      band: setlist.band,
+      bandId: bandId,
+      hasBandHeader: true,
+      bandSongs,
+      success: req.flash("success"),
+      error: req.flash("error"),
+      warning: req.flash("warning"),
+    });
+  } catch (error) {
+    console.error("Edit setlist error:", error);
+    req.flash("error", "An error occurred loading the setlist editor");
+    res.redirect("/bands");
+  }
+});
+
+// GET /bands/:bandId/setlists/:setlistId/copy - Show copy setlist form
+router.get("/:bandId/setlists/:setlistId/copy", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const userId = req.session.user.id;
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      req.flash("error", "Setlist not found or access denied");
+      return res.redirect("/bands");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      req.flash("error", "Setlist not found or access denied");
+      return res.redirect("/bands");
+    }
+
+    // Check if user is a member of this band
+    if (setlist.band.members.length === 0) {
+      req.flash("error", "Access denied");
+      return res.redirect("/bands");
+    }
+
+    res.render("setlists/copy", {
+      title: `Copy ${setlist.title}`,
+      setlist,
+      hasBandHeader: true,
+      band: setlist.band,
+    });
+  } catch (error) {
+    logger.logError("Copy setlist error", error);
+    req.flash("error", "An error occurred loading the setlist copy form");
+    res.redirect("/bands");
+  }
+});
 
 // GET /bands - List all bands for the user
 router.get("/", async (req, res) => {
@@ -533,7 +1339,7 @@ router.post(
       const setlist = result;
 
       req.flash("success", "Setlist created successfully!");
-      res.redirect(`/setlists/${setlist.id}/edit`);
+      res.redirect(`/bands/${bandId}/setlists/${setlist.id}/edit`);
     } catch (error) {
       console.error("Create setlist error:", error);
       req.flash("error", "An error occurred creating the setlist");
@@ -712,10 +1518,10 @@ router.get("/:id/songs", async (req, res) => {
     let fromSetlist = null;
 
     if (referrer) {
-      // Look for setlist edit URL pattern: /setlists/:id/edit
-      const setlistEditMatch = referrer.match(/\/setlists\/(\d+)\/edit/);
+      // Look for setlist edit URL pattern: /bands/:bandId/setlists/:setlistId/edit
+      const setlistEditMatch = referrer.match(/\/bands\/(\d+)\/setlists\/(\d+)\/edit/);
       if (setlistEditMatch) {
-        const setlistId = setlistEditMatch[1];
+        const setlistId = setlistEditMatch[2];
         // Verify the setlist exists and belongs to this band
         const setlist = await prisma.setlist.findFirst({
           where: { id: parseInt(setlistId), bandId: parseInt(bandId) },
@@ -5167,5 +5973,557 @@ Generate only the suggested response text, no additional commentary. DO NOT incl
     throw new Error("Failed to generate AI suggestion");
   }
 }
+
+// GET /bands/:bandId/setlists/:setlistId - Show setlist details
+router.get("/:bandId/setlists/:setlistId", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const userId = req.session.user.id;
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                    links: true,
+                    gigDocuments: true,
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      req.flash("error", "Setlist not found or access denied");
+      return res.redirect("/bands");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      req.flash("error", "Setlist not found or access denied");
+      return res.redirect("/bands");
+    }
+
+    // Check if user is a member of this band
+    if (setlist.band.members.length === 0) {
+      req.flash("error", "Access denied");
+      return res.redirect("/bands");
+    }
+
+    // Get BandSong preferences for this band
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
+      include: {
+        song: {
+          select: {
+            id: true,
+            title: true,
+            links: {
+              where: { type: "youtube" },
+            },
+          },
+        },
+      },
+    });
+
+    // Create a map of songId to BandSong for quick lookup
+    const bandSongMap = {};
+    bandSongs.forEach((bandSong) => {
+      bandSongMap[bandSong.songId] = bandSong;
+    });
+
+    // Get all song IDs from the setlist
+    const songIds = [];
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          songIds.push(setlistSong.song.id);
+        });
+      }
+    });
+
+    // Get ALL gig documents for songs in this setlist
+    const gigDocuments = await prisma.gigDocument.findMany({
+      where: {
+        songId: { in: songIds },
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+      orderBy: [{ songId: "asc" }, { type: "asc" }, { version: "desc" }],
+    });
+
+    // Group gig documents by song ID
+    const gigDocumentsBySong = {};
+    gigDocuments.forEach((doc) => {
+      if (!gigDocumentsBySong[doc.songId]) {
+        gigDocumentsBySong[doc.songId] = [];
+      }
+      gigDocumentsBySong[doc.songId].push(doc);
+    });
+
+    // Process YouTube links for each song with auto-assignment
+    const youtubeLinksBySong = {};
+    let autoAssignedCount = 0;
+    const bandSongsToUpdate = [];
+
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          const songId = setlistSong.song.id;
+          const bandSong = bandSongMap[songId];
+
+          // Get available YouTube links from the song
+          const availableYoutubeLinks =
+            setlistSong.song.links?.filter((link) => link.type === "youtube") ||
+            [];
+
+          // Store all available YouTube links for the dropdown
+          if (availableYoutubeLinks.length > 0) {
+            youtubeLinksBySong[songId] = availableYoutubeLinks;
+          }
+
+          // Auto-assign YouTube link if none is set and there's exactly one available
+          if (
+            !bandSong?.youtube &&
+            availableYoutubeLinks.length === 1 &&
+            availableYoutubeLinks[0].url
+          ) {
+            bandSongsToUpdate.push({
+              songId: songId,
+              youtube: availableYoutubeLinks[0].url,
+            });
+            autoAssignedCount++;
+          }
+        });
+      }
+    });
+
+    // Auto-assign YouTube links if needed
+    if (bandSongsToUpdate.length > 0) {
+      try {
+        await Promise.all(
+          bandSongsToUpdate.map((bandSongData) =>
+            prisma.bandSong.upsert({
+              where: {
+                bandId_songId: {
+                  bandId: setlist.band.id,
+                  songId: bandSongData.songId,
+                },
+              },
+              update: {
+                youtube: bandSongData.youtube,
+              },
+              create: {
+                bandId: setlist.band.id,
+                songId: bandSongData.songId,
+                youtube: bandSongData.youtube,
+              },
+            })
+          )
+        );
+
+        // Update bandSongMap with new assignments
+        bandSongsToUpdate.forEach((bandSongData) => {
+          if (!bandSongMap[bandSongData.songId]) {
+            bandSongMap[bandSongData.songId] = {};
+          }
+          bandSongMap[bandSongData.songId].youtube = bandSongData.youtube;
+        });
+
+        console.log(
+          `Auto-assigned ${autoAssignedCount} YouTube links for setlist ${setlistId}`
+        );
+      } catch (error) {
+        console.error("Error auto-assigning YouTube links:", error);
+        // Continue without failing the request
+      }
+    }
+
+    // Calculate link counts for each song for tooltip functionality
+    const songLinkCounts = {};
+    setlist.sets.forEach((set) => {
+      if (set.songs) {
+        set.songs.forEach((setlistSong) => {
+          const songId = setlistSong.song.id;
+          const links = setlistSong.song.links || [];
+
+          // Count different types of links
+          const audioLinks = links.filter(
+            (link) => link.type === "audio"
+          ).length;
+          const youtubeLinks = links.filter(
+            (link) => link.type === "youtube"
+          ).length;
+          const totalLinks = links.length;
+
+          // Check if song has gig documents
+          const hasGigDocs =
+            gigDocumentsBySong[songId] && gigDocumentsBySong[songId].length > 0;
+
+          songLinkCounts[songId] = {
+            audio: audioLinks,
+            youtube: youtubeLinks,
+            total: totalLinks,
+            hasGigDocs: hasGigDocs,
+            hasAnyRehearsalResource: hasGigDocs || totalLinks > 0,
+          };
+        });
+      }
+    });
+
+    // Calculate if setlist is still editable (always editable)
+    const isEditable = true;
+
+    // Helper functions for gig document type display
+    const getTypeIcon = (type) => {
+      const icons = {
+        chords: "music-note-list",
+        "bass-tab": "music-note-beamed",
+        "guitar-tab": "music-note",
+        lyrics: "file-text",
+      };
+      return icons[type] || "file-earmark-text";
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
+    res.render("setlists/show", {
+      title: `${setlist.title} - ${setlist.band.name}`,
+      setlist,
+      bandSongMap,
+      gigDocumentsBySong,
+      youtubeLinksBySong,
+      songLinkCounts,
+      isEditable,
+      hasBandHeader: true,
+      band: setlist.band,
+      getTypeIcon,
+      getTypeDisplayName,
+    });
+  } catch (error) {
+    logger.logError("Setlist show error", error);
+    req.flash("error", "Error loading setlist");
+    res.redirect("/bands");
+  }
+});
+
+// GET /bands/:bandId/setlists/:setlistId/versions - Get version history
+router.get("/:bandId/setlists/:setlistId/versions", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const userId = req.session.user.id;
+
+    // Verify the setlist belongs to the specified band
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.id !== bandId) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Get versions
+    const versions = await prisma.setlistVersion.findMany({
+      where: { setlistId },
+      include: {
+        createdBy: {
+          select: { username: true },
+        },
+      },
+      orderBy: { versionNumber: "desc" },
+      take: 50,
+    });
+
+    res.json({
+      setlistId,
+      versions: versions.map((version) => ({
+        id: version.id,
+        versionNumber: version.versionNumber,
+        timestamp: version.createdAt,
+        user: version.createdBy?.username || "Unknown User",
+        changeSummary: version.changeSummary,
+      })),
+    });
+  } catch (error) {
+    logger.logError("Get setlist versions error", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /bands/:bandId/setlists/:setlistId/versions/:versionId/view - View specific version
+router.get("/:bandId/setlists/:setlistId/versions/:versionId/view", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const versionId = parseInt(req.params.versionId);
+    const userId = req.session.user.id;
+
+    // Verify the setlist belongs to the specified band
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.id !== bandId) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Get version with navigation
+    const version = await prisma.setlistVersion.findFirst({
+      where: {
+        id: versionId,
+        setlistId: setlistId,
+      },
+      include: {
+        createdBy: {
+          select: { username: true },
+        },
+      },
+    });
+
+    if (!version) {
+      return res.status(404).json({ error: "Version not found" });
+    }
+
+    // Get previous and next versions for navigation
+    const [previousVersion, nextVersion] = await Promise.all([
+      // Previous version (higher version number)
+      prisma.setlistVersion.findFirst({
+        where: {
+          setlistId: setlistId,
+          versionNumber: { gt: version.versionNumber },
+        },
+        orderBy: { versionNumber: "asc" },
+        select: { id: true, versionNumber: true },
+      }),
+      // Next version (lower version number)
+      prisma.setlistVersion.findFirst({
+        where: {
+          setlistId: setlistId,
+          versionNumber: { lt: version.versionNumber },
+        },
+        orderBy: { versionNumber: "desc" },
+        select: { id: true, versionNumber: true },
+      }),
+    ]);
+
+    res.render("setlists/version-view", {
+      title: setlist.band.name,
+      setlist: setlist,
+      version: version,
+      versionId: versionId,
+      previousVersion: previousVersion,
+      nextVersion: nextVersion,
+      bandId: bandId,
+    });
+  } catch (error) {
+    logger.logError("View setlist version error", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /bands/:bandId/setlists/:setlistId/versions/:versionId/restore - Restore to specific version
+router.post("/:bandId/setlists/:setlistId/versions/:versionId/restore", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const versionId = parseInt(req.params.versionId);
+    const userId = req.session.user.id;
+
+    // Verify the setlist belongs to the specified band
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.id !== bandId) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Get version to restore
+    const version = await prisma.setlistVersion.findFirst({
+      where: {
+        id: versionId,
+        setlistId: setlistId,
+      },
+    });
+
+    if (!version) {
+      return res.status(404).json({ error: "Version not found" });
+    }
+
+    // Capture current state as backup
+    const currentState = await captureSetlistState(setlistId);
+
+    // Create backup version before restoring
+    if (currentState) {
+      const lastVersion = await prisma.setlistVersion.findFirst({
+        where: { setlistId },
+        orderBy: { versionNumber: "desc" },
+        select: { versionNumber: true },
+      });
+
+      await prisma.setlistVersion.create({
+        data: {
+          setlistId,
+          versionNumber: (lastVersion?.versionNumber || 0) + 1,
+          createdById: userId,
+          setlistData: currentState,
+          changeSummary: `Backup before restoring to version ${version.versionNumber}`,
+        },
+      });
+    }
+
+    // Restore from version data
+    const versionData = version.setlistData;
+
+    // Clear existing songs
+    const setlistSets = await prisma.setlistSet.findMany({
+      where: { setlistId },
+      select: { id: true },
+    });
+
+    if (setlistSets.length > 0) {
+      const setlistSetIds = setlistSets.map((set) => set.id);
+      await prisma.setlistSong.deleteMany({
+        where: { setlistSetId: { in: setlistSetIds } },
+      });
+    }
+
+    // Recreate sets and songs from version data
+    for (const setData of versionData.sets) {
+      let setlistSet = await prisma.setlistSet.findFirst({
+        where: { setlistId, name: setData.name },
+      });
+
+      if (!setlistSet) {
+        setlistSet = await prisma.setlistSet.create({
+          data: {
+            setlistId,
+            name: setData.name,
+            order: setData.order,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      // Add songs to set
+      for (const songData of setData.songs) {
+        await prisma.setlistSong.create({
+          data: {
+            setlistSetId: setlistSet.id,
+            songId: songData.songId,
+            order: songData.order,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.logError("Restore setlist version error", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 module.exports = router;

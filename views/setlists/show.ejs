@@ -16,11 +16,11 @@
             </div>
             <div class="d-flex gap-2">
                 <% if (!setlist.isFinalized) { %>
-                    <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
+                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
                         <i class="bi bi-pencil"></i> Edit Setlist
                     </a>
                 <% } %>
-                <a href="/setlists/<%= setlist.id %>/copy" class="btn btn-outline-info">
+                <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/copy" class="btn btn-outline-info">
                     <i class="bi bi-files"></i> Copy Setlist
                 </a>
                 <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-primary">
@@ -309,7 +309,7 @@
                                             <h4 class="text-muted mt-3">No songs in setlist yet</h4>
                                             <p class="text-muted">Add some songs to the setlist before finalizing.</p>
                                             <% if (isEditable) { %>
-                                                <a href="/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
+                                                <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/edit" class="btn btn-primary">
                                                     <i class="bi bi-plus"></i> Add Songs to Setlist
                                                 </a>
                                                 <% } %>
@@ -449,7 +449,7 @@
 
                 <div class="d-grid gap-2">
                                 <div class="d-flex gap-2">
-                                    <a href="/setlists/<%= setlist.id %>/gig-view"
+                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/gig-view"
                                         class="btn btn-success flex-fill" id="musicStandButton">
                                         <i class="bi bi-music-note-beamed"></i> Music Stand
                                     </a>
@@ -460,7 +460,7 @@
                                 </div>
 
                                 <div class="d-flex gap-2">
-                                    <a href="/setlists/<%= setlist.id %>/rehearsal" class="btn btn-light flex-fill" style="background-color: #e91e63; border-color: #e91e63; color: white;" id="rehearsalViewButton">
+                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/rehearsal" class="btn btn-light flex-fill" style="background-color: #e91e63; border-color: #e91e63; color: white;" id="rehearsalViewButton">
                                         <i class="bi bi-music-note-beamed"></i> Rehearsal View
                                     </a>
                                     <button onclick="copyRehearsalLink()" class="btn btn-outline-light" style="border-color: #e91e63; color: #e91e63;" title="Copy rehearsal view link">
@@ -469,7 +469,7 @@
                                 </div>
 
                                 <div class="d-flex gap-2">
-                                    <a href="/setlists/<%= setlist.id %>/playlist" class="btn btn-info flex-fill" id="viewPlaylistButton">
+                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/playlist" class="btn btn-info flex-fill" id="viewPlaylistButton">
                                         <i class="bi bi-music-note-list"></i> Audio Playlist
                                     </a>
                                     <button onclick="copyPlaylistLink()" class="btn btn-outline-info" title="Copy playlist link">
@@ -478,7 +478,7 @@
                                 </div>
 
                                 <div class="d-flex gap-2">
-                                    <a href="/setlists/<%= setlist.id %>/youtube-playlist" class="btn btn-danger flex-fill" id="youtubePlaylistButton">
+                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/youtube-playlist" class="btn btn-danger flex-fill" id="youtubePlaylistButton">
                                         <i class="bi bi-youtube"></i> YouTube Playlist
                                     </a>
                                     <button onclick="copyYoutubePlaylistLink()" class="btn btn-outline-danger" title="Copy YouTube playlist link">
@@ -489,7 +489,7 @@
                                 <% const savedUrl = setlist.recordingsUrl; %>
                                 <% if (savedUrl) { %>
                                 <div class="d-flex gap-2">
-                                    <a href="/setlists/<%= setlist.id %>/listen?url=<%= encodeURIComponent(savedUrl) %>" class="btn btn-primary flex-fill">
+                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/listen?url=<%= encodeURIComponent(savedUrl) %>" class="btn btn-primary flex-fill">
                                         <i class="bi bi-headphones"></i> Listen to the Set
                                     </a>
                                     <button onclick="copyListenLink()" class="btn btn-outline-primary" title="Copy listen link">
@@ -498,15 +498,15 @@
                                 </div>
                                 <% } %>
 
-                                <a href="/setlists/<%= setlist.id %>/print" class="btn btn-outline-primary">
+                                <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/print" class="btn btn-outline-primary">
                                     <i class="bi bi-printer"></i> Print View
                                 </a>
 
-                                <a href="/setlists/<%= setlist.id %>/export" class="btn btn-outline-secondary">
+                                <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/export" class="btn btn-outline-secondary">
                                     <i class="bi bi-download"></i> Export as Text
                                 </a>
 
-                                <a href="/setlists/<%= setlist.id %>/export-csv" class="btn btn-outline-warning">
+                                <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/export-csv" class="btn btn-outline-warning">
                                     <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
                                 </a>
 
@@ -580,7 +580,7 @@
 
 <script>
     function setPreferredGigDocument(songId, gigDocumentId) {
-        fetch(`/setlists/<%= setlist.id %>/preferred-gig-document`, {
+        fetch(`/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/preferred-gig-document`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -606,7 +606,7 @@
     }
 
     function setPreferredYouTube(songId, youtubeUrl) {
-        fetch(`/setlists/<%= setlist.id %>/preferred-youtube`, {
+        fetch(`/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/preferred-youtube`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -704,7 +704,7 @@
     }
 
     function copyGigViewLink() {
-        const gigViewUrl = `${window.location.origin}/setlists/<%= setlist.id %>/gig-view`;
+        const gigViewUrl = `${window.location.origin}/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/gig-view`;
 
         if (navigator.clipboard && window.isSecureContext) {
             // Modern approach
@@ -732,7 +732,7 @@
     }
 
     function copyPlaylistLink() {
-        const playlistUrl = `${window.location.origin}/setlists/<%= setlist.id %>/playlist`;
+        const playlistUrl = `${window.location.origin}/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/playlist`;
 
         if (navigator.clipboard && window.isSecureContext) {
             // Modern approach
@@ -760,7 +760,7 @@
     }
 
     function copyListenLink() {
-        const listenUrl = `${window.location.origin}/setlists/<%= setlist.id %>/listen?url=<%= encodeURIComponent(setlist.recordingsUrl) %>`;
+        const listenUrl = `${window.location.origin}/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/listen?url=<%= encodeURIComponent(setlist.recordingsUrl) %>`;
 
         if (navigator.clipboard && window.isSecureContext) {
             // Modern approach
@@ -788,7 +788,7 @@
     }
 
             function copyYoutubePlaylistLink() {
-            const youtubePlaylistUrl = `${window.location.origin}/setlists/<%= setlist.id %>/youtube-playlist`;
+            const youtubePlaylistUrl = `${window.location.origin}/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/youtube-playlist`;
 
             if (navigator.clipboard && window.isSecureContext) {
                 // Modern approach
@@ -816,7 +816,7 @@
         }
 
         function copyRehearsalLink() {
-            const rehearsalUrl = `${window.location.origin}/setlists/<%= setlist.id %>/rehearsal`;
+            const rehearsalUrl = `${window.location.origin}/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/rehearsal`;
 
             if (navigator.clipboard && window.isSecureContext) {
                 // Modern approach
@@ -912,7 +912,7 @@
             musicStandButton.removeAttribute('aria-disabled');
             // Restore href if needed
             if (!musicStandButton.hasAttribute('href')) {
-                musicStandButton.setAttribute('href', `/setlists/<%= setlist.id %>/gig-view`);
+                musicStandButton.setAttribute('href', `/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/gig-view`);
             }
         }
 
@@ -976,7 +976,7 @@
             rehearsalViewButton.removeAttribute('aria-disabled');
             // Restore href if needed
             if (!rehearsalViewButton.hasAttribute('href')) {
-                rehearsalViewButton.setAttribute('href', `/setlists/<%= setlist.id %>/rehearsal`);
+                rehearsalViewButton.setAttribute('href', `/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/rehearsal`);
             }
         }
 
@@ -1040,7 +1040,7 @@
             viewPlaylistButton.removeAttribute('aria-disabled');
             // Restore href if needed
             if (!viewPlaylistButton.hasAttribute('href')) {
-                viewPlaylistButton.setAttribute('href', `/setlists/<%= setlist.id %>/playlist`);
+                viewPlaylistButton.setAttribute('href', `/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/playlist`);
             }
         }
 
@@ -1104,7 +1104,7 @@
             youtubePlaylistButton.removeAttribute('aria-disabled');
             // Restore href if needed
             if (!youtubePlaylistButton.hasAttribute('href')) {
-                youtubePlaylistButton.setAttribute('href', `/setlists/<%= setlist.id %>/youtube-playlist`);
+                youtubePlaylistButton.setAttribute('href', `/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/youtube-playlist`);
             }
         }
 
@@ -1131,7 +1131,7 @@
         const formData = new FormData(this);
         const recordingsUrl = formData.get('recordingsUrl');
         
-        fetch(`/setlists/<%= setlist.id %>/save-recordings-url`, {
+        fetch(`/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/save-recordings-url`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1264,10 +1264,7 @@
 
 </script>
 
-<!-- CSS moved to /css/pages.css -->
-
-
-
+<style>
 .song-extended-panel .dropdown-item small {
     font-size: 0.7rem;
 }

@@ -308,125 +308,6 @@ function generateDetailedSummary(changes, totalSongs) {
 
 const router = express.Router();
 
-// Public gig view route (no authentication required)
-router.get("/:id/gig-view", async (req, res) => {
-  try {
-    const setlistId = parseInt(req.params.id);
-
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        sets: {
-          include: {
-            songs: {
-              include: {
-                song: {
-                  include: {
-                    artists: {
-                      include: {
-                        artist: true,
-                      },
-                    },
-                    vocalist: true,
-                  },
-                },
-              },
-              orderBy: {
-                order: "asc",
-              },
-            },
-          },
-          orderBy: {
-            order: "asc",
-          },
-        },
-      },
-    });
-
-    if (!setlist) {
-      return res.status(404).send("Setlist not found");
-    }
-
-    // Get BandSong preferences for this band
-    const bandSongs = await prisma.bandSong.findMany({
-      where: { bandId: setlist.band.id },
-    });
-
-    // Create a map of songId to preferred gig document
-    const preferredGigDocuments = {};
-    bandSongs.forEach((bandSong) => {
-      if (bandSong.gigDocumentId) {
-        preferredGigDocuments[bandSong.songId] = bandSong.gigDocumentId;
-      }
-    });
-
-    // Get all song IDs from the setlist
-    const songIds = [];
-    setlist.sets.forEach((set) => {
-      if (set.songs) {
-        set.songs.forEach((setlistSong) => {
-          if (setlistSong.song) {
-            songIds.push(setlistSong.song.id);
-          }
-        });
-      }
-    });
-
-    // Get ALL gig documents for songs in this setlist (not just preferred ones)
-    const gigDocuments = await prisma.gigDocument.findMany({
-      where: {
-        songId: { in: songIds },
-      },
-      include: {
-        song: {
-          select: {
-            id: true,
-            title: true,
-            key: true,
-            time: true,
-          },
-        },
-      },
-      orderBy: [
-        { songId: "asc" },
-        { version: "desc" }, // Get latest version first
-      ],
-    });
-
-    // Create a map of songId to gig documents (array of docs for each song)
-    const gigDocumentsBySong = {};
-    gigDocuments.forEach((doc) => {
-      if (!gigDocumentsBySong[doc.songId]) {
-        gigDocumentsBySong[doc.songId] = [];
-      }
-      gigDocumentsBySong[doc.songId].push(doc);
-    });
-
-    // Create a map of gig document ID to gig document
-    const gigDocumentMap = {};
-    gigDocuments.forEach((doc) => {
-      gigDocumentMap[doc.id] = doc;
-    });
-
-    res.render("setlists/gig-view", {
-      title: `Gig View - ${setlist.title}`,
-      setlist,
-      preferredGigDocuments,
-      gigDocumentMap,
-      gigDocumentsBySong,
-      layout: false, // No layout for clean printing
-    });
-  } catch (error) {
-    logger.logError("Gig view error", error);
-    res.status(500).send("Error loading gig view");
-  }
-});
 
 // Public YouTube playlist route (no authentication required)
 router.get("/:id/youtube-playlist", async (req, res) => {
@@ -571,148 +452,53 @@ function extractYouTubeVideoId(url) {
 }
 
 // Public rehearsal view route (no authentication required)
+// Redirect old rehearsal route to new nested URL
 router.get("/:id/rehearsal", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      include: {
-        band: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        sets: {
-          include: {
-            songs: {
-              include: {
-                song: {
-                  include: {
-                    artists: {
-                      include: {
-                        artist: true,
-                      },
-                    },
-                    vocalist: true,
-                    links: true,
-                    gigDocuments: {
-                      orderBy: {
-                        version: "desc",
-                      },
-                    },
-                  },
-                },
-              },
-              orderBy: {
-                order: "asc",
-              },
-            },
-          },
-          orderBy: {
-            order: "asc",
-          },
-        },
-      },
+      select: { bandId: true }
     });
 
     if (!setlist) {
       return res.status(404).send("Setlist not found");
     }
 
-    // Helper functions for link display
-    const getLinkIcon = (type) => {
-      const icons = {
-        youtube: "youtube",
-        video: "camera-video",
-        spotify: "spotify",
-        "apple-music": "music-note",
-        soundcloud: "cloud",
-        bandcamp: "music-note-beamed",
-        lyrics: "file-text",
-        tab: "music-note",
-        "bass tab": "music-note-beamed",
-        chords: "music-note-list",
-        "guitar tutorial": "play-circle",
-        "bass tutorial": "play-circle-fill",
-        "keyboard tutorial": "play-btn",
-        audio: "headphones",
-        "sheet-music": "file-earmark-music",
-        "backing-track": "music-player",
-        karaoke: "mic",
-        "horn chart": "file-earmark-music",
-        other: "link-45deg",
-      };
-      return icons[type] || "link-45deg";
-    };
-
-    const getLinkDisplayText = (link) => {
-      const typeLabels = {
-        youtube: "YouTube",
-        video: "Video",
-        spotify: "Spotify",
-        "apple-music": "Apple Music",
-        soundcloud: "SoundCloud",
-        bandcamp: "Bandcamp",
-        lyrics: "Lyrics",
-        tab: "Tab",
-        "bass tab": "Bass Tab",
-        chords: "Chords",
-        "guitar tutorial": "Guitar Tutorial",
-        "bass tutorial": "Bass Tutorial",
-        "keyboard tutorial": "Keyboard Tutorial",
-        audio: "Audio File",
-        "sheet-music": "Sheet Music",
-        "backing-track": "Backing Track",
-        karaoke: "Karaoke",
-        "horn chart": "Horn Chart",
-        other: "Other",
-      };
-
-      const typeLabel = typeLabels[link.type] || "Link";
-      return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
-    };
-
-    // Helper functions for gig document type display
-    const getTypeIcon = (type) => {
-      const icons = {
-        chords: "music-note-list",
-        "bass-tab": "music-note-beamed",
-        "guitar-tab": "music-note",
-        lyrics: "file-text",
-      };
-      return icons[type] || "file-earmark-text";
-    };
-
-    const getTypeDisplayName = (type) => {
-      const names = {
-        chords: "Chords",
-        "bass-tab": "Bass Tab",
-        "guitar-tab": "Guitar Tab",
-        lyrics: "Lyrics",
-      };
-      return names[type] || type;
-    };
-
-    res.render("setlists/rehearsal", {
-      title: `Rehearsal View - ${setlist.title}`,
-      setlist,
-      band: setlist.band,
-      hasBandHeader: true,
-      getLinkIcon,
-      getLinkDisplayText,
-      getTypeIcon,
-      getTypeDisplayName,
-    });
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/rehearsal`);
   } catch (error) {
-    logger.logError("Rehearsal view error", error);
-    res.status(500).send("Error loading rehearsal view");
+    logger.logError("Rehearsal redirect error", error);
+    res.status(500).send("Error redirecting to rehearsal view");
   }
 });
 
-// Public listen route (no authentication required)
+// Redirect old listen route to new nested URL
 router.get("/:id/listen", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const { url } = req.query;
+    
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      select: { bandId: true }
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    const redirectUrl = `/bands/${setlist.bandId}/setlists/${setlistId}/listen`;
+    const finalUrl = url ? `${redirectUrl}?url=${encodeURIComponent(url)}` : redirectUrl;
+    res.redirect(finalUrl);
+  } catch (error) {
+    logger.logError("Listen redirect error", error);
+    res.status(500).send("Error redirecting to listen view");
+  }
+});
+
+// OLD ROUTE - Keep for reference during migration
+router.get("/:id/listen/old", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
     const { url } = req.query;
@@ -1113,7 +899,73 @@ router.get("/:id/playlist", async (req, res) => {
 });
 
 // GET /setlists/:id/print - Show print page with export options (public)
+// Redirect old print route to new nested URL
 router.get("/:id/print", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      select: { bandId: true }
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/print`);
+  } catch (error) {
+    logger.logError("Print redirect error", error);
+    res.status(500).send("Error redirecting to print page");
+  }
+});
+
+// Redirect old gig-view route to new nested URL
+router.get("/:id/gig-view", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      select: { bandId: true }
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/gig-view`);
+  } catch (error) {
+    logger.logError("Gig view redirect error", error);
+    res.status(500).send("Error redirecting to gig view page");
+  }
+});
+
+// Redirect old edit route to new nested URL
+router.get("/:id/edit", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      select: { bandId: true }
+    });
+
+    if (!setlist) {
+      req.flash("error", "Setlist not found");
+      return res.redirect("/bands");
+    }
+
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/edit`);
+  } catch (error) {
+    logger.logError("Edit redirect error", error);
+    req.flash("error", "Error redirecting to edit page");
+    res.redirect("/bands");
+  }
+});
+
+// OLD ROUTE - Keep for reference during migration
+router.get("/:id/print/old", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
 
@@ -1172,8 +1024,31 @@ function isSetlistEditable(setlist) {
   return true; // Setlists are always editable
 }
 
-// GET /setlists/:id - Show setlist details
+// Redirect old setlist show route to new nested URL
 router.get("/:id", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      select: { bandId: true }
+    });
+
+    if (!setlist) {
+      req.flash("error", "Setlist not found");
+      return res.redirect("/bands");
+    }
+
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}`);
+  } catch (error) {
+    logger.logError("Setlist redirect error", error);
+    req.flash("error", "Error redirecting to setlist");
+    res.redirect("/bands");
+  }
+});
+
+// OLD ROUTE - Keep for reference during migration
+router.get("/:id/old", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
 
@@ -1463,60 +1338,16 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// GET /setlists/:id/edit - Show setlist edit page with drag-drop
-router.get("/:id/edit", async (req, res) => {
+
+// GET /setlists/:id/copy - Show copy setlist form
+// Redirect old copy route to new nested URL
+router.get("/:id/copy", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
-    const userId = req.session.user.id;
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
-        sets: {
-          include: {
-            songs: {
-              include: {
-                song: {
-                  include: {
-                    artists: {
-                      include: {
-                        artist: true,
-                      },
-                    },
-                    vocalist: true,
-                    links: {
-                      include: {
-                        song: true,
-                      },
-                    },
-                    gigDocuments: {
-                      include: {
-                        song: true,
-                      },
-                    },
-                  },
-                },
-              },
-              orderBy: {
-                order: "asc",
-              },
-            },
-          },
-          orderBy: {
-            order: "asc",
-          },
-        },
-      },
+      select: { bandId: true }
     });
 
     if (!setlist) {
@@ -1524,97 +1355,16 @@ router.get("/:id/edit", async (req, res) => {
       return res.redirect("/bands");
     }
 
-    // Check if setlist date is in the past and show warning
-    if (setlist.date && new Date(setlist.date) < new Date()) {
-      req.flash(
-        "warning",
-        "The date for this setlist is in the past, are you sure you want to mess with history?"
-      );
-    }
-
-    // Check if setlist date has passed (allow editing until one week after setlist date)
-    if (!isSetlistEditable(setlist)) {
-      req.flash(
-        "error",
-        "This setlist cannot be edited as it has been more than one week since the performance date"
-      );
-      return res.redirect(`/setlists/${setlist.id}/finalize`);
-    }
-
-    // Get all band's songs through BandSong relationship
-    const allBandSongs = await prisma.song.findMany({
-      where: {
-        bandSongs: {
-          some: {
-            bandId: setlist.bandId,
-          },
-        },
-      },
-      include: {
-        artists: {
-          include: {
-            artist: true,
-          },
-        },
-        vocalist: true,
-        links: {
-          include: {
-            song: true,
-          },
-        },
-        gigDocuments: {
-          include: {
-            song: true,
-          },
-        },
-      },
-      orderBy: {
-        title: "asc",
-      },
-    });
-
-    // Get songs already in this setlist through SetlistSong relationships
-    const setlistSongs = await prisma.setlistSong.findMany({
-      where: {
-        setlistSet: {
-          setlistId: setlist.id,
-        },
-      },
-      select: {
-        songId: true,
-      },
-    });
-
-    // Extract used song IDs (from all sets including Maybe)
-    const usedSongIds = [];
-    setlistSongs.forEach((setlistSong) => {
-      usedSongIds.push(setlistSong.songId);
-    });
-
-    // Filter out songs already in any set (including Maybe)
-    const bandSongs = allBandSongs.filter(
-      (song) => !usedSongIds.includes(song.id)
-    );
-
-    res.render("setlists/edit", {
-      title: `Edit ${setlist.title}`,
-      setlist,
-      band: setlist.band,
-      hasBandHeader: true,
-      bandSongs,
-      success: req.flash("success"),
-      error: req.flash("error"),
-      warning: req.flash("warning"),
-    });
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/copy`);
   } catch (error) {
-    console.error("Edit setlist error:", error);
-    req.flash("error", "An error occurred loading the setlist editor");
+    logger.logError("Copy redirect error", error);
+    req.flash("error", "Error redirecting to copy page");
     res.redirect("/bands");
   }
 });
 
-// GET /setlists/:id/copy - Show copy setlist form
-router.get("/:id/copy", async (req, res) => {
+// OLD ROUTE - Keep for reference during migration
+router.get("/:id/copy/old", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
     const userId = req.session.user.id;
@@ -1783,7 +1533,7 @@ router.post(
         "success",
         `Setlist "${title}" created successfully from "${originalSetlist.title}"!`
       );
-      res.redirect(`/setlists/${newSetlist.id}/edit`);
+      res.redirect(`/bands/${setlist.bandId}/setlists/${newSetlist.id}/edit`);
     } catch (error) {
       console.error("Copy setlist error:", error);
       req.flash("error", "An error occurred copying the setlist");
@@ -1892,17 +1642,22 @@ router.post("/:id/save", async (req, res) => {
 
     // Create version record
     if (currentState) {
-      // Get next version number
-      const lastVersion = await prisma.setlistVersion.findFirst({
+      const changeSummary = generateChangeSummary(previousState, currentState);
+      
+      // Use a transaction to handle race conditions
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Get next version number within transaction
+          const lastVersion = await tx.setlistVersion.findFirst({
         where: { setlistId },
         orderBy: { versionNumber: "desc" },
         select: { versionNumber: true },
       });
 
       const nextVersionNumber = (lastVersion?.versionNumber || 0) + 1;
-      const changeSummary = generateChangeSummary(previousState, currentState);
 
-      await prisma.setlistVersion.create({
+          // Create version record within transaction
+          await tx.setlistVersion.create({
         data: {
           setlistId,
           versionNumber: nextVersionNumber,
@@ -1911,6 +1666,15 @@ router.post("/:id/save", async (req, res) => {
           changeSummary,
         },
       });
+        });
+      } catch (versionError) {
+        // If version creation fails due to race condition, log but don't fail the entire save
+        if (versionError.code === 'P2002') {
+          logger.logError("[SAVE] Version creation failed due to race condition, continuing without version", versionError);
+        } else {
+          throw versionError; // Re-throw if it's a different error
+        }
+      }
     }
 
     res.json({ success: true });
@@ -1920,565 +1684,68 @@ router.post("/:id/save", async (req, res) => {
   }
 });
 
-// GET /setlists/:id/versions - Get version history
-router.get("/:id/versions", requireAuth, async (req, res) => {
+// Redirect old versions route to new nested URL
+router.get("/:id/versions", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
-    const userId = req.session.user.id;
-
-    // Verify user has access
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: { id: true },
-            },
-          },
-        },
-      },
+      select: { bandId: true },
     });
 
     if (!setlist) {
-      return res.status(404).json({ error: "Setlist not found" });
+      return res.status(404).send("Setlist not found");
     }
-
-    if (setlist.band.members.length === 0) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    // Get versions
-    const versions = await prisma.setlistVersion.findMany({
-      where: { setlistId },
-      include: {
-        createdBy: {
-          select: { username: true },
-        },
-      },
-      orderBy: { versionNumber: "desc" },
-      take: 50,
-    });
-
-    res.json({
-      setlistId,
-      versions: versions.map((version) => ({
-        id: version.id,
-        versionNumber: version.versionNumber,
-        timestamp: version.createdAt,
-        user: version.createdBy?.username || "Unknown User",
-        changeSummary: version.changeSummary,
-      })),
-    });
+    
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/versions`);
   } catch (error) {
-    logger.logError("Get setlist versions error", error);
-    res.status(500).json({ error: "Server error" });
+    logger.logError("Redirect versions error", error);
+    res.status(500).send("Error redirecting");
   }
 });
 
-// GET /setlists/:id/versions/:versionId/view - View specific version
-router.get("/:id/versions/:versionId/view", requireAuth, async (req, res) => {
+// Redirect old version view route to new nested URL
+router.get("/:id/versions/:versionId/view", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
     const versionId = parseInt(req.params.versionId);
-    const userId = req.session.user.id;
-
-    // Verify user has access
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: { id: true },
-            },
-          },
-        },
-      },
+      select: { bandId: true },
     });
 
     if (!setlist) {
-      return res.status(404).json({ error: "Setlist not found" });
+      return res.status(404).send("Setlist not found");
     }
-
-    if (setlist.band.members.length === 0) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    // Get version with navigation
-    const version = await prisma.setlistVersion.findFirst({
-      where: {
-        id: versionId,
-        setlistId: setlistId,
-      },
-      include: {
-        createdBy: {
-          select: { username: true },
-        },
-      },
-    });
-
-    if (!version) {
-      return res.status(404).json({ error: "Version not found" });
-    }
-
-    // Get previous and next versions for navigation
-    const [previousVersion, nextVersion] = await Promise.all([
-      // Previous version (higher version number)
-      prisma.setlistVersion.findFirst({
-        where: {
-          setlistId: setlistId,
-          versionNumber: { gt: version.versionNumber },
-        },
-        orderBy: { versionNumber: "asc" },
-        select: { id: true, versionNumber: true },
-      }),
-      // Next version (lower version number)
-      prisma.setlistVersion.findFirst({
-        where: {
-          setlistId: setlistId,
-          versionNumber: { lt: version.versionNumber },
-        },
-        orderBy: { versionNumber: "desc" },
-        select: { id: true, versionNumber: true },
-      }),
-    ]);
-
-    res.render("setlists/version-view", {
-      title: `Version ${version.versionNumber} - ${setlist.title}`,
-      setlist: setlist,
-      version: version,
-      versionId: versionId,
-      previousVersion: previousVersion,
-      nextVersion: nextVersion,
-    });
+    
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/versions/${versionId}/view`);
   } catch (error) {
-    logger.logError("View setlist version error", error);
-    res.status(500).json({ error: "Server error" });
+    logger.logError("Redirect version view error", error);
+    res.status(500).send("Error redirecting");
   }
 });
 
-// POST /setlists/:id/restore/:versionId - Restore to specific version
-router.post("/:id/restore/:versionId", requireAuth, async (req, res) => {
+// Redirect old restore route to new nested URL
+router.post("/:id/restore/:versionId", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
     const versionId = parseInt(req.params.versionId);
-    const userId = req.session.user.id;
-
-    // Verify user has access
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: { id: true },
-            },
-          },
-        },
-      },
+      select: { bandId: true },
     });
 
     if (!setlist) {
       return res.status(404).json({ error: "Setlist not found" });
     }
 
-    if (setlist.band.members.length === 0) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    // Get version to restore
-    const version = await prisma.setlistVersion.findFirst({
-      where: {
-        id: versionId,
-        setlistId: setlistId,
-      },
-    });
-
-    if (!version) {
-      return res.status(404).json({ error: "Version not found" });
-    }
-
-    // Capture current state as backup
-    const currentState = await captureSetlistState(setlistId);
-
-    // Create backup version before restoring
-    if (currentState) {
-      const lastVersion = await prisma.setlistVersion.findFirst({
-        where: { setlistId },
-        orderBy: { versionNumber: "desc" },
-        select: { versionNumber: true },
-      });
-
-      await prisma.setlistVersion.create({
-        data: {
-          setlistId,
-          versionNumber: (lastVersion?.versionNumber || 0) + 1,
-          createdById: userId,
-          setlistData: currentState,
-          changeSummary: `Backup before restoring to version ${version.versionNumber}`,
-        },
-      });
-    }
-
-    // Restore from version data
-    const versionData = version.setlistData;
-
-    // Clear existing songs
-    const setlistSets = await prisma.setlistSet.findMany({
-      where: { setlistId },
-      select: { id: true },
-    });
-
-    if (setlistSets.length > 0) {
-      const setlistSetIds = setlistSets.map((set) => set.id);
-      await prisma.setlistSong.deleteMany({
-        where: { setlistSetId: { in: setlistSetIds } },
-      });
-    }
-
-    // Recreate sets and songs from version data
-    for (const setData of versionData.sets) {
-      let setlistSet = await prisma.setlistSet.findFirst({
-        where: { setlistId, name: setData.name },
-      });
-
-      if (!setlistSet) {
-        setlistSet = await prisma.setlistSet.create({
-          data: {
-            setlistId,
-            name: setData.name,
-            order: setData.order,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-      }
-
-      // Add songs to set
-      for (const songData of setData.songs) {
-        await prisma.setlistSong.create({
-          data: {
-            setlistSetId: setlistSet.id,
-            songId: songData.songId,
-            order: songData.order,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-      }
-    }
-
-    res.json({ success: true });
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/versions/${versionId}/restore`);
   } catch (error) {
-    logger.logError("Restore setlist version error", error);
-    res.status(500).json({ error: "Server error" });
+    logger.logError("Redirect restore error", error);
+    res.status(500).json({ error: "Error redirecting" });
   }
 });
 
-// GET /setlists/:id/finalize - Show finalize page
-router.get("/:id/finalize", async (req, res) => {
-  try {
-    const setlistId = parseInt(req.params.id);
-    const userId = req.session.user.id;
-
-    // Add a small delay to ensure any pending saves are completed
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
-        sets: {
-          include: {
-            songs: {
-              include: {
-                song: {
-                  include: {
-                    artists: {
-                      include: {
-                        artist: true,
-                      },
-                    },
-                    vocalist: true,
-                    links: true,
-                  },
-                },
-              },
-              orderBy: {
-                order: "asc",
-              },
-            },
-          },
-          orderBy: {
-            order: "asc",
-          },
-        },
-      },
-    });
-
-    if (!setlist) {
-      req.flash("error", "Setlist not found");
-      return res.redirect("/bands");
-    }
-
-    // Get BandSong preferences for this band
-
-    const bandSongs = await prisma.bandSong.findMany({
-      where: { bandId: setlist.band.id },
-      include: {
-        song: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
-    });
-
-    // Create a map of songId to BandSong for quick lookup
-    const bandSongMap = {};
-    bandSongs.forEach((bandSong) => {
-      bandSongMap[bandSong.songId] = bandSong;
-    });
-
-    // Get all gig documents for songs in this setlist
-    const songIds = [];
-    setlist.sets.forEach((set) => {
-      if (set.songs) {
-        set.songs.forEach((setlistSong) => {
-          songIds.push(setlistSong.song.id);
-        });
-      }
-    });
-
-    const gigDocuments = await prisma.gigDocument.findMany({
-      where: { songId: { in: songIds } },
-      include: {
-        song: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-        creator: true,
-      },
-      orderBy: {
-        version: "desc",
-      },
-    });
-
-    // Group gig documents by songId
-    const gigDocumentsBySong = {};
-    gigDocuments.forEach((doc) => {
-      if (!gigDocumentsBySong[doc.songId]) {
-        gigDocumentsBySong[doc.songId] = [];
-      }
-      gigDocumentsBySong[doc.songId].push(doc);
-    });
-
-    let autoAssignedCount = 0;
-
-    for (const songId of songIds) {
-      const bandSong = bandSongMap[songId];
-      const availableDocs = gigDocumentsBySong[songId];
-
-      // Skip if no gig documents available for this song
-      if (!availableDocs || availableDocs.length === 0) {
-        continue;
-      }
-
-      // Skip if BandSong already has a preference set
-      if (bandSong && bandSong.gigDocumentId) {
-        continue;
-      }
-
-      // Auto-assign the highest version (first in the list since we ordered by version DESC)
-      const preferredDocId = availableDocs[0].id;
-
-      if (bandSong) {
-        // Update existing BandSong record
-        await prisma.bandSong.update({
-          where: { id: bandSong.id },
-          data: { gigDocumentId: preferredDocId },
-        });
-      } else {
-        // Create new BandSong record
-        await prisma.bandSong.create({
-          data: {
-            bandId: setlist.band.id,
-            songId: songId,
-            gigDocumentId: preferredDocId,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-      }
-
-      autoAssignedCount++;
-
-      // Update the bandSongMap to reflect the new assignment
-      if (!bandSongMap[songId]) {
-        bandSongMap[songId] = {
-          songId,
-          bandId: setlist.band.id,
-          gigDocumentId: preferredDocId,
-        };
-      } else {
-        bandSongMap[songId].gigDocumentId = preferredDocId;
-      }
-    }
-
-    // Calculate set times
-    const setTimes = {};
-    let totalTime = 0;
-
-    setlist.sets.forEach((set) => {
-      if (set.name !== "Maybe") {
-        let setTime = 0;
-
-        set.songs.forEach((setlistSong) => {
-          if (setlistSong.song.time) {
-            setTime += setlistSong.song.time;
-          }
-        });
-        setTimes[set.name] = setTime;
-        totalTime += setTime;
-      }
-    });
-
-    // Calculate link counts for each song for tooltip functionality
-    const songLinkCounts = {};
-    setlist.sets.forEach((set) => {
-      if (set.songs) {
-        set.songs.forEach((setlistSong) => {
-          const songId = setlistSong.song.id;
-          const links = setlistSong.song.links || [];
-
-          // Count different types of links
-          const audioLinks = links.filter(
-            (link) => link.type === "audio"
-          ).length;
-          const youtubeLinks = links.filter(
-            (link) => link.type === "youtube"
-          ).length;
-          const totalLinks = links.length;
-
-          // Check if song has gig documents
-          const hasGigDocs =
-            gigDocumentsBySong[songId] && gigDocumentsBySong[songId].length > 0;
-
-          songLinkCounts[songId] = {
-            audio: audioLinks,
-            youtube: youtubeLinks,
-            total: totalLinks,
-            hasGigDocs: hasGigDocs,
-            hasAnyRehearsalResource: hasGigDocs || totalLinks > 0,
-          };
-        });
-      }
-    });
-
-    // Calculate if setlist is still editable (always editable)
-    const isEditable = true;
-
-    // Helper functions for gig document type display
-    const getTypeIcon = (type) => {
-      const icons = {
-        chords: "music-note-list",
-        "bass-tab": "music-note-beamed",
-        "guitar-tab": "music-note",
-        lyrics: "file-text",
-      };
-      return icons[type] || "file-earmark-text";
-    };
-
-    const getTypeDisplayName = (type) => {
-      const names = {
-        chords: "Chords",
-        "bass-tab": "Bass Tab",
-        "guitar-tab": "Guitar Tab",
-        lyrics: "Lyrics",
-      };
-      return names[type] || type;
-    };
-
-    const renderData = {
-      title: `Finalize ${setlist.title}`,
-      setlist,
-      setTimes,
-      totalTime,
-      isEditable,
-      bandSongMap,
-      gigDocumentsBySong,
-      songLinkCounts,
-      getTypeIcon,
-      getTypeDisplayName,
-    };
-
-    res.render("setlists/finalize", renderData);
-  } catch (error) {
-    console.error("Finalize setlist error:", error);
-    req.flash("error", "An error occurred loading the finalize page");
-    res.redirect("/bands");
-  }
-});
-
-// POST /setlists/:id/finalize - Finalize the setlist
-router.post("/:id/finalize", async (req, res) => {
-  try {
-    const setlistId = parseInt(req.params.id);
-    const userId = req.session.user.id;
-
-    // Verify user has access
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!setlist) {
-      return res.status(404).json({ error: "Setlist not found" });
-    }
-
-    await prisma.setlist.update({
-      where: { id: setlistId },
-      data: {
-        isFinalized: true,
-        updatedAt: new Date(),
-      },
-    });
-
-    req.flash("success", "Setlist finalized successfully!");
-    res.redirect(`/setlists/${setlistId}/print`);
-  } catch (error) {
-    console.error("Finalize setlist error:", error);
-    req.flash("error", "An error occurred finalizing the setlist");
-    res.redirect(`/setlists/${req.params.id}/finalize`);
-  }
-});
 
 // POST /setlists/:id/preferred-gig-document - Update preferred gig document for a song
 router.post("/:id/preferred-gig-document", async (req, res) => {

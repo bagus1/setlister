@@ -431,6 +431,7 @@
 
     // Version History JavaScript
     const setlistId = <%= setlist.id %>;
+    const bandId = <%= setlist.bandId %>;
 
     // Load version history
     async function loadVersionHistory() {
@@ -444,7 +445,7 @@
         listEl.innerHTML = '';
 
         try {
-            const response = await fetch(`/setlists/${setlistId}/versions`);
+            const response = await fetch(`/bands/${bandId}/setlists/${setlistId}/versions`);
             if (!response.ok) {
                 throw new Error('Failed to load versions');
             }
@@ -477,7 +478,7 @@
         const timestamp = new Date(version.timestamp).toLocaleString();
         
         return `
-            <a href="/setlists/${setlistId}/versions/${version.id}/view" class="version-item">
+            <a href="/bands/${bandId}/setlists/${setlistId}/versions/${version.id}/view" class="version-item">
                 <div class="version-header">
                     <div>
                         <div class="version-timestamp">Version ${version.versionNumber} - ${timestamp}</div>

@@ -167,9 +167,16 @@
 
         // Initialize Socket.io if on setlist pages
         let socket;
-        if (window.location.pathname.includes('/setlists/') && window.location.pathname.includes('/edit')) {
+        if ((window.location.pathname.includes('/setlists/') && window.location.pathname.includes('/edit')) ||
+            (window.location.pathname.includes('/bands/') && window.location.pathname.includes('/setlists/') && window.location.pathname.includes('/edit'))) {
             socket = io();
-            const setlistId = window.location.pathname.split('/')[2];
+            let setlistId;
+            // Handle both old and new URL patterns
+            if (window.location.pathname.includes('/setlists/')) {
+                setlistId = window.location.pathname.split('/')[2];
+            } else if (window.location.pathname.includes('/bands/') && window.location.pathname.includes('/setlists/')) {
+                setlistId = window.location.pathname.split('/')[4];
+            }
 
             socket.emit('join-setlist', setlistId);
 

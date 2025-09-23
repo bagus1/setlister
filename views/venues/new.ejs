@@ -54,61 +54,8 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Contact Information</label>
-                        <div id="contactContainer">
-                            <div class="contact-entry mb-2">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <select class="form-select" name="contactTypes[]">
-                                            <option value="">Select Type</option>
-                                            <% if (contactTypes && contactTypes.length > 0) { %>
-                                                <% contactTypes.forEach(contactType => { %>
-                                                    <option value="<%= contactType.id %>" <%= contactType.name === 'Phone' ? 'selected' : '' %>>
-                                                        <%= contactType.displayName %>
-                                                    </option>
-                                                <% }) %>
-                                            <% } %>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <input type="text" class="form-control" name="contactValues[]" 
-                                               placeholder="Phone number">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="text" class="form-control" name="contactLabels[]" 
-                                               placeholder="Label (e.g., Booking, General)">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-contact" style="display: none;">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="addContact">
-                            <i class="bi bi-plus"></i> Add Contact
-                        </button>
-                    </div>
-
-                    <div class="mb-3">
                         <label for="address" class="form-label">Address</label>
                         <textarea class="form-control" id="address" name="address" rows="2"><%= typeof formData !== 'undefined' ? formData.address : '' %></textarea>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" 
-                                   value="<%= typeof formData !== 'undefined' ? formData.email : '' %>" 
-                                   placeholder="venue@example.com">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="phone" class="form-label">Phone</label>
-                            <input type="tel" class="form-control" id="phone" name="phone" 
-                                   value="<%= typeof formData !== 'undefined' ? formData.phone : '' %>" 
-                                   placeholder="(555) 123-4567">
-                        </div>
                     </div>
 
                     <div class="row">
@@ -181,6 +128,93 @@
                         </div>
                     </div>
 
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.email : '' %>" 
+                                   placeholder="venue@example.com">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   value="<%= typeof formData !== 'undefined' ? formData.phone : '' %>" 
+                                   placeholder="(555) 123-4567">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Additional Contact Information</label>
+                        <div id="contactContainer">
+                            <div class="contact-entry mb-2">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <select class="form-select" name="contactTypes[]">
+                                            <option value="">Select Type</option>
+                                            <% if (contactTypes && contactTypes.length > 0) { %>
+                                                <% contactTypes.forEach(contactType => { %>
+                                                    <option value="<%= contactType.id %>" <%= contactType.name === 'Phone' ? 'selected' : '' %>>
+                                                        <%= contactType.displayName %>
+                                                    </option>
+                                                <% }) %>
+                                            <% } %>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control" name="contactValues[]" 
+                                               placeholder="Phone number">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="text" class="form-control" name="contactLabels[]" 
+                                               placeholder="Label (e.g., Booking, General)">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-contact" style="display: none;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="addContact">
+                            <i class="bi bi-plus"></i> Add Contact
+                        </button>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Social Media</label>
+                        <div id="socialMediaContainer">
+                            <div class="social-media-entry mb-2">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <select class="form-select" name="socialPlatforms[]">
+                                            <option value="">Select Platform</option>
+                                            <% if (socialTypes && socialTypes.length > 0) { %>
+                                                <% socialTypes.forEach(socialType => { %>
+                                                    <option value="<%= socialType.id %>">
+                                                        <%= socialType.displayName %>
+                                                    </option>
+                                                <% }) %>
+                                            <% } %>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" class="form-control" name="socialHandles[]" 
+                                               placeholder="@username or page name">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-social" style="display: none;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="addSocialMedia">
+                            <i class="bi bi-plus"></i> Add Social Media
+                        </button>
+                    </div>
+
 
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -243,40 +277,6 @@
                                   placeholder="Describe booking fees, payment terms, etc."><%= typeof formData !== 'undefined' ? formData.fees : '' %></textarea>
                     </div>
 
-
-                    <div class="mb-3">
-                        <label class="form-label">Social Media</label>
-                        <div id="socialMediaContainer">
-                            <div class="social-media-entry mb-2">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <select class="form-select" name="socialPlatforms[]">
-                                            <option value="">Select Platform</option>
-                                            <% if (socialTypes && socialTypes.length > 0) { %>
-                                                <% socialTypes.forEach(socialType => { %>
-                                                    <option value="<%= socialType.id %>">
-                                                        <%= socialType.displayName %>
-                                                    </option>
-                                                <% }) %>
-                                            <% } %>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <input type="text" class="form-control" name="socialHandles[]" 
-                                               placeholder="@username or page name">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-social" style="display: none;">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="addSocialMedia">
-                            <i class="bi bi-plus"></i> Add Social Media
-                        </button>
-                    </div>
 
                     <div class="mb-3">
                         <label for="notes" class="form-label">Notes</label>

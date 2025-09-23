@@ -112,12 +112,11 @@
         <div class="card">
             <div class="card-header">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <input type="text" class="form-control" id="searchVenues" placeholder="Search venues...">
                     </div>
                     <div class="col-md-3">
-                        <select class="form-select" id="filterCity">
-                            <option value="">All Cities</option>
+                        <select class="selectpicker" id="filterCity" multiple data-live-search="true" data-actions-box="true" title="Select cities...">
                             <!-- Cities will be populated by JavaScript -->
                         </select>
                     </div>
@@ -132,6 +131,13 @@
                             <option value="Other">Other</option>
                         </select>
                     </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="filterEmail">
+                            <option value="">Has Email</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -142,7 +148,8 @@
                                 <div class="card venue-selection-card <%= bandVenueIds.includes(venue.id) ? 'border-success border-3 bg-success bg-opacity-10' : '' %>"
                                     data-venue-id="<%= venue.id %>" data-name="<%= venue.name.toLowerCase() %>"
                                     data-city="<%= venue.city ? venue.city.toLowerCase() : '' %>"
-                                        data-type="<%= venue.venueType ? venue.venueType.name : '' %>" style="cursor: pointer;">
+                                    data-type="<%= venue.venueType ? venue.venueType.name : '' %>"
+                                    data-email="<%= venue.email ? 'yes' : 'no' %>" style="cursor: pointer;">
                                     <div class="card-body">
                                         <div class="form-check">
                                             <input class="form-check-input venue-checkbox" type="checkbox"
@@ -373,6 +380,10 @@
             if (city) cities.add(city);
         });
 
+        // Clear existing options first
+        cityFilter.innerHTML = '';
+        
+        // Add options to the select element
         Array.from(cities).sort().forEach(city => {
             const option = document.createElement('option');
             option.value = city;
@@ -380,11 +391,21 @@
             cityFilter.appendChild(option);
         });
 
+        // Initialize Bootstrap Select only once
+        if (!$('#filterCity').hasClass('bs-select-hidden')) {
+            $('#filterCity').selectpicker('destroy');
+        }
+        $('#filterCity').selectpicker({
+            liveSearch: true,
+            actionsBox: true
+        });
+
         // Filter function
         function filterVenues() {
             const searchTerm = searchInput.value.toLowerCase();
-            const selectedCity = cityFilter.value;
+            const selectedCities = $('#filterCity').val() || [];
             const selectedType = typeFilter.value;
+            const selectedEmail = document.getElementById('filterEmail').value;
 
             // Get all venue cards and their parent containers
             const venueCards = document.querySelectorAll('.venue-selection-card');
@@ -395,12 +416,14 @@
                 const name = card.dataset.name;
                 const city = card.dataset.city;
                 const type = card.dataset.type;
+                const email = card.dataset.email;
 
                 const matchesSearch = name.includes(searchTerm) || city.includes(searchTerm);
-                const matchesCity = !selectedCity || city === selectedCity;
+                const matchesCity = selectedCities.length === 0 || selectedCities.includes(city);
                 const matchesType = !selectedType || type === selectedType;
+                const matchesEmail = !selectedEmail || email === selectedEmail;
 
-                if (matchesSearch && matchesCity && matchesType) {
+                if (matchesSearch && matchesCity && matchesType && matchesEmail) {
                     container.classList.remove('d-none');
                 } else {
                     container.classList.add('d-none');
@@ -410,7 +433,11 @@
 
         // Event listeners for filtering
         searchInput.addEventListener('input', filterVenues);
-        cityFilter.addEventListener('change', filterVenues);
+        $('#filterCity').on('changed.bs.select', function(e, clickedIndex, isSelected, previousValue) {
+            console.log('City filter changed:', $('#filterCity').val()); // Debug
+            filterVenues();
+        });
         typeFilter.addEventListener('change', filterVenues);
+        document.getElementById('filterEmail').addEventListener('change', filterVenues);
     });
 </script>

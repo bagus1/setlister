@@ -679,12 +679,7 @@ router.post("/:id/contacts", requireAuth, async (req, res) => {
       return res.status(404).json({ success: false, error: "Venue not found" });
     }
 
-    if (venue.createdById !== req.session.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: "You can only add contacts to venues you created",
-      });
-    }
+    // Allow all logged-in users to add contacts to venues
 
     // Parse the value to extract handle from URL if needed
     let parsedValue = value.trim();
@@ -789,12 +784,7 @@ router.post("/:id/socials", requireAuth, async (req, res) => {
       return res.status(404).json({ success: false, error: "Venue not found" });
     }
 
-    if (venue.createdById !== req.session.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: "You can only add social media to venues you created",
-      });
-    }
+    // Allow all logged-in users to add social media to venues
 
     // Create the social media entry
     const social = await prisma.venueSocial.create({

@@ -67,6 +67,13 @@
                         </select>
                     </div>
                     <div class="col-md-2">
+                        <select class="form-select" id="filterEmail">
+                            <option value="">Has Email</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <% if (loggedIn) { %>
                             <a href="/venues/new" class="btn btn-primary w-100">
                                 <i class="bi bi-plus"></i> Add Venue
@@ -88,7 +95,8 @@
                                         data-city="<%= venue.city ? venue.city.toLowerCase() : '' %>"
                                         data-type="<%= venue.venueType ? venue.venueType.name : '' %>"
                                         data-stage="<%= venue.stageLocation ? venue.stageLocation.toLowerCase() : '' %>"
-                                        data-state="<%= venue.state ? venue.state.toLowerCase() : '' %>">
+                                        data-state="<%= venue.state ? venue.state.toLowerCase() : '' %>"
+                                        data-email="<%= venue.email ? 'yes' : 'no' %>">
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <h6 class="card-title text-dark mb-0">
@@ -209,6 +217,7 @@
             const selectedType = typeFilter.value;
             const selectedStage = document.getElementById('filterStage').value;
             const selectedState = document.getElementById('filterState').value;
+            const selectedEmail = document.getElementById('filterEmail').value;
 
             // Get all venue cards and their parent containers
             const venueCards = document.querySelectorAll('.venue-card');
@@ -221,14 +230,16 @@
                 const type = card.dataset.type;
                 const stage = card.dataset.stage;
                 const state = card.dataset.state;
+                const email = card.dataset.email;
 
                 const matchesSearch = name.includes(searchTerm) || city.includes(searchTerm);
                 const matchesCity = !selectedCity || city === selectedCity;
                 const matchesType = !selectedType || type === selectedType;
                 const matchesStage = !selectedStage || stage === selectedStage;
                 const matchesState = !selectedState || state === selectedState.toLowerCase();
+                const matchesEmail = !selectedEmail || email === selectedEmail;
 
-                if (matchesSearch && matchesCity && matchesType && matchesStage && matchesState) {
+                if (matchesSearch && matchesCity && matchesType && matchesStage && matchesState && matchesEmail) {
                     container.classList.remove('d-none');
                 } else {
                     container.classList.add('d-none');
@@ -242,5 +253,6 @@
         typeFilter.addEventListener('change', filterVenues);
         document.getElementById('filterStage').addEventListener('change', filterVenues);
         document.getElementById('filterState').addEventListener('change', filterVenues);
+        document.getElementById('filterEmail').addEventListener('change', filterVenues);
     });
 </script>

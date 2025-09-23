@@ -324,3 +324,63 @@ input[name="email"] {
         color: #ffffff !important;
     }
 }
+
+/* Dark mode styles for Bootstrap Select */
+@media (prefers-color-scheme: dark) {
+    .bootstrap-select .dropdown-toggle {
+        background-color: #2d3748 !important;
+        border-color: #4a5568 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    .bootstrap-select .dropdown-toggle:focus {
+        border-color: #4a5568 !important;
+        box-shadow: 0 0 0 0.2rem rgba(74, 85, 104, 0.25) !important;
+    }
+    
+    .bootstrap-select .dropdown-menu {
+        background-color: #2d3748 !important;
+        border-color: #4a5568 !important;
+    }
+    
+    .bootstrap-select .bs-searchbox input {
+        background-color: #4a5568 !important;
+        border-color: #4a5568 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    .bootstrap-select .bs-searchbox input::placeholder {
+        color: #a0aec0 !important;
+    }
+    
+    .bootstrap-select .bs-actionsbox .btn {
+        background-color: #4a5568 !important;
+        border-color: #4a5568 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    .bootstrap-select .bs-actionsbox .btn:hover {
+        background-color: #2d3748 !important;
+        border-color: #4a5568 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    .bootstrap-select .dropdown-item {
+        color: #e2e8f0 !important;
+    }
+    
+    .bootstrap-select .dropdown-item:hover,
+    .bootstrap-select .dropdown-item:focus {
+        background-color: #4a5568 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    .bootstrap-select .dropdown-item.selected {
+        background-color: #4a5568 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    .bootstrap-select .filter-option-inner {
+        color: #e2e8f0 !important;
+    }
+}

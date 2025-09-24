@@ -218,6 +218,10 @@
                                 const emailContacts = opportunity.venue.contacts.filter(contact => contact.contactType.name === 'EMAIL');
                             %>
                             <% if (emailContacts.length > 0) { %>
+                                <div class="mb-2">
+                                    <label for="emailSubject" class="form-label">Email Subject</label>
+                                    <input type="text" class="form-control" id="emailSubject" placeholder="Enter email subject line">
+                                </div>
                                 <div class="text-center">
                                     <% emailContacts.forEach((contact, index) => { %>
                                         <a href="#" 
@@ -517,6 +521,7 @@ function updateTypeSpecificTools() {
     } else if (selectedType.startsWith('EMAIL_')) {
         const emailTool = document.getElementById('email-tool');
         if (emailTool) emailTool.style.display = 'block';
+        updateEmailSubject();
     } else if (selectedType.startsWith('PHONE_CALL_')) {
         const phoneTool = document.getElementById('phone-tool');
         if (phoneTool) {
@@ -550,6 +555,12 @@ function handleOutcomeChange() {
     
     // Auto-populate message content when outcome changes
     autoPopulateMessageContent();
+    
+    // Update email subject if email tool is visible
+    const emailTool = document.getElementById('email-tool');
+    if (emailTool && emailTool.style.display !== 'none') {
+        updateEmailSubject();
+    }
 }
 
 // Auto-populate message content with booking pitch for email contacts on first contact or rebooking
@@ -823,16 +834,67 @@ function updatePhoneToolContent(selectedType) {
     }
 }
 
+// Update email subject based on interaction type and outcome
+function updateEmailSubject() {
+    const subjectField = document.getElementById('emailSubject');
+    const outcome = document.getElementById('outcome').value;
+    const bandName = '<%= opportunity.band.name %>';
+    const venueName = '<%= opportunity.venue.name %>';
+    
+    if (!subjectField) return;
+    
+    let defaultSubject = '';
+    
+    switch(outcome) {
+        case 'FIRST_CONTACT':
+            defaultSubject = `Booking Inquiry - ${bandName}`;
+            break;
+        case 'FOLLOWING_UP':
+            defaultSubject = `Following up - ${bandName} booking`;
+            break;
+        case 'SCHEDULING':
+            defaultSubject = `Scheduling - ${bandName} at ${venueName}`;
+            break;
+        case 'NEGOTIATING':
+            defaultSubject = `Booking details - ${bandName}`;
+            break;
+        case 'AWAITING_CONFIRMATION':
+            defaultSubject = `Confirmation needed - ${bandName}`;
+            break;
+        case 'BOOKED':
+            defaultSubject = `Gig confirmed - ${bandName}`;
+            break;
+        case 'DETAILS':
+            defaultSubject = `Gig details - ${bandName}`;
+            break;
+        case 'THANKING':
+            defaultSubject = `Thank you - ${bandName}`;
+            break;
+        case 'REBOOKING':
+            defaultSubject = `Rebooking inquiry - ${bandName}`;
+            break;
+        default:
+            defaultSubject = `Booking inquiry - ${bandName}`;
+    }
+    
+    // Only set if field is empty
+    if (!subjectField.value) {
+        subjectField.value = defaultSubject;
+    }
+}
+
 // Open email with pre-populated content
 function openEmailWithContent(button) {
     const email = button.getAttribute('data-email');
     const messageContent = document.getElementById('messageContent').value;
+    const subject = document.getElementById('emailSubject').value;
     
-    // URL encode the message content for the mailto link
+    // URL encode the content for the mailto link
     const encodedContent = encodeURIComponent(messageContent);
+    const encodedSubject = encodeURIComponent(subject);
     
     // Create mailto link with subject and body
-    const mailtoLink = `mailto:${email}?body=${encodedContent}`;
+    const mailtoLink = `mailto:${email}?subject=${encodedSubject}&body=${encodedContent}`;
     
     // Open the email client
     window.open(mailtoLink, '_blank');

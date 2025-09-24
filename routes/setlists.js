@@ -309,7 +309,28 @@ function generateDetailedSummary(changes, totalSongs) {
 const router = express.Router();
 
 
-// Public YouTube playlist route (no authentication required)
+// Redirect old youtube-playlist route to new nested URL
+router.get("/:id/youtube-playlist", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      select: { bandId: true },
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/youtube-playlist`);
+  } catch (error) {
+    logger.logError("Redirect youtube-playlist error", error);
+    res.status(500).send("Error redirecting");
+  }
+});
+
+// Original YouTube playlist route (commented out - now in bands.js)
+/*
 router.get("/:id/youtube-playlist", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
@@ -450,6 +471,7 @@ function extractYouTubeVideoId(url) {
   const match = url.match(regex);
   return match ? match[1] : null;
 }
+*/
 
 // Public rehearsal view route (no authentication required)
 // Redirect old rehearsal route to new nested URL
@@ -682,7 +704,28 @@ router.get("/:id/listen/old", async (req, res) => {
   }
 });
 
-// Public playlist view route (no authentication required)
+// Redirect old playlist route to new nested URL
+router.get("/:id/playlist", async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      select: { bandId: true },
+    });
+    
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+    
+    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/playlist`);
+  } catch (error) {
+    logger.logError("Redirect playlist error", error);
+    res.status(500).send("Error redirecting");
+  }
+});
+
+// Original playlist route (commented out - moved to bands.js)
+/*
 router.get("/:id/playlist", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
@@ -897,6 +940,7 @@ router.get("/:id/playlist", async (req, res) => {
     res.status(500).send("Error loading playlist view");
   }
 });
+*/
 
 // GET /setlists/:id/print - Show print page with export options (public)
 // Redirect old print route to new nested URL
@@ -1533,7 +1577,7 @@ router.post(
         "success",
         `Setlist "${title}" created successfully from "${originalSetlist.title}"!`
       );
-      res.redirect(`/bands/${setlist.bandId}/setlists/${newSetlist.id}/edit`);
+      res.redirect(`/bands/${originalSetlist.bandId}/setlists/${newSetlist.id}/edit`);
     } catch (error) {
       console.error("Copy setlist error:", error);
       req.flash("error", "An error occurred copying the setlist");

@@ -1,18 +1,11 @@
 <div class="container mt-4">
-    <div class="row">
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1>Playlist</h1>
-                    <h2 class="h4 text-muted">
-                        <%= setlist.title %> - <%= setlist.band.name %>
-                    </h2>
-                </div>
-                <div>
-                    <a href="/setlists/<%= setlist.id %>" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Back to Setlist
-                    </a>
-                </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0"><%= setlist.title %></h2>
+                <a href="/setlists/<%= setlist.id %>" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to Setlist
+                </a>
             </div>
         </div>
     </div>
@@ -66,22 +59,19 @@
                                             <div class="song-title">
                                                 <strong><%= audioSong.song.title %></strong>
                                                 <% if (audioSong.song.artists && audioSong.song.artists.length > 0) { %>
-                                                    • <%= audioSong.song.artists[0].artist.name %>
+                                                    <span class="song-artist">• <%= audioSong.song.artists[0].artist.name %></span>
                                                 <% } %>
                                                 <% if (audioSong.song.key) { %>
-                                                    • Key: <%= audioSong.song.key %> 
+                                                    <span class="song-key">• Key: <%= audioSong.song.key %></span>
                                                 <% } %>
                                                 <% if (audioSong.duration) { %>
-                                                    • <%= audioSong.duration %>
+                                                    <% 
+                                                    const minutes = Math.floor(audioSong.duration / 60);
+                                                    const seconds = audioSong.duration % 60;
+                                                    const formattedDuration = seconds < 10 ? `${minutes}:0${seconds}` : `${minutes}:${seconds}`;
+                                                    %>
+                                                    <span class="song-duration">• <%= formattedDuration %></span>
                                                 <% } %>
-                                            </div>
-                                            <div class="song-details">
-                                                <small>
-                                                    Set: <%= audioSong.set %>
-                                                    <% if (audioSong.order) { %>
-                                                        • Order: <%= audioSong.order %>
-                                                    <% } %>
-                                                </small>
                                             </div>
                                         </div>
                                     </a>
@@ -113,6 +103,11 @@
                         %>
                         <% audioSongs.forEach((audioSong, index) => { %>
                             <% 
+                            // Skip Maybe sets in the main iteration - they'll be handled separately
+                            if (audioSong.set === 'Maybe') {
+                                return;
+                            }
+                            
                             // Check if we're starting a new set
                             if (currentSet !== audioSong.set) {
                                 // Print summary for previous set if it exists
@@ -124,7 +119,16 @@
                                         <div class="set-summary-stats">
                                             <span class="song-count"><%= setSongCount %> songs</span>
                                             <% if (setTotals[currentSet]) { %>
-                                                <span class="set-time"><%= Math.floor(setTotals[currentSet] / 60) %>:<%= (setTotals[currentSet] % 60).toString().padStart(2, '0') %></span>
+                                                <% 
+                                                const seconds = setTotals[currentSet];
+                                                const hours = Math.floor(seconds / 3600);
+                                                const minutes = Math.floor((seconds % 3600) / 60);
+                                                const secs = seconds % 60;
+                                                const timeString = hours > 0 ? 
+                                                    `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` :
+                                                    `${minutes}:${secs.toString().padStart(2, '0')}`;
+                                                %>
+                                                <span class="set-time"><%= timeString %></span>
                                             <% } %>
                                         </div>
                                     </div>
@@ -148,7 +152,16 @@
                                 <div class="set-summary-stats">
                                     <span class="song-count"><%= setSongCount %> songs</span>
                                     <% if (setTotals[currentSet]) { %>
-                                        <span class="set-time"><%= Math.floor(setTotals[currentSet] / 60) %>:<%= (setTotals[currentSet] % 60).toString().padStart(2, '0') %></span>
+                                        <% 
+                                        const seconds = setTotals[currentSet];
+                                        const hours = Math.floor(seconds / 3600);
+                                        const minutes = Math.floor((seconds % 3600) / 60);
+                                        const secs = seconds % 60;
+                                        const timeString = hours > 0 ? 
+                                            `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` :
+                                            `${minutes}:${secs.toString().padStart(2, '0')}`;
+                                        %>
+                                        <span class="set-time"><%= timeString %></span>
                                     <% } %>
                                 </div>
                             </div>
@@ -163,10 +176,22 @@
                             <div class="total-summary-stats">
                                 <% 
                                 const numberedSongCount = audioSongs.filter(song => song.set !== 'Maybe').length;
+                                const numberedSetTime = audioSongs
+                                    .filter(song => song.set !== 'Maybe')
+                                    .reduce((total, song) => total + (song.duration || 0), 0);
                                 %>
                                 <span class="song-count"><%= numberedSongCount %> songs</span>
-                                <% if (totalTime > 0) { %>
-                                    <span class="total-time"><%= Math.floor(totalTime / 60) %>:<%= (totalTime % 60).toString().padStart(2, '0') %></span>
+                                <% if (numberedSetTime > 0) { %>
+                                    <% 
+                                    const seconds = numberedSetTime;
+                                    const hours = Math.floor(seconds / 3600);
+                                    const minutes = Math.floor((seconds % 3600) / 60);
+                                    const secs = seconds % 60;
+                                    const timeString = hours > 0 ? 
+                                        `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` :
+                                        `${minutes}:${secs.toString().padStart(2, '0')}`;
+                                    %>
+                                    <span class="total-time"><%= timeString %></span>
                                 <% } %>
                             </div>
                         </div>
@@ -181,13 +206,22 @@
                                     const maybeSongCount = audioSongs.filter(song => song.set === 'Maybe').length;
                                     %>
                                     <span class="song-count"><%= maybeSongCount %> songs</span>
-                                    <span class="maybe-time"><%= Math.floor(maybeTime / 60) %>:<%= (maybeTime % 60).toString().padStart(2, '0') %></span>
+                                    <% 
+                                    const seconds = maybeTime;
+                                    const hours = Math.floor(seconds / 3600);
+                                    const minutes = Math.floor((seconds % 3600) / 60);
+                                    const secs = seconds % 60;
+                                    const timeString = hours > 0 ? 
+                                        `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` :
+                                        `${minutes}:${secs.toString().padStart(2, '0')}`;
+                                    %>
+                                    <span class="maybe-time"><%= timeString %></span>
                                 </div>
                             </div>
                         <% } %>
                     <% } else { %>
                         <div class="text-center py-4">
-                            <i class="bi bi-info-circle text-muted" style="font-size: 2rem;"></i>
+                            <i class="bi bi-info-circle text-muted info-icon-large"></i>
                             <p class="text-muted mt-2">No audio files to summarize</p>
                         </div>
                     <% } %>
@@ -197,244 +231,6 @@
     </div>
 </div>
 
-<style>
-    .audio-player {
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 8px;
-        text-align: center;
-    }
-    
-    .player-controls {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-    }
-    
-    .control-btn {
-        background: #007bff;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: background-color 0.2s;
-    }
-    
-    .control-btn:hover {
-        background: #0056b3;
-    }
-    
-    .control-btn:active {
-        background: #004085;
-    }
-    
-    .control-btn i {
-        font-size: large;
-    }
-    
-    .bold-icon {
-        -webkit-text-stroke: .3px white;
-    }
-    
-    .playlist {
-        padding: 0;
-        margin: 0;
-        list-style: none;
-    }
-    
-    .playlist li {
-        padding: 10px 20px;
-        border-bottom: 1px solid #eee;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    
-    .playlist li:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .playlist li.active {
-        background-color: #007bff !important;
-        color: white;
-    }
-    
-    .playlist li.active a {
-        color: white;
-    }
-    
-    .playlist li.active .song-title {
-        color: white;
-        font-weight: bold;
-    }
-    
-    .playlist li.active .song-details {
-        color: rgba(255, 255, 255, 0.8);
-    }
-    
-    .playlist li.active .set-label {
-        background: #ffffff;
-        color: #007bff;
-    }
-    
-    .playlist li:nth-child(odd) {
-        background-color: #f8f9fa;
-    }
-    
-    .playlist li:nth-child(even) {
-        background-color: white;
-    }
-    
-    .playlist li a {
-        color: #333;
-        text-decoration: none;
-        display: block;
-    }
-    
-    .song-info {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .song-title {
-        font-weight: bold;
-    }
-    
-    .song-details {
-        font-size: 14px;
-        opacity: 0.7;
-    }
-    
-    .set-label {
-        background: #28a745;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: bold;
-    }
-    
-    .set-summary-card {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        padding: 15px;
-        transition: all 0.2s ease;
-    }
-    
-    .set-summary-card:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transform: translateY(-1px);
-    }
-    
-    .set-summary-header {
-        color: #495057;
-        font-size: 1.1em;
-        margin-bottom: 10px;
-        border-bottom: 2px solid #28a745;
-        padding-bottom: 5px;
-    }
-    
-    .set-summary-stats {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.9em;
-    }
-    
-    .song-count {
-        color: #6c757d;
-        font-weight: 500;
-    }
-    
-    .set-time {
-        color: #28a745;
-        font-weight: bold;
-        font-size: 1.1em;
-    }
-    
-    .total-summary-card {
-        background: #e3f2fd;
-        border: 1px solid #bbdefb;
-        border-radius: 8px;
-        padding: 20px;
-        transition: all 0.2s ease;
-    }
-    
-    .total-summary-card:hover {
-        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
-        transform: translateY(-1px);
-    }
-    
-    .total-summary-header {
-        color: #1976d2;
-        font-size: 1.2em;
-        margin-bottom: 15px;
-        border-bottom: 2px solid #2196f3;
-        padding-bottom: 8px;
-    }
-    
-    .total-summary-stats {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 1em;
-    }
-    
-    .total-time {
-        color: #1976d2;
-        font-weight: bold;
-        font-size: 1.2em;
-    }
-    
-    .maybe-summary-card {
-        background: #fff3cd;
-        border: 1px solid #ffeaa7;
-        border-radius: 8px;
-        padding: 15px;
-        transition: all 0.2s ease;
-    }
-    
-    .maybe-summary-card:hover {
-        box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
-        transform: translateY(-1px);
-    }
-    
-    .maybe-summary-header {
-        color: #856404;
-        font-size: 1.1em;
-        margin-bottom: 10px;
-        border-bottom: 2px solid #ffc107;
-        padding-bottom: 5px;
-    }
-    
-    .maybe-summary-stats {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.9em;
-    }
-    
-    .maybe-time {
-        color: #856404;
-        font-weight: bold;
-        font-size: 1.1em;
-    }
-    
-    .no-audio {
-        text-align: center;
-        padding: 40px;
-        color: #666;
-    }
-    
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-    }
-</style>
 
 <script>
     let currentSong = 0;

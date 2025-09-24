@@ -577,6 +577,386 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
   }
 });
 
+// GET /bands/:bandId/setlists/:setlistId/playlist - Public playlist view
+router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                    links: {
+                      where: { type: "audio" },
+                    },
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Collect all songs with audio links, ensuring Maybe songs come after numbered sets
+    const audioSongs = [];
+    const numberedSetSongs = [];
+    const maybeSetSongs = [];
+
+    // Calculate set totals and overall total
+    const setTotals = {};
+    let totalTime = 0;
+    let maybeTime = 0;
+
+    // Helper function to parse duration strings to seconds
+    function parseDurationToSeconds(durationStr) {
+      if (!durationStr) return null;
+
+      // Convert to string if it's not already
+      const durationString = String(durationStr);
+
+      // Handle formats like "3:45", "1:23:45", "45s", etc.
+      const parts = durationString.split(":");
+
+      if (parts.length === 2) {
+        // Format: "3:45" (minutes:seconds)
+        const minutes = parseInt(parts[0]);
+        const seconds = parseInt(parts[1]);
+        return minutes * 60 + seconds;
+      } else if (parts.length === 3) {
+        // Format: "1:23:45" (hours:minutes:seconds)
+        const hours = parseInt(parts[0]);
+        const minutes = parseInt(parts[1]);
+        const seconds = parseInt(parts[2]);
+        return hours * 3600 + minutes * 60 + seconds;
+      } else if (durationString.includes("s")) {
+        // Format: "45s" (seconds only)
+        return parseInt(durationString);
+      }
+
+      return null;
+    }
+
+    // Helper function to extract duration from audio file
+    async function getAudioDuration(audioUrl) {
+      try {
+        console.log("Attempting to get duration for:", audioUrl);
+
+        // Use fluent-ffmpeg to get audio duration
+        const ffmpeg = require("fluent-ffmpeg");
+
+        return new Promise((resolve) => {
+          ffmpeg.ffprobe(audioUrl, (err, metadata) => {
+            if (err) {
+              console.log("Error getting duration:", err.message);
+              resolve(null);
+            } else {
+              const duration = metadata.format.duration;
+              console.log("Duration found:", duration);
+              resolve(duration);
+            }
+          });
+        });
+      } catch (error) {
+        console.log("Error in getAudioDuration:", error.message);
+        return null;
+      }
+    }
+
+    // Process each set
+    for (const set of setlist.sets) {
+      if (set.name === "Maybe") continue; // Skip Maybe set for now
+
+      let setTime = 0;
+
+      for (const setlistSong of set.songs) {
+        if (setlistSong.song.links && setlistSong.song.links.length > 0) {
+          const songData = {
+            song: setlistSong.song,
+            set: set.name,
+            order: setlistSong.order,
+            duration: null,
+            durationSeconds: null,
+          };
+
+          // Try to parse duration from the time field first
+          if (setlistSong.song.time) {
+            const parsedDuration = parseDurationToSeconds(setlistSong.song.time);
+            if (parsedDuration) {
+              songData.duration = Math.round(parsedDuration);
+              songData.durationSeconds = Math.round(parsedDuration);
+              setTime += Math.round(parsedDuration);
+              totalTime += Math.round(parsedDuration);
+            }
+          }
+
+          // If no duration from time field, try to get it from the first audio link
+          if (!songData.duration && setlistSong.song.links[0]) {
+            const duration = await getAudioDuration(setlistSong.song.links[0].url);
+            if (duration) {
+              songData.duration = Math.round(duration);
+              songData.durationSeconds = Math.round(duration);
+              setTime += Math.round(duration);
+              totalTime += Math.round(duration);
+            }
+          }
+
+          if (set.name === "Maybe") {
+            maybeSetSongs.push(songData);
+            maybeTime += songData.duration || 0;
+          } else {
+            numberedSetSongs.push(songData);
+          }
+        }
+      }
+
+      setTotals[set.name] = setTime;
+    }
+
+    // Process Maybe set separately
+    const maybeSet = setlist.sets.find((s) => s.name === "Maybe");
+    if (maybeSet) {
+      for (const setlistSong of maybeSet.songs) {
+        if (setlistSong.song.links && setlistSong.song.links.length > 0) {
+          const songData = {
+            song: setlistSong.song,
+            set: "Maybe",
+            order: setlistSong.order,
+            duration: null,
+            durationSeconds: null,
+          };
+
+          // Try to parse duration from the time field first
+          if (setlistSong.song.time) {
+            const parsedDuration = parseDurationToSeconds(setlistSong.song.time);
+            if (parsedDuration) {
+              songData.duration = Math.round(parsedDuration);
+              songData.durationSeconds = Math.round(parsedDuration);
+              maybeTime += Math.round(parsedDuration);
+              totalTime += Math.round(parsedDuration);
+            }
+          }
+
+          // If no duration from time field, try to get it from the first audio link
+          if (!songData.duration && setlistSong.song.links[0]) {
+            const duration = await getAudioDuration(setlistSong.song.links[0].url);
+            if (duration) {
+              songData.duration = Math.round(duration);
+              songData.durationSeconds = Math.round(duration);
+              maybeTime += Math.round(duration);
+              totalTime += Math.round(duration);
+            }
+          }
+
+          maybeSetSongs.push(songData);
+        }
+      }
+    }
+
+    // Combine all songs (numbered sets first, then maybe)
+    audioSongs.push(...numberedSetSongs, ...maybeSetSongs);
+
+    res.render("setlists/playlist", {
+      title: `Playlist - ${setlist.title}`,
+      pageTitle: setlist.title,
+      setlist,
+      band: setlist.band,
+      hasBandHeader: true,
+      audioSongs,
+      setTotals,
+      totalTime,
+      maybeTime,
+      user: req.session.user || null,
+      currentUrl: req.originalUrl,
+    });
+  } catch (error) {
+    logger.logError("Playlist view error", error);
+    res.status(500).send("Error loading playlist view");
+  }
+});
+
+// GET /bands/:bandId/setlists/:setlistId/youtube-playlist - Public YouTube playlist view
+router.get("/:bandId/setlists/:setlistId/youtube-playlist", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
+                      },
+                    },
+                    vocalist: true,
+                    links: {
+                      where: { type: "youtube" },
+                    },
+                  },
+                },
+              },
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Load BandSong preferences for the band
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
+      select: {
+        songId: true,
+        youtube: true,
+      },
+    });
+
+    // Create a map of songId -> preferred YouTube URL
+    const bandSongMap = {};
+    bandSongs.forEach((bandSong) => {
+      if (bandSong.youtube) {
+        bandSongMap[bandSong.songId] = { youtube: bandSong.youtube };
+      }
+    });
+
+    // Collect YouTube links using preferred links when available
+    const youtubeLinks = [];
+    const seenVideoIds = new Set(); // Track seen video IDs to prevent duplicates
+
+    setlist.sets.forEach((set) => {
+      if (set.songs && set.name !== "Maybe") {
+        set.songs.forEach((setlistSong) => {
+          if (setlistSong.song) {
+            const songId = setlistSong.song.id;
+            const bandSong = bandSongMap[songId];
+
+            // Get available YouTube links
+            const availableYoutubeLinks =
+              setlistSong.song.links?.filter(
+                (link) => link.type === "youtube"
+              ) || [];
+
+            if (availableYoutubeLinks.length > 0) {
+              let selectedLink = null;
+
+              // Use preferred YouTube link if available
+              if (bandSong?.youtube) {
+                selectedLink = availableYoutubeLinks.find(
+                  (link) => link.url === bandSong.youtube
+                );
+              }
+
+              // Fallback to first available if no preference or preferred not found
+              if (!selectedLink) {
+                selectedLink = availableYoutubeLinks[0];
+              }
+
+              if (selectedLink) {
+                const videoId = extractYouTubeVideoId(selectedLink.url);
+                if (videoId && !seenVideoIds.has(videoId)) {
+                  seenVideoIds.add(videoId);
+                  youtubeLinks.push({
+                    songTitle: setlistSong.song.title,
+                    artist:
+                      setlistSong.song.artists &&
+                      setlistSong.song.artists.length > 0
+                        ? setlistSong.song.artists[0].artist.name
+                        : null,
+                    set: set.name,
+                    order: setlistSong.order,
+                    url: selectedLink.url,
+                    videoId: videoId,
+                  });
+                }
+              }
+            }
+          }
+        });
+      }
+    });
+
+    res.render("setlists/youtube-playlist", {
+      title: `YouTube Playlist - ${setlist.title}`,
+      pageTitle: `YouTube Playlist - ${setlist.title}`,
+      setlist,
+      band: setlist.band,
+      youtubeLinks,
+      user: req.session.user || null,
+    });
+  } catch (error) {
+    logger.logError("YouTube playlist error", error);
+    res.status(500).send("Error loading YouTube playlist");
+  }
+});
+
+// Helper function to extract YouTube video ID from URL
+function extractYouTubeVideoId(url) {
+  const regex =
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+}
+
 // AUTHENTICATED ROUTES (authentication required)
 router.use(requireAuth);
 
@@ -6153,6 +6533,8 @@ router.get("/:bandId/setlists/:setlistId", requireAuth, async (req, res) => {
                 bandId: setlist.band.id,
                 songId: bandSongData.songId,
                 youtube: bandSongData.youtube,
+                createdAt: new Date(),
+                updatedAt: new Date(),
               },
             })
           )
@@ -6388,7 +6770,8 @@ router.get("/:bandId/setlists/:setlistId/versions/:versionId/view", async (req, 
     ]);
 
     res.render("setlists/version-view", {
-      title: setlist.band.name,
+      title: `Version ${version.versionNumber} - ${setlist.title}`,
+      pageTitle: `Version ${version.versionNumber} - ${setlist.title}`,
       setlist: setlist,
       version: version,
       versionId: versionId,

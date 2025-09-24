@@ -4588,6 +4588,93 @@ function parseQuickSetInput(input) {
   return result;
 }
 
+// GET /bands/:id/venues/:venueId - Show a specific venue in the context of a band, with opportunities
+router.get("/:id/venues/:venueId", requireAuth, async (req, res) => {
+  try {
+    const { id: bandId, venueId } = req.params;
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+    });
+    const venue = await prisma.venue.findUnique({
+      where: { id: parseInt(venueId) },
+      include: {
+        venueType: true,
+        contacts: {
+          include: {
+            contactType: true,
+          },
+        },
+        socials: {
+          include: {
+            socialType: true,
+          },
+        },
+      },
+    });
+
+    if (!band || !venue) {
+      req.flash("error", "Band or Venue not found");
+      return res.redirect("/bands");
+    }
+
+    const opportunities = await prisma.opportunity.findMany({
+      where: {
+        bandId: parseInt(bandId),
+        venueId: parseInt(venueId),
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Get gig history for this band at this venue
+    const gigs = await prisma.gig.findMany({
+      where: {
+        bandId: parseInt(bandId),
+        venueId: parseInt(venueId),
+      },
+      include: {
+        opportunity: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        gigDate: "desc",
+      },
+    });
+
+    // Get venue contact types that this venue actually has
+    const venueContactTypes = await prisma.venueContactType.findMany({
+      where: {
+        isActive: true,
+        contacts: {
+          some: {
+            venueId: parseInt(venueId),
+          },
+        },
+      },
+      orderBy: { sortOrder: "asc" },
+    });
+
+    res.render("bands/venue-opportunity", {
+      pageTitle: `${band.name} @ ${venue.name}`,
+      hasBandHeader: false,
+      band,
+      venue,
+      opportunities,
+      gigs,
+      venueContactTypes,
+    });
+  } catch (error) {
+    logger.logError("Band venue opportunity page error:", error);
+    req.flash("error", "An error occurred loading the venue page");
+    res.redirect(`/bands/${req.params.bandId}/venues`);
+  }
+});
+
 // GET /bands/:id/venues - Show band's venues
 router.get("/:id/venues", async (req, res) => {
   try {
@@ -5269,93 +5356,6 @@ router.post("/:id/venues/:venueId/remove", async (req, res) => {
   } catch (error) {
     console.error("Remove band venue error (POST):", error);
     res.status(500).json({ error: "Server error" });
-  }
-});
-
-// GET /bands/:bandId/venues/:venueId - Show a specific venue in the context of a band, with opportunities
-router.get("/:bandId/venues/:venueId", requireAuth, async (req, res) => {
-  try {
-    const { bandId, venueId } = req.params;
-    const band = await prisma.band.findUnique({
-      where: { id: parseInt(bandId) },
-    });
-    const venue = await prisma.venue.findUnique({
-      where: { id: parseInt(venueId) },
-      include: {
-        venueType: true,
-        contacts: {
-          include: {
-            contactType: true,
-          },
-        },
-        socials: {
-          include: {
-            socialType: true,
-          },
-        },
-      },
-    });
-
-    if (!band || !venue) {
-      req.flash("error", "Band or Venue not found");
-      return res.redirect("/bands");
-    }
-
-    const opportunities = await prisma.opportunity.findMany({
-      where: {
-        bandId: parseInt(bandId),
-        venueId: parseInt(venueId),
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    // Get gig history for this band at this venue
-    const gigs = await prisma.gig.findMany({
-      where: {
-        bandId: parseInt(bandId),
-        venueId: parseInt(venueId),
-      },
-      include: {
-        opportunity: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        gigDate: "desc",
-      },
-    });
-
-    // Get venue contact types that this venue actually has
-    const venueContactTypes = await prisma.venueContactType.findMany({
-      where: {
-        isActive: true,
-        contacts: {
-          some: {
-            venueId: parseInt(venueId),
-          },
-        },
-      },
-      orderBy: { sortOrder: "asc" },
-    });
-
-    res.render("bands/venue-opportunity", {
-      pageTitle: `${band.name} @ ${venue.name}`,
-      hasBandHeader: false,
-      band,
-      venue,
-      opportunities,
-      gigs,
-      venueContactTypes,
-    });
-  } catch (error) {
-    logger.logError("Band venue opportunity page error:", error);
-    req.flash("error", "An error occurred loading the venue page");
-    res.redirect(`/bands/${req.params.bandId}/venues`);
   }
 });
 

@@ -147,39 +147,6 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Social Media</label>
-                        <div id="socialMediaContainer">
-                            <div class="social-media-entry mb-2">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <select class="form-select" name="socialPlatforms[]">
-                                            <option value="">Select Platform</option>
-                                            <% if (socialTypes && socialTypes.length > 0) { %>
-                                                <% socialTypes.forEach(socialType => { %>
-                                                    <option value="<%= socialType.id %>">
-                                                        <%= socialType.displayName %>
-                                                    </option>
-                                                <% }) %>
-                                            <% } %>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <input type="text" class="form-control" name="socialHandles[]" 
-                                               placeholder="@username or page name">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-social" style="display: none;">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="addSocialMedia">
-                            <i class="bi bi-plus"></i> Add Social Media
-                        </button>
-                    </div>
 
 
                     <div class="row">

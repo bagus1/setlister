@@ -11,7 +11,7 @@ class GigDocumentEditor {
     // Initialize TinyMCE editor
     tinymce.init({
       selector: `#${this.editorId}`,
-      height: 400,
+      height: 800,
       plugins: "table lists link lineheight",
       toolbar:
         "undo redo | formatselect fontsize fontfamily | indent outdent | bold italic underline strikethrough | forecolor backcolor | lineheight | alignleft aligncenter alignright | bullist numlist | link table | removeformat",

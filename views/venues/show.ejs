@@ -493,17 +493,54 @@
             if (socialType && socialType.urlTemplate) {
                 // Clean the handle to remove any existing URLs
                 let cleanHandle = handle.trim();
-                if (cleanHandle.includes('facebook.com/')) {
-                    // Extract just the username from a full Facebook URL
-                    cleanHandle = cleanHandle.split('facebook.com/').pop().replace(/\/$/, '');
-                } else if (cleanHandle.includes('instagram.com/')) {
-                    // Extract just the username from a full Instagram URL
-                    cleanHandle = cleanHandle.split('instagram.com/').pop().replace(/\/$/, '');
-                } else if (cleanHandle.includes('twitter.com/')) {
-                    // Extract just the username from a full Twitter URL
-                    cleanHandle = cleanHandle.split('twitter.com/').pop().replace(/\/$/, '');
+                
+                // Check if the handle is a full URL
+                if (cleanHandle.startsWith('http://') || cleanHandle.startsWith('https://')) {
+                    try {
+                        const urlObj = new URL(cleanHandle);
+                        const hostname = urlObj.hostname.toLowerCase();
+                        const pathname = urlObj.pathname.replace(/^\/+|\/+$/g, ''); // Remove leading/trailing slashes
+                        
+                        // Handle different platforms
+                        if (hostname.includes('facebook.com') || hostname.includes('fb.com')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else if (hostname.includes('instagram.com')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else if (hostname.includes('twitter.com') || hostname.includes('x.com')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else if (hostname.includes('tiktok.com')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else if (hostname.includes('linkedin.com')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else if (hostname.includes('bandcamp.com')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else if (hostname.includes('soundcloud.com')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else if (hostname.includes('snapchat.com')) {
+                            cleanHandle = pathname || hostname.replace('www.', '');
+                        } else {
+                            // For websites and unknown platforms, use the full domain
+                            cleanHandle = hostname.replace('www.', '');
+                        }
+                    } catch (e) {
+                        // If URL parsing fails, try to extract domain manually
+                        cleanHandle = cleanHandle.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+                    }
                 }
-                url = socialType.urlTemplate.replace('{contact}', cleanHandle);
+                
+                // Generate URL using template
+                if (socialType.name === 'Website') {
+                    // For websites, use the full URL if it was provided, otherwise generate from handle
+                    if (handle.trim().startsWith('http')) {
+                        url = handle.trim();
+                    } else {
+                        url = socialType.urlTemplate.replace('{contact}', cleanHandle);
+                    }
+                } else {
+                    url = socialType.urlTemplate.replace('{contact}', cleanHandle);
+                }
             }
             
             // Submit the form

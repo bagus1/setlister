@@ -15,11 +15,94 @@
 
 <div class="row">
     <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-2">
+                        <input type="text" class="form-control" id="searchVenues" placeholder="Search venues...">
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterCity">
+                            <option value="">All Cities</option>
+                            <!-- Cities will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterType">
+                            <option value="">All Types</option>
+                            <% if (bandVenues && bandVenues.length > 0) { %>
+                                <%
+                                // Get unique venue types from the band venues
+                                var uniqueTypes = [];
+                                var seenTypes = {};
+                                for (var i = 0; i < bandVenues.length; i++) {
+                                    var bandVenue = bandVenues[i];
+                                    if (bandVenue.venue.venueType && !seenTypes[bandVenue.venue.venueType.name]) {
+                                        uniqueTypes.push(bandVenue.venue.venueType.name);
+                                        seenTypes[bandVenue.venue.venueType.name] = true;
+                                    }
+                                }
+                                uniqueTypes.sort();
+                                %>
+                                <% for (var j = 0; j < uniqueTypes.length; j++) { %>
+                                    <option value="<%= uniqueTypes[j] %>"><%= uniqueTypes[j] %></option>
+                                <% } %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterStage">
+                            <option value="">All Stages</option>
+                            <option value="indoor">Indoor</option>
+                            <option value="outdoor">Outdoor</option>
+                            <option value="both">Both</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterState">
+                            <option value="">All States</option>
+                            <% if (bandVenues && bandVenues.length > 0) { %>
+                                <%
+                                // Get unique states from the band venues
+                                var uniqueStates = [];
+                                var seenStates = {};
+                                for (var i = 0; i < bandVenues.length; i++) {
+                                    var bandVenue = bandVenues[i];
+                                    if (bandVenue.venue.state && !seenStates[bandVenue.venue.state]) {
+                                        uniqueStates.push(bandVenue.venue.state);
+                                        seenStates[bandVenue.venue.state] = true;
+                                    }
+                                }
+                                uniqueStates.sort();
+                                %>
+                                <% for (var j = 0; j < uniqueStates.length; j++) { %>
+                                    <option value="<%= uniqueStates[j] %>"><%= uniqueStates[j] %></option>
+                                <% } %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="filterEmail">
+                            <option value="">Has Email</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <% if (bandVenues && bandVenues.length > 0) { %>
             <div class="row">
                 <% bandVenues.forEach(bandVenue => { %>
                     <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card h-100">
+                        <div class="card h-100" 
+                             data-name="<%= bandVenue.venue.name.toLowerCase() %>"
+                             data-city="<%= bandVenue.venue.city ? bandVenue.venue.city.toLowerCase() : '' %>"
+                             data-state="<%= bandVenue.venue.state ? bandVenue.venue.state.toLowerCase() : '' %>"
+                             data-type="<%= bandVenue.venue.venueType ? bandVenue.venue.venueType.name : '' %>"
+                             data-stage="<%= bandVenue.venue.stage ? bandVenue.venue.stage.toLowerCase() : '' %>"
+                             data-email="<%= bandVenue.venue.email ? 'yes' : 'no' %>">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <h5 class="card-title mb-0">
@@ -66,7 +149,14 @@
                                 <% if (bandVenue.venue.socials && bandVenue.venue.socials.length > 0) { %>
                                     <div class="mb-2">
                                         <% bandVenue.venue.socials.slice(0, 4).forEach(social => { %>
-                                            <a href="<%= social.url || '#' %>" target="_blank" class="text-decoration-none me-2" title="<%= social.socialType.name %>: <%= social.handle %>" style="position: relative; z-index: 2;">
+                                            <%
+                                                // Ensure website URLs have proper protocol
+                                                let socialUrl = social.url || '#';
+                                                if (social.socialType.name === 'Website' && socialUrl !== '#' && !socialUrl.startsWith('http')) {
+                                                    socialUrl = 'https://' + socialUrl;
+                                                }
+                                            %>
+                                            <a href="<%= socialUrl %>" target="_blank" class="text-decoration-none me-2" title="<%= social.socialType.name %>: <%= social.handle %>" style="position: relative; z-index: 2;">
                                                 <i class="bi bi-<%= social.socialType.iconClass || 'link' %> fs-5"></i>
                                             </a>
                                         <% }); %>
@@ -100,4 +190,71 @@
         <% } %>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filtering functionality
+    const searchInput = document.getElementById('searchVenues');
+    const cityFilter = document.getElementById('filterCity');
+    const typeFilter = document.getElementById('filterType');
+    const stageFilter = document.getElementById('filterStage');
+    const stateFilter = document.getElementById('filterState');
+    const emailFilter = document.getElementById('filterEmail');
+    const venueCards = document.querySelectorAll('.card.h-100');
+
+    // Populate city filter
+    const cities = new Set();
+    venueCards.forEach(card => {
+        const city = card.dataset.city;
+        if (city) cities.add(card.dataset.city);
+    });
+    
+    cities.forEach(city => {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city.charAt(0).toUpperCase() + city.slice(1);
+        cityFilter.appendChild(option);
+    });
+
+    // Filter function
+    function filterVenues() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedCity = cityFilter.value.toLowerCase();
+        const selectedType = typeFilter.value;
+        const selectedStage = stageFilter.value.toLowerCase();
+        const selectedState = stateFilter.value.toLowerCase();
+        const selectedEmail = emailFilter.value;
+
+        venueCards.forEach(card => {
+            const name = card.dataset.name;
+            const city = card.dataset.city;
+            const state = card.dataset.state;
+            const type = card.dataset.type;
+            const stage = card.dataset.stage;
+            const email = card.dataset.email;
+
+            const matchesSearch = name.includes(searchTerm) || city.includes(searchTerm) || state.includes(searchTerm);
+            const matchesCity = !selectedCity || city === selectedCity;
+            const matchesType = !selectedType || type === selectedType;
+            const matchesStage = !selectedStage || stage === selectedStage;
+            const matchesState = !selectedState || state === selectedState;
+            const matchesEmail = !selectedEmail || email === selectedEmail;
+
+            if (matchesSearch && matchesCity && matchesType && matchesStage && matchesState && matchesEmail) {
+                card.closest('.col-md-6').style.display = 'block';
+            } else {
+                card.closest('.col-md-6').style.display = 'none';
+            }
+        });
+    }
+
+    // Event listeners for filtering
+    searchInput.addEventListener('input', filterVenues);
+    cityFilter.addEventListener('change', filterVenues);
+    typeFilter.addEventListener('change', filterVenues);
+    stageFilter.addEventListener('change', filterVenues);
+    stateFilter.addEventListener('change', filterVenues);
+    emailFilter.addEventListener('change', filterVenues);
+});
+</script>
 

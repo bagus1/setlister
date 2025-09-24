@@ -5,6 +5,7 @@ Disallow: /api/
 Disallow: /manage/
 Disallow: /bands/*/songs
 Disallow: /setlists/*/edit
+Disallow: /bands/*/setlists/*/edit
 Disallow: /songs/new
 Disallow: /songs/*/edit
 Disallow: /whitelist-request

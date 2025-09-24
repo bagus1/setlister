@@ -7,9 +7,22 @@ const { requireAuth } = require("./auth");
 // Dynamic whitelist validation using database
 async function getWhitelistValidation(linkType) {
   try {
+    // Map form values to enum values
+    const typeMapping = {
+      "guitar tutorial": "guitar_tutorial",
+      "bass tutorial": "bass_tutorial",
+      "keyboard tutorial": "keyboard_tutorial",
+      "bass tab": "bass_tab",
+      "horn chart": "horn_chart",
+      "apple music": "apple_music",
+      "sheet-music": "sheet_music",
+      "backing-track": "backing_track"
+    };
+    const mappedType = typeMapping[linkType] || linkType;
+
     const whitelistDomains = await prisma.whitelistDomain.findMany({
       where: {
-        linkType,
+        linkType: mappedType,
         isActive: true,
       },
     });
@@ -123,11 +136,24 @@ router.post(
 
       const { type, url, description } = req.body;
 
+      // Map form values to enum values
+      const typeMapping = {
+        "guitar tutorial": "guitar_tutorial",
+        "bass tutorial": "bass_tutorial",
+        "keyboard tutorial": "keyboard_tutorial",
+        "bass tab": "bass_tab",
+        "horn chart": "horn_chart",
+        "apple music": "apple_music",
+        "sheet-music": "sheet_music",
+        "backing-track": "backing_track"
+      };
+      const mappedType = typeMapping[type] || type;
+
       await prisma.link.create({
         data: {
           songId: song.id,
           createdById: req.session.user.id,
-          type,
+          type: mappedType,
           url: url.trim(),
           description: description ? description.trim() : null,
           createdAt: new Date(),
@@ -140,7 +166,7 @@ router.post(
     } catch (error) {
       console.error("Add link error:", error);
       req.flash("error", "Error adding link");
-      res.redirect(`/songs/${song.id}`);
+      res.redirect(`/songs/${req.params.songId}`);
     }
   }
 );

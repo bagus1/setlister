@@ -71,12 +71,12 @@
                                         }
                                     %>
                                     <i class="bi bi-<%= iconClass %>"></i>
-                                    <strong><%= contact.contactType.displayName %>:</strong>
                                     <% if (contact.url) { %>
-                                        <a href="<%= contact.url %>" target="_blank" class="text-decoration-none ms-1">
-                                            <%= contact.url %>
+                                        <a href="<%= contact.url %>" target="_blank" class="text-decoration-none">
+                                            <strong><%= contact.contactType.displayName %></strong>
                                         </a>
                                     <% } else { %>
+                                        <strong><%= contact.contactType.displayName %>:</strong>
                                         <span class="ms-1"><%= contact.value %></span>
                                     <% } %>
                                     <% if (contact.label) { %>

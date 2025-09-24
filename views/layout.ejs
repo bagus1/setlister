@@ -105,6 +105,8 @@
                 <div class="text-center">
                     <% if (typeof hasBandHeader !== 'undefined' && hasBandHeader && band) { %>
                         <h2 class="h5 mb-0 text-dark fw-bold"><%= band.name %></h2>
+                    <% } else if (typeof marqueeTitle !== 'undefined' && marqueeTitle) { %>
+                        <h2 class="h5 mb-0 text-dark fw-bold"><%= marqueeTitle %></h2>
                     <% } else if (typeof pageTitle !== 'undefined' && pageTitle) { %>
                         <h2 class="h5 mb-0 text-dark fw-bold"><%= pageTitle %></h2>
                     <% } else { %>

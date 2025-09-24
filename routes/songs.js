@@ -509,8 +509,13 @@ router.get("/:songId/links/:linkId", async (req, res) => {
       return res.redirect(`/songs/${songId}`);
     }
 
+    const artistName = song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist';
+    const linkDisplayText = getLinkDisplayText(link);
+    
     res.render("songs/link-viewer", {
-      pageTitle: `${song.title} - ${getLinkDisplayText(link)}`,
+      title: song.title,
+      pageTitle: `${song.title} | Setlist Manager`,
+      marqueeTitle: song.title,
       song,
       link,
       getLinkDisplayText

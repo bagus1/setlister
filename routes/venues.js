@@ -186,7 +186,7 @@ router.post(
       .withMessage("Please enter a valid email"),
     body("website").optional().isURL().withMessage("Please enter a valid URL"),
     body("capacity")
-      .optional()
+      .optional({ checkFalsy: true })
       .isInt({ min: 1 })
       .withMessage("Capacity must be a positive number"),
   ],
@@ -503,7 +503,7 @@ router.post(
       .withMessage("Please enter a valid email"),
     body("website").optional().isURL().withMessage("Please enter a valid URL"),
     body("capacity")
-      .optional()
+      .optional({ checkFalsy: true })
       .isInt({ min: 1 })
       .withMessage("Capacity must be a positive number"),
   ],

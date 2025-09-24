@@ -434,6 +434,94 @@ router.post(
   }
 );
 
+// GET /songs/:songId/links/:linkId - Show link viewer (audio player, etc.)
+router.get("/:songId/links/:linkId", async (req, res) => {
+  try {
+    const { songId, linkId } = req.params;
+    
+    // Get the song and link details
+    const song = await prisma.song.findUnique({
+      where: { id: parseInt(songId) },
+      include: {
+        artists: {
+          include: {
+            artist: true
+          }
+        },
+        vocalist: true,
+        links: {
+          where: { id: parseInt(linkId) }
+        }
+      }
+    });
+
+    if (!song) {
+      req.flash("error", "Song not found");
+      return res.redirect("/songs");
+    }
+
+    if (!song.links || song.links.length === 0) {
+      req.flash("error", "Link not found");
+      return res.redirect(`/songs/${songId}`);
+    }
+
+    const link = song.links[0];
+    
+    // Helper function for link display text
+    const getLinkDisplayText = (link) => {
+      const typeLabels = {
+        youtube: "YouTube",
+        video: "Video",
+        spotify: "Spotify",
+        "apple-music": "Apple Music",
+        "apple_music": "Apple Music",
+        soundcloud: "SoundCloud",
+        bandcamp: "Bandcamp",
+        lyrics: "Lyrics",
+        tab: "Tab",
+        "bass tab": "Bass Tab",
+        "bass_tab": "Bass Tab",
+        chords: "Chords",
+        "guitar tutorial": "Guitar Tutorial",
+        "guitar_tutorial": "Guitar Tutorial",
+        "bass tutorial": "Bass Tutorial",
+        "bass_tutorial": "Bass Tutorial",
+        "keyboard tutorial": "Keyboard Tutorial",
+        "keyboard_tutorial": "Keyboard Tutorial",
+        audio: "Audio File",
+        "sheet-music": "Sheet Music",
+        "sheet_music": "Sheet Music",
+        "backing-track": "Backing Track",
+        "backing_track": "Backing Track",
+        karaoke: "Karaoke",
+        "horn chart": "Horn Chart",
+        "horn_chart": "Horn Chart",
+        other: "Other",
+      };
+
+      const typeLabel = typeLabels[link.type] || "Link";
+      return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
+    };
+    
+    // For now, only handle audio links
+    if (link.type !== 'audio') {
+      req.flash("error", "Link viewer not available for this type");
+      return res.redirect(`/songs/${songId}`);
+    }
+
+    res.render("songs/link-viewer", {
+      pageTitle: `${song.title} - ${getLinkDisplayText(link)}`,
+      song,
+      link,
+      getLinkDisplayText
+    });
+  } catch (error) {
+    logger.logError("Song link viewer error:", error);
+    req.flash("error", "An error occurred loading the link viewer");
+    res.redirect("/songs");
+  }
+});
+
 // GET /songs/:id - Show specific song
 router.get("/:id", async (req, res) => {
   try {

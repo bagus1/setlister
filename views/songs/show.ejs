@@ -162,6 +162,9 @@
                                                 <source src="<%= link.url %>" type="audio/mp4">
                                                 Your browser does not support the audio element.
                                             </audio>
+                                            <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-play-circle"></i> View
+                                            </a>
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>

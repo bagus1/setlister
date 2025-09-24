@@ -1,0 +1,108 @@
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-1"><%= song.title %></h4>
+                            <p class="text-muted mb-0">
+                                by <strong><%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist' %></strong>
+                                <% if (song.vocalist) { %>
+                                    • Vocals: <strong><%= song.vocalist.name %></strong>
+                                <% } %>
+                            </p>
+                        </div>
+                        <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Song
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body text-center">
+                    <% if (link.type === 'audio') { %>
+                        <!-- Audio Player -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="bi bi-music-note-beamed"></i> 
+                                <%= getLinkDisplayText(link) %>
+                            </h5>
+                            <audio controls style="width: 100%; max-width: 500px; height: 60px;" class="mb-3">
+                                <source src="<%= link.url %>" type="audio/mpeg">
+                                <source src="<%= link.url %>" type="audio/wav">
+                                <source src="<%= link.url %>" type="audio/ogg">
+                                <source src="<%= link.url %>" type="audio/mp4">
+                                Your browser does not support the audio element.
+                            </audio>
+                            <div class="mt-3">
+                                <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary">
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                                <button onclick="shareLink()" class="btn btn-outline-success">
+                                    <i class="bi bi-share"></i> Share
+                                </button>
+                            </div>
+                        </div>
+                    <% } else { %>
+                        <!-- Placeholder for other link types -->
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Link viewer not yet implemented for <%= getLinkDisplayText(link) %>.
+                            <a href="<%= link.url %>" target="_blank" class="btn btn-primary btn-sm ms-2">
+                                Open Link
+                            </a>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+            
+            <!-- Song Info Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Song Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Title:</strong> <%= song.title %></p>
+                            <p><strong>Artist:</strong> <%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist' %></p>
+                            <% if (song.vocalist) { %>
+                                <p><strong>Vocalist:</strong> <%= song.vocalist.name %></p>
+                            <% } %>
+                        </div>
+                        <div class="col-md-6">
+                            <% if (song.key) { %>
+                                <p><strong>Key:</strong> <%= song.key %></p>
+                            <% } %>
+                            <% if (song.duration) { %>
+                                <p><strong>Duration:</strong> <%= song.duration %></p>
+                            <% } %>
+                            <% if (song.bpm) { %>
+                                <p><strong>BPM:</strong> <%= song.bpm %></p>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function shareLink() {
+    if (navigator.share) {
+        navigator.share({
+            title: '<%= song.title %> by <%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : "Unknown Artist" %>',
+            text: 'Listen to <%= song.title %> by <%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : "Unknown Artist" %>',
+            url: window.location.href
+        });
+    } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            alert('Link copied to clipboard!');
+        }).catch(() => {
+            // Fallback: show URL in prompt
+            prompt('Copy this link:', window.location.href);
+        });
+    }
+}
+</script>

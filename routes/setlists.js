@@ -2355,7 +2355,7 @@ router.post("/:id/update", async (req, res) => {
   }
 });
 
-// POST /setlists/:id/save-recordings-url - Save recordings URL for a setlist
+// POST /setlists/:id/save-recordings-url - Save recordings URL for a setlist (legacy route)
 router.post("/:id/save-recordings-url", requireAuth, async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
@@ -2388,6 +2388,11 @@ router.post("/:id/save-recordings-url", requireAuth, async (req, res) => {
       return res
         .status(404)
         .json({ error: "Setlist not found or access denied" });
+    }
+
+    // Verify user is a member of the band
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
     }
 
     // Update the setlist with the recordings URL

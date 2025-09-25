@@ -577,8 +577,9 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
   }
 });
 
-// POST /bands/:bandId/setlists/:setlistId/preferred-audio - Update preferred audio file for a song
-router.post("/:bandId/setlists/:setlistId/preferred-audio", requireAuth, async (req, res) => {
+
+  // POST /bands/:bandId/setlists/:setlistId/preferred-audio - Update preferred audio file for a song
+  router.post("/:bandId/setlists/:setlistId/preferred-audio", requireAuth, async (req, res) => {
   try {
     const { songId, audioUrl } = req.body;
     const bandId = parseInt(req.params.bandId);
@@ -1077,6 +1078,68 @@ function extractYouTubeVideoId(url) {
 
 // AUTHENTICATED ROUTES (authentication required)
 router.use(requireAuth);
+
+// POST /bands/:bandId/setlists/:setlistId/save-recordings-url - Save recordings URL for a setlist
+router.post("/:bandId/setlists/:setlistId/save-recordings-url", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const userId = req.session.user.id;
+    const { recordingsUrl } = req.body;
+
+    // Validate input
+    if (!recordingsUrl) {
+      return res.status(400).json({ error: "Recordings URL is required" });
+    }
+
+    // Find setlist and verify user has access
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res
+        .status(404)
+        .json({ error: "Setlist not found or access denied" });
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.bandId !== bandId) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    // Verify user is a member of the band
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Update the setlist with the recordings URL
+    await prisma.setlist.update({
+      where: { id: setlistId },
+      data: {
+        recordingsUrl,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true, message: "Recordings URL saved successfully" });
+  } catch (error) {
+    logger.logError("Save recordings URL error", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // GET /bands/:bandId/setlists/:setlistId/edit - Show setlist edit page with drag-drop
 router.get("/:bandId/setlists/:setlistId/edit", async (req, res) => {

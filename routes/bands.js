@@ -337,6 +337,7 @@ router.get("/:bandId/setlists/:setlistId/listen", async (req, res) => {
           case "www.bagus.org":
           case "bagus.org":
             // Bagus.org format: href="/path/file.wav">Song Title</a><span class="duration">(duration)
+            // Updated to handle the actual HTML structure: <a href="/path/file.wav">Title</a><span class="duration">(duration)</span>
             linkRegex =
               /href=["']([^"']+\.(?:mp3|wav|ogg|m4a|flac))["'][^>]*>([^<]+)<\/a><span class="duration">\(([^)]+)\)/gi;
             break;
@@ -368,7 +369,7 @@ router.get("/:bandId/setlists/:setlistId/listen", async (req, res) => {
 
         // Create playlistData structure
         playlistData = {
-          links: audioLinks,
+          tracks: audioLinks,
           summary: totalSummary,
         };
       }

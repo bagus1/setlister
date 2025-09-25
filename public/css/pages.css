@@ -748,3 +748,61 @@ input[name="email"] {
         color: #fed7d7;
     }
 }
+
+/* Listen page styles */
+.playlist-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.playlist-item:hover {
+    background-color: #f8f9fa;
+}
+
+.playlist-item.active {
+    background-color: #007bff !important;
+    color: white;
+}
+
+.playlist-item.active .badge {
+    background-color: white !important;
+    color: #007bff !important;
+}
+
+.playlist-item.active .song-title {
+    color: white !important;
+}
+
+.song-title {
+    color: #aaaaaa;
+}
+
+.bold-icon {
+    font-size: large;
+    -webkit-text-stroke: 1px white;
+}
+
+/* Dark mode styles for listen page */
+@media (prefers-color-scheme: dark) {
+    .playlist-item:hover {
+        background-color: #374151;
+    }
+    
+    .playlist-item.active {
+        background-color: #2563eb !important;
+        color: white;
+    }
+    
+    .playlist-item.active .badge {
+        background-color: white !important;
+        color: #2563eb !important;
+    }
+    
+    .playlist-item.active .song-title {
+        color: white !important;
+    }
+    
+    .song-title {
+        color: #aaaaaa;
+    }
+}

@@ -123,6 +123,7 @@ model BandSong {
   vocalist      String?      @db.VarChar(255)
   bpm           Int?
   youtube       String?      @db.VarChar(500)
+  audio         String?      @db.VarChar(500)
   createdAt     DateTime     @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   band          Band         @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)

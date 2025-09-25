@@ -22,7 +22,7 @@
                     <% if (audioSongs.length > 0) { %>
                         <div class="audio-player mb-4">
                             <audio id="audio" controls preload="auto" class="w-100">
-                                <source src="<%= audioSongs[0].song.links[0].url %>" type="audio/mpeg">
+                                <source src="<%= audioSongs[0].preferredAudioUrl %>" type="audio/mpeg">
                                 Your browser does not support the audio element.
                             </audio>
                             <div class="player-controls mt-3">
@@ -53,7 +53,7 @@
                                 }
                                 setSongCount++;
                                 %>
-                                <li class="<%= index === 0 ? 'active' : '' %>" data-url="<%= audioSong.song.links[0].url %>">
+                                <li class="<%= index === 0 ? 'active' : '' %>" data-url="<%= audioSong.preferredAudioUrl %>">
                                     <a href="#" onclick="playSong(this.parentElement, event)">
                                         <div class="song-info">
                                             <div class="song-title">

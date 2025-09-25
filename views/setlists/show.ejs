@@ -128,7 +128,7 @@
                                             <div class="song-extended-panel" style="display: none;">
                                                 <div class="list-group-item bg-light">
                                                     <div class="row">
-                                                        <div class="col-md-6">
+                                                        <div class="col-md-4">
                                                             <h6 class="text-muted mb-2 small">Gig Documents</h6>
                                                             <div class="dropdown mb-2">
                                                                 <button
@@ -222,7 +222,7 @@
                                                                 </ul>
                                                             </div>
                                                         </div>
-                                                        <div class="col-md-6">
+                                                        <div class="col-md-4">
                                                             <h6 class="text-muted mb-2 small">YouTube Videos</h6>
                                                             <div class="dropdown mb-2">
                                                                 <button
@@ -291,6 +291,73 @@
                                                                                             Add YouTube video
                                                                                         </a>
                                                                                     </li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <h6 class="text-muted mb-2 small">Audio Files</h6>
+                                                            <div class="dropdown mb-2">
+                                                                <button
+                                                                    class="btn btn-xs btn-outline-secondary dropdown-toggle w-100 py-1"
+                                                                    type="button"
+                                                                    data-bs-toggle="dropdown"
+                                                                    data-bs-boundary="viewport"
+                                                                    data-bs-popper-config='{"strategy":"fixed"}'
+                                                                    aria-expanded="false"
+                                                                    data-song-id="<%= setlistSong.song.id %>">
+                                                                    <% const bandSongAudio = (bandSongMap && bandSongMap[setlistSong.song.id]) || null; const
+                                                                        preferredAudioUrl = bandSongAudio && bandSongAudio.audio;
+                                                                        const availableAudioLinks = (setlistSong.song.links && setlistSong.song.links.filter(link => link.type === 'audio')) || [];
+                                                                        const preferredAudioLink = preferredAudioUrl ?
+                                                                        availableAudioLinks.find(l => l.url === preferredAudioUrl) :
+                                                                        null;
+                                                                        %>
+                                                                        <% if (preferredAudioLink) { %>
+                                                                            <%= preferredAudioLink.description || 'Audio File' %>
+                                                                        <% } else if (availableAudioLinks.length > 0) { %>
+                                                                            <%= availableAudioLinks[0].description || 'Audio File' %>
+                                                                        <% } else { %>
+                                                                            No audio files
+                                                                        <% } %>
+                                                                </button>
+                                                                <ul class="dropdown-menu">
+                                                                    <% if (availableAudioLinks.length > 0) { %>
+                                                                        <% availableAudioLinks.forEach((link) => { %>
+                                                                            <li>
+                                                                                <a class="dropdown-item <%= preferredAudioUrl === link.url ? 'active' : '' %>"
+                                                                                   href="#"
+                                                                                   onclick="setPreferredAudio(<%= setlistSong.song.id %>, '<%= link.url %>')">
+                                                                                    <i class="bi bi-headphones me-1"></i>
+                                                                                    <%= link.description || 'Audio File' %>
+                                                                                    <% if (preferredAudioUrl === link.url) { %>
+                                                                                        <i class="bi bi-check text-success ms-2"></i>
+                                                                                    <% } %>
+                                                                                </a>
+                                                                            </li>
+                                                                        <% }); %>
+                                                                            <li>
+                                                                                <hr class="dropdown-divider">
+                                                                            </li>
+                                                                            <li>
+                                                                                <a class="dropdown-item text-muted"
+                                                                                   href="#"
+                                                                                   onclick="setPreferredAudio(<%= setlistSong.song.id %>, null)">
+                                                                                    <i class="bi bi-x-circle"></i> Clear preference
+                                                                                </a>
+                                                                            </li>
+                                                                    <% } else { %>
+                                                                        <li><span class="dropdown-item-text text-muted">No audio files available</span></li>
+                                                                    <% } %>
+                                                                    <li>
+                                                                        <hr class="dropdown-divider">
+                                                                    </li>
+                                                                    <li>
+                                                                        <a class="dropdown-item"
+                                                                           href="/songs/<%= setlistSong.song.id %>/links/new?type=audio">
+                                                                            <i class="bi bi-plus-circle"></i>
+                                                                            Add audio file
+                                                                        </a>
+                                                                    </li>
                                                                 </ul>
                                                             </div>
                                                         </div>
@@ -628,6 +695,32 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Error updating preferred YouTube video');
+            });
+    }
+
+    function setPreferredAudio(songId, audioUrl) {
+        fetch(`/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/preferred-audio`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                songId: songId,
+                audioUrl: audioUrl
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show updated preferences
+                    location.reload();
+                } else {
+                    alert('Error updating preferred audio file: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating preferred audio file');
             });
     }
 
@@ -1291,12 +1384,12 @@
 }
 
 /* Fix dropdown positioning conflicts in same row */
-.song-extended-panel .col-md-6:first-child .dropdown-menu {
+.song-extended-panel .col-md-4:first-child .dropdown-menu {
     left: 0 !important;
     right: auto !important;
 }
 
-.song-extended-panel .col-md-6:last-child .dropdown-menu {
+.song-extended-panel .col-md-4:last-child .dropdown-menu {
     right: 0 !important;
     left: auto !important;
 }

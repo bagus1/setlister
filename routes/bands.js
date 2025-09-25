@@ -577,6 +577,67 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
   }
 });
 
+// POST /bands/:bandId/setlists/:setlistId/preferred-audio - Update preferred audio file for a song
+router.post("/:bandId/setlists/:setlistId/preferred-audio", requireAuth, async (req, res) => {
+  try {
+    const { songId, audioUrl } = req.body;
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const userId = req.session.user.id;
+
+    // Verify user has access to this setlist
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId: userId },
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).json({ error: "Setlist not found" });
+    }
+
+    if (setlist.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Update or create BandSong preference
+    await prisma.bandSong.upsert({
+      where: {
+        bandId_songId: {
+          bandId: bandId,
+          songId: songId,
+        },
+      },
+      update: {
+        audio: audioUrl || null,
+        updatedAt: new Date(),
+      },
+      create: {
+        bandId: bandId,
+        songId: songId,
+        audio: audioUrl || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true, message: "Preferred audio file updated" });
+  } catch (error) {
+    console.error("Update preferred audio error:", error);
+    res.status(500).json({ error: "Failed to update preferred audio file" });
+  }
+});
+
 // GET /bands/:bandId/setlists/:setlistId/playlist - Public playlist view
 router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
   try {
@@ -620,6 +681,23 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
           },
         },
       },
+    });
+
+    // Get band song preferences for audio files
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: bandId },
+      select: {
+        songId: true,
+        audio: true,
+      },
+    });
+
+    // Create a map of songId -> preferred audio URL
+    const audioPreferences = {};
+    bandSongs.forEach((bandSong) => {
+      if (bandSong.audio) {
+        audioPreferences[bandSong.songId] = bandSong.audio;
+      }
     });
 
     if (!setlist) {
@@ -710,6 +788,7 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
             order: setlistSong.order,
             duration: null,
             durationSeconds: null,
+            preferredAudioUrl: null,
           };
 
           // Try to parse duration from the time field first
@@ -723,9 +802,28 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
             }
           }
 
-          // If no duration from time field, try to get it from the first audio link
-          if (!songData.duration && setlistSong.song.links[0]) {
-            const duration = await getAudioDuration(setlistSong.song.links[0].url);
+          // Determine which audio file to use (preferred or first)
+          let audioUrl = null;
+          const preferredAudioUrl = audioPreferences[setlistSong.song.id];
+          
+          if (preferredAudioUrl) {
+            // Find the preferred audio link
+            const preferredLink = setlistSong.song.links.find(link => link.url === preferredAudioUrl);
+            if (preferredLink) {
+              audioUrl = preferredLink.url;
+              songData.preferredAudioUrl = preferredLink.url;
+            }
+          }
+          
+          // Fall back to first audio link if no preference or preferred link not found
+          if (!audioUrl) {
+            audioUrl = setlistSong.song.links[0].url;
+            songData.preferredAudioUrl = setlistSong.song.links[0].url;
+          }
+
+          // If no duration from time field, try to get it from the selected audio link
+          if (!songData.duration && audioUrl) {
+            const duration = await getAudioDuration(audioUrl);
             if (duration) {
               songData.duration = Math.round(duration);
               songData.durationSeconds = Math.round(duration);
@@ -757,6 +855,7 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
             order: setlistSong.order,
             duration: null,
             durationSeconds: null,
+            preferredAudioUrl: null,
           };
 
           // Try to parse duration from the time field first
@@ -770,9 +869,28 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
             }
           }
 
-          // If no duration from time field, try to get it from the first audio link
-          if (!songData.duration && setlistSong.song.links[0]) {
-            const duration = await getAudioDuration(setlistSong.song.links[0].url);
+          // Determine which audio file to use (preferred or first)
+          let audioUrl = null;
+          const preferredAudioUrl = audioPreferences[setlistSong.song.id];
+          
+          if (preferredAudioUrl) {
+            // Find the preferred audio link
+            const preferredLink = setlistSong.song.links.find(link => link.url === preferredAudioUrl);
+            if (preferredLink) {
+              audioUrl = preferredLink.url;
+              songData.preferredAudioUrl = preferredLink.url;
+            }
+          }
+          
+          // Fall back to first audio link if no preference or preferred link not found
+          if (!audioUrl) {
+            audioUrl = setlistSong.song.links[0].url;
+            songData.preferredAudioUrl = setlistSong.song.links[0].url;
+          }
+
+          // If no duration from time field, try to get it from the selected audio link
+          if (!songData.duration && audioUrl) {
+            const duration = await getAudioDuration(audioUrl);
             if (duration) {
               songData.duration = Math.round(duration);
               songData.durationSeconds = Math.round(duration);

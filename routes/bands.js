@@ -381,7 +381,7 @@ router.get("/:bandId/setlists/:setlistId/listen", async (req, res) => {
     }
     
     res.render("setlists/listen", {
-      title: `Listen - ${setlist.title}`,
+      title: `${setlist.band.name} - ${setlist.title}`,
       setlist,
       band: setlist.band,
       playlistData,

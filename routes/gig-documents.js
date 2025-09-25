@@ -247,6 +247,7 @@ router.get("/:songId/docs/:id", async (req, res) => {
       // For normal viewing, render with layout
       res.render("gig-documents/show", {
         title: `${getTypeDisplayName(gigDocument.type)} - v${gigDocument.version} - ${gigDocument.song.title}`,
+        marqueeTitle: gigDocument.song.title, // Set marquee to song name
         gigDocument,
         song: gigDocument.song,
         loggedIn: !!req.session.user,
@@ -313,6 +314,7 @@ router.get("/:songId/docs/:id/edit", requireAuth, async (req, res) => {
 
     res.render("gig-documents/edit", {
       title: `Edit ${getTypeDisplayName(gigDocument.type)} - v${gigDocument.version} - ${gigDocument.song.title}`,
+      marqueeTitle: gigDocument.song.title, // Set marquee to song name
       gigDocument,
       song: gigDocument.song,
       getTypeIcon,

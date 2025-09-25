@@ -116,9 +116,16 @@
                                 <!-- Clickable overlay for venue booking -->
                                 <a href="/bands/<%= band.id %>/venues/<%= bandVenue.venue.id %>" class="text-decoration-none text-dark stretched-link" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1;" title="Click to book a gig at <%= bandVenue.venue.name %>"></a>
                                 
-                                <% if (bandVenue.venue.venueType) { %>
-                                    <span class="badge bg-primary mb-2"><%= bandVenue.venue.venueType.name %></span>
-                                <% } %>
+                                <div class="mb-2">
+                                    <% if (bandVenue.venue.venueType) { %>
+                                        <span class="badge bg-primary me-1"><%= bandVenue.venue.venueType.name %></span>
+                                    <% } %>
+                                    <% if (bandVenue.venue.opportunities && bandVenue.venue.opportunities.length > 0) { %>
+                                        <span class="badge bg-success" title="Active Opportunity: <%= bandVenue.venue.opportunities[0].name %>">
+                                            <i class="bi bi-target"></i> Opportunity
+                                        </span>
+                                    <% } %>
+                                </div>
                                 
                                 <% if (bandVenue.venue.city && bandVenue.venue.state) { %>
                                     <p class="text-muted mb-2">

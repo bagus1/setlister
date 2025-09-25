@@ -4900,6 +4900,19 @@ router.get("/:id/venues", async (req, res) => {
                 socialType: true,
               },
             },
+            opportunities: {
+              where: {
+                bandId: parseInt(bandId),
+                status: {
+                  not: 'ARCHIVED'
+                }
+              },
+              select: {
+                id: true,
+                name: true,
+                status: true
+              }
+            },
           },
         },
       },

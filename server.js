@@ -77,6 +77,7 @@ app.use((req, res, next) => {
   res.locals.error = req.flash("error");
   res.locals.user = req.session.user || null;
   res.locals.currentUrl = req.originalUrl;
+  res.locals.hostname = req.hostname;
   next();
 });
 

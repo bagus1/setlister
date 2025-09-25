@@ -69,6 +69,32 @@
                                     <%= user.username %>
                                 </a>
                                 <ul class="dropdown-menu">
+                                    <% if (user && user.id === 1) { %>
+                                        <li>
+                                            <% 
+                                                // Determine current environment and target
+                                                const isLocal = hostname === 'localhost' || hostname.includes('localhost');
+                                                const currentPath = currentUrl || '/';
+                                                let targetUrl, linkText, iconClass;
+                                                
+                                                if (isLocal) {
+                                                    // Currently on local, show link to production
+                                                    targetUrl = `https://setlists.bagus.org${currentPath}`;
+                                                    linkText = 'See on prod';
+                                                    iconClass = 'bi-cloud';
+                                                } else {
+                                                    // Currently on production, show link to local
+                                                    targetUrl = `http://localhost:3000${currentPath}`;
+                                                    linkText = 'See on local';
+                                                    iconClass = 'bi-laptop';
+                                                }
+                                            %>
+                                            <a class="dropdown-item" href="<%= targetUrl %>" target="_blank">
+                                                <i class="bi <%= iconClass %>"></i> <%= linkText %>
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                    <% } %>
                                     <li>
                                         <a class="dropdown-item" href="/admin/whitelist-requests">
                                             <i class="bi bi-shield-check"></i> Manage Whitelist Requests

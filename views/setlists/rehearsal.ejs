@@ -197,17 +197,16 @@
                                     <% if (hasDocs) { %>
                                         <div class="list-group">
                                             <% setlistSong.song.gigDocuments.forEach(doc => { %>
-                                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <a href="/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
                                                     <div>
                                                         <i class="bi bi-file-earmark-text text-success"></i>
                                                         <%= getTypeDisplayName(doc.type) %> - v<%= doc.version %>
                                                     </div>
-                                                    <div>
-                                                        <a href="/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>" target="_blank" class="btn btn-outline-success btn-sm">
-                                                            <i class="bi bi-eye"></i> View
-                                                        </a>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="text-muted small">Click to view</span>
+                                                        <i class="bi bi-eye text-success"></i>
                                                     </div>
-                                                </div>
+                                                </a>
                                             <% }) %>
                                         </div>
                                     <% } %>

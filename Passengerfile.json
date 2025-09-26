@@ -7,5 +7,6 @@
         "NODE_ENV": "production",
         "BASE_URL": "https://thebandplan.com",
         "FROM_EMAIL": "noreply@thebandplan.com"
+        
     }
 }

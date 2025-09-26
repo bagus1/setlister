@@ -3,8 +3,6 @@ const { google } = require("googleapis");
 const path = require("path");
 const fs = require("fs");
 const { prisma } = require("../lib/prisma");
-const { SpacesServiceClient } = require("@google-apps/meet");
-const { authenticate } = require("@google-cloud/local-auth");
 
 const router = express.Router();
 
@@ -14,7 +12,6 @@ const SCOPES = [
   "https://www.googleapis.com/auth/documents.readonly",
   "https://www.googleapis.com/auth/drive.readonly",
   "https://www.googleapis.com/auth/calendar",
-  "https://www.googleapis.com/auth/meetings.space.created",
 ];
 
 // Initialize Google Drive API client for exporting documents
@@ -66,57 +63,50 @@ function getGoogleCalendarClient() {
   }
 }
 
-// Create a Google Meet meeting
+// Create a Google Meet meeting using Google Calendar API
 async function createGoogleMeetMeeting(bandName, meetingTitle = null) {
   try {
-    // Use the same credentials file as other Google services
-    const credentialsPath = process.env.GOOGLE_CREDENTIALS_FILE
-      ? path.join(__dirname, "..", process.env.GOOGLE_CREDENTIALS_FILE)
-      : path.join(__dirname, "..", "setlister-api-8ba5ce617f03.json");
+    const calendar = getGoogleCalendarClient();
 
-    if (!fs.existsSync(credentialsPath)) {
-      throw new Error(
-        `Google credentials file not found at: ${credentialsPath}`
-      );
-    }
+    const now = new Date();
+    const endTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
 
-    // Authenticate with Google Meet API
-    const authClient = await authenticate({
-      scopes: ["https://www.googleapis.com/auth/meetings.space.created"],
-      keyfilePath: credentialsPath,
-    });
-
-    const meetClient = new SpacesServiceClient({
-      authClient,
-    });
-
-    // Create a new meeting space
-    const request = {
-      space: {
-        config: {
-          accessType: "OPEN", // Anyone with the link can join
-          entryPointAccess: "CREATOR_APP_ONLY", // Only the creator can start the meeting
+    const event = {
+      summary: meetingTitle || `${bandName} Band Meeting`,
+      description: `Instant band meeting for ${bandName}. Join to collaborate on setlists, share screen for sheet music, and rehearse together.`,
+      start: {
+        dateTime: now.toISOString(),
+        timeZone: "America/Denver", // Adjust timezone as needed
+      },
+      end: {
+        dateTime: endTime.toISOString(),
+        timeZone: "America/Denver",
+      },
+      conferenceData: {
+        createRequest: {
+          requestId: `band-meeting-${Date.now()}`,
+          conferenceSolutionKey: {
+            type: "hangoutsMeet",
+          },
         },
       },
+      attendees: [], // We'll add attendees via email notifications
     };
 
-    const response = await meetClient.createSpace(request);
-    const meetingSpace = response[0];
-    const meetingLink = meetingSpace.meetingUri;
-
-    console.log(
-      `Successfully created a new Google Meet space for ${bandName}.`
-    );
-    console.log(`Meeting URL: ${meetingLink}`);
+    const response = await calendar.events.insert({
+      calendarId: "primary",
+      resource: event,
+      conferenceDataVersion: 1,
+    });
 
     return {
-      meetingLink: meetingLink,
-      meetingId: meetingSpace.name, // The space name/ID
-      hangoutLink: meetingLink,
+      meetingLink: response.data.conferenceData.entryPoints[0].uri,
+      meetingId: response.data.id,
+      hangoutLink: response.data.hangoutLink,
     };
   } catch (error) {
-    console.error("Error creating Google Meet space:", error);
-    throw new Error(`Failed to create Google Meet meeting: ${error.message}`);
+    console.error("Error creating Google Meet meeting:", error);
+    throw new Error("Failed to create Google Meet meeting");
   }
 }
 

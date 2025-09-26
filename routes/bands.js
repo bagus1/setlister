@@ -7285,14 +7285,15 @@ router.post("/:id/start-meeting", requireAuth, async (req, res) => {
     } catch (meetError) {
       console.error("Google Meet API error:", meetError);
 
-      // Fallback: Generate a simple meeting link
-      // This creates a basic meeting link that users can join
+      // Fallback: Use Google Meet's instant meeting feature
+      // This redirects to Google Meet where users can start a new meeting
       const { v4: uuidv4 } = require("uuid");
-      const fallbackId = uuidv4().replace(/-/g, "").substring(0, 10);
+      const meetingId = uuidv4().replace(/-/g, "").substring(0, 8);
+
       meetingData = {
-        meetingLink: `https://meet.google.com/${fallbackId}`,
-        meetingId: fallbackId,
-        hangoutLink: `https://meet.google.com/${fallbackId}`,
+        meetingLink: `https://meet.google.com/new`,
+        meetingId: meetingId,
+        hangoutLink: `https://meet.google.com/new`,
       };
     }
 

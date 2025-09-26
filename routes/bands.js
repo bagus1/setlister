@@ -79,19 +79,21 @@ function generateChangeSummary(previousState, currentState) {
   }
 
   const changes = [];
-  const prevSets = new Map(previousState.sets.map(set => [set.name, set]));
-  const currSets = new Map(currentState.sets.map(set => [set.name, set]));
+  const prevSets = new Map(previousState.sets.map((set) => [set.name, set]));
+  const currSets = new Map(currentState.sets.map((set) => [set.name, set]));
 
   // Check for songs added/removed/moved
   for (const [setName, currSet] of currSets) {
     const prevSet = prevSets.get(setName);
-    const prevSongs = prevSet ? new Set(prevSet.songs.map(s => s.songId)) : new Set();
-    const currSongs = new Set(currSet.songs.map(s => s.songId));
+    const prevSongs = prevSet
+      ? new Set(prevSet.songs.map((s) => s.songId))
+      : new Set();
+    const currSongs = new Set(currSet.songs.map((s) => s.songId));
 
     // Songs added to this set
     for (const songId of currSongs) {
       if (!prevSongs.has(songId)) {
-        const song = currSet.songs.find(s => s.songId === songId);
+        const song = currSet.songs.find((s) => s.songId === songId);
         changes.push(`Added "${song.title}" to ${setName}`);
       }
     }
@@ -99,7 +101,7 @@ function generateChangeSummary(previousState, currentState) {
     // Songs removed from this set
     for (const songId of prevSongs) {
       if (!currSongs.has(songId)) {
-        const song = prevSet.songs.find(s => s.songId === songId);
+        const song = prevSet.songs.find((s) => s.songId === songId);
         changes.push(`Removed "${song.title}" from ${setName}`);
       }
     }
@@ -110,13 +112,19 @@ function generateChangeSummary(previousState, currentState) {
     const prevSet = prevSets.get(setName);
     if (!prevSet) continue;
 
-    const prevSongs = prevSet.songs.map(s => ({ id: s.songId, title: s.title }));
-    const currSongs = currSet.songs.map(s => ({ id: s.songId, title: s.title }));
+    const prevSongs = prevSet.songs.map((s) => ({
+      id: s.songId,
+      title: s.title,
+    }));
+    const currSongs = currSet.songs.map((s) => ({
+      id: s.songId,
+      title: s.title,
+    }));
 
     // Check if songs were reordered within the set
-    const prevOrder = prevSongs.map(s => s.id).join(',');
-    const currOrder = currSongs.map(s => s.id).join(',');
-    
+    const prevOrder = prevSongs.map((s) => s.id).join(",");
+    const currOrder = currSongs.map((s) => s.id).join(",");
+
     if (prevOrder !== currOrder && prevSongs.length === currSongs.length) {
       changes.push(`Reordered songs in ${setName}`);
     }
@@ -379,7 +387,7 @@ router.get("/:bandId/setlists/:setlistId/listen", async (req, res) => {
         .status(500)
         .send("Failed to fetch or parse the external recordings playlist");
     }
-    
+
     res.render("setlists/listen", {
       title: `${setlist.band.name} - ${setlist.title}`,
       setlist,
@@ -578,68 +586,71 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
   }
 });
 
+// POST /bands/:bandId/setlists/:setlistId/preferred-audio - Update preferred audio file for a song
+router.post(
+  "/:bandId/setlists/:setlistId/preferred-audio",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { songId, audioUrl } = req.body;
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const parsedSongId = parseInt(songId);
+      const userId = req.session.user.id;
 
-  // POST /bands/:bandId/setlists/:setlistId/preferred-audio - Update preferred audio file for a song
-  router.post("/:bandId/setlists/:setlistId/preferred-audio", requireAuth, async (req, res) => {
-  try {
-    const { songId, audioUrl } = req.body;
-    const bandId = parseInt(req.params.bandId);
-    const setlistId = parseInt(req.params.setlistId);
-    const parsedSongId = parseInt(songId);
-    const userId = req.session.user.id;
-
-    // Verify user has access to this setlist
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: {
-                id: true,
+      // Verify user has access to this setlist
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                select: {
+                  id: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!setlist) {
-      return res.status(404).json({ error: "Setlist not found" });
-    }
+      if (!setlist) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
 
-    if (setlist.band.members.length === 0) {
-      return res.status(403).json({ error: "Access denied" });
-    }
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Access denied" });
+      }
 
-    // Update or create BandSong preference
-    await prisma.bandSong.upsert({
-      where: {
-        bandId_songId: {
+      // Update or create BandSong preference
+      await prisma.bandSong.upsert({
+        where: {
+          bandId_songId: {
+            bandId: bandId,
+            songId: parsedSongId,
+          },
+        },
+        update: {
+          audio: audioUrl || null,
+          updatedAt: new Date(),
+        },
+        create: {
           bandId: bandId,
           songId: parsedSongId,
+          audio: audioUrl || null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
-      },
-      update: {
-        audio: audioUrl || null,
-        updatedAt: new Date(),
-      },
-      create: {
-        bandId: bandId,
-        songId: parsedSongId,
-        audio: audioUrl || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
+      });
 
-    res.json({ success: true, message: "Preferred audio file updated" });
-  } catch (error) {
-    console.error("Update preferred audio error:", error);
-    res.status(500).json({ error: "Failed to update preferred audio file" });
+      res.json({ success: true, message: "Preferred audio file updated" });
+    } catch (error) {
+      console.error("Update preferred audio error:", error);
+      res.status(500).json({ error: "Failed to update preferred audio file" });
+    }
   }
-});
+);
 
 // GET /bands/:bandId/setlists/:setlistId/playlist - Public playlist view
 router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
@@ -796,7 +807,9 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
 
           // Try to parse duration from the time field first
           if (setlistSong.song.time) {
-            const parsedDuration = parseDurationToSeconds(setlistSong.song.time);
+            const parsedDuration = parseDurationToSeconds(
+              setlistSong.song.time
+            );
             if (parsedDuration) {
               songData.duration = Math.round(parsedDuration);
               songData.durationSeconds = Math.round(parsedDuration);
@@ -808,16 +821,18 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
           // Determine which audio file to use (preferred or first)
           let audioUrl = null;
           const preferredAudioUrl = audioPreferences[setlistSong.song.id];
-          
+
           if (preferredAudioUrl) {
             // Find the preferred audio link
-            const preferredLink = setlistSong.song.links.find(link => link.url === preferredAudioUrl);
+            const preferredLink = setlistSong.song.links.find(
+              (link) => link.url === preferredAudioUrl
+            );
             if (preferredLink) {
               audioUrl = preferredLink.url;
               songData.preferredAudioUrl = preferredLink.url;
             }
           }
-          
+
           // Fall back to first audio link if no preference or preferred link not found
           if (!audioUrl) {
             audioUrl = setlistSong.song.links[0].url;
@@ -863,7 +878,9 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
 
           // Try to parse duration from the time field first
           if (setlistSong.song.time) {
-            const parsedDuration = parseDurationToSeconds(setlistSong.song.time);
+            const parsedDuration = parseDurationToSeconds(
+              setlistSong.song.time
+            );
             if (parsedDuration) {
               songData.duration = Math.round(parsedDuration);
               songData.durationSeconds = Math.round(parsedDuration);
@@ -875,16 +892,18 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
           // Determine which audio file to use (preferred or first)
           let audioUrl = null;
           const preferredAudioUrl = audioPreferences[setlistSong.song.id];
-          
+
           if (preferredAudioUrl) {
             // Find the preferred audio link
-            const preferredLink = setlistSong.song.links.find(link => link.url === preferredAudioUrl);
+            const preferredLink = setlistSong.song.links.find(
+              (link) => link.url === preferredAudioUrl
+            );
             if (preferredLink) {
               audioUrl = preferredLink.url;
               songData.preferredAudioUrl = preferredLink.url;
             }
           }
-          
+
           // Fall back to first audio link if no preference or preferred link not found
           if (!audioUrl) {
             audioUrl = setlistSong.song.links[0].url;
@@ -930,145 +949,148 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
 });
 
 // GET /bands/:bandId/setlists/:setlistId/youtube-playlist - Public YouTube playlist view
-router.get("/:bandId/setlists/:setlistId/youtube-playlist", async (req, res) => {
-  try {
-    const bandId = parseInt(req.params.bandId);
-    const setlistId = parseInt(req.params.setlistId);
+router.get(
+  "/:bandId/setlists/:setlistId/youtube-playlist",
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
 
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          select: {
-            id: true,
-            name: true,
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
-        },
-        sets: {
-          include: {
-            songs: {
-              include: {
-                song: {
-                  include: {
-                    artists: {
-                      include: {
-                        artist: true,
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: {
+                    include: {
+                      artists: {
+                        include: {
+                          artist: true,
+                        },
                       },
-                    },
-                    vocalist: true,
-                    links: {
-                      where: { type: "youtube" },
+                      vocalist: true,
+                      links: {
+                        where: { type: "youtube" },
+                      },
                     },
                   },
                 },
-              },
-              orderBy: {
-                order: "asc",
+                orderBy: {
+                  order: "asc",
+                },
               },
             },
-          },
-          orderBy: {
-            order: "asc",
+            orderBy: {
+              order: "asc",
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!setlist) {
-      return res.status(404).send("Setlist not found");
-    }
-
-    // Verify the setlist belongs to the specified band
-    if (setlist.band.id !== bandId) {
-      return res.status(404).send("Setlist not found");
-    }
-
-    // Load BandSong preferences for the band
-    const bandSongs = await prisma.bandSong.findMany({
-      where: { bandId: setlist.band.id },
-      select: {
-        songId: true,
-        youtube: true,
-      },
-    });
-
-    // Create a map of songId -> preferred YouTube URL
-    const bandSongMap = {};
-    bandSongs.forEach((bandSong) => {
-      if (bandSong.youtube) {
-        bandSongMap[bandSong.songId] = { youtube: bandSong.youtube };
+      if (!setlist) {
+        return res.status(404).send("Setlist not found");
       }
-    });
 
-    // Collect YouTube links using preferred links when available
-    const youtubeLinks = [];
-    const seenVideoIds = new Set(); // Track seen video IDs to prevent duplicates
+      // Verify the setlist belongs to the specified band
+      if (setlist.band.id !== bandId) {
+        return res.status(404).send("Setlist not found");
+      }
 
-    setlist.sets.forEach((set) => {
-      if (set.songs && set.name !== "Maybe") {
-        set.songs.forEach((setlistSong) => {
-          if (setlistSong.song) {
-            const songId = setlistSong.song.id;
-            const bandSong = bandSongMap[songId];
+      // Load BandSong preferences for the band
+      const bandSongs = await prisma.bandSong.findMany({
+        where: { bandId: setlist.band.id },
+        select: {
+          songId: true,
+          youtube: true,
+        },
+      });
 
-            // Get available YouTube links
-            const availableYoutubeLinks =
-              setlistSong.song.links?.filter(
-                (link) => link.type === "youtube"
-              ) || [];
+      // Create a map of songId -> preferred YouTube URL
+      const bandSongMap = {};
+      bandSongs.forEach((bandSong) => {
+        if (bandSong.youtube) {
+          bandSongMap[bandSong.songId] = { youtube: bandSong.youtube };
+        }
+      });
 
-            if (availableYoutubeLinks.length > 0) {
-              let selectedLink = null;
+      // Collect YouTube links using preferred links when available
+      const youtubeLinks = [];
+      const seenVideoIds = new Set(); // Track seen video IDs to prevent duplicates
 
-              // Use preferred YouTube link if available
-              if (bandSong?.youtube) {
-                selectedLink = availableYoutubeLinks.find(
-                  (link) => link.url === bandSong.youtube
-                );
-              }
+      setlist.sets.forEach((set) => {
+        if (set.songs && set.name !== "Maybe") {
+          set.songs.forEach((setlistSong) => {
+            if (setlistSong.song) {
+              const songId = setlistSong.song.id;
+              const bandSong = bandSongMap[songId];
 
-              // Fallback to first available if no preference or preferred not found
-              if (!selectedLink) {
-                selectedLink = availableYoutubeLinks[0];
-              }
+              // Get available YouTube links
+              const availableYoutubeLinks =
+                setlistSong.song.links?.filter(
+                  (link) => link.type === "youtube"
+                ) || [];
 
-              if (selectedLink) {
-                const videoId = extractYouTubeVideoId(selectedLink.url);
-                if (videoId && !seenVideoIds.has(videoId)) {
-                  seenVideoIds.add(videoId);
-                  youtubeLinks.push({
-                    songTitle: setlistSong.song.title,
-                    artist:
-                      setlistSong.song.artists &&
-                      setlistSong.song.artists.length > 0
-                        ? setlistSong.song.artists[0].artist.name
-                        : null,
-                    set: set.name,
-                    order: setlistSong.order,
-                    url: selectedLink.url,
-                    videoId: videoId,
-                  });
+              if (availableYoutubeLinks.length > 0) {
+                let selectedLink = null;
+
+                // Use preferred YouTube link if available
+                if (bandSong?.youtube) {
+                  selectedLink = availableYoutubeLinks.find(
+                    (link) => link.url === bandSong.youtube
+                  );
+                }
+
+                // Fallback to first available if no preference or preferred not found
+                if (!selectedLink) {
+                  selectedLink = availableYoutubeLinks[0];
+                }
+
+                if (selectedLink) {
+                  const videoId = extractYouTubeVideoId(selectedLink.url);
+                  if (videoId && !seenVideoIds.has(videoId)) {
+                    seenVideoIds.add(videoId);
+                    youtubeLinks.push({
+                      songTitle: setlistSong.song.title,
+                      artist:
+                        setlistSong.song.artists &&
+                        setlistSong.song.artists.length > 0
+                          ? setlistSong.song.artists[0].artist.name
+                          : null,
+                      set: set.name,
+                      order: setlistSong.order,
+                      url: selectedLink.url,
+                      videoId: videoId,
+                    });
+                  }
                 }
               }
             }
-          }
-        });
-      }
-    });
+          });
+        }
+      });
 
-    res.render("setlists/youtube-playlist", {
-      title: `YouTube Playlist - ${setlist.title}`,
-      pageTitle: `YouTube Playlist - ${setlist.title}`,
-      setlist,
-      band: setlist.band,
-      youtubeLinks,
-      user: req.session.user || null,
-    });
-  } catch (error) {
-    logger.logError("YouTube playlist error", error);
-    res.status(500).send("Error loading YouTube playlist");
+      res.render("setlists/youtube-playlist", {
+        title: `YouTube Playlist - ${setlist.title}`,
+        pageTitle: `YouTube Playlist - ${setlist.title}`,
+        setlist,
+        band: setlist.band,
+        youtubeLinks,
+        user: req.session.user || null,
+      });
+    } catch (error) {
+      logger.logError("YouTube playlist error", error);
+      res.status(500).send("Error loading YouTube playlist");
+    }
   }
-});
+);
 
 // Helper function to extract YouTube video ID from URL
 function extractYouTubeVideoId(url) {
@@ -1082,66 +1104,69 @@ function extractYouTubeVideoId(url) {
 router.use(requireAuth);
 
 // POST /bands/:bandId/setlists/:setlistId/save-recordings-url - Save recordings URL for a setlist
-router.post("/:bandId/setlists/:setlistId/save-recordings-url", async (req, res) => {
-  try {
-    const bandId = parseInt(req.params.bandId);
-    const setlistId = parseInt(req.params.setlistId);
-    const userId = req.session.user.id;
-    const { recordingsUrl } = req.body;
+router.post(
+  "/:bandId/setlists/:setlistId/save-recordings-url",
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const userId = req.session.user.id;
+      const { recordingsUrl } = req.body;
 
-    // Validate input
-    if (!recordingsUrl) {
-      return res.status(400).json({ error: "Recordings URL is required" });
-    }
+      // Validate input
+      if (!recordingsUrl) {
+        return res.status(400).json({ error: "Recordings URL is required" });
+      }
 
-    // Find setlist and verify user has access
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: {
-                id: true,
+      // Find setlist and verify user has access
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                select: {
+                  id: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!setlist) {
-      return res
-        .status(404)
-        .json({ error: "Setlist not found or access denied" });
+      if (!setlist) {
+        return res
+          .status(404)
+          .json({ error: "Setlist not found or access denied" });
+      }
+
+      // Verify the setlist belongs to the specified band
+      if (setlist.bandId !== bandId) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
+
+      // Verify user is a member of the band
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Update the setlist with the recordings URL
+      await prisma.setlist.update({
+        where: { id: setlistId },
+        data: {
+          recordingsUrl,
+          updatedAt: new Date(),
+        },
+      });
+
+      res.json({ success: true, message: "Recordings URL saved successfully" });
+    } catch (error) {
+      logger.logError("Save recordings URL error", error);
+      res.status(500).json({ error: "Server error" });
     }
-
-    // Verify the setlist belongs to the specified band
-    if (setlist.bandId !== bandId) {
-      return res.status(404).json({ error: "Setlist not found" });
-    }
-
-    // Verify user is a member of the band
-    if (setlist.band.members.length === 0) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    // Update the setlist with the recordings URL
-    await prisma.setlist.update({
-      where: { id: setlistId },
-      data: {
-        recordingsUrl,
-        updatedAt: new Date(),
-      },
-    });
-
-    res.json({ success: true, message: "Recordings URL saved successfully" });
-  } catch (error) {
-    logger.logError("Save recordings URL error", error);
-    res.status(500).json({ error: "Server error" });
   }
-});
+);
 
 // GET /bands/:bandId/setlists/:setlistId/edit - Show setlist edit page with drag-drop
 router.get("/:bandId/setlists/:setlistId/edit", async (req, res) => {
@@ -1594,22 +1619,22 @@ router.get("/:id", async (req, res) => {
       where: {
         bandId: parseInt(bandId),
         status: {
-          not: 'BOOKED'
-        }
+          not: "BOOKED",
+        },
       },
       include: {
         venue: true,
         interactions: {
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc",
           },
-          take: 1
-        }
+          take: 1,
+        },
       },
       orderBy: {
-        updatedAt: 'desc'
+        updatedAt: "desc",
       },
-      take: 5
+      take: 5,
     });
 
     // Get pending invitations (not used, not expired)
@@ -2082,7 +2107,9 @@ router.get("/:id/songs", async (req, res) => {
 
     if (referrer) {
       // Look for setlist edit URL pattern: /bands/:bandId/setlists/:setlistId/edit
-      const setlistEditMatch = referrer.match(/\/bands\/(\d+)\/setlists\/(\d+)\/edit/);
+      const setlistEditMatch = referrer.match(
+        /\/bands\/(\d+)\/setlists\/(\d+)\/edit/
+      );
       if (setlistEditMatch) {
         const setlistId = setlistEditMatch[2];
         // Verify the setlist exists and belongs to this band
@@ -4905,14 +4932,14 @@ router.get("/:id/venues", async (req, res) => {
               where: {
                 bandId: parseInt(bandId),
                 status: {
-                  not: 'ARCHIVED'
-                }
+                  not: "ARCHIVED",
+                },
               },
               select: {
                 id: true,
                 name: true,
-                status: true
-              }
+                status: true,
+              },
             },
           },
         },
@@ -4959,7 +4986,7 @@ router.get("/:id/gigs", requireAuth, async (req, res) => {
             opportunity: true,
           },
           orderBy: {
-            gigDate: 'asc',
+            gigDate: "asc",
           },
         },
       },
@@ -5045,9 +5072,9 @@ router.get("/:id/gigs/:gigId", requireAuth, async (req, res) => {
 
     // Get gig with all details
     const gig = await prisma.gig.findFirst({
-      where: { 
+      where: {
         id: parseInt(gigId),
-        bandId: parseInt(bandId)
+        bandId: parseInt(bandId),
       },
       include: {
         venue: {
@@ -5073,7 +5100,7 @@ router.get("/:id/gigs/:gigId", requireAuth, async (req, res) => {
                 },
               },
               orderBy: {
-                interactionDate: 'desc',
+                interactionDate: "desc",
               },
               take: 5, // Show latest 5 interactions
             },
@@ -5118,9 +5145,9 @@ router.get("/:id/gigs/:gigId/edit", requireAuth, async (req, res) => {
 
     // Get gig with venues
     const gig = await prisma.gig.findFirst({
-      where: { 
+      where: {
         id: parseInt(gigId),
-        bandId: parseInt(bandId)
+        bandId: parseInt(bandId),
       },
       include: {
         venue: true,
@@ -5155,86 +5182,133 @@ router.get("/:id/gigs/:gigId/edit", requireAuth, async (req, res) => {
 });
 
 // POST /bands/:id/gigs/:gigId - Update gig
-router.post("/:id/gigs/:gigId", requireAuth, [
-  body("name").notEmpty().withMessage("Gig name is required"),
-  body("gigDate").notEmpty().withMessage("Gig date is required").isISO8601().withMessage("Invalid date format"),
-  body("venueId").notEmpty().withMessage("Venue is required").isInt().withMessage("Invalid venue"),
-  body("fee").optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage("Fee must be a positive number"),
-  body("loadInTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid load-in time format"),
-  body("soundCheckTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid sound check time format"),
-  body("startTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid start time format"),
-  body("endTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid end time format"),
-], async (req, res) => {
-  try {
-    const { id: bandId, gigId } = req.params;
-    const userId = req.session.user.id;
+router.post(
+  "/:id/gigs/:gigId",
+  requireAuth,
+  [
+    body("name").notEmpty().withMessage("Gig name is required"),
+    body("gigDate")
+      .notEmpty()
+      .withMessage("Gig date is required")
+      .isISO8601()
+      .withMessage("Invalid date format"),
+    body("venueId")
+      .notEmpty()
+      .withMessage("Venue is required")
+      .isInt()
+      .withMessage("Invalid venue"),
+    body("fee")
+      .optional({ checkFalsy: true })
+      .isFloat({ min: 0 })
+      .withMessage("Fee must be a positive number"),
+    body("loadInTime")
+      .optional({ checkFalsy: true })
+      .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Invalid load-in time format"),
+    body("soundCheckTime")
+      .optional({ checkFalsy: true })
+      .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Invalid sound check time format"),
+    body("startTime")
+      .optional({ checkFalsy: true })
+      .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Invalid start time format"),
+    body("endTime")
+      .optional({ checkFalsy: true })
+      .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Invalid end time format"),
+  ],
+  async (req, res) => {
+    try {
+      const { id: bandId, gigId } = req.params;
+      const userId = req.session.user.id;
 
-    // Check validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      req.flash("error", errors.array()[0].msg);
-      return res.redirect(`/bands/${bandId}/gigs/${gigId}/edit`);
-    }
+      // Check validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        req.flash("error", errors.array()[0].msg);
+        return res.redirect(`/bands/${bandId}/gigs/${gigId}/edit`);
+      }
 
-    // Check if user is a member
-    const membership = await prisma.bandMember.findFirst({
-      where: { bandId: parseInt(bandId), userId },
-    });
+      // Check if user is a member
+      const membership = await prisma.bandMember.findFirst({
+        where: { bandId: parseInt(bandId), userId },
+      });
 
-    if (!membership) {
-      req.flash("error", "You are not a member of this band");
-      return res.redirect("/bands");
-    }
+      if (!membership) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
 
-    // Verify gig exists and belongs to band
-    const existingGig = await prisma.gig.findFirst({
-      where: { 
-        id: parseInt(gigId),
-        bandId: parseInt(bandId)
-      },
-    });
+      // Verify gig exists and belongs to band
+      const existingGig = await prisma.gig.findFirst({
+        where: {
+          id: parseInt(gigId),
+          bandId: parseInt(bandId),
+        },
+      });
 
-    if (!existingGig) {
-      req.flash("error", "Gig not found");
-      return res.redirect(`/bands/${bandId}/gigs`);
-    }
+      if (!existingGig) {
+        req.flash("error", "Gig not found");
+        return res.redirect(`/bands/${bandId}/gigs`);
+      }
 
-    const { name, gigDate, venueId, fee, loadInTime, soundCheckTime, startTime, endTime, notes, status, ticketLink, facebookEventLink } = req.body;
-
-    // Convert time strings to DateTime objects if provided
-    const gigDateTime = new Date(gigDate);
-    const loadInDateTime = loadInTime ? new Date(`${gigDate}T${loadInTime}:00`) : null;
-    const soundCheckDateTime = soundCheckTime ? new Date(`${gigDate}T${soundCheckTime}:00`) : null;
-    const startDateTime = startTime ? new Date(`${gigDate}T${startTime}:00`) : null;
-    const endDateTime = endTime ? new Date(`${gigDate}T${endTime}:00`) : null;
-
-    // Update the gig
-    await prisma.gig.update({
-      where: { id: parseInt(gigId) },
-      data: {
+      const {
         name,
-        gigDate: gigDateTime,
-        venueId: parseInt(venueId),
-        fee: fee ? parseFloat(fee) : null,
-        loadInTime: loadInDateTime,
-        soundCheckTime: soundCheckDateTime,
-        startTime: startDateTime,
-        endTime: endDateTime,
-        notes: notes || null,
-        ticketLink: ticketLink || null,
-        facebookEventLink: facebookEventLink || null,
-        status: status || 'CONFIRMED',
-      },
-    });
+        gigDate,
+        venueId,
+        fee,
+        loadInTime,
+        soundCheckTime,
+        startTime,
+        endTime,
+        notes,
+        status,
+        ticketLink,
+        facebookEventLink,
+      } = req.body;
 
-    req.flash("success", "Gig updated successfully!");
-    res.redirect(`/bands/${bandId}/gigs/${gigId}`);
-  } catch (error) {
-    logger.logError("Update gig error:", error);
-    req.flash("error", "An error occurred while updating the gig");
-    res.redirect(`/bands/${req.params.id}/gigs/${req.params.gigId}/edit`);
+      // Convert time strings to DateTime objects if provided
+      const gigDateTime = new Date(gigDate);
+      const loadInDateTime = loadInTime
+        ? new Date(`${gigDate}T${loadInTime}:00`)
+        : null;
+      const soundCheckDateTime = soundCheckTime
+        ? new Date(`${gigDate}T${soundCheckTime}:00`)
+        : null;
+      const startDateTime = startTime
+        ? new Date(`${gigDate}T${startTime}:00`)
+        : null;
+      const endDateTime = endTime ? new Date(`${gigDate}T${endTime}:00`) : null;
+
+      // Update the gig
+      await prisma.gig.update({
+        where: { id: parseInt(gigId) },
+        data: {
+          name,
+          gigDate: gigDateTime,
+          venueId: parseInt(venueId),
+          fee: fee ? parseFloat(fee) : null,
+          loadInTime: loadInDateTime,
+          soundCheckTime: soundCheckDateTime,
+          startTime: startDateTime,
+          endTime: endDateTime,
+          notes: notes || null,
+          ticketLink: ticketLink || null,
+          facebookEventLink: facebookEventLink || null,
+          status: status || "CONFIRMED",
+        },
+      });
+
+      req.flash("success", "Gig updated successfully!");
+      res.redirect(`/bands/${bandId}/gigs/${gigId}`);
+    } catch (error) {
+      logger.logError("Update gig error:", error);
+      req.flash("error", "An error occurred while updating the gig");
+      res.redirect(`/bands/${req.params.id}/gigs/${req.params.gigId}/edit`);
+    }
   }
-});
+);
 
 // DELETE /bands/:id/gigs/:gigId - Delete gig
 router.delete("/:id/gigs/:gigId", requireAuth, async (req, res) => {
@@ -5254,9 +5328,9 @@ router.delete("/:id/gigs/:gigId", requireAuth, async (req, res) => {
 
     // Verify gig exists and belongs to band
     const gig = await prisma.gig.findFirst({
-      where: { 
+      where: {
         id: parseInt(gigId),
-        bandId: parseInt(bandId)
+        bandId: parseInt(bandId),
       },
     });
 
@@ -5297,9 +5371,9 @@ router.post("/:id/gigs/:gigId/delete", requireAuth, async (req, res) => {
 
     // Verify gig exists and belongs to band
     const gig = await prisma.gig.findFirst({
-      where: { 
+      where: {
         id: parseInt(gigId),
-        bandId: parseInt(bandId)
+        bandId: parseInt(bandId),
       },
     });
 
@@ -5323,90 +5397,137 @@ router.post("/:id/gigs/:gigId/delete", requireAuth, async (req, res) => {
 });
 
 // POST /bands/:id/gigs - Create new gig
-router.post("/:id/gigs", requireAuth, [
-  body("name").notEmpty().withMessage("Gig name is required"),
-  body("gigDate").notEmpty().withMessage("Gig date is required").isISO8601().withMessage("Invalid date format"),
-  body("venueId").notEmpty().withMessage("Venue is required").isInt().withMessage("Invalid venue"),
-  body("fee").optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage("Fee must be a positive number"),
-  body("loadInTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid load-in time format"),
-  body("soundCheckTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid sound check time format"),
-  body("startTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid start time format"),
-  body("endTime").optional({ checkFalsy: true }).matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Invalid end time format"),
-], async (req, res) => {
-  try {
-    const bandId = req.params.id;
-    const userId = req.session.user.id;
-    
-    // Check validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      req.flash("error", errors.array().map(error => error.msg).join(", "));
-      return res.redirect(`/bands/${bandId}/gigs/new`);
+router.post(
+  "/:id/gigs",
+  requireAuth,
+  [
+    body("name").notEmpty().withMessage("Gig name is required"),
+    body("gigDate")
+      .notEmpty()
+      .withMessage("Gig date is required")
+      .isISO8601()
+      .withMessage("Invalid date format"),
+    body("venueId")
+      .notEmpty()
+      .withMessage("Venue is required")
+      .isInt()
+      .withMessage("Invalid venue"),
+    body("fee")
+      .optional({ checkFalsy: true })
+      .isFloat({ min: 0 })
+      .withMessage("Fee must be a positive number"),
+    body("loadInTime")
+      .optional({ checkFalsy: true })
+      .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Invalid load-in time format"),
+    body("soundCheckTime")
+      .optional({ checkFalsy: true })
+      .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Invalid sound check time format"),
+    body("startTime")
+      .optional({ checkFalsy: true })
+      .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Invalid start time format"),
+    body("endTime")
+      .optional({ checkFalsy: true })
+      .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Invalid end time format"),
+  ],
+  async (req, res) => {
+    try {
+      const bandId = req.params.id;
+      const userId = req.session.user.id;
+
+      // Check validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        req.flash(
+          "error",
+          errors
+            .array()
+            .map((error) => error.msg)
+            .join(", ")
+        );
+        return res.redirect(`/bands/${bandId}/gigs/new`);
+      }
+
+      // Check if user is a member
+      const membership = await prisma.bandMember.findFirst({
+        where: { bandId: parseInt(bandId), userId },
+      });
+
+      if (!membership) {
+        req.flash("error", "You are not a member of this band");
+        return res.redirect("/bands");
+      }
+
+      const {
+        name,
+        gigDate,
+        venueId,
+        fee,
+        loadInTime,
+        soundCheckTime,
+        startTime,
+        endTime,
+        notes,
+        ticketLink,
+        facebookEventLink,
+      } = req.body;
+
+      // Verify venue belongs to band
+      const bandVenue = await prisma.bandVenue.findFirst({
+        where: {
+          bandId: parseInt(bandId),
+          venueId: parseInt(venueId),
+        },
+      });
+
+      if (!bandVenue) {
+        req.flash("error", "Selected venue is not associated with this band");
+        return res.redirect(`/bands/${bandId}/gigs/new`);
+      }
+
+      // Helper function to combine date with time
+      const combineDateTime = (dateString, timeString) => {
+        if (!timeString) return null;
+        const date = new Date(dateString);
+        const [hours, minutes] = timeString.split(":");
+        date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        return date;
+      };
+
+      // Create the gig
+      const gig = await prisma.gig.create({
+        data: {
+          name: name.trim(),
+          gigDate: new Date(gigDate),
+          loadInTime: combineDateTime(gigDate, loadInTime),
+          soundCheckTime: combineDateTime(gigDate, soundCheckTime),
+          startTime: combineDateTime(gigDate, startTime),
+          endTime: combineDateTime(gigDate, endTime),
+          fee: fee ? parseFloat(fee) : null,
+          notes: notes ? notes.trim() : null,
+          ticketLink: ticketLink ? ticketLink.trim() : null,
+          facebookEventLink: facebookEventLink
+            ? facebookEventLink.trim()
+            : null,
+          status: "CONFIRMED",
+          bandId: parseInt(bandId),
+          venueId: parseInt(venueId),
+        },
+      });
+
+      logger.logInfo(`Created gig ${gig.id} for band ${bandId}`);
+      req.flash("success", "Gig created successfully!");
+      res.redirect(`/bands/${bandId}/gigs`);
+    } catch (error) {
+      logger.logError("Create gig error:", error);
+      req.flash("error", "An error occurred creating the gig");
+      res.redirect(`/bands/${req.params.id}/gigs/new`);
     }
-
-    // Check if user is a member
-    const membership = await prisma.bandMember.findFirst({
-      where: { bandId: parseInt(bandId), userId },
-    });
-
-    if (!membership) {
-      req.flash("error", "You are not a member of this band");
-      return res.redirect("/bands");
-    }
-
-    const { name, gigDate, venueId, fee, loadInTime, soundCheckTime, startTime, endTime, notes, ticketLink, facebookEventLink } = req.body;
-
-    // Verify venue belongs to band
-    const bandVenue = await prisma.bandVenue.findFirst({
-      where: {
-        bandId: parseInt(bandId),
-        venueId: parseInt(venueId),
-      },
-    });
-
-    if (!bandVenue) {
-      req.flash("error", "Selected venue is not associated with this band");
-      return res.redirect(`/bands/${bandId}/gigs/new`);
-    }
-
-    // Helper function to combine date with time
-    const combineDateTime = (dateString, timeString) => {
-      if (!timeString) return null;
-      const date = new Date(dateString);
-      const [hours, minutes] = timeString.split(':');
-      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      return date;
-    };
-
-    // Create the gig
-    const gig = await prisma.gig.create({
-      data: {
-        name: name.trim(),
-        gigDate: new Date(gigDate),
-        loadInTime: combineDateTime(gigDate, loadInTime),
-        soundCheckTime: combineDateTime(gigDate, soundCheckTime),
-        startTime: combineDateTime(gigDate, startTime),
-        endTime: combineDateTime(gigDate, endTime),
-        fee: fee ? parseFloat(fee) : null,
-        notes: notes ? notes.trim() : null,
-        ticketLink: ticketLink ? ticketLink.trim() : null,
-        facebookEventLink: facebookEventLink ? facebookEventLink.trim() : null,
-        status: 'CONFIRMED',
-        bandId: parseInt(bandId),
-        venueId: parseInt(venueId),
-      },
-    });
-
-    logger.logInfo(`Created gig ${gig.id} for band ${bandId}`);
-    req.flash("success", "Gig created successfully!");
-    res.redirect(`/bands/${bandId}/gigs`);
-
-  } catch (error) {
-    logger.logError("Create gig error:", error);
-    req.flash("error", "An error occurred creating the gig");
-    res.redirect(`/bands/${req.params.id}/gigs/new`);
   }
-});
+);
 
 // GET /bands/:id/venue-picker - Show band's venue picker
 router.get("/:id/venue-picker", async (req, res) => {
@@ -5886,7 +6007,7 @@ router.get(
               },
             },
             orderBy: {
-              interactionDate: 'desc',
+              interactionDate: "desc",
             },
           },
         },
@@ -5987,7 +6108,9 @@ router.get(
     } catch (error) {
       logger.logError("Get interaction detail error:", error);
       req.flash("error", "An error occurred while loading the interaction");
-      res.redirect(`/bands/${req.params.bandId}/opportunities/${req.params.opportunityId}`);
+      res.redirect(
+        `/bands/${req.params.bandId}/opportunities/${req.params.opportunityId}`
+      );
     }
   }
 );
@@ -6066,17 +6189,22 @@ router.post(
       if (outcome) {
         const newOpportunityStatus = mapOutcomeToOpportunityStatus(outcome);
         const updateData = {};
-        
-        if (newOpportunityStatus && newOpportunityStatus !== opportunity.status) {
+
+        if (
+          newOpportunityStatus &&
+          newOpportunityStatus !== opportunity.status
+        ) {
           updateData.status = newOpportunityStatus;
         }
-        
+
         // If outcome is BOOKED and gigDate is provided, save it to the opportunity
-        if (outcome === 'BOOKED' && gigDate) {
+        if (outcome === "BOOKED" && gigDate) {
           updateData.gigDate = new Date(gigDate);
-          logger.logInfo(`Setting gig date for opportunity ${opportunityId}: ${gigDate}`);
+          logger.logInfo(
+            `Setting gig date for opportunity ${opportunityId}: ${gigDate}`
+          );
         }
-        
+
         // Only update if there's something to update
         if (Object.keys(updateData).length > 0) {
           const updatedOpportunity = await prisma.opportunity.update({
@@ -6088,10 +6216,16 @@ router.post(
               gig: true,
             },
           });
-          logger.logInfo(`Updated opportunity ${opportunityId} - Status: ${updateData.status || 'unchanged'}, Gig Date: ${updateData.gigDate || 'unchanged'}`);
-          
+          logger.logInfo(
+            `Updated opportunity ${opportunityId} - Status: ${updateData.status || "unchanged"}, Gig Date: ${updateData.gigDate || "unchanged"}`
+          );
+
           // Create gig record if status is BOOKED and gigDate is set, and no gig exists yet
-          if (updatedOpportunity.status === 'BOOKED' && updatedOpportunity.gigDate && !updatedOpportunity.gig) {
+          if (
+            updatedOpportunity.status === "BOOKED" &&
+            updatedOpportunity.gigDate &&
+            !updatedOpportunity.gig
+          ) {
             const gig = await prisma.gig.create({
               data: {
                 name: updatedOpportunity.name,
@@ -6100,10 +6234,12 @@ router.post(
                 venueId: updatedOpportunity.venueId,
                 opportunityId: updatedOpportunity.id,
                 fee: updatedOpportunity.offerValue,
-                status: 'CONFIRMED',
+                status: "CONFIRMED",
               },
             });
-            logger.logInfo(`Created gig ${gig.id} for opportunity ${opportunityId}`);
+            logger.logInfo(
+              `Created gig ${gig.id} for opportunity ${opportunityId}`
+            );
           }
         }
       }
@@ -6158,7 +6294,7 @@ router.post(
           band: true,
           interactions: {
             orderBy: {
-              interactionDate: 'asc',
+              interactionDate: "asc",
             },
             include: {
               user: {
@@ -6208,33 +6344,33 @@ router.post(
 function mapOutcomeToOpportunityStatus(outcome) {
   const outcomeMapping = {
     // Initial contact outcomes
-    'CONTACTED': 'CONTACTED',
-    'POSITIVE': 'NEGOTIATING',
-    'INTERESTED': 'NEGOTIATING',
-    
+    CONTACTED: "CONTACTED",
+    POSITIVE: "NEGOTIATING",
+    INTERESTED: "NEGOTIATING",
+
     // Negotiation outcomes
-    'FOLLOW_UP': 'NEGOTIATING',
-    'COUNTER_OFFER': 'NEGOTIATING',
-    'SCHEDULING': 'NEGOTIATING',
-    'NO_RESPONSE': 'NEGOTIATING',
-    
+    FOLLOW_UP: "NEGOTIATING",
+    COUNTER_OFFER: "NEGOTIATING",
+    SCHEDULING: "NEGOTIATING",
+    NO_RESPONSE: "NEGOTIATING",
+
     // Awaiting confirmation
-    'NEED_CONFIRMATION': 'NEED_CONFIRMATION',
-    'PENDING_CONFIRMATION': 'NEED_CONFIRMATION',
-    'AWAITING_CONFIRMATION': 'NEED_CONFIRMATION',
-    
+    NEED_CONFIRMATION: "NEED_CONFIRMATION",
+    PENDING_CONFIRMATION: "NEED_CONFIRMATION",
+    AWAITING_CONFIRMATION: "NEED_CONFIRMATION",
+
     // Success outcomes
-    'BOOKED': 'BOOKED',
-    'CONFIRMED': 'BOOKED',
-    'ACCEPTED': 'BOOKED',
-    
+    BOOKED: "BOOKED",
+    CONFIRMED: "BOOKED",
+    ACCEPTED: "BOOKED",
+
     // Closure outcomes
-    'DECLINED': 'ARCHIVED',
-    'REJECTED': 'ARCHIVED',
-    'CANCELLED': 'ARCHIVED',
-    'NOT_INTERESTED': 'ARCHIVED'
+    DECLINED: "ARCHIVED",
+    REJECTED: "ARCHIVED",
+    CANCELLED: "ARCHIVED",
+    NOT_INTERESTED: "ARCHIVED",
   };
-  
+
   return outcomeMapping[outcome] || null;
 }
 
@@ -6248,55 +6384,57 @@ async function generateAISuggestion(context) {
 
   // Build the prompt based on interaction type
   let prompt;
-  
+
   // Build interaction history for context
   let interactionHistoryText = "No previous interactions";
   if (context.interactionHistory && context.interactionHistory.length > 0) {
-    interactionHistoryText = context.interactionHistory.map((interaction, index) => {
-      const date = new Date(interaction.interactionDate).toLocaleDateString();
-      return `${index + 1}. ${date} - ${interaction.outcome} - ${interaction.notes || 'No notes'}`;
-    }).join('\n');
+    interactionHistoryText = context.interactionHistory
+      .map((interaction, index) => {
+        const date = new Date(interaction.interactionDate).toLocaleDateString();
+        return `${index + 1}. ${date} - ${interaction.outcome} - ${interaction.notes || "No notes"}`;
+      })
+      .join("\n");
   }
 
   // Get communication method specific guidance
   const getCommMethodGuidance = (contactType) => {
     // Check if we have platform-specific hints in the contact info
-    const venue = context.opportunity?.venue?.name || '';
-    const previousResponse = context.previousResponse || '';
+    const venue = context.opportunity?.venue?.name || "";
+    const previousResponse = context.previousResponse || "";
     const platformHints = {
       instagram: /@\w+|instagram\.com|insta/i.test(previousResponse + venue),
       twitter: /twitter\.com|tweet|@\w+/i.test(previousResponse + venue),
-      facebook: /facebook\.com|fb\.com/i.test(previousResponse + venue)
+      facebook: /facebook\.com|fb\.com/i.test(previousResponse + venue),
     };
 
-    switch(contactType) {
-      case 'TEXT':
-      case 'TEXT_MESSAGE':
-      case 'WHATSAPP':
-      case 'TELEGRAM':
-        return 'TEXT/SMS - Keep concise, friendly, under 160 characters if possible. Use casual but professional tone.';
-      case 'FACEBOOK_MESSAGE':
-        return 'FACEBOOK MESSENGER - Conversational and friendly tone, moderate length, can use emojis.';
-      case 'INSTAGRAM_MESSAGE':
-        return platformHints.instagram 
-          ? 'INSTAGRAM DM (detected @ handle) - Visual-focused, casual tone, use relevant emojis, mention their content if appropriate.'
-          : 'INSTAGRAM MESSAGE - Conversational and friendly tone, moderate length, emoji-friendly.';
-      case 'TWITTER_MESSAGE':
+    switch (contactType) {
+      case "TEXT":
+      case "TEXT_MESSAGE":
+      case "WHATSAPP":
+      case "TELEGRAM":
+        return "TEXT/SMS - Keep concise, friendly, under 160 characters if possible. Use casual but professional tone.";
+      case "FACEBOOK_MESSAGE":
+        return "FACEBOOK MESSENGER - Conversational and friendly tone, moderate length, can use emojis.";
+      case "INSTAGRAM_MESSAGE":
+        return platformHints.instagram
+          ? "INSTAGRAM DM (detected @ handle) - Visual-focused, casual tone, use relevant emojis, mention their content if appropriate."
+          : "INSTAGRAM MESSAGE - Conversational and friendly tone, moderate length, emoji-friendly.";
+      case "TWITTER_MESSAGE":
         return platformHints.twitter
-          ? 'TWITTER DM (detected @ handle) - Concise, engaging, can reference their tweets, use relevant hashtags/emojis.'
-          : 'TWITTER MESSAGE - Conversational and friendly tone, moderate length, emoji-friendly.';
-      case 'DISCORD':
-      case 'WEBSITE_LIVE_CHAT':
-        return 'CHAT PLATFORM - Very casual and conversational, brief exchanges, can be informal.';
-      case 'EMAIL':
-      case 'WEBSITE_CONTACT_FORM':
-        return 'EMAIL/FORMAL - Can be detailed and formal. Include proper greeting and closing.';
-      case 'PHONE_CALL':
-        return 'PHONE CALL - Provide talking points and key messages for the conversation.';
-      case 'IN_PERSON':
-        return 'IN-PERSON MEETING - Provide conversation starters and key points to discuss.';
+          ? "TWITTER DM (detected @ handle) - Concise, engaging, can reference their tweets, use relevant hashtags/emojis."
+          : "TWITTER MESSAGE - Conversational and friendly tone, moderate length, emoji-friendly.";
+      case "DISCORD":
+      case "WEBSITE_LIVE_CHAT":
+        return "CHAT PLATFORM - Very casual and conversational, brief exchanges, can be informal.";
+      case "EMAIL":
+      case "WEBSITE_CONTACT_FORM":
+        return "EMAIL/FORMAL - Can be detailed and formal. Include proper greeting and closing.";
+      case "PHONE_CALL":
+        return "PHONE CALL - Provide talking points and key messages for the conversation.";
+      case "IN_PERSON":
+        return "IN-PERSON MEETING - Provide conversation starters and key points to discuss.";
       default:
-        return 'GENERAL COMMUNICATION - Use appropriate professional tone.';
+        return "GENERAL COMMUNICATION - Use appropriate professional tone.";
     }
   };
 
@@ -6333,10 +6471,10 @@ CURRENT DRAFT MESSAGE (if any):
 "${context.currentMessage || "None provided"}"
 
 ADDITIONAL REFINEMENT INSTRUCTIONS:
-"${context.additionalInstructions || "None provided"}"`;  
+"${context.additionalInstructions || "None provided"}"`;
 
   switch (context.interactionType) {
-    case 'FIRST_CONTACT':
+    case "FIRST_CONTACT":
       prompt = `You are helping a band manager make an initial contact with a venue for booking a gig.
 ${baseContext}
 
@@ -6356,7 +6494,7 @@ Please generate a professional, engaging initial outreach message that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'FOLLOWING_UP':
+    case "FOLLOWING_UP":
       prompt = `You are helping a band manager follow up on a previous inquiry with a venue.
 ${baseContext}
 
@@ -6373,7 +6511,7 @@ Please generate a professional, polite follow-up message that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'SCHEDULING':
+    case "SCHEDULING":
       prompt = `You are helping a band manager work out scheduling details with a venue.
 ${baseContext}
 
@@ -6389,7 +6527,7 @@ Please generate a professional response focused on scheduling that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'NEGOTIATING':
+    case "NEGOTIATING":
       prompt = `You are helping a band manager negotiate terms with a venue for a gig.
 ${baseContext}
 
@@ -6405,7 +6543,7 @@ Please generate a professional negotiation response that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'AWAITING_CONFIRMATION':
+    case "AWAITING_CONFIRMATION":
       prompt = `You are helping a band manager handle the confirmation phase with a venue.
 ${baseContext}
 
@@ -6421,7 +6559,7 @@ Please generate a professional message for the confirmation stage that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'BOOKED':
+    case "BOOKED":
       prompt = `You are helping a band manager confirm and accept a gig booking with a venue.
 ${baseContext}
 
@@ -6438,7 +6576,7 @@ Please generate a professional booking confirmation message that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'DETAILS':
+    case "DETAILS":
       prompt = `You are helping a band manager work out production and logistical details for a confirmed gig.
 ${baseContext}
 
@@ -6454,7 +6592,7 @@ Please generate a professional message focused on gig details that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'THANKING':
+    case "THANKING":
       prompt = `You are helping a band manager send a thoughtful thank you message to a venue.
 ${baseContext}
 
@@ -6471,7 +6609,7 @@ Please generate a warm, genuine thank you message that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'REBOOKING':
+    case "REBOOKING":
       prompt = `You are helping a band manager reach out to a venue for a repeat booking.
 ${baseContext}
 
@@ -6489,7 +6627,7 @@ Please generate a professional rebooking request that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'DECLINED':
+    case "DECLINED":
       prompt = `You are helping a band manager respond professionally to a venue's decline.
 ${baseContext}
 
@@ -6505,7 +6643,7 @@ Please generate a gracious response to their decline that:
 Generate only the suggested response text, no additional commentary. DO NOT include placeholder text, brackets, or suggestions for customization. Write a complete, ready-to-send message.`;
       break;
 
-    case 'NO_RESPONSE':
+    case "NO_RESPONSE":
       prompt = `You are helping a band manager craft a final follow-up to a venue that hasn't responded.
 ${baseContext}
 
@@ -6892,218 +7030,224 @@ router.get("/:bandId/setlists/:setlistId/versions", async (req, res) => {
 });
 
 // GET /bands/:bandId/setlists/:setlistId/versions/:versionId/view - View specific version
-router.get("/:bandId/setlists/:setlistId/versions/:versionId/view", async (req, res) => {
-  try {
-    const bandId = parseInt(req.params.bandId);
-    const setlistId = parseInt(req.params.setlistId);
-    const versionId = parseInt(req.params.versionId);
-    const userId = req.session.user.id;
+router.get(
+  "/:bandId/setlists/:setlistId/versions/:versionId/view",
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const versionId = parseInt(req.params.versionId);
+      const userId = req.session.user.id;
 
-    // Verify the setlist belongs to the specified band
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: { id: true },
+      // Verify the setlist belongs to the specified band
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                select: { id: true },
+              },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!setlist) {
-      return res.status(404).json({ error: "Setlist not found" });
-    }
+      if (!setlist) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
 
-    if (setlist.band.id !== bandId) {
-      return res.status(404).json({ error: "Setlist not found" });
-    }
+      if (setlist.band.id !== bandId) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
 
-    if (setlist.band.members.length === 0) {
-      return res.status(403).json({ error: "Access denied" });
-    }
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Access denied" });
+      }
 
-    // Get version with navigation
-    const version = await prisma.setlistVersion.findFirst({
-      where: {
-        id: versionId,
-        setlistId: setlistId,
-      },
-      include: {
-        createdBy: {
-          select: { username: true },
-        },
-      },
-    });
-
-    if (!version) {
-      return res.status(404).json({ error: "Version not found" });
-    }
-
-    // Get previous and next versions for navigation
-    const [previousVersion, nextVersion] = await Promise.all([
-      // Previous version (higher version number)
-      prisma.setlistVersion.findFirst({
+      // Get version with navigation
+      const version = await prisma.setlistVersion.findFirst({
         where: {
+          id: versionId,
           setlistId: setlistId,
-          versionNumber: { gt: version.versionNumber },
         },
-        orderBy: { versionNumber: "asc" },
-        select: { id: true, versionNumber: true },
-      }),
-      // Next version (lower version number)
-      prisma.setlistVersion.findFirst({
-        where: {
-          setlistId: setlistId,
-          versionNumber: { lt: version.versionNumber },
+        include: {
+          createdBy: {
+            select: { username: true },
+          },
         },
-        orderBy: { versionNumber: "desc" },
-        select: { id: true, versionNumber: true },
-      }),
-    ]);
+      });
 
-    res.render("setlists/version-view", {
-      title: `Version ${version.versionNumber} - ${setlist.title}`,
-      pageTitle: `Version ${version.versionNumber} - ${setlist.title}`,
-      setlist: setlist,
-      version: version,
-      versionId: versionId,
-      previousVersion: previousVersion,
-      nextVersion: nextVersion,
-      bandId: bandId,
-    });
-  } catch (error) {
-    logger.logError("View setlist version error", error);
-    res.status(500).json({ error: "Server error" });
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+
+      // Get previous and next versions for navigation
+      const [previousVersion, nextVersion] = await Promise.all([
+        // Previous version (higher version number)
+        prisma.setlistVersion.findFirst({
+          where: {
+            setlistId: setlistId,
+            versionNumber: { gt: version.versionNumber },
+          },
+          orderBy: { versionNumber: "asc" },
+          select: { id: true, versionNumber: true },
+        }),
+        // Next version (lower version number)
+        prisma.setlistVersion.findFirst({
+          where: {
+            setlistId: setlistId,
+            versionNumber: { lt: version.versionNumber },
+          },
+          orderBy: { versionNumber: "desc" },
+          select: { id: true, versionNumber: true },
+        }),
+      ]);
+
+      res.render("setlists/version-view", {
+        title: `Version ${version.versionNumber} - ${setlist.title}`,
+        pageTitle: `Version ${version.versionNumber} - ${setlist.title}`,
+        setlist: setlist,
+        version: version,
+        versionId: versionId,
+        previousVersion: previousVersion,
+        nextVersion: nextVersion,
+        bandId: bandId,
+      });
+    } catch (error) {
+      logger.logError("View setlist version error", error);
+      res.status(500).json({ error: "Server error" });
+    }
   }
-});
+);
 
 // POST /bands/:bandId/setlists/:setlistId/versions/:versionId/restore - Restore to specific version
-router.post("/:bandId/setlists/:setlistId/versions/:versionId/restore", async (req, res) => {
-  try {
-    const bandId = parseInt(req.params.bandId);
-    const setlistId = parseInt(req.params.setlistId);
-    const versionId = parseInt(req.params.versionId);
-    const userId = req.session.user.id;
+router.post(
+  "/:bandId/setlists/:setlistId/versions/:versionId/restore",
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const versionId = parseInt(req.params.versionId);
+      const userId = req.session.user.id;
 
-    // Verify the setlist belongs to the specified band
-    const setlist = await prisma.setlist.findUnique({
-      where: { id: setlistId },
-      include: {
-        band: {
-          include: {
-            members: {
-              where: { userId: userId },
-              select: { id: true },
+      // Verify the setlist belongs to the specified band
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                select: { id: true },
+              },
             },
           },
         },
-      },
-    });
-
-    if (!setlist) {
-      return res.status(404).json({ error: "Setlist not found" });
-    }
-
-    if (setlist.band.id !== bandId) {
-      return res.status(404).json({ error: "Setlist not found" });
-    }
-
-    if (setlist.band.members.length === 0) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    // Get version to restore
-    const version = await prisma.setlistVersion.findFirst({
-      where: {
-        id: versionId,
-        setlistId: setlistId,
-      },
-    });
-
-    if (!version) {
-      return res.status(404).json({ error: "Version not found" });
-    }
-
-    // Capture current state as backup
-    const currentState = await captureSetlistState(setlistId);
-
-    // Create backup version before restoring
-    if (currentState) {
-      const lastVersion = await prisma.setlistVersion.findFirst({
-        where: { setlistId },
-        orderBy: { versionNumber: "desc" },
-        select: { versionNumber: true },
       });
 
-      await prisma.setlistVersion.create({
-        data: {
-          setlistId,
-          versionNumber: (lastVersion?.versionNumber || 0) + 1,
-          createdById: userId,
-          setlistData: currentState,
-          changeSummary: `Backup before restoring to version ${version.versionNumber}`,
+      if (!setlist) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
+
+      if (setlist.band.id !== bandId) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
+
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get version to restore
+      const version = await prisma.setlistVersion.findFirst({
+        where: {
+          id: versionId,
+          setlistId: setlistId,
         },
       });
-    }
 
-    // Restore from version data
-    const versionData = version.setlistData;
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
 
-    // Clear existing songs
-    const setlistSets = await prisma.setlistSet.findMany({
-      where: { setlistId },
-      select: { id: true },
-    });
+      // Capture current state as backup
+      const currentState = await captureSetlistState(setlistId);
 
-    if (setlistSets.length > 0) {
-      const setlistSetIds = setlistSets.map((set) => set.id);
-      await prisma.setlistSong.deleteMany({
-        where: { setlistSetId: { in: setlistSetIds } },
-      });
-    }
+      // Create backup version before restoring
+      if (currentState) {
+        const lastVersion = await prisma.setlistVersion.findFirst({
+          where: { setlistId },
+          orderBy: { versionNumber: "desc" },
+          select: { versionNumber: true },
+        });
 
-    // Recreate sets and songs from version data
-    for (const setData of versionData.sets) {
-      let setlistSet = await prisma.setlistSet.findFirst({
-        where: { setlistId, name: setData.name },
-      });
-
-      if (!setlistSet) {
-        setlistSet = await prisma.setlistSet.create({
+        await prisma.setlistVersion.create({
           data: {
             setlistId,
-            name: setData.name,
-            order: setData.order,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            versionNumber: (lastVersion?.versionNumber || 0) + 1,
+            createdById: userId,
+            setlistData: currentState,
+            changeSummary: `Backup before restoring to version ${version.versionNumber}`,
           },
         });
       }
 
-      // Add songs to set
-      for (const songData of setData.songs) {
-        await prisma.setlistSong.create({
-          data: {
-            setlistSetId: setlistSet.id,
-            songId: songData.songId,
-            order: songData.order,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
+      // Restore from version data
+      const versionData = version.setlistData;
+
+      // Clear existing songs
+      const setlistSets = await prisma.setlistSet.findMany({
+        where: { setlistId },
+        select: { id: true },
+      });
+
+      if (setlistSets.length > 0) {
+        const setlistSetIds = setlistSets.map((set) => set.id);
+        await prisma.setlistSong.deleteMany({
+          where: { setlistSetId: { in: setlistSetIds } },
         });
       }
+
+      // Recreate sets and songs from version data
+      for (const setData of versionData.sets) {
+        let setlistSet = await prisma.setlistSet.findFirst({
+          where: { setlistId, name: setData.name },
+        });
+
+        if (!setlistSet) {
+          setlistSet = await prisma.setlistSet.create({
+            data: {
+              setlistId,
+              name: setData.name,
+              order: setData.order,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
+
+        // Add songs to set
+        for (const songData of setData.songs) {
+          await prisma.setlistSong.create({
+            data: {
+              setlistSetId: setlistSet.id,
+              songId: songData.songId,
+              order: songData.order,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.logError("Restore setlist version error", error);
+      res.status(500).json({ error: "Server error" });
     }
-
-    res.json({ success: true });
-  } catch (error) {
-    logger.logError("Restore setlist version error", error);
-    res.status(500).json({ error: "Server error" });
   }
-});
+);
 
 // POST /bands/:id/start-meeting - Start an instant band meeting
 router.post("/:id/start-meeting", requireAuth, async (req, res) => {
@@ -7117,17 +7261,17 @@ router.post("/:id/start-meeting", requireAuth, async (req, res) => {
       include: {
         members: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
 
     if (!band) {
       return res.status(404).json({ error: "Band not found" });
     }
 
-    const isMember = band.members.some(member => member.userId === userId);
+    const isMember = band.members.some((member) => member.userId === userId);
     if (!isMember) {
       return res.status(403).json({ error: "Not a member of this band" });
     }
@@ -7138,31 +7282,26 @@ router.post("/:id/start-meeting", requireAuth, async (req, res) => {
       // Try to create real Google Meet meeting using Google Calendar API
       const { createGoogleMeetMeeting } = require("./google-doc-processing");
       meetingData = await createGoogleMeetMeeting(band.name);
-    } catch (calendarError) {
-      console.error("Google Calendar API error:", calendarError);
-      
-      // Fallback: Generate a Google Meet link using proper format
-      // Google Meet expects format like: abc-defg-hij (3-4-3 with hyphens)
-      const chars = 'abcdefghijklmnopqrstuvwxyz';
-      const generateSegment = (length) => {
-        return Array.from({length}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
-      };
-      
-      const meetingId = `${generateSegment(3)}-${generateSegment(4)}-${generateSegment(3)}`;
+    } catch (meetError) {
+      console.error("Google Meet API error:", meetError);
+
+      // Fallback: Generate a simple meeting link
+      // This creates a basic meeting link that users can join
+      const { v4: uuidv4 } = require("uuid");
+      const fallbackId = uuidv4().replace(/-/g, "").substring(0, 10);
       meetingData = {
-        meetingLink: `https://meet.google.com/${meetingId}`,
-        meetingId: meetingId,
-        hangoutLink: `https://meet.google.com/${meetingId}`
+        meetingLink: `https://meet.google.com/${fallbackId}`,
+        meetingId: fallbackId,
+        hangoutLink: `https://meet.google.com/${fallbackId}`,
       };
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       meetingLink: meetingData.meetingLink,
       meetingId: meetingData.meetingId,
-      hangoutLink: meetingData.hangoutLink
+      hangoutLink: meetingData.hangoutLink,
     });
-
   } catch (error) {
     console.error("Start meeting error:", error);
     res.status(500).json({ error: "Failed to start meeting" });
@@ -7182,24 +7321,24 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
       include: {
         members: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
 
     if (!band) {
       return res.status(404).json({ error: "Band not found" });
     }
 
-    const isMember = band.members.some(member => member.userId === userId);
+    const isMember = band.members.some((member) => member.userId === userId);
     if (!isMember) {
       return res.status(403).json({ error: "Not a member of this band" });
     }
 
     // Send email notifications to all band members
     const { sendEmail } = require("../utils/emailService");
-    
+
     for (const member of band.members) {
       if (member.user.email) {
         const emailContent = `
@@ -7244,13 +7383,15 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
             emailContent
           );
         } catch (emailError) {
-          console.error(`Failed to send meeting notification to ${member.user.email}:`, emailError);
+          console.error(
+            `Failed to send meeting notification to ${member.user.email}:`,
+            emailError
+          );
         }
       }
     }
 
     res.json({ success: true });
-
   } catch (error) {
     console.error("Notify meeting error:", error);
     res.status(500).json({ error: "Failed to send notifications" });

@@ -585,6 +585,7 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
     const { songId, audioUrl } = req.body;
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
+    const parsedSongId = parseInt(songId);
     const userId = req.session.user.id;
 
     // Verify user has access to this setlist
@@ -617,7 +618,7 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
       where: {
         bandId_songId: {
           bandId: bandId,
-          songId: songId,
+          songId: parsedSongId,
         },
       },
       update: {
@@ -626,7 +627,7 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
       },
       create: {
         bandId: bandId,
-        songId: songId,
+        songId: parsedSongId,
         audio: audioUrl || null,
         createdAt: new Date(),
         updatedAt: new Date(),

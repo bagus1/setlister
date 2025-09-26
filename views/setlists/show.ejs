@@ -326,7 +326,9 @@
                                                                             <li>
                                                                                 <a class="dropdown-item <%= preferredAudioUrl === link.url ? 'active' : '' %>"
                                                                                    href="#"
-                                                                                   onclick="setPreferredAudio(<%= setlistSong.song.id %>, '<%= link.url %>')">
+                                                                                   data-song-id="<%= setlistSong.song.id %>"
+                                                                                   data-audio-url="<%= link.url %>"
+                                                                                   onclick="setPreferredAudio(this.dataset.songId, this.dataset.audioUrl)">
                                                                                     <i class="bi bi-headphones me-1"></i>
                                                                                     <%= link.description || 'Audio File' %>
                                                                                     <% if (preferredAudioUrl === link.url) { %>
@@ -341,7 +343,9 @@
                                                                             <li>
                                                                                 <a class="dropdown-item text-muted"
                                                                                    href="#"
-                                                                                   onclick="setPreferredAudio(<%= setlistSong.song.id %>, null)">
+                                                                                   data-song-id="<%= setlistSong.song.id %>"
+                                                                                   data-audio-url=""
+                                                                                   onclick="setPreferredAudio(this.dataset.songId, this.dataset.audioUrl || null)">
                                                                                     <i class="bi bi-x-circle"></i> Clear preference
                                                                                 </a>
                                                                             </li>

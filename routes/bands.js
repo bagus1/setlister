@@ -7240,11 +7240,27 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
 
 // Helper function to generate meeting ID
 function generateMeetingId() {
+  // Google Meet requires format: xxx-yyyy-zzz (3-4-3 characters)
   const chars = 'abcdefghijklmnopqrstuvwxyz';
   let result = '';
-  for (let i = 0; i < 10; i++) {
+  
+  // Generate 3 characters
+  for (let i = 0; i < 3; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
+  result += '-';
+  
+  // Generate 4 characters
+  for (let i = 0; i < 4; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  result += '-';
+  
+  // Generate 3 characters
+  for (let i = 0; i < 3; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
   return result;
 }
 

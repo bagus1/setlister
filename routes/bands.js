@@ -7141,10 +7141,14 @@ router.post("/:id/start-meeting", requireAuth, async (req, res) => {
     } catch (calendarError) {
       console.error("Google Calendar API error:", calendarError);
       
-      // Fallback: Generate a simple Google Meet link using UUID
-      const { v4: uuidv4 } = require('uuid');
-      const fallbackId = uuidv4();
-      const meetingId = fallbackId.substring(0, 8); // Use first 8 chars
+      // Fallback: Generate a Google Meet link using proper format
+      // Google Meet expects format like: abc-defg-hij (3-4-3 with hyphens)
+      const chars = 'abcdefghijklmnopqrstuvwxyz';
+      const generateSegment = (length) => {
+        return Array.from({length}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+      };
+      
+      const meetingId = `${generateSegment(3)}-${generateSegment(4)}-${generateSegment(3)}`;
       meetingData = {
         meetingLink: `https://meet.google.com/${meetingId}`,
         meetingId: meetingId,

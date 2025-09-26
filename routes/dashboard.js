@@ -97,7 +97,7 @@ router.get("/", async (req, res) => {
       });
 
       res.render("dashboard/index", {
-        title: "The Band Plan",
+        title: "",
         pageTitle: `Welcome, ${req.session.user.username}`,
         loggedIn: true,
         user: req.session.user,

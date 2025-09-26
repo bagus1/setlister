@@ -5,7 +5,7 @@
     "port": 3000,
     "environment_variables": {
         "NODE_ENV": "production",
-        "BASE_URL": "https://setlists.bagus.org",
-        "FROM_EMAIL": "noreply@bagus.org"
+        "BASE_URL": "https://thebandplan.com",
+        "FROM_EMAIL": "noreply@thebandplan.com"
     }
 }

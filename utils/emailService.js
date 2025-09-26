@@ -32,7 +32,7 @@ const sendEmail = async (to, subject, content) => {
 const sendBandInvitation = async (invitation, band, inviterName) => {
   const baseUrl =
     process.env.NODE_ENV === "production"
-      ? "https://setlists.bagus.org"
+      ? "https://thebandplan.com"
       : process.env.BASE_URL || "http://localhost:3000";
   const invitationUrl = `${baseUrl}/invite/${invitation.token}`;
 
@@ -103,7 +103,7 @@ const sendBandInvitationNotification = async (
 ) => {
   const baseUrl =
     process.env.NODE_ENV === "production"
-      ? "https://setlists.bagus.org"
+      ? "https://thebandplan.com"
       : process.env.BASE_URL || "http://localhost:3000";
   const dashboardUrl = `${baseUrl}/`;
 

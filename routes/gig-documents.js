@@ -201,7 +201,13 @@ router.get("/:songId/docs/:id", async (req, res) => {
 
     const gigDocument = await prisma.gigDocument.findFirst({
       where: { id: parseInt(id), songId: parseInt(songId) },
-      include: { song: true },
+      include: { 
+        song: {
+          include: {
+            links: true
+          }
+        }
+      },
     });
 
     if (!gigDocument) {
@@ -233,6 +239,94 @@ router.get("/:songId/docs/:id", async (req, res) => {
       return names[type] || type;
     };
 
+    // Helper functions for media players (reused from link viewer)
+    const getLinkIcon = (type) => {
+      const icons = {
+        youtube: "youtube",
+        video: "camera-video",
+        spotify: "spotify",
+        "apple-music": "music-note",
+        soundcloud: "cloud",
+        bandcamp: "music-note-beamed",
+        lyrics: "file-text",
+        tab: "music-note",
+        "bass tab": "music-note-beamed",
+        chords: "music-note-list",
+        "guitar tutorial": "play-circle",
+        "bass tutorial": "play-circle-fill",
+        "keyboard tutorial": "play-btn",
+        audio: "headphones",
+        "sheet-music": "file-earmark-music",
+        "backing-track": "music-player",
+        karaoke: "mic",
+        "horn chart": "file-earmark-music",
+        other: "link-45deg",
+      };
+      return icons[type] || "link-45deg";
+    };
+
+    const getLinkDisplayText = (link) => {
+      const typeLabels = {
+        youtube: "YouTube",
+        video: "Video",
+        spotify: "Spotify",
+        "apple-music": "Apple Music",
+        "apple_music": "Apple Music",
+        soundcloud: "SoundCloud",
+        bandcamp: "Bandcamp",
+        lyrics: "Lyrics",
+        tab: "Tab",
+        "bass tab": "Bass Tab",
+        "bass_tab": "Bass Tab",
+        chords: "Chords",
+        "guitar tutorial": "Guitar Tutorial",
+        "guitar_tutorial": "Guitar Tutorial",
+        "bass tutorial": "Bass Tutorial",
+        "bass_tutorial": "Bass Tutorial",
+        "keyboard tutorial": "Keyboard Tutorial",
+        "keyboard_tutorial": "Keyboard Tutorial",
+        audio: "Audio File",
+        "sheet-music": "Sheet Music",
+        "sheet_music": "Sheet Music",
+        "backing-track": "Backing Track",
+        "backing_track": "Backing Track",
+        karaoke: "Karaoke",
+        "horn chart": "Horn Chart",
+        "horn_chart": "Horn Chart",
+        other: "Other",
+      };
+      const typeLabel = typeLabels[link.type] || "Link";
+      return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
+    };
+
+    const extractSpotifyTrackId = (url) => {
+      if (!url) return null;
+      const patterns = [
+        /spotify:track:([a-zA-Z0-9]+)/,
+        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/,
+        /spotify\.com\/track\/([a-zA-Z0-9]+)/,
+      ];
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+      return null;
+    };
+
+    const extractYouTubeVideoId = (url) => {
+      if (!url) return null;
+      const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+      ];
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+      return null;
+    };
+
     if (isPrintRequest) {
       // For print requests, render without any layout and with minimal content
       res.render("gig-documents/print", {
@@ -257,6 +351,10 @@ router.get("/:songId/docs/:id", async (req, res) => {
         user: req.session.user,
         getTypeIcon,
         getTypeDisplayName,
+        getLinkIcon,
+        getLinkDisplayText,
+        extractSpotifyTrackId,
+        extractYouTubeVideoId,
       });
     }
   } catch (error) {

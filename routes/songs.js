@@ -503,8 +503,46 @@ router.get("/:songId/links/:linkId", async (req, res) => {
       return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
     };
     
-    // For now, only handle audio links
-    if (link.type !== 'audio') {
+    // Helper function to extract Spotify track ID from URL
+    const extractSpotifyTrackId = (url) => {
+      if (!url || link.type !== 'spotify') return null;
+      
+      // Handle various Spotify URL formats
+      const patterns = [
+        /spotify:track:([a-zA-Z0-9]+)/,  // spotify:track:4iV5W9uYEdYUVa79Axb7Rh
+        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/,  // https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
+        /spotify\.com\/track\/([a-zA-Z0-9]+)/,  // https://spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
+      ];
+      
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+      
+      return null;
+    };
+
+    // Helper function to extract YouTube video ID from URL
+    const extractYouTubeVideoId = (url) => {
+      if (!url || link.type !== 'youtube') return null;
+      
+      // Handle various YouTube URL formats
+      const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,  // Most YouTube URLs
+        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,  // Old YouTube format
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,  // YouTube with other parameters
+      ];
+      
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+      
+      return null;
+    };
+
+    // Handle supported link types
+    if (link.type !== 'audio' && link.type !== 'spotify' && link.type !== 'youtube') {
       req.flash("error", "Link viewer not available for this type");
       return res.redirect(`/songs/${songId}`);
     }
@@ -518,7 +556,9 @@ router.get("/:songId/links/:linkId", async (req, res) => {
       marqueeTitle: song.title,
       song,
       link,
-      getLinkDisplayText
+      getLinkDisplayText,
+      extractSpotifyTrackId,
+      extractYouTubeVideoId
     });
   } catch (error) {
     logger.logError("Song link viewer error:", error);

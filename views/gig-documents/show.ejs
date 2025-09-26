@@ -1,21 +1,22 @@
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>
-            <%= getTypeDisplayName(gigDocument.type) %> - v<%= gigDocument.version %>
-        </h1>
-        <div class="btn-group">
-            <button onclick="window.open('?print=true', '_blank')" class="btn btn-primary">
-                <i class="bi bi-printer"></i> Print
-            </button>
-            <a href="/songs/<%= gigDocument.song.id %>" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Song
-            </a>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <%= getTypeDisplayName(gigDocument.type) %> - v<%= gigDocument.version %>
+            </h1>
+            <div class="btn-group">
+                <button onclick="window.open('?print=true', '_blank')" class="btn btn-primary">
+                    <i class="bi bi-printer"></i> Print
+                </button>
+                <a href="/songs/<%= gigDocument.song.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Song
+                </a>
+            </div>
         </div>
-    </div>
 
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
+
+        <div class="row">
+            <div class="col-md-8">
+                    <div class="card">
                 <div class="card-header">
                     <div class="row align-items-center">
                         <div class="col">
@@ -60,29 +61,84 @@
                 </div>
             </div>
 
+        </div>
+
+        <div class="col-md-4">
+            <!-- Media Player Section - Above Document Info -->
             <% if (gigDocument.song.links && gigDocument.song.links.length > 0) { %>
-                <div class="card mt-3">
+                <div class="card mb-3">
                     <div class="card-header">
-                        <h6 class="mb-0">External Links</h6>
+                        <h6 class="mb-0">
+                            <i class="bi bi-music-note-beamed"></i> Listen While Reading
+                        </h6>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <% gigDocument.song.links.forEach(link => { %>
-                                <div class="col-md-6 mb-2">
-                                    <a href="<%= link.url %>" target="_blank" class="text-decoration-none">
-                                        <small class="text-muted">
-                                            <%= link.type %>: <%= link.url %>
-                                        </small>
-                                    </a>
+                        <!-- Link Selection Menu -->
+                        <div class="mb-3">
+                            <label class="form-label small">Choose Audio/Video:</label>
+                            <select class="form-select form-select-sm" id="mediaSelect" onchange="loadMediaPlayer()">
+                                <option value="">Select a link...</option>
+                                <% gigDocument.song.links.forEach(link => { %>
+                                    <% if (['audio', 'spotify', 'youtube'].includes(link.type)) { %>
+                                        <% 
+                                            let mediaId = null;
+                                            if (link.type === 'spotify') {
+                                                mediaId = extractSpotifyTrackId(link.url);
+                                            } else if (link.type === 'youtube') {
+                                                mediaId = extractYouTubeVideoId(link.url);
+                                            }
+                                        %>
+                                        <option value="<%= link.id %>" 
+                                                data-type="<%= link.type %>" 
+                                                data-url="<%= link.url %>"
+                                                data-media-id="<%= mediaId || '' %>">
+                                            <%= getLinkDisplayText(link) %>
+                                        </option>
+                                    <% } %>
+                                <% }) %>
+                            </select>
+                        </div>
+                        
+                        <!-- Media Player Container -->
+                        <div id="mediaPlayerContainer" style="display: none;">
+                            <div id="audioPlayer" style="display: none;">
+                                <audio controls style="width: 100%; height: 40px;">
+                                    <source src="" type="audio/mpeg">
+                                    <source src="" type="audio/wav">
+                                    <source src="" type="audio/ogg">
+                                    <source src="" type="audio/mp4">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                            
+                            <div id="spotifyPlayer" style="display: none;">
+                                <iframe 
+                                    src=""
+                                    width="100%" 
+                                    height="152" 
+                                    frameborder="0" 
+                                    allowtransparency="true" 
+                                    allow="encrypted-media"
+                                    style="border-radius: 8px;">
+                                </iframe>
+                            </div>
+                            
+                            <div id="youtubePlayer" style="display: none;">
+                                <div class="ratio ratio-16x9">
+                                    <iframe 
+                                        src=""
+                                        title="YouTube video player" 
+                                        frameborder="0" 
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                        allowfullscreen>
+                                    </iframe>
                                 </div>
-                            <% }) %>
+                            </div>
                         </div>
                     </div>
                 </div>
             <% } %>
-        </div>
 
-        <div class="col-md-4">
             <div class="card">
                 <div class="card-header">
                     <h6 class="mb-0">Document Info</h6>
@@ -126,6 +182,8 @@
                 </div>
             </div>
         </div>
+                    </div> <!-- Close left column -->
+                </div> <!-- Close row -->
     </div>
 </div>
 
@@ -311,4 +369,45 @@
             });
         }
     });
+
+    // Media Player Functions
+    function loadMediaPlayer() {
+        const select = document.getElementById('mediaSelect');
+        const container = document.getElementById('mediaPlayerContainer');
+        
+        // Hide all players first
+        document.getElementById('audioPlayer').style.display = 'none';
+        document.getElementById('spotifyPlayer').style.display = 'none';
+        document.getElementById('youtubePlayer').style.display = 'none';
+        
+        if (select.value) {
+            const option = select.options[select.selectedIndex];
+            const type = option.dataset.type;
+            const url = option.dataset.url;
+            const mediaId = option.dataset.mediaId;
+            
+            container.style.display = 'block';
+            
+            if (type === 'audio') {
+                const audioPlayer = document.getElementById('audioPlayer');
+                const audio = audioPlayer.querySelector('audio');
+                audio.src = url;
+                audioPlayer.style.display = 'block';
+                
+            } else if (type === 'spotify' && mediaId) {
+                const spotifyPlayer = document.getElementById('spotifyPlayer');
+                const iframe = spotifyPlayer.querySelector('iframe');
+                iframe.src = `https://open.spotify.com/embed/track/${mediaId}`;
+                spotifyPlayer.style.display = 'block';
+                
+            } else if (type === 'youtube' && mediaId) {
+                const youtubePlayer = document.getElementById('youtubePlayer');
+                const iframe = youtubePlayer.querySelector('iframe');
+                iframe.src = `https://www.youtube.com/embed/${mediaId}`;
+                youtubePlayer.style.display = 'block';
+            }
+        } else {
+            container.style.display = 'none';
+        }
+    }
 </script>

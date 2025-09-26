@@ -175,6 +175,46 @@
                     </div>
                     <% }) %>
 
+                    <!-- Band Meeting Section -->
+                    <% if (band.members.length > 1) { %>
+                        <hr>
+                        <div class="meeting-section">
+                            <h6 class="mb-3">
+                                <i class="bi bi-camera-video"></i> Band Meetings
+                            </h6>
+                            
+                            <!-- Active Meeting Display -->
+                            <div id="activeMeeting" class="alert alert-success" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong><i class="bi bi-camera-video-fill"></i> Meeting Active</strong>
+                                        <div class="small">Click to join the meeting</div>
+                                    </div>
+                                    <button class="btn btn-success btn-sm" onclick="joinMeeting()">
+                                        <i class="bi bi-box-arrow-up-right"></i> Join
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Meeting Controls -->
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary btn-sm" onclick="startInstantMeeting()">
+                                    <i class="bi bi-camera-video"></i> Start Instant Meeting
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="scheduleMeeting()">
+                                    <i class="bi bi-calendar-plus"></i> Schedule Meeting
+                                </button>
+                            </div>
+                            
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle"></i> 
+                                    Share screen for sheet music, collaborate on setlists, and rehearse together
+                                </small>
+                            </div>
+                        </div>
+                    <% } %>
+
                         <!-- Invite Member Form -->
                         <% const isOwner = band.members.find(member => member.user.id === userId && member.role === 'owner'); %>
                             <% if (isOwner) { %>
@@ -695,6 +735,93 @@ Set 4:
             document.getElementById('processingStatus').style.display = 'none';
             document.getElementById('processingResults').style.display = 'none';
         });
+
+        // Band Meeting Functions
+        let currentMeetingLink = null;
+
+        async function startInstantMeeting() {
+            try {
+                const response = await fetch(`/bands/<%= band.id %>/start-meeting`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentMeetingLink = data.meetingLink;
+                    
+                    // Show active meeting
+                    document.getElementById('activeMeeting').style.display = 'block';
+                    
+                    // Send notifications to band members
+                    await notifyBandMembers(data.meetingLink);
+                    
+                    // Show success message
+                    showNotification('Meeting started! All band members have been notified.', 'success');
+                } else {
+                    throw new Error('Failed to start meeting');
+                }
+            } catch (error) {
+                console.error('Error starting meeting:', error);
+                showNotification('Failed to start meeting. Please try again.', 'error');
+            }
+        }
+
+        function joinMeeting() {
+            if (currentMeetingLink) {
+                window.open(currentMeetingLink, '_blank');
+            }
+        }
+
+        function scheduleMeeting() {
+            // For now, just show a message about scheduling
+            showNotification('Scheduled meetings coming soon! Use "Start Instant Meeting" for now.', 'info');
+        }
+
+        async function notifyBandMembers(meetingLink) {
+            try {
+                const response = await fetch(`/bands/<%= band.id %>/notify-meeting`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ meetingLink })
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to send notifications');
+                }
+            } catch (error) {
+                console.error('Error sending notifications:', error);
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Request notification permission on page load
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
     </script>
 
 <!-- New Setlist Modal -->

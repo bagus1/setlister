@@ -5,7 +5,7 @@ if (process.env.SENDGRID_API_KEY || process.env.SENDGRID_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY || process.env.SENDGRID_KEY);
 }
 
-const sendEmail = async (to, subject, content) => {
+const sendEmail = async (to, subject, content, options = {}) => {
   const fromEmail = process.env.FROM_EMAIL || "noreply@thebandplan.com";
 
   const msg = {
@@ -14,6 +14,15 @@ const sendEmail = async (to, subject, content) => {
     subject,
     html: content,
     text: content.replace(/<[^>]*>/g, ""), // Strip HTML tags for text version
+    // Disable link tracking for sensitive emails like password resets
+    trackingSettings: {
+      clickTracking: {
+        enable: options.enableClickTracking !== false ? true : false
+      },
+      openTracking: {
+        enable: options.enableOpenTracking !== false ? true : false
+      }
+    }
   };
 
   try {

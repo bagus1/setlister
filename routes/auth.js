@@ -441,7 +441,7 @@ router.post(
       // Send email
       const baseUrl =
         process.env.NODE_ENV === "production"
-          ? "https://setlists.bagus.org"
+          ? "https://thebandplan.com"
           : process.env.BASE_URL || "http://localhost:3000";
       const resetUrl = `${baseUrl}/auth/reset-password/${token}`;
       const emailContent = `
@@ -454,7 +454,10 @@ router.post(
         `;
 
       try {
-        await sendEmail(emailLower, "Password Reset Request", emailContent);
+        await sendEmail(emailLower, "Password Reset Request", emailContent, {
+          enableClickTracking: false,
+          enableOpenTracking: false
+        });
       } catch (emailError) {
         console.error(
           `[${new Date().toISOString()}] Failed to send password reset email:`,

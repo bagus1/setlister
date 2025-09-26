@@ -7105,4 +7105,147 @@ router.post("/:bandId/setlists/:setlistId/versions/:versionId/restore", async (r
   }
 });
 
+// POST /bands/:id/start-meeting - Start an instant band meeting
+router.post("/:id/start-meeting", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Check if user is a member of the band
+    const band = await prisma.band.findFirst({
+      where: { id: bandId },
+      include: {
+        members: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+
+    if (!band) {
+      return res.status(404).json({ error: "Band not found" });
+    }
+
+    const isMember = band.members.some(member => member.userId === userId);
+    if (!isMember) {
+      return res.status(403).json({ error: "Not a member of this band" });
+    }
+
+    // Generate Google Meet link
+    // For now, we'll create a simple meeting link
+    // In production, you'd integrate with Google Calendar API
+    const meetingId = generateMeetingId();
+    const meetingLink = `https://meet.google.com/${meetingId}`;
+
+    res.json({ 
+      success: true, 
+      meetingLink,
+      meetingId 
+    });
+
+  } catch (error) {
+    console.error("Start meeting error:", error);
+    res.status(500).json({ error: "Failed to start meeting" });
+  }
+});
+
+// POST /bands/:id/notify-meeting - Send meeting notifications to band members
+router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { meetingLink } = req.body;
+
+    // Check if user is a member of the band
+    const band = await prisma.band.findFirst({
+      where: { id: bandId },
+      include: {
+        members: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+
+    if (!band) {
+      return res.status(404).json({ error: "Band not found" });
+    }
+
+    const isMember = band.members.some(member => member.userId === userId);
+    if (!isMember) {
+      return res.status(403).json({ error: "Not a member of this band" });
+    }
+
+    // Send email notifications to all band members
+    const { sendEmail } = require("../utils/emailService");
+    
+    for (const member of band.members) {
+      if (member.user.email) {
+        const emailContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">🎵 Band Meeting Starting!</h2>
+            
+            <p><strong>${req.session.user.username}</strong> has started an instant meeting for <strong>${band.name}</strong>.</p>
+            
+            <div style="margin: 30px 0;">
+              <a href="${meetingLink}" 
+                 style="background-color: #007bff; color: white; padding: 12px 24px; 
+                        text-decoration: none; border-radius: 5px; display: inline-block;">
+                Join Meeting Now
+              </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #666;">
+              Or copy and paste this link into your browser:<br>
+              <a href="${meetingLink}">${meetingLink}</a>
+            </p>
+            
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <h4 style="margin-top: 0;">Meeting Features:</h4>
+              <ul>
+                <li>🎥 Video chat with all band members</li>
+                <li>📱 Share your screen for sheet music</li>
+                <li>🎵 Collaborate on setlists in real-time</li>
+                <li>📞 Works on desktop, mobile, and tablet</li>
+              </ul>
+            </div>
+            
+            <p style="font-size: 12px; color: #999;">
+              This meeting link will remain active until everyone leaves.
+            </p>
+          </div>
+        `;
+
+        try {
+          await sendEmail(
+            member.user.email,
+            `🎵 ${band.name} Band Meeting Starting!`,
+            emailContent
+          );
+        } catch (emailError) {
+          console.error(`Failed to send meeting notification to ${member.user.email}:`, emailError);
+        }
+      }
+    }
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error("Notify meeting error:", error);
+    res.status(500).json({ error: "Failed to send notifications" });
+  }
+});
+
+// Helper function to generate meeting ID
+function generateMeetingId() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  let result = '';
+  for (let i = 0; i < 10; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 module.exports = router;

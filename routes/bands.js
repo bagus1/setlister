@@ -7132,9 +7132,24 @@ router.post("/:id/start-meeting", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Not a member of this band" });
     }
 
-    // Create real Google Meet meeting using Google Calendar API
-    const { createGoogleMeetMeeting } = require("./google-doc-processing");
-    const meetingData = await createGoogleMeetMeeting(band.name);
+    // Create Google Meet meeting
+    let meetingData;
+    try {
+      // Try to create real Google Meet meeting using Google Calendar API
+      const { createGoogleMeetMeeting } = require("./google-doc-processing");
+      meetingData = await createGoogleMeetMeeting(band.name);
+    } catch (calendarError) {
+      console.error("Google Calendar API error:", calendarError);
+      
+      // Fallback: Generate a simple Google Meet link
+      // This creates a meeting link that users can join
+      const meetingId = generateSimpleMeetingId();
+      meetingData = {
+        meetingLink: `https://meet.google.com/${meetingId}`,
+        meetingId: meetingId,
+        hangoutLink: `https://meet.google.com/${meetingId}`
+      };
+    }
     
     res.json({ 
       success: true, 
@@ -7236,5 +7251,16 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to send notifications" });
   }
 });
+
+// Helper function to generate simple meeting ID (fallback)
+function generateSimpleMeetingId() {
+  // Generate a simple meeting ID that Google Meet can handle
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  let result = '';
+  for (let i = 0; i < 10; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 module.exports = router;

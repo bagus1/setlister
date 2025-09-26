@@ -6,7 +6,7 @@ if (process.env.SENDGRID_API_KEY) {
 }
 
 const sendEmail = async (to, subject, content) => {
-  const fromEmail = process.env.FROM_EMAIL || "noreply@setlistmanager.com";
+  const fromEmail = process.env.FROM_EMAIL || "noreply@thebandplan.com";
 
   const msg = {
     to,
@@ -36,7 +36,7 @@ const sendBandInvitation = async (invitation, band, inviterName) => {
       : process.env.BASE_URL || "http://localhost:3000";
   const invitationUrl = `${baseUrl}/invite/${invitation.token}`;
 
-  const fromEmail = process.env.FROM_EMAIL || "noreply@setlistmanager.com";
+  const fromEmail = process.env.FROM_EMAIL || "noreply@thebandplan.com";
 
   const msg = {
     to: invitation.email,
@@ -107,7 +107,7 @@ const sendBandInvitationNotification = async (
       : process.env.BASE_URL || "http://localhost:3000";
   const dashboardUrl = `${baseUrl}/`;
 
-  const fromEmail = process.env.FROM_EMAIL || "noreply@setlistmanager.com";
+  const fromEmail = process.env.FROM_EMAIL || "noreply@thebandplan.com";
 
   const msg = {
     to: userEmail,

@@ -61,7 +61,7 @@ async function confirmAction(action) {
 }
 
 async function showServerInstructions() {
-  log("\n🎵 Setlist Manager - Database Management Tool", "cyan");
+  log("\n🎵 The Band Plan - Database Management Tool", "cyan");
   log("==============================================", "cyan");
   log("\n📡 Server Database Access", "blue");
   log("========================", "blue");
@@ -1388,7 +1388,7 @@ async function showStats() {
 }
 
 async function showMenu() {
-  log("\n🎵 Setlist Manager - Administration Tool", "magenta");
+  log("\n🎵 The Band Plan - Administration Tool", "magenta");
   log("=====================================", "magenta");
   log("1. List all users", "blue");
   log("2. List all bands", "blue");

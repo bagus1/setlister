@@ -173,7 +173,7 @@ router.post(
       } else {
         req.flash(
           "success",
-          "Registration successful! Welcome to Setlist Manager"
+          "Registration successful! Welcome to The Band Plan"
         );
       }
       res.redirect("/");
@@ -253,7 +253,9 @@ router.post(
 
         if (pendingInvitations.length > 0) {
           console.log(
-            `[${new Date().toISOString()}] LOGIN: Processing ${pendingInvitations.length} invitations`
+            `[${new Date().toISOString()}] LOGIN: Processing ${
+              pendingInvitations.length
+            } invitations`
           );
         }
       } catch (error) {
@@ -310,7 +312,9 @@ router.post(
         }
 
         console.log(
-          `[${new Date().toISOString()}] User ${user.email} automatically added to ${bandMemberships.length} bands during login`
+          `[${new Date().toISOString()}] User ${
+            user.email
+          } automatically added to ${bandMemberships.length} bands during login`
         );
       }
 
@@ -442,7 +446,7 @@ router.post(
       const resetUrl = `${baseUrl}/auth/reset-password/${token}`;
       const emailContent = `
             <h2>Password Reset Request</h2>
-            <p>You requested a password reset for your Setlist Manager account.</p>
+            <p>You requested a password reset for your The Band Plan account.</p>
             <p>Click the link below to reset your password:</p>
             <p><a href="${resetUrl}">Reset Password</a></p>
             <p>This link will expire in 1 hour.</p>

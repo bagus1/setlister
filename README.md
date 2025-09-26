@@ -1,4 +1,4 @@
-# Setlist Manager
+# The Band Plan
 
 A real-time collaborative setlist management system for bands. Multiple band members can simultaneously edit setlists with live drag-and-drop updates via Socket.io.
 

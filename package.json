@@ -1,5 +1,5 @@
 {
-  "name": "setlist-manager",
+  "name": "the-band-plan",
   "version": "1.0.0",
   "description": "Multi-user band setlist management system",
   "main": "server.js",

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Setlist Manager Git-Based Deployment Script
+# The Band Plan Git-Based Deployment Script
 # Usage: ./deploy.sh [mode]
 # 
 # Modes:
@@ -83,7 +83,7 @@ print_error() {
 # Function to show help
 show_help() {
     cat << EOF
-Setlist Manager Git-Based Deployment Script
+The Band Plan Git-Based Deployment Script
 
 Usage: ./deploy.sh [mode]
 

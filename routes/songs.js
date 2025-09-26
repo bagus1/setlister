@@ -552,7 +552,7 @@ router.get("/:songId/links/:linkId", async (req, res) => {
     
     res.render("songs/link-viewer", {
       title: song.title,
-      pageTitle: `${song.title} | Setlist Manager`,
+      pageTitle: `${song.title} | The Band Plan`,
       marqueeTitle: song.title,
       song,
       link,

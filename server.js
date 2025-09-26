@@ -51,7 +51,7 @@ app.use(
       tableName: "sessions", // optional, defaults to 'session'
       createTableIfMissing: true, // automatically create the sessions table
     }),
-    secret: process.env.SESSION_SECRET || "setlist-manager-secret-key",
+    secret: process.env.SESSION_SECRET || "the-band-plan-secret-key",
     resave: false, // set to false for PostgreSQL store
     saveUninitialized: false,
     cookie: {

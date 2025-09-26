@@ -136,8 +136,8 @@ router.get("/", async (req, res) => {
       });
 
       res.render("dashboard/index", {
-        title: "Setlist Manager",
-        pageTitle: "Setlist Manager",
+        title: "The Band Plan",
+        pageTitle: "The Band Plan",
         loggedIn: false,
         bands,
         songs,

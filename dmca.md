@@ -1,0 +1,86 @@
+## Overview
+
+It is our policy to respond to notices of alleged infringement that comply with the Digital Millennium Copyright Act ("DMCA") and other applicable intellectual property laws. Responses may include removing material claimed to be the subject of infringing activity on The Band Plan and/or terminating a user's account. If we take such measures, we will make a good-faith attempt to contact the sender who transmitted the content so that he or she may make a counter notification pursuant to sections 512(g)(2) and (3) of the DMCA.
+
+It is our policy to document all notices of alleged infringement on which we act. As with all legal notices, a copy of the notice may be sent to one or more third parties who may make it available to the public.
+
+## Infringement Notification
+
+If you are a copyright owner or an authorized agent thereof and believe that any user of The Band Plan has infringed upon your copyrights, you may submit a notification pursuant to the DMCA by filing a notice of infringement with our Copyright Agent.
+
+To file a notice of infringement with our Copyright Agent, you must provide a written communication (by fax, regular mail or e-mail) that sets forth the items specified below. Please note that you will be liable for damages (including costs and attorneys' fees) if you materially misrepresent that a product or activity is infringing your copyrights. Accordingly, if you are not sure whether material available online infringes your copyright, we suggest that you first contact an attorney.
+
+To expedite our ability to process your request, please use the following format (including section numbers):
+
+1. **Identify in sufficient detail the copyrighted work** that you believe has been infringed upon.
+
+2. **Identify the material** that you claim is infringing the copyrighted work listed in item #1 above or which you claim is the subject of infringing activity. You must identify each separate item of infringing material.
+
+3. **Provide information reasonably sufficient** to permit The Band Plan to locate the material.
+
+4. **Provide information reasonably sufficient** to permit The Band Plan to contact you (email address, telephone number and a mailing address).
+
+5. **Provide information, if possible, sufficient** to permit The Band Plan to notify the user that allegedly sent infringing material (email address is preferred).
+
+6. **Include the following statement**: "I have a good faith belief that use of the copyrighted materials in the manner complained of is not authorized by the copyright owner, its agent, or the law."
+
+7. **Include the following statement**: "I swear, under penalty of perjury, that the information in the notification is accurate and that I am the copyright owner or am authorized to act on behalf of the owner of an exclusive right that is allegedly infringed."
+
+8. **Sign the paper.**
+
+9. **Send the written communication** to the following address:
+
+   **Krewe De Groove, LLC**  
+   **Attn:** Copyright Agent  
+   Denver, Colorado, United States
+
+   **OR email to:** contact&#64;thebandplan&#46;com with the words "DMCA Complaint" in the subject line.
+
+**Important**: You hereby acknowledge that if you fail to comply with all of the requirements set forth above, your DMCA notice may not be valid.
+
+## Counter Notification
+
+Pursuant to sections 512(g)(2) and (3) of the Act, the subscriber may make a counter notification. To file a counter notification with us, you must provide a written communication (by fax, regular mail or email) that sets forth the items specified below.
+
+Please note that you will be liable for damages (including costs and attorneys' fees) if you materially misrepresent that the content is not infringing the copyrights of others. Accordingly, if you are not sure whether certain material infringes the copyrights of others, we suggest that you first contact an attorney.
+
+A sample counter notification may be found at [www.chillingeffects.org/dmca/counter512.pdf](https://www.chillingeffects.org/dmca/counter512.pdf).
+
+To expedite our ability to process your counter notification, please use the following format (including section numbers):
+
+1. **Identify the name of the The Band Plan content** with respect to which The Band Plan has blocked access.
+
+2. **Provide your name, address, telephone number, email address**, and a statement that you consent to the jurisdiction of Federal District Court for the judicial district in which your address is located (or Denver, Colorado if your address is outside of the United States), and that you will accept service of process from the person who provided notification under subsection (c)(1)(C) of the DMCA or an agent of such person.
+
+3. **Include the following statement**: "I swear, under penalty of perjury, that I have a good faith belief that transmission of each The Band Plan file identified above was blocked as a result of a mistake or misidentification of the material to be blocked."
+
+4. **Sign the paper.**
+
+5. **Send the written communication** to the following address:
+
+   **Krewe De Groove, LLC**  
+   **Attn:** Copyright Agent  
+   Denver, Colorado, 80210
+
+   **OR email to:** concact@thebandplan with the words "DMCA Counter Notification" in the subject line.
+
+## Additional Information
+
+For more information about the DMCA and copyright law, please visit:
+
+- [U.S. Copyright Office](https://www.copyright.gov/)
+- [DMCA Information](https://www.copyright.gov/dmca/)
+
+## Contact Information
+
+**Copyright Agent**  
+Krewe De Groove, LLC  
+Denver, Colorado 80210
+Email: contact@thebandplan.com  
+Subject: DMCA Complaint or DMCA Counter Notification
+
+---
+
+**Last updated: September 26, 2025**
+
+**For questions about this DMCA Policy, please contact us at contact&#64;thebandplan&#46;com**

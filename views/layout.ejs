@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        <%= typeof title !=='undefined' ? title : 'The Band Plan' %> - The Band Plan
+        <%= (typeof title !=='undefined' && title && title.trim()) ? title : 'The Band Plan' %>
     </title>
 
     <!-- Bootstrap CSS -->

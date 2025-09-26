@@ -86,9 +86,11 @@ router.get("/", (req, res) => {
 });
 
 // GET /legal/google-doc-formatting-guide - Google Doc formatting guide
-router.get("/legal/google-doc-formatting-guide", (req, res) => {
+router.get("/google-doc-formatting-guide", (req, res) => {
   const htmlContent = `
-    <div class="alert alert-info">
+        
+    <div class="dark-mode-container">
+      <div class="alert alert-info">
       <h3>🎵 TL;DR - Quick Formatting Rules</h3>
       <ul>
         <li><strong>Use page breaks</strong> (Ctrl+Enter / Cmd+Enter) to separate songs</li>
@@ -174,6 +176,7 @@ Next Song Title (first paragraph)
     
     <div class="alert alert-warning">
       <strong>Note:</strong> Our parser works best with documents that have 150 songs or fewer. For very large documents, consider splitting them into multiple files.
+    </div>
     </div>
   `;
 

@@ -7141,9 +7141,10 @@ router.post("/:id/start-meeting", requireAuth, async (req, res) => {
     } catch (calendarError) {
       console.error("Google Calendar API error:", calendarError);
       
-      // Fallback: Generate a simple Google Meet link
-      // This creates a meeting link that users can join
-      const meetingId = generateSimpleMeetingId();
+      // Fallback: Generate a simple Google Meet link using UUID
+      const { v4: uuidv4 } = require('uuid');
+      const fallbackId = uuidv4();
+      const meetingId = fallbackId.substring(0, 8); // Use first 8 chars
       meetingData = {
         meetingLink: `https://meet.google.com/${meetingId}`,
         meetingId: meetingId,
@@ -7251,18 +7252,5 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to send notifications" });
   }
 });
-
-// Helper function to generate simple meeting ID (fallback)
-function generateSimpleMeetingId() {
-  // Generate a meeting ID in Google Meet format: xxx-yyyy-zzz
-  const chars = 'abcdefghijklmnopqrstuvwxyz';
-  
-  // Generate three segments: 3 chars, 4 chars, 3 chars
-  const segment1 = Array.from({length: 3}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
-  const segment2 = Array.from({length: 4}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
-  const segment3 = Array.from({length: 3}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
-  
-  return `${segment1}-${segment2}-${segment3}`;
-}
 
 module.exports = router;

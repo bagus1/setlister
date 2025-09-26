@@ -7254,13 +7254,15 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
 
 // Helper function to generate simple meeting ID (fallback)
 function generateSimpleMeetingId() {
-  // Generate a simple meeting ID that Google Meet can handle
+  // Generate a meeting ID in Google Meet format: xxx-yyyy-zzz
   const chars = 'abcdefghijklmnopqrstuvwxyz';
-  let result = '';
-  for (let i = 0; i < 10; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  
+  // Generate three segments: 3 chars, 4 chars, 3 chars
+  const segment1 = Array.from({length: 3}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+  const segment2 = Array.from({length: 4}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+  const segment3 = Array.from({length: 3}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+  
+  return `${segment1}-${segment2}-${segment3}`;
 }
 
 module.exports = router;

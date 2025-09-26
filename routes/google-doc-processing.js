@@ -7,10 +7,11 @@ const { prisma } = require("../lib/prisma");
 const router = express.Router();
 
 // Load Google service account credentials
-// Google Drive API scopes
+// Google API scopes
 const SCOPES = [
   "https://www.googleapis.com/auth/documents.readonly",
   "https://www.googleapis.com/auth/drive.readonly",
+  "https://www.googleapis.com/auth/calendar",
 ];
 
 // Initialize Google Drive API client for exporting documents
@@ -33,6 +34,77 @@ function getGoogleDriveClient() {
   } catch (error) {
     console.error("Error loading Google credentials:", error);
     throw new Error("Failed to initialize Google Drive API client");
+  }
+}
+
+// Initialize Google Calendar API client
+function getGoogleCalendarClient() {
+  try {
+    // Use environment variable for credentials file, fallback to default
+    const credentialsPath = process.env.GOOGLE_CREDENTIALS_FILE
+      ? path.join(__dirname, "..", process.env.GOOGLE_CREDENTIALS_FILE)
+      : path.join(__dirname, "..", "setlister-api-8ba5ce617f03.json"); // Default to working file
+
+    if (!fs.existsSync(credentialsPath)) {
+      throw new Error(`Google credentials file not found at: ${credentialsPath}`);
+    }
+
+    const auth = new google.auth.GoogleAuth({
+      keyFile: credentialsPath,
+      scopes: SCOPES,
+    });
+
+    return google.calendar({ version: "v3", auth });
+  } catch (error) {
+    console.error("Error loading Google Calendar credentials:", error);
+    throw new Error("Failed to initialize Google Calendar API client");
+  }
+}
+
+// Create a Google Meet meeting
+async function createGoogleMeetMeeting(bandName, meetingTitle = null) {
+  try {
+    const calendar = getGoogleCalendarClient();
+    
+    const now = new Date();
+    const endTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
+    
+    const event = {
+      summary: meetingTitle || `${bandName} Band Meeting`,
+      description: `Instant band meeting for ${bandName}. Join to collaborate on setlists, share screen for sheet music, and rehearse together.`,
+      start: {
+        dateTime: now.toISOString(),
+        timeZone: 'America/Denver', // Adjust timezone as needed
+      },
+      end: {
+        dateTime: endTime.toISOString(),
+        timeZone: 'America/Denver',
+      },
+      conferenceData: {
+        createRequest: {
+          requestId: `band-meeting-${Date.now()}`,
+          conferenceSolutionKey: {
+            type: 'hangoutsMeet'
+          }
+        }
+      },
+      attendees: [], // We'll add attendees via email notifications
+    };
+
+    const response = await calendar.events.insert({
+      calendarId: 'primary',
+      resource: event,
+      conferenceDataVersion: 1,
+    });
+
+    return {
+      meetingLink: response.data.conferenceData.entryPoints[0].uri,
+      meetingId: response.data.id,
+      hangoutLink: response.data.hangoutLink
+    };
+  } catch (error) {
+    console.error("Error creating Google Meet meeting:", error);
+    throw new Error("Failed to create Google Meet meeting");
   }
 }
 
@@ -877,4 +949,7 @@ router.post("/admin/process-google-doc", async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {
+  router,
+  createGoogleMeetMeeting
+};

@@ -27,7 +27,7 @@ const bulkAddSongsRoutes = require("./routes/bulk-add-songs");
 const linkRoutes = require("./routes/links");
 const legalRoutes = require("./routes/legal");
 const whitelistRequestRoutes = require("./routes/whitelist-requests");
-const googleDocProcessingRoutes = require("./routes/google-doc-processing");
+const googleDocProcessingRoutes = require("./routes/google-doc-processing").router;
 const venueRoutes = require("./routes/venues");
 
 const app = express();

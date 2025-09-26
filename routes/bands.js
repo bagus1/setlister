@@ -7132,16 +7132,15 @@ router.post("/:id/start-meeting", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Not a member of this band" });
     }
 
-    // Generate Google Meet link
-    // For now, we'll create a simple meeting link
-    // In production, you'd integrate with Google Calendar API
-    const meetingId = generateMeetingId();
-    const meetingLink = `https://meet.google.com/${meetingId}`;
-
+    // Create real Google Meet meeting using Google Calendar API
+    const { createGoogleMeetMeeting } = require("./google-doc-processing");
+    const meetingData = await createGoogleMeetMeeting(band.name);
+    
     res.json({ 
       success: true, 
-      meetingLink,
-      meetingId 
+      meetingLink: meetingData.meetingLink,
+      meetingId: meetingData.meetingId,
+      hangoutLink: meetingData.hangoutLink
     });
 
   } catch (error) {
@@ -7237,31 +7236,5 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to send notifications" });
   }
 });
-
-// Helper function to generate meeting ID
-function generateMeetingId() {
-  // Google Meet requires format: xxx-yyyy-zzz (3-4-3 characters)
-  const chars = 'abcdefghijklmnopqrstuvwxyz';
-  let result = '';
-  
-  // Generate 3 characters
-  for (let i = 0; i < 3; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  result += '-';
-  
-  // Generate 4 characters
-  for (let i = 0; i < 4; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  result += '-';
-  
-  // Generate 3 characters
-  for (let i = 0; i < 3; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  
-  return result;
-}
 
 module.exports = router;

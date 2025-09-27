@@ -160,6 +160,7 @@ router.post(
         id: user.id,
         username: user.username,
         email: user.email,
+        role: user.role,
       };
 
       // Log successful registration
@@ -219,6 +220,13 @@ router.post(
       // Find user (case insensitive)
       const user = await prisma.user.findFirst({
         where: { email: emailLower },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          password: true,
+          role: true,
+        },
       });
       if (!user) {
         return res.render("auth/login", {
@@ -322,6 +330,7 @@ router.post(
         id: user.id,
         username: user.username,
         email: user.email,
+        role: user.role,
       };
 
       // Log successful login
@@ -456,7 +465,7 @@ router.post(
       try {
         await sendEmail(emailLower, "Password Reset Request", emailContent, {
           enableClickTracking: false,
-          enableOpenTracking: false
+          enableOpenTracking: false,
         });
       } catch (emailError) {
         console.error(

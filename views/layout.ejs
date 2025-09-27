@@ -104,6 +104,34 @@
                                             <i class="bi bi-shield-check"></i> Manage Whitelist Requests
                                         </a>
                                     </li>
+                                    <% if (user && (user.role === 'admin' || user.role === 'moderator')) { %>
+                                        <li>
+                                            <a class="dropdown-item" href="/admin">
+                                                <i class="bi bi-speedometer2"></i> Moderator Dashboard
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item" href="/admin/users">
+                                                <i class="bi bi-people"></i> User Management
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="/admin/venues">
+                                                <i class="bi bi-geo-alt"></i> Venue Management
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="/admin/venue-changes">
+                                                <i class="bi bi-clipboard-check"></i> Review Venue Changes
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="/admin/content">
+                                                <i class="bi bi-file-text"></i> Content Moderation
+                                            </a>
+                                        </li>
+                                    <% } %>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <form action="/auth/logout" method="POST" class="d-inline">

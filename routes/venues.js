@@ -617,10 +617,10 @@ router.post(
       });
 
       req.flash("success", "Venue updated successfully");
-      
+
       // Check if there's a return URL parameter
       const returnUrl = req.query.returnUrl || req.body.returnUrl;
-      if (returnUrl && returnUrl.startsWith('/bands/')) {
+      if (returnUrl && returnUrl.startsWith("/bands/")) {
         res.redirect(returnUrl);
       } else {
         res.redirect(`/venues/${venue.id}`);
@@ -684,40 +684,52 @@ router.post("/:id/contacts", requireAuth, async (req, res) => {
     // Parse the value to extract handle from URL if needed
     let parsedValue = value.trim();
     let parsedUrl = url?.trim() || null;
-    
+
     // Get the contact type to determine if we need URL parsing
     const contactType = await prisma.venueContactType.findUnique({
       where: { id: parseInt(contactTypeId) },
     });
-    
+
     if (contactType) {
       // Parse Facebook URLs
-      if (contactType.name === 'FACEBOOK_MESSAGE' && parsedValue.includes('facebook.com/')) {
-        parsedValue = extractUsernameFromHandle(parsedValue, 'facebook');
+      if (
+        contactType.name === "FACEBOOK_MESSAGE" &&
+        parsedValue.includes("facebook.com/")
+      ) {
+        parsedValue = extractUsernameFromHandle(parsedValue, "facebook");
         // Generate URL from template if available
         if (contactType.urlTemplate) {
-          parsedUrl = contactType.urlTemplate.replace('{contact}', parsedValue);
+          parsedUrl = contactType.urlTemplate.replace("{contact}", parsedValue);
         }
       }
       // Parse Instagram URLs
-      else if (contactType.name === 'INSTAGRAM_MESSAGE' && parsedValue.includes('instagram.com/')) {
-        parsedValue = extractUsernameFromHandle(parsedValue, 'instagram');
+      else if (
+        contactType.name === "INSTAGRAM_MESSAGE" &&
+        parsedValue.includes("instagram.com/")
+      ) {
+        parsedValue = extractUsernameFromHandle(parsedValue, "instagram");
         if (contactType.urlTemplate) {
-          parsedUrl = contactType.urlTemplate.replace('{contact}', parsedValue);
+          parsedUrl = contactType.urlTemplate.replace("{contact}", parsedValue);
         }
       }
       // Parse Twitter URLs
-      else if (contactType.name === 'TWITTER_MESSAGE' && parsedValue.includes('twitter.com/')) {
-        parsedValue = extractUsernameFromHandle(parsedValue, 'twitter');
+      else if (
+        contactType.name === "TWITTER_MESSAGE" &&
+        parsedValue.includes("twitter.com/")
+      ) {
+        parsedValue = extractUsernameFromHandle(parsedValue, "twitter");
         if (contactType.urlTemplate) {
-          parsedUrl = contactType.urlTemplate.replace('{contact}', parsedValue);
+          parsedUrl = contactType.urlTemplate.replace("{contact}", parsedValue);
         }
       }
       // Parse LinkedIn URLs
-      else if (contactType.name === 'LINKEDIN_MESSAGE' && parsedValue.includes('linkedin.com/')) {
-        parsedValue = extractUsernameFromHandle(parsedValue, 'linkedin');
+      else if (
+        contactType.name === "LINKEDIN_MESSAGE" &&
+        parsedValue.includes("linkedin.com/")
+      ) {
+        parsedValue = extractUsernameFromHandle(parsedValue, "linkedin");
         if (contactType.urlTemplate) {
-          parsedUrl = contactType.urlTemplate.replace('{contact}', parsedValue);
+          parsedUrl = contactType.urlTemplate.replace("{contact}", parsedValue);
         }
       }
     }
@@ -756,15 +768,15 @@ router.post("/:id/contacts", requireAuth, async (req, res) => {
     res.json({ success: true, contact });
   } catch (error) {
     logger.logError("Add venue contact error", error);
-    
+
     // Handle unique constraint violation specifically
-    if (error.code === 'P2002') {
+    if (error.code === "P2002") {
       return res.status(400).json({
         success: false,
         error: "A contact with this information already exists for this venue",
       });
     }
-    
+
     res.status(500).json({ success: false, error: "Error adding contact" });
   }
 });
@@ -822,6 +834,189 @@ router.post("/:id/socials", requireAuth, async (req, res) => {
     res
       .status(500)
       .json({ success: false, error: "Error adding social media" });
+  }
+});
+
+/**
+ * POST /venues/venue-changes - Submit a venue change suggestion
+ */
+router.post("/venue-changes", requireAuth, async (req, res) => {
+  try {
+    const { venueId, fieldName, suggestedValue, reason } = req.body;
+    const userId = req.session.user.id;
+
+    // Validate required fields
+    if (!venueId || !fieldName || !suggestedValue) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields",
+      });
+    }
+
+    // Check if venue exists
+    const venue = await prisma.venue.findUnique({
+      where: { id: parseInt(venueId) },
+    });
+
+    if (!venue) {
+      return res.status(404).json({
+        success: false,
+        error: "Venue not found",
+      });
+    }
+
+    // Get current value of the field
+    const currentValue = venue[fieldName] || null;
+
+    // Check if there's already a pending change for this field
+    const existingChange = await prisma.venueChange.findFirst({
+      where: {
+        venueId: parseInt(venueId),
+        fieldName,
+        status: "pending",
+      },
+    });
+
+    if (existingChange) {
+      return res.status(400).json({
+        success: false,
+        error: "There's already a pending change suggestion for this field",
+      });
+    }
+
+    // Create the venue change suggestion
+    const venueChange = await prisma.venueChange.create({
+      data: {
+        venueId: parseInt(venueId),
+        fieldName,
+        currentValue,
+        suggestedValue,
+        reason: reason || null,
+        suggestedByUserId: userId,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Change suggestion submitted successfully",
+      changeId: venueChange.id,
+    });
+  } catch (error) {
+    logger.logError("Venue change suggestion error", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to submit change suggestion",
+    });
+  }
+});
+
+/**
+ * POST /venues/add-field - Add a new field to a venue (immediate update)
+ */
+router.post("/add-field", requireAuth, async (req, res) => {
+  try {
+    const { venueId, fieldName, fieldValue } = req.body;
+    const userId = req.session.user.id;
+
+    if (!venueId || !fieldName || !fieldValue) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields",
+      });
+    }
+
+    // Check if venue exists
+    const venue = await prisma.venue.findUnique({
+      where: { id: parseInt(venueId) },
+    });
+
+    if (!venue) {
+      return res.status(404).json({
+        success: false,
+        error: "Venue not found",
+      });
+    }
+
+    // Handle special cases for fields that aren't direct venue properties
+    if (fieldName === 'website') {
+      // Website is stored in VenueSocial table, not directly on venue
+      const websiteSocialType = await prisma.venueSocialType.findFirst({
+        where: { name: 'Website' }
+      });
+
+      if (!websiteSocialType) {
+        return res.status(400).json({
+          success: false,
+          error: "Website social type not found",
+        });
+      }
+
+      // Check if venue already has a website
+      const existingWebsite = await prisma.venueSocial.findFirst({
+        where: {
+          venueId: parseInt(venueId),
+          socialTypeId: websiteSocialType.id
+        }
+      });
+
+      if (existingWebsite) {
+        // Update existing website
+        await prisma.venueSocial.update({
+          where: { id: existingWebsite.id },
+          data: {
+            url: fieldValue,
+            handle: fieldValue
+          }
+        });
+      } else {
+        // Create new website entry
+        await prisma.venueSocial.create({
+          data: {
+            venueId: parseInt(venueId),
+            socialTypeId: websiteSocialType.id,
+            handle: fieldValue,
+            url: fieldValue
+          }
+        });
+      }
+
+      logger.logInfo(
+        `Venue website added: ${fieldValue} for venue ${venueId} by user ${userId}`
+      );
+
+      return res.json({
+        success: true,
+        message: "Website added successfully",
+      });
+    }
+
+    // Prepare the update data for regular venue fields
+    const updateData = {};
+    updateData[fieldName] = fieldValue;
+
+    console.log("Attempting to update venue with data:", updateData);
+
+    // Update the venue directly
+    const updatedVenue = await prisma.venue.update({
+      where: { id: parseInt(venueId) },
+      data: updateData,
+    });
+
+    logger.logInfo(
+      `Venue field added: ${fieldName} = ${fieldValue} for venue ${venueId} by user ${userId}`
+    );
+
+    res.json({
+      success: true,
+      message: "Field added successfully",
+      venue: updatedVenue,
+    });
+  } catch (error) {
+    logger.logError("Venue field addition error", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to add field",
+    });
   }
 });
 

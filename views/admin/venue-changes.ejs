@@ -1,0 +1,124 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-clipboard-check"></i> Venue Changes Review</h2>
+                <a href="/admin/users" class="btn btn-outline-primary">
+                    <i class="bi bi-people"></i> Manage Users
+                </a>
+            </div>
+
+            <% if (changes && changes.length > 0) { %>
+                <div class="row">
+                    <% changes.forEach(change => { %>
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-geo-alt"></i> <%= change.venue.name %>
+                                    </h6>
+                                    <small class="text-muted">
+                                        <%= change.venue.city %><% if (change.venue.state) { %>, <%= change.venue.state %><% } %>
+                                    </small>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <strong>Field:</strong> 
+                                        <span class="badge bg-info"><%= change.fieldName %></span>
+                                    </div>
+                                    
+                                    <% if (change.currentValue) { %>
+                                        <div class="mb-2">
+                                            <strong>Current:</strong>
+                                            <div class="text-muted small p-2 bg-light rounded">
+                                                <%= change.currentValue %>
+                                            </div>
+                                        </div>
+                                    <% } else { %>
+                                        <div class="mb-2">
+                                            <strong>Current:</strong>
+                                            <span class="text-muted small">(empty)</span>
+                                        </div>
+                                    <% } %>
+                                    
+                                    <div class="mb-3">
+                                        <strong>Suggested:</strong>
+                                        <div class="text-primary small p-2 bg-light rounded">
+                                            <%= change.suggestedValue %>
+                                        </div>
+                                    </div>
+                                    
+                                    <% if (change.reason) { %>
+                                        <div class="mb-3">
+                                            <strong>Reason:</strong>
+                                            <div class="small text-muted">
+                                                <%= change.reason %>
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                    
+                                    <div class="small text-muted">
+                                        <strong>Suggested by:</strong> <%= change.suggestedBy.username %><br>
+                                        <strong>Date:</strong> <%= new Date(change.createdAt).toLocaleDateString() %>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <div class="d-flex gap-2">
+                                        <form method="POST" action="/admin/venue-changes/<%= change.id %>/approve" class="flex-fill">
+                                            <button type="submit" class="btn btn-success btn-sm w-100">
+                                                <i class="bi bi-check-circle"></i> Approve
+                                            </button>
+                                        </form>
+                                        <button type="button" 
+                                                class="btn btn-danger btn-sm" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#rejectModal<%= change.id %>">
+                                            <i class="bi bi-x-circle"></i> Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reject Modal -->
+                        <div class="modal fade" id="rejectModal<%= change.id %>" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Reject Venue Change</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="POST" action="/admin/venue-changes/<%= change.id %>/reject">
+                                        <div class="modal-body">
+                                            <p>Are you sure you want to reject this change for <strong><%= change.venue.name %></strong>?</p>
+                                            <div class="mb-3">
+                                                <label for="reason<%= change.id %>" class="form-label">Reason (optional)</label>
+                                                <textarea class="form-control" 
+                                                          id="reason<%= change.id %>" 
+                                                          name="reason" 
+                                                          rows="3"
+                                                          placeholder="Why is this change being rejected?"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-danger">Reject Change</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } else { %>
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-clipboard-check display-4 text-muted mb-3"></i>
+                        <h4>No Pending Changes</h4>
+                        <p class="text-muted">There are currently no venue changes waiting for review.</p>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>

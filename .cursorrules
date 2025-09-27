@@ -36,6 +36,8 @@
   - For local: `npx prisma db push` then `npx prisma generate`
   - For production suggest: `./deploy.sh deploy-schema` (never run migrations directly on prod)
   - Make new fields optional initially to prevent issues with existing records
+- Create all markdown (.md) files in `/Users/john/coding-practice/setlists/mds/` directory
+- Start the application on port 3004 when testing so the user can run it separately on port 3000
 
 ## 📋 Problem Solving Approach:
 

@@ -1,0 +1,394 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-file-text"></i> Content Moderation</h2>
+                <a href="/admin" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+
+            <!-- Content Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalSongs %></h4>
+                                    <small>Total Songs</small>
+                                </div>
+                                <i class="bi bi-music-note display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalBands %></h4>
+                                    <small>Total Bands</small>
+                                </div>
+                                <i class="bi bi-people display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalSetlists %></h4>
+                                    <small>Total Setlists</small>
+                                </div>
+                                <i class="bi bi-list-ul display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalDocuments %></h4>
+                                    <small>Gig Documents</small>
+                                </div>
+                                <i class="bi bi-file-text display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Tabs -->
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="contentTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="songs-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#songs" type="button" role="tab">
+                                <i class="bi bi-music-note"></i> Songs
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="bands-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#bands" type="button" role="tab">
+                                <i class="bi bi-people"></i> Bands
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="setlists-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#setlists" type="button" role="tab">
+                                <i class="bi bi-list-ul"></i> Setlists
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="documents-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#documents" type="button" role="tab">
+                                <i class="bi bi-file-text"></i> Gig Documents
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="contentTabContent">
+                        <!-- Songs Tab -->
+                        <div class="tab-pane fade show active" id="songs" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5>Recent Songs</h5>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="refreshContent('songs')">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Artist</th>
+                                            <th>Created By</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% if (songs && songs.length > 0) { %>
+                                            <% songs.forEach(song => { %>
+                                                <tr>
+                                                    <td>
+                                                        <strong><%= song.title %></strong>
+                                                        <% if (song.key) { %>
+                                                            <br><small class="text-muted">Key: <%= song.key %></small>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <% if (song.artists && song.artists.length > 0) { %>
+                                                            <%= song.artists.map(a => a.artist.name).join(', ') %>
+                                                        <% } else { %>
+                                                            <span class="text-muted">-</span>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <% if (song.createdBy) { %>
+                                                            <%= song.createdBy.username %>
+                                                        <% } else { %>
+                                                            <span class="text-muted">-</span>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <small><%= new Date(song.createdAt).toLocaleDateString() %></small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <a href="/songs/<%= song.id %>" class="btn btn-outline-primary btn-sm">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            <a href="/songs/<%= song.id %>/edit" class="btn btn-outline-secondary btn-sm">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted">No songs found</td>
+                                            </tr>
+                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Bands Tab -->
+                        <div class="tab-pane fade" id="bands" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5>Recent Bands</h5>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="refreshContent('bands')">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Members</th>
+                                            <th>Created By</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% if (bands && bands.length > 0) { %>
+                                            <% bands.forEach(band => { %>
+                                                <tr>
+                                                    <td>
+                                                        <strong><%= band.name %></strong>
+                                                        <% if (band.description) { %>
+                                                            <br><small class="text-muted"><%= band.description.substring(0, 50) %>...</small>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info"><%= band.members ? band.members.length : 0 %></span>
+                                                    </td>
+                                                    <td>
+                                                        <% if (band.createdBy) { %>
+                                                            <%= band.createdBy.username %>
+                                                        <% } else { %>
+                                                            <span class="text-muted">-</span>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <small><%= new Date(band.createdAt).toLocaleDateString() %></small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <a href="/bands/<%= band.id %>" class="btn btn-outline-primary btn-sm">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            <a href="/bands/<%= band.id %>/edit" class="btn btn-outline-secondary btn-sm">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted">No bands found</td>
+                                            </tr>
+                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Setlists Tab -->
+                        <div class="tab-pane fade" id="setlists" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5>Recent Setlists</h5>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="refreshContent('setlists')">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Band</th>
+                                            <th>Songs</th>
+                                            <th>Created By</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% if (setlists && setlists.length > 0) { %>
+                                            <% setlists.forEach(setlist => { %>
+                                                <tr>
+                                                    <td>
+                                                        <strong><%= setlist.name %></strong>
+                                                        <% if (setlist.description) { %>
+                                                            <br><small class="text-muted"><%= setlist.description.substring(0, 50) %>...</small>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <% if (setlist.band) { %>
+                                                            <%= setlist.band.name %>
+                                                        <% } else { %>
+                                                            <span class="text-muted">-</span>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-success"><%= setlist.setlistSongs ? setlist.setlistSongs.length : 0 %></span>
+                                                    </td>
+                                                    <td>
+                                                        <% if (setlist.createdBy) { %>
+                                                            <%= setlist.createdBy.username %>
+                                                        <% } else { %>
+                                                            <span class="text-muted">-</span>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <small><%= new Date(setlist.createdAt).toLocaleDateString() %></small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>" class="btn btn-outline-primary btn-sm">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/edit" class="btn btn-outline-secondary btn-sm">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">No setlists found</td>
+                                            </tr>
+                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Gig Documents Tab -->
+                        <div class="tab-pane fade" id="documents" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5>Recent Gig Documents</h5>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="refreshContent('documents')">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Song</th>
+                                            <th>Type</th>
+                                            <th>Version</th>
+                                            <th>Created By</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% if (documents && documents.length > 0) { %>
+                                            <% documents.forEach(doc => { %>
+                                                <tr>
+                                                    <td>
+                                                        <strong><%= doc.song ? doc.song.title : 'Unknown Song' %></strong>
+                                                        <% if (doc.song && doc.song.artists && doc.song.artists.length > 0) { %>
+                                                            <br><small class="text-muted"><%= doc.song.artists.map(a => a.artist.name).join(', ') %></small>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info"><%= doc.type %></span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">v<%= doc.version %></span>
+                                                    </td>
+                                                    <td>
+                                                        <% if (doc.createdBy) { %>
+                                                            <%= doc.createdBy.username %>
+                                                        <% } else { %>
+                                                            <span class="text-muted">-</span>
+                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <small><%= new Date(doc.createdAt).toLocaleDateString() %></small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <% if (doc.song) { %>
+                                                                <a href="/songs/<%= doc.song.id %>/docs/<%= doc.id %>" class="btn btn-outline-primary btn-sm">
+                                                                    <i class="bi bi-eye"></i>
+                                                                </a>
+                                                                <a href="/songs/<%= doc.song.id %>/docs/<%= doc.id %>/edit" class="btn btn-outline-secondary btn-sm">
+                                                                    <i class="bi bi-pencil"></i>
+                                                                </a>
+                                                            <% } else { %>
+                                                                <span class="text-muted">No song linked</span>
+                                                            <% } %>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">No documents found</td>
+                                            </tr>
+                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshContent(type) {
+    // Simple page refresh for now - could be enhanced with AJAX
+    window.location.reload();
+}
+</script>

@@ -1,0 +1,188 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-geo-alt"></i> Venue Management</h2>
+                <div class="d-flex gap-2">
+                    <a href="/venues/new" class="btn btn-success">
+                        <i class="bi bi-plus-circle"></i> Add New Venue
+                    </a>
+                    <a href="/admin" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search Venues</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="<%= searchQuery || '' %>" placeholder="Venue name, city, state...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="city" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" name="city" 
+                                   value="<%= cityFilter || '' %>" placeholder="Filter by city">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="state" class="form-label">State</label>
+                            <select class="form-select" id="state" name="state">
+                                <option value="">All States</option>
+                                <% const states = ['CO', 'CA', 'NY', 'TX', 'FL', 'WA', 'OR', 'NV', 'AZ', 'UT', 'NM', 'MT', 'WY', 'ND', 'SD', 'NE', 'KS', 'OK', 'AR', 'LA', 'MS', 'AL', 'TN', 'KY', 'IN', 'IL', 'MO', 'IA', 'MN', 'WI', 'MI', 'OH', 'PA', 'WV', 'VA', 'NC', 'SC', 'GA', 'FL']; %>
+                                <% states.forEach(state => { %>
+                                    <option value="<%= state %>" <%= stateFilter === state ? 'selected' : '' %>><%= state %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Venues Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Venues (<%= venues.length %>)</h5>
+                </div>
+                <div class="card-body p-0">
+                    <% if (venues.length > 0) { %>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Location</th>
+                                        <th>Type</th>
+                                        <th>Capacity</th>
+                                        <th>Contacts</th>
+                                        <th>Socials</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% venues.forEach(venue => { %>
+                                        <tr>
+                                            <td>
+                                                <strong><%= venue.name %></strong>
+                                                <% if (venue.bookingStatus) { %>
+                                                    <br><small class="badge bg-secondary"><%= venue.bookingStatus %></small>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (venue.address) { %>
+                                                    <div class="small">
+                                                        <%= venue.address %><br>
+                                                        <%= venue.city %><% if (venue.state) { %>, <%= venue.state %><% } %>
+                                                        <% if (venue.zipCode) { %> <%= venue.zipCode %><% } %>
+                                                    </div>
+                                                <% } else { %>
+                                                    <span class="text-muted">No address</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (venue.venueType) { %>
+                                                    <span class="badge bg-primary"><%= venue.venueType.name %></span>
+                                                <% } else { %>
+                                                    <span class="text-muted">-</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (venue.capacity) { %>
+                                                    <%= venue.capacity.toLocaleString() %>
+                                                <% } else { %>
+                                                    <span class="text-muted">-</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (venue.contacts && venue.contacts.length > 0) { %>
+                                                    <span class="badge bg-info"><%= venue.contacts.length %></span>
+                                                <% } else { %>
+                                                    <span class="text-muted">0</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (venue.socials && venue.socials.length > 0) { %>
+                                                    <span class="badge bg-success"><%= venue.socials.length %></span>
+                                                <% } else { %>
+                                                    <span class="text-muted">0</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="/venues/<%= venue.id %>" class="btn btn-outline-primary" title="View">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                    <a href="/venues/<%= venue.id %>/edit" class="btn btn-outline-secondary" title="Edit">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                    <% if (currentUser.role === 'admin') { %>
+                                                        <button class="btn btn-outline-danger" 
+                                                                onclick="confirmDelete(<%= venue.id %>, '<%= venue.name %>')" 
+                                                                title="Delete">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    <% } %>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="bi bi-geo-alt display-4 text-muted mb-3"></i>
+                            <h4>No Venues Found</h4>
+                            <p class="text-muted">Try adjusting your search criteria or add a new venue.</p>
+                            <a href="/venues/new" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> Add New Venue
+                            </a>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Venue</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the venue <strong id="venueName"></strong>?</p>
+                <p class="text-danger small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Delete Venue</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(venueId, venueName) {
+    document.getElementById('venueName').textContent = venueName;
+    document.getElementById('deleteForm').action = `/admin/venues/${venueId}/delete`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>

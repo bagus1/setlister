@@ -7339,9 +7339,17 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
 
     // Send email notifications to all band members
     const { sendEmail } = require("../utils/emailService");
-    
-    console.log(`Sending meeting notifications to ${band.members.length} band members`);
-    console.log(`Band members:`, band.members.map(m => ({ username: m.user.username, email: m.user.email })));
+
+    console.log(
+      `Sending meeting notifications to ${band.members.length} band members`
+    );
+    console.log(
+      `Band members:`,
+      band.members.map((m) => ({
+        username: m.user.username,
+        email: m.user.email,
+      }))
+    );
 
     for (const member of band.members) {
       if (member.user.email) {

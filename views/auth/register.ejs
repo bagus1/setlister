@@ -19,7 +19,7 @@
                     </div>
                     <% } %>
 
-                        <form action="/auth/register" method="POST">
+                        <form action="/auth/register" method="POST" id="registerForm">
                             <div class="mb-3">
                                 <label for="username" class="form-label">Username</label>
                                 <input type="text" class="form-control" id="username" name="username"
@@ -44,8 +44,21 @@
                                     required>
                             </div>
 
-                            <button type="submit" class="btn btn-primary w-100">Register</button>
+                            <button type="submit" class="btn btn-primary w-100" id="registerBtn">Register</button>
                         </form>
+
+                        <script>
+                            // Prevent double-click registration
+                            document.getElementById('registerForm').addEventListener('submit', function(e) {
+                                const submitBtn = document.getElementById('registerBtn');
+                                if (submitBtn.disabled) {
+                                    e.preventDefault();
+                                    return false;
+                                }
+                                submitBtn.disabled = true;
+                                submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating Account...';
+                            });
+                        </script>
 
                         <hr>
 

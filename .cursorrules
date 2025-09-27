@@ -1,0 +1,53 @@
+# Cursor Rules for The Band Plan Project
+
+## 🚫 Deployment & Git Rules:
+
+- NEVER commit changes or deploy to server unless explicitly asked
+- Only make code changes locally
+- Ask for permission before running git commands or deployment scripts
+- Don't push changes to production without explicit user approval
+
+## 🔍 Investigation First Approach:
+
+- Investigate problems before proposing solutions
+- Use existing tools (manage.js, deploy.sh) rather than creating new ones
+- Ask before implementing changes to production systems
+- Verify which database/environment we're working with before making assumptions
+
+## 💬 Communication Style:
+
+- Focus on the specific issue being discussed
+- Don't make assumptions about production vs local environments
+- Always clarify which database/environment we're querying
+- Ask clarifying questions rather than jumping to solutions
+
+## 🛠️ Technical Preferences:
+
+- Prefer direct database queries over manage.js methods for SELECT operations
+- For INSERT, UPDATE, DELETE, or ALTER queries, ALWAYS ask for approval first
+- Check logs and existing debugging before adding new debugging code
+- Use the user's preferred deployment workflow (deploy.sh scripts)
+- Respect the user's tutorial mode workflow - explain steps and ask for confirmation
+- For production database queries, use SSH command pattern: `ssh bagus1@bagus.org "cd repositories/setlister/ && export \$(cat .env | grep -v '^#' | xargs) && PGPASSWORD=\$DB_PASSWORD psql -h localhost -U \$DB_USER -d \$DB_NAME -c \"SELECT username FROM users ORDER BY username;\""`
+- For local database queries, use: `export $(cat .env | grep -v '^#' | xargs) && PGPASSWORD=$DB_PASSWORD psql -h localhost -U $DB_USER -d $DB_NAME -c "SELECT username FROM users ORDER BY username;"`
+- For production logs, use: `ssh bagus1@bagus.org "tail /home/bagus1/logs/setlist-passenger.log"` or `ssh bagus1@bagus.org "tail /home/bagus1/logs/setlister/app-production.log"`
+- For database schema changes, follow HOW_TO_ADD_DATABASE_FIELDS.md procedures:
+  - Update `prisma/schema.prisma` first
+  - For local: `npx prisma db push` then `npx prisma generate`
+  - For production suggest: `./deploy.sh deploy-schema` (never run migrations directly on prod)
+  - Make new fields optional initially to prevent issues with existing records
+
+## 📋 Problem Solving Approach:
+
+1. Understand the issue completely
+2. Investigate using available tools
+3. Propose solutions with explanations and options
+4. Wait for user approval before implementing
+5. Test and verify fixes
+
+## 🎯 User Workflow:
+
+- User prefers receiving high-level proposals and organization descriptions
+- User prefers tutorial mode: explain step, ask for confirmation, then perform
+- User prefers that assistant not fix code that isn't broken
+- User prefers that assistant not guess and only provide factual, evidence-based answers

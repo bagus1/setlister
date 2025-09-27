@@ -215,11 +215,18 @@
     /* Font weight overrides for gig document content */
     .gig-document-content {
         font-weight: 600 !important; /* Normal text = 600 */
+        color: #aaaaaa !important; /* Override any inline color styles */
     }
 
     .gig-document-content strong,
     .gig-document-content b {
         font-weight: 800 !important; /* Bold text = 800 */
+        color: #aaaaaa !important; /* Override any inline color styles on strong/bold elements */
+    }
+
+    /* Override inline color styles from TinyMCE editor */
+    .gig-document-content * {
+        color: #aaaaaa !important;
     }
 
     /* Quill font family classes */
@@ -410,4 +417,14 @@
             container.style.display = 'none';
         }
     }
+
+    // Auto-select first option and load player on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const select = document.getElementById('mediaSelect');
+        if (select && select.options.length > 1) {
+            // Select the first non-placeholder option (index 1)
+            select.selectedIndex = 1;
+            loadMediaPlayer();
+        }
+    });
 </script>

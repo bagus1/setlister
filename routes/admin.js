@@ -438,4 +438,31 @@ router.get("/content", async (req, res) => {
   }
 });
 
+/**
+ * GET /admin/whitelist-requests - Manage whitelist requests
+ */
+router.get("/whitelist-requests", async (req, res) => {
+  try {
+    const requests = await prisma.whitelistRequest.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.render("admin/whitelist-requests", {
+      title: "Manage Whitelist Requests",
+      requests,
+      user: req.user,
+    });
+  } catch (error) {
+    console.error("Error loading whitelist requests:", error);
+    res.status(500).render("admin/whitelist-requests", {
+      title: "Manage Whitelist Requests",
+      requests: [],
+      error: "Error loading whitelist requests",
+      user: req.user,
+    });
+  }
+});
+
 module.exports = router;

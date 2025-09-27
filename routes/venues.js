@@ -181,7 +181,7 @@ router.post(
     body("state").optional().trim(),
     body("phone").optional().trim(),
     body("email")
-      .optional()
+      .optional({ checkFalsy: true })
       .isEmail()
       .withMessage("Please enter a valid email"),
     body("website").optional().isURL().withMessage("Please enter a valid URL"),
@@ -498,7 +498,7 @@ router.post(
     body("state").optional().trim(),
     body("phone").optional().trim(),
     body("email")
-      .optional()
+      .optional({ checkFalsy: true })
       .isEmail()
       .withMessage("Please enter a valid email"),
     body("website").optional().isURL().withMessage("Please enter a valid URL"),
@@ -868,21 +868,7 @@ router.post("/venue-changes", requireAuth, async (req, res) => {
     // Get current value of the field
     const currentValue = venue[fieldName] || null;
 
-    // Check if there's already a pending change for this field
-    const existingChange = await prisma.venueChange.findFirst({
-      where: {
-        venueId: parseInt(venueId),
-        fieldName,
-        status: "pending",
-      },
-    });
-
-    if (existingChange) {
-      return res.status(400).json({
-        success: false,
-        error: "There's already a pending change suggestion for this field",
-      });
-    }
+    // Allow multiple change suggestions for the same field
 
     // Create the venue change suggestion
     const venueChange = await prisma.venueChange.create({
@@ -938,10 +924,10 @@ router.post("/add-field", requireAuth, async (req, res) => {
     }
 
     // Handle special cases for fields that aren't direct venue properties
-    if (fieldName === 'website') {
+    if (fieldName === "website") {
       // Website is stored in VenueSocial table, not directly on venue
       const websiteSocialType = await prisma.venueSocialType.findFirst({
-        where: { name: 'Website' }
+        where: { name: "Website" },
       });
 
       if (!websiteSocialType) {
@@ -955,8 +941,8 @@ router.post("/add-field", requireAuth, async (req, res) => {
       const existingWebsite = await prisma.venueSocial.findFirst({
         where: {
           venueId: parseInt(venueId),
-          socialTypeId: websiteSocialType.id
-        }
+          socialTypeId: websiteSocialType.id,
+        },
       });
 
       if (existingWebsite) {
@@ -965,8 +951,8 @@ router.post("/add-field", requireAuth, async (req, res) => {
           where: { id: existingWebsite.id },
           data: {
             url: fieldValue,
-            handle: fieldValue
-          }
+            handle: fieldValue,
+          },
         });
       } else {
         // Create new website entry
@@ -975,8 +961,8 @@ router.post("/add-field", requireAuth, async (req, res) => {
             venueId: parseInt(venueId),
             socialTypeId: websiteSocialType.id,
             handle: fieldValue,
-            url: fieldValue
-          }
+            url: fieldValue,
+          },
         });
       }
 
@@ -992,7 +978,15 @@ router.post("/add-field", requireAuth, async (req, res) => {
 
     // Prepare the update data for regular venue fields
     const updateData = {};
-    updateData[fieldName] = fieldValue;
+
+    // Handle numeric fields that need conversion
+    if (fieldName === "capacity") {
+      updateData[fieldName] = parseInt(fieldValue);
+    } else if (fieldName === "venueTypeId") {
+      updateData[fieldName] = parseInt(fieldValue);
+    } else {
+      updateData[fieldName] = fieldValue;
+    }
 
     console.log("Attempting to update venue with data:", updateData);
 
@@ -1016,6 +1010,132 @@ router.post("/add-field", requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to add field",
+    });
+  }
+});
+
+/**
+ * DELETE /venues/contacts/:contactId - Delete a venue contact
+ */
+router.delete("/contacts/:contactId", requireAuth, async (req, res) => {
+  try {
+    const { contactId } = req.params;
+    const userId = req.session.user.id;
+
+    // Get the contact to check venue ownership
+    const contact = await prisma.venueContact.findUnique({
+      where: { id: parseInt(contactId) },
+      include: {
+        venue: {
+          select: {
+            id: true,
+            createdById: true,
+          },
+        },
+      },
+    });
+
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        error: "Contact not found",
+      });
+    }
+
+    // Check if user is moderator/admin or venue creator
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    const isModerator =
+      user && (user.role === "admin" || user.role === "moderator");
+    const isVenueCreator = contact.venue.createdById === userId;
+
+    if (!isModerator && !isVenueCreator) {
+      return res.status(403).json({
+        success: false,
+        error: "Insufficient permissions",
+      });
+    }
+
+    // Delete the contact
+    await prisma.venueContact.delete({
+      where: { id: parseInt(contactId) },
+    });
+
+    res.json({
+      success: true,
+      message: "Contact deleted successfully",
+    });
+  } catch (error) {
+    console.error("Venue contact deletion error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete contact",
+    });
+  }
+});
+
+/**
+ * DELETE /venues/socials/:socialId - Delete a venue social media
+ */
+router.delete("/socials/:socialId", requireAuth, async (req, res) => {
+  try {
+    const { socialId } = req.params;
+    const userId = req.session.user.id;
+
+    // Get the social media to check venue ownership
+    const social = await prisma.venueSocial.findUnique({
+      where: { id: parseInt(socialId) },
+      include: {
+        venue: {
+          select: {
+            id: true,
+            createdById: true,
+          },
+        },
+      },
+    });
+
+    if (!social) {
+      return res.status(404).json({
+        success: false,
+        error: "Social media not found",
+      });
+    }
+
+    // Check if user is moderator/admin or venue creator
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    const isModerator =
+      user && (user.role === "admin" || user.role === "moderator");
+    const isVenueCreator = social.venue.createdById === userId;
+
+    if (!isModerator && !isVenueCreator) {
+      return res.status(403).json({
+        success: false,
+        error: "Insufficient permissions",
+      });
+    }
+
+    // Delete the social media
+    await prisma.venueSocial.delete({
+      where: { id: parseInt(socialId) },
+    });
+
+    res.json({
+      success: true,
+      message: "Social media deleted successfully",
+    });
+  } catch (error) {
+    console.error("Venue social media deletion error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete social media",
     });
   }
 });

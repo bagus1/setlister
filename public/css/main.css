@@ -235,6 +235,10 @@ a:focus {
   color: #555555 !important;
 }
 
+.bi-trash {
+  color: #555555 !important;
+}
+
 /* ========================================
    SPECIAL COMPONENTS
    ======================================== */

@@ -18,7 +18,6 @@
                                           style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                           onmouseover="this.style.backgroundColor='#f8f9fa'"
                                           onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                             <%= venue.address %><br>
                             <% if (venue.city) { %><%= venue.city %><% } %>
                             <% if (venue.city && venue.state) { %>, <% } %>
@@ -63,7 +62,6 @@
                                           style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                           onmouseover="this.style.backgroundColor='#f8f9fa'"
                                           onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                                         <%= venue.city %>
                                         <i class="bi bi-pencil ms-2 small"></i>
                                     </span>
@@ -100,8 +98,8 @@
                                           style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                           onmouseover="this.style.backgroundColor='#f8f9fa'"
                                           onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                                         <%= venue.state %>
+                                        <i class="bi bi-pencil ms-2 small"></i>
                                     </span>
                                 <% } else { %>
                                     <%= venue.state %>
@@ -136,8 +134,8 @@
                                           style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                           onmouseover="this.style.backgroundColor='#f8f9fa'"
                                           onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                                         <%= venue.zipCode %>
+                                        <i class="bi bi-pencil ms-2 small"></i>
                                     </span>
                                 <% } else { %>
                                     <%= venue.zipCode %>
@@ -172,9 +170,9 @@
                                           style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                           onmouseover="this.style.backgroundColor='#f8f9fa'"
                                           onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                                         <i class="bi bi-telephone"></i>
                                         <span class="ms-1"><%= venue.phone %></span>
+                                        <i class="bi bi-pencil ms-2 small"></i>
                                     </span>
                                 <% } else { %>
                             <i class="bi bi-telephone"></i>
@@ -212,9 +210,9 @@
                                           style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                           onmouseover="this.style.backgroundColor='#f8f9fa'"
                                           onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                                         <i class="bi bi-envelope"></i>
                                         <span class="ms-1"><%= venue.email %></span>
+                                        <i class="bi bi-pencil ms-2 small"></i>
                                     </span>
                                 <% } else { %>
                             <i class="bi bi-envelope"></i>
@@ -255,9 +253,9 @@
                                           style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                           onmouseover="this.style.backgroundColor='#f8f9fa'"
                                           onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                                         <i class="bi bi-globe"></i>
                                         <span class="ms-1"><%= mainWebsite.url %></span>
+                                        <i class="bi bi-pencil ms-2 small"></i>
                                     </span>
                                 <% } else { %>
                             <i class="bi bi-globe"></i>
@@ -312,6 +310,14 @@
                                     <% if (contact.label) { %>
                                         <small class="text-muted">(<%= contact.label %>)</small>
                                     <% } %>
+                                    <% if (user && (user.role === 'admin' || user.role === 'moderator' || venue.createdById === user.id)) { %>
+                                        <i class="bi bi-trash ms-2" 
+                                           onclick="deleteVenueContact(<%= contact.id %>)"
+                                           title="Delete contact"
+                                           style="cursor: pointer; font-size: 0.9rem;"
+                                           onmouseover="this.style.opacity='0.7'"
+                                           onmouseout="this.style.opacity='1'"></i>
+                                    <% } %>
                                 </div>
                             <% }) %>
                         </div>
@@ -330,6 +336,14 @@
                                         </a>
                                     <% } else { %>
                                         <span class="ms-1"><%= social.handle %></span>
+                                    <% } %>
+                                    <% if (user && (user.role === 'admin' || user.role === 'moderator' || venue.createdById === user.id)) { %>
+                                        <i class="bi bi-trash ms-2" 
+                                           onclick="deleteVenueSocial(<%= social.id %>)"
+                                           title="Delete social media"
+                                           style="cursor: pointer; font-size: 0.9rem;"
+                                           onmouseover="this.style.opacity='0.7'"
+                                           onmouseout="this.style.opacity='1'"></i>
                                     <% } %>
                                 </div>
                             <% }) %>
@@ -391,7 +405,6 @@
                                   style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                   onmouseover="this.style.backgroundColor='#f8f9fa'"
                                   onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                         <i class="bi bi-people"></i> <%= venue.capacity.toLocaleString() %> people
                                 <i class="bi bi-pencil ms-2 small"></i>
                             </span>
@@ -448,7 +461,6 @@
                                   style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                   onmouseover="this.style.backgroundColor='#f8f9fa'"
                                   onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                         <span class="badge bg-warning text-dark"><%= venue.musicStyle %></span>
                                 <i class="bi bi-pencil ms-2 small"></i>
                             </span>
@@ -483,7 +495,6 @@
                                   style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                   onmouseover="this.style.backgroundColor='#f8f9fa'"
                                   onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                         <span class="badge bg-info text-dark"><%= venue.stageLocation.charAt(0).toUpperCase() + venue.stageLocation.slice(1) %></span>
                                 <i class="bi bi-pencil ms-2 small"></i>
                             </span>
@@ -518,7 +529,6 @@
                                   style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
                                   onmouseover="this.style.backgroundColor='#f8f9fa'"
                                   onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-pencil ms-2 small"></i>
                         <%= venue.bookingStatus %>
                                 <i class="bi bi-pencil ms-2 small"></i>
                             </span>
@@ -1065,6 +1075,58 @@
             populateContactTypes();
             populateSocialTypes();
         });
+
+        // Delete venue contact function
+        async function deleteVenueContact(contactId) {
+            if (!confirm('Are you sure you want to delete this contact? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/venues/contacts/${contactId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    // Reload page to show updated data
+                    location.reload();
+                } else {
+                    alert('Error deleting contact');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting contact');
+            }
+        }
+
+        // Delete venue social media function
+        async function deleteVenueSocial(socialId) {
+            if (!confirm('Are you sure you want to delete this social media? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/venues/socials/${socialId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    // Reload page to show updated data
+                    location.reload();
+                } else {
+                    alert('Error deleting social media');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting social media');
+            }
+        }
     </script>
 
     <!-- Venue Editing Interface -->
@@ -1315,6 +1377,7 @@
                 const data = {
                     venueId: formData.get('venueId'),
                     fieldName: formData.get('fieldName'),
+                    currentValue: formData.get('currentValue'),
                     suggestedValue: formData.get('suggestedValue'),
                     reason: formData.get('reason')
                 };
@@ -1330,20 +1393,20 @@
                         body: JSON.stringify(data)
                     });
                     
-                    if (response.ok) {
-                        const result = await response.json();
-                        if (result.success) {
-                            // Show success message
-                            alert('Change suggestion submitted successfully!');
-                            // Hide the modal
-                            const modal = bootstrap.Modal.getInstance(document.getElementById('editVenueModal'));
-                            modal.hide();
-                        } else {
-                            alert('Error: ' + (result.error || 'Failed to submit change'));
-                        }
-                    } else {
-                        alert('Error submitting change');
-                    }
+                     if (response.ok) {
+                         const result = await response.json();
+                         if (result.success) {
+                             // Show success message
+                             alert('Change suggestion submitted successfully. We\'ll review it shortly.');
+                             // Hide the modal
+                             const modal = bootstrap.Modal.getInstance(document.getElementById('editVenueModal'));
+                             modal.hide();
+                         } else {
+                             alert('Error: ' + (result.error || 'Failed to submit change'));
+                         }
+                     } else {
+                         alert('Error submitting change');
+                     }
                 } catch (error) {
                     console.error('Error:', error);
                     alert('Error submitting change');
@@ -1372,18 +1435,17 @@
                          body: JSON.stringify(data)
                      });
                      
-                     if (response.ok) {
-                         const result = await response.json();
-                         if (result.success) {
-                             // Show success message and reload page
-                             alert('Field added successfully!');
-                             location.reload();
-                         } else {
-                             alert('Error: ' + (result.error || 'Failed to add field'));
-                         }
+                 if (response.ok) {
+                     const result = await response.json();
+                     if (result.success) {
+                         // Reload page to show new data
+                         location.reload();
                      } else {
-                         alert('Error adding field');
+                         alert('Error: ' + (result.error || 'Failed to add field'));
                      }
+                 } else {
+                     alert('Error adding field');
+                 }
                  } catch (error) {
                      console.error('Error:', error);
                      alert('Error adding field');
@@ -1455,7 +1517,7 @@
                             
                             <div class="mb-3">
                                 <label class="form-label">Current Value:</label>
-                                <input type="text" id="currentValue" class="form-control" readonly>
+                                <input type="text" id="currentValue" name="currentValue" class="form-control" readonly>
                             </div>
                             
                             <div class="mb-3">

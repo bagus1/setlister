@@ -586,6 +586,12 @@ router.get("/:id", async (req, res) => {
           },
         },
         vocalist: true,
+        creator: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
         links: {
           include: {
             creator: {

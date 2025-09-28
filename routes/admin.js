@@ -50,6 +50,7 @@ router.get("/", async (req, res) => {
 
     res.render("admin/index", {
       title: "Moderator Dashboard",
+      marqueeTitle: "Admin",
       user: req.session.user,
       stats: {
         totalUsers,
@@ -98,6 +99,7 @@ router.get("/users", async (req, res) => {
 
     res.render("admin/users", {
       title: "User Management",
+      marqueeTitle: "Admin Users",
       users,
       currentUser: req.session.user,
     });
@@ -165,6 +167,7 @@ router.get("/venue-changes", async (req, res) => {
 
     res.render("admin/venue-changes", {
       title: "Venue Changes Review",
+      marqueeTitle: "Admin Venue Changes",
       changes,
       currentUser: req.session.user,
     });
@@ -300,6 +303,7 @@ router.get("/venues", async (req, res) => {
 
     res.render("admin/venues", {
       title: "Venue Management",
+      marqueeTitle: "Admin Venues",
       venues,
       searchQuery: search || "",
       cityFilter: city || "",
@@ -407,6 +411,7 @@ router.get("/songs", async (req, res) => {
 
     res.render("admin/songs", {
       title: "Song Management",
+      marqueeTitle: "Admin Songs",
       songs,
       totalSongs,
       currentPage: page,
@@ -475,6 +480,7 @@ router.get("/whitelist-requests", async (req, res) => {
 
     res.render("admin/whitelist-requests", {
       title: "Manage Whitelist Requests",
+      marqueeTitle: "Admin Whitelist Requests",
       requests,
       user: req.user,
     });
@@ -482,6 +488,7 @@ router.get("/whitelist-requests", async (req, res) => {
     console.error("Error loading whitelist requests:", error);
     res.status(500).render("admin/whitelist-requests", {
       title: "Manage Whitelist Requests",
+      marqueeTitle: "Admin Whitelist Requests",
       requests: [],
       error: "Error loading whitelist requests",
       user: req.user,

@@ -2,7 +2,7 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <% if (loggedIn) { %>
+                <% if (loggedIn && (currentUser.id === song.createdById || currentUser.role === 'moderator' || currentUser.role === 'admin')) { %>
                     <a href="/songs/<%= song.id %>/edit" class="btn btn-primary">
                         <i class="bi bi-pencil"></i> Edit Song
                     </a>
@@ -112,7 +112,7 @@
                 </h6>
             </div>
             <div class="card-body">
-                <% if (loggedIn) { %>
+                <% if (loggedIn && (currentUser.id === song.createdById || currentUser.role === 'moderator' || currentUser.role === 'admin')) { %>
                     <div class="d-grid gap-2">
                         <a href="/songs/<%= song.id %>/edit" class="btn btn-outline-primary">
                             <i class="bi bi-pencil"></i> Edit Song

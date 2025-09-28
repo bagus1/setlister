@@ -14,7 +14,7 @@
             </div>
 
             <!-- Search and Filter -->
-            <div class="card mb-4">
+            <div class="card mb-4 bg-dark text-light">
                 <div class="card-body">
                     <form method="GET" class="row g-3">
                         <div class="col-md-4">
@@ -50,15 +50,15 @@
             </div>
 
             <!-- Venues Table -->
-            <div class="card">
-                <div class="card-header">
+            <div class="card bg-dark text-light">
+                <div class="card-header bg-dark text-light border-secondary">
                     <h5 class="mb-0">Venues (<%= venues.length %>)</h5>
                 </div>
                 <div class="card-body p-0">
                     <% if (venues.length > 0) { %>
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
+                            <table class="table table-hover mb-0 table-dark">
+                                <thead>
                                     <tr>
                                         <th>Name</th>
                                         <th>Location</th>

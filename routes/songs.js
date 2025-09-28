@@ -760,6 +760,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       artists,
       vocalists,
       currentUser,
+      fromAdmin: req.query.fromAdmin === "true",
     });
   } catch (error) {
     logger.logError("Edit song form error", error);
@@ -833,6 +834,7 @@ router.post(
           currentUser,
           errors: errors.array(),
           formData: req.body,
+          fromAdmin: req.body.fromAdmin === "true",
         });
       }
 
@@ -1053,11 +1055,23 @@ router.post(
       // Artist can only be added if currently blank
 
       req.flash("success", "Song updated successfully");
-      res.redirect(`/songs/${song.id}`);
+
+      // Redirect based on where the edit came from
+      if (req.body.fromAdmin === "true") {
+        res.redirect("/admin/songs");
+      } else {
+        res.redirect(`/songs/${song.id}`);
+      }
     } catch (error) {
       logger.logError("Update song error", error);
       req.flash("error", "Error updating song");
-      res.redirect(`/songs/${req.params.id}/edit`);
+
+      // Redirect back to edit form, preserving fromAdmin flag
+      if (req.body.fromAdmin === "true") {
+        res.redirect(`/songs/${req.params.id}/edit?fromAdmin=true`);
+      } else {
+        res.redirect(`/songs/${req.params.id}/edit`);
+      }
     }
   }
 );

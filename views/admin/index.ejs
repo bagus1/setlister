@@ -10,7 +10,7 @@
 
             <!-- Quick Stats -->
             <div class="row mb-4">
-                <div class="col-md-3 mb-3">
+                <div class="col-md-2 mb-3">
                     <div class="card bg-primary text-white">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
@@ -23,7 +23,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-2 mb-3">
                     <div class="card bg-success text-white">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
@@ -36,7 +36,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-2 mb-3">
                     <div class="card bg-warning text-dark">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
@@ -49,7 +49,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-2 mb-3">
                     <div class="card bg-info text-white">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
@@ -58,6 +58,32 @@
                                     <small>Total Bands</small>
                                 </div>
                                 <i class="bi bi-music-note-beamed display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="card bg-secondary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalSongs %></h4>
+                                    <small>Total Songs</small>
+                                </div>
+                                <i class="bi bi-music-note display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalArtists %></h4>
+                                    <small>Total Artists</small>
+                                </div>
+                                <i class="bi bi-person-badge display-4 opacity-50"></i>
                             </div>
                         </div>
                     </div>
@@ -82,8 +108,8 @@
                                 <a href="/admin/venues" class="btn btn-success">
                                     <i class="bi bi-geo-alt"></i> Manage Venues
                                 </a>
-                                <a href="/admin/content" class="btn btn-info">
-                                    <i class="bi bi-file-text"></i> Content Moderation
+                                <a href="/admin/songs" class="btn btn-info">
+                                    <i class="bi bi-music-note"></i> Song Management
                                 </a>
                                 <a href="/admin/whitelist-requests" class="btn btn-secondary">
                                     <i class="bi bi-shield-check"></i> Manage Whitelist Requests

@@ -22,6 +22,7 @@ router.get("/", async (req, res) => {
       totalSongs,
       totalSetlists,
       totalDocuments,
+      totalArtists,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.venue.count(),
@@ -30,6 +31,7 @@ router.get("/", async (req, res) => {
       prisma.song.count(),
       prisma.setlist.count(),
       prisma.gigDocument.count(),
+      prisma.artist.count(),
     ]);
 
     // Get recent activity (simplified for now)
@@ -57,6 +59,7 @@ router.get("/", async (req, res) => {
         totalSongs,
         totalSetlists,
         totalDocuments,
+        totalArtists,
       },
       recentActivity,
       success: req.flash("success"),
@@ -349,92 +352,113 @@ router.post("/venues/:id/delete", async (req, res) => {
 });
 
 /**
- * GET /admin/content - Content Moderation
+ * GET /admin/songs - Song Management
  */
-router.get("/content", async (req, res) => {
+router.get("/songs", async (req, res) => {
   try {
-    // Get content stats
-    const [totalSongs, totalBands, totalSetlists, totalDocuments] =
-      await Promise.all([
-        prisma.song.count(),
-        prisma.band.count(),
-        prisma.setlist.count(),
-        prisma.gigDocument.count(),
-      ]);
+    const page = parseInt(req.query.page) || 1;
+    const limit = 20;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || "";
 
-    // Get recent content (last 20 of each type)
-    const [songs, bands, setlists, documents] = await Promise.all([
-      prisma.song.findMany({
-        include: {
-          artists: {
-            include: { artist: true },
-          },
-          createdBy: {
-            select: { username: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      }),
-      prisma.band.findMany({
-        include: {
-          members: true,
-          createdBy: {
-            select: { username: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      }),
-      prisma.setlist.findMany({
-        include: {
-          band: true,
-          setlistSongs: true,
-          createdBy: {
-            select: { username: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      }),
-      prisma.gigDocument.findMany({
-        include: {
-          song: {
-            include: {
-              artists: {
-                include: { artist: true },
-              },
-            },
-          },
-          createdBy: {
-            select: { username: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      }),
-    ]);
+    // Build search conditions
+    const searchConditions = search
+      ? {
+          OR: [
+            { title: { contains: search, mode: "insensitive" } },
+            { artist: { contains: search, mode: "insensitive" } },
+            { vocalist: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {};
 
-    res.render("admin/content", {
-      title: "Content Moderation",
-      stats: {
-        totalSongs,
-        totalBands,
-        totalSetlists,
-        totalDocuments,
+    // Get total count for pagination
+    const totalSongs = await prisma.song.count({
+      where: searchConditions,
+    });
+
+    // Get songs with pagination
+    const songs = await prisma.song.findMany({
+      where: searchConditions,
+      include: {
+        artists: {
+          include: { artist: true },
+        },
+        creator: {
+          select: { username: true },
+        },
+        _count: {
+          select: {
+            gigDocuments: true,
+            links: true,
+            bandSongs: true,
+          },
+        },
       },
+      orderBy: { createdAt: "desc" },
+      skip: skip,
+      take: limit,
+    });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalSongs / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.render("admin/songs", {
+      title: "Song Management",
       songs,
-      bands,
-      setlists,
-      documents,
+      totalSongs,
+      currentPage: page,
+      totalPages,
+      hasNextPage,
+      hasPrevPage,
+      search,
       currentUser: req.session.user,
       success: req.flash("success"),
       error: req.flash("error"),
     });
   } catch (error) {
-    console.error("Content moderation error:", error);
-    req.flash("error", "Failed to load content");
+    console.error("Song management error:", error);
+    req.flash("error", "Failed to load song management");
     res.redirect("/admin");
+  }
+});
+
+/**
+ * DELETE /admin/songs/:id - Delete a song (admin only)
+ */
+router.delete("/songs/:id", async (req, res) => {
+  try {
+    const songId = parseInt(req.params.id);
+
+    // Check if song exists
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+    });
+
+    if (!song) {
+      return res.status(404).json({
+        success: false,
+        error: "Song not found",
+      });
+    }
+
+    // Delete the song (cascading deletes will handle related records)
+    await prisma.song.delete({
+      where: { id: songId },
+    });
+
+    res.json({
+      success: true,
+      message: "Song deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete song error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete song",
+    });
   }
 });
 

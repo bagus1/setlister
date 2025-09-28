@@ -120,10 +120,19 @@
                             </div>
                             <% } %>
 
+                            <!-- Hidden field to track if edit came from admin -->
+                            <input type="hidden" name="fromAdmin" value="<%= typeof fromAdmin !== 'undefined' ? fromAdmin : '' %>">
+
                             <div class="d-flex justify-content-between">
-                                <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-left"></i> Cancel
-                                </a>
+                                <% if (typeof fromAdmin !== 'undefined' && fromAdmin) { %>
+                                    <a href="/admin/songs" class="btn btn-outline-secondary">
+                                        <i class="bi bi-arrow-left"></i> Cancel
+                                    </a>
+                                <% } else { %>
+                                    <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                        <i class="bi bi-arrow-left"></i> Cancel
+                                    </a>
+                                <% } %>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-save"></i> Update Song
                                 </button>

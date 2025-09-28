@@ -168,6 +168,11 @@
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>
+                                            <% if (loggedIn && (user.role === 'admin' || user.role === 'moderator' || link.creatorId === user.id)) { %>
+                                                <button class="btn btn-sm" onclick="deleteSongLink(<%= link.id %>)" title="Delete link">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            <% } %>
                                         </div>
                                     </div>
                                 <% } else if (link.type === 'spotify') { %>
@@ -184,6 +189,11 @@
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>
+                                            <% if (loggedIn && (user.role === 'admin' || user.role === 'moderator' || link.creatorId === user.id)) { %>
+                                                <button class="btn btn-sm" onclick="deleteSongLink(<%= link.id %>)" title="Delete link">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            <% } %>
                                         </div>
                                     </div>
                                 <% } else if (link.type === 'youtube') { %>
@@ -200,20 +210,31 @@
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>
+                                            <% if (loggedIn && (user.role === 'admin' || user.role === 'moderator' || link.creatorId === user.id)) { %>
+                                                <button class="btn btn-sm" onclick="deleteSongLink(<%= link.id %>)" title="Delete link">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            <% } %>
                                         </div>
                                     </div>
                                 <% } else { %>
                                     <!-- Non-audio links - Clickable card -->
-                                    <a href="<%= link.url %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
                                         <div>
                                             <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
                                             <%= getLinkDisplayText(link) %>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
-                                            <span class="text-muted small">Click to open</span>
-                                            <i class="bi bi-box-arrow-up-right text-primary"></i>
+                                            <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-box-arrow-up-right"></i> Open
+                                            </a>
+                                            <% if (loggedIn && (user.role === 'admin' || user.role === 'moderator' || link.creatorId === user.id)) { %>
+                                                <button class="btn btn-sm" onclick="deleteSongLink(<%= link.id %>)" title="Delete link">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            <% } %>
                                         </div>
-                                    </a>
+                                    </div>
                                 <% } %>
                             <% }) %>
                         </div>
@@ -340,9 +361,9 @@
                                                                         <i class="bi bi-pencil"></i>
                                                                     </a>
                                                                     <button type="button" 
-                                                                            class="btn btn-sm btn-outline-danger" 
+                                                                            class="btn btn-sm"
                                                                             title="Delete"
-                                                                            onclick="deleteGigDocument(<%= doc.id %>, '<%= song.id %>')">
+                                                                            onclick="deleteGigDocument(<%= doc.id %>, <%= song.id %>, event)">
                                                                         <i class="bi bi-trash"></i>
                                                                     </button>
                                                                 </div>
@@ -384,22 +405,68 @@
         console.log('hideCarousel called on songs show page - not applicable');
     }
 
+    // Delete song link function
+    async function deleteSongLink(linkId) {
+        if (!confirm('Are you sure you want to delete this link? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/songs/links/${linkId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                debugger;
+                // Reload page to show updated data
+                location.reload();
+            } else {
+                alert('Error deleting link');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error deleting link');
+        }
+    }
+
     // Initialize tooltips
 
     // Delete gig document function
-    function deleteGigDocument(docId, songId) {
-        if (confirm('Are you sure you want to delete this gig document? This action cannot be undone.')) {
-            fetch(`/songs/${songId}/docs/${docId}`, {
+    function deleteGigDocument(docId, songId, event) {
+        // Prevent double calls and event bubbling
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        
+        // Debug logging
+        console.log('deleteGigDocument called with:', { docId, songId });
+        
+        // Validate arguments
+        if (!docId || !songId) {
+            console.error('deleteGigDocument called with invalid arguments:', { docId, songId });
+            return;
+        }
+        
+        if (confirm('Arrre you sure you want to delete this gig document? This action cannot be undone.')) {
+            url = `/songs/${songId}/docs/${docId}`;
+            fetch(url, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                 },
             })
             .then(response => {
+                debugger;
                 if (response.ok) {
-                    // Reload the page to show updated list
-                    window.location.reload();
+                    // Redirect to the same page to show updated list
+                    window.location.href = window.location.href;
                 } else {
+                    debugger;
+                    console.error('Error:', error);
                     alert('Error deleting gig document. Please try again.');
                 }
             })

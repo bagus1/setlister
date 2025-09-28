@@ -14,6 +14,7 @@ model User {
   username       String           @unique @db.VarChar(255)
   email          String           @unique @db.VarChar(255)
   password       String           @db.VarChar(255)
+  role           String           @default("user") @db.VarChar(50) // user, moderator, admin
   canMakePrivate Boolean          @default(true) @map("can_make_private")
   createdAt      DateTime         @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -28,6 +29,8 @@ model User {
   setlistVersions SetlistVersion[]
   interactions   Interaction[]
   opportunities  Opportunity[]
+  venueChangesSuggested VenueChange[] @relation("VenueChangeSuggestedBy")
+  venueChangesReviewed VenueChange[] @relation("VenueChangeReviewedBy")
 
   @@map("users")
 }
@@ -483,6 +486,7 @@ model Venue {
   opportunities Opportunity[]
   gigs        Gig[]
   creator     User?        @relation("VenueCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  changes     VenueChange[]
 
   @@map("venues")
 }
@@ -668,5 +672,30 @@ model Session {
   expire DateTime @db.Timestamptz(6)
 
   @@map("sessions")
+}
+
+model VenueChange {
+  id          Int      @id @default(autoincrement())
+  venueId     Int      @map("venue_id")
+  fieldName   String   @db.VarChar(100) @map("field_name") // 'phone', 'address', 'website', etc.
+  currentValue String? @db.Text @map("current_value")
+  suggestedValue String @db.Text @map("suggested_value")
+  reason      String?  @db.Text // Why this change is needed
+  status      String   @default("pending") @db.VarChar(20) // 'pending', 'approved', 'rejected'
+  suggestedByUserId Int @map("suggested_by_user_id")
+  reviewedByUserId Int? @map("reviewed_by_user_id")
+  reviewedAt  DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  suggestedBy User     @relation("VenueChangeSuggestedBy", fields: [suggestedByUserId], references: [id])
+  reviewedBy  User?    @relation("VenueChangeReviewedBy", fields: [reviewedByUserId], references: [id])
+
+  @@map("venue_changes")
+  @@index([venueId])
+  @@index([status])
+  @@index([createdAt])
 }
 

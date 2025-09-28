@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>
         <% if (typeof title !== 'undefined' && title && title.trim()) { %>
             <%= title %> - The Band Plan
@@ -99,11 +102,13 @@
                                         </li>
                                         <li><hr class="dropdown-divider"></li>
                                     <% } %>
-                                    <li>
-                                        <a class="dropdown-item" href="/admin/whitelist-requests">
-                                            <i class="bi bi-shield-check"></i> Manage Whitelist Requests
-                                        </a>
-                                    </li>
+                                    <% if (user && (user.role === 'admin' || user.role === 'moderator')) { %>
+                                        <li>
+                                            <a class="dropdown-item" href="/admin">
+                                                <i class="bi bi-speedometer2"></i> Moderator Dashboard
+                                            </a>
+                                        </li>
+                                    <% } %>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <form action="/auth/logout" method="POST" class="d-inline">

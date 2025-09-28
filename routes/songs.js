@@ -438,21 +438,21 @@ router.post(
 router.get("/:songId/links/:linkId", async (req, res) => {
   try {
     const { songId, linkId } = req.params;
-    
+
     // Get the song and link details
     const song = await prisma.song.findUnique({
       where: { id: parseInt(songId) },
       include: {
         artists: {
           include: {
-            artist: true
-          }
+            artist: true,
+          },
         },
         vocalist: true,
         links: {
-          where: { id: parseInt(linkId) }
-        }
-      }
+          where: { id: parseInt(linkId) },
+        },
+      },
     });
 
     if (!song) {
@@ -466,7 +466,7 @@ router.get("/:songId/links/:linkId", async (req, res) => {
     }
 
     const link = song.links[0];
-    
+
     // Helper function for link display text
     const getLinkDisplayText = (link) => {
       const typeLabels = {
@@ -474,82 +474,89 @@ router.get("/:songId/links/:linkId", async (req, res) => {
         video: "Video",
         spotify: "Spotify",
         "apple-music": "Apple Music",
-        "apple_music": "Apple Music",
+        apple_music: "Apple Music",
         soundcloud: "SoundCloud",
         bandcamp: "Bandcamp",
         lyrics: "Lyrics",
         tab: "Tab",
         "bass tab": "Bass Tab",
-        "bass_tab": "Bass Tab",
+        bass_tab: "Bass Tab",
         chords: "Chords",
         "guitar tutorial": "Guitar Tutorial",
-        "guitar_tutorial": "Guitar Tutorial",
+        guitar_tutorial: "Guitar Tutorial",
         "bass tutorial": "Bass Tutorial",
-        "bass_tutorial": "Bass Tutorial",
+        bass_tutorial: "Bass Tutorial",
         "keyboard tutorial": "Keyboard Tutorial",
-        "keyboard_tutorial": "Keyboard Tutorial",
+        keyboard_tutorial: "Keyboard Tutorial",
         audio: "Audio File",
         "sheet-music": "Sheet Music",
-        "sheet_music": "Sheet Music",
+        sheet_music: "Sheet Music",
         "backing-track": "Backing Track",
-        "backing_track": "Backing Track",
+        backing_track: "Backing Track",
         karaoke: "Karaoke",
         "horn chart": "Horn Chart",
-        "horn_chart": "Horn Chart",
+        horn_chart: "Horn Chart",
         other: "Other",
       };
 
       const typeLabel = typeLabels[link.type] || "Link";
       return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
     };
-    
+
     // Helper function to extract Spotify track ID from URL
     const extractSpotifyTrackId = (url) => {
-      if (!url || link.type !== 'spotify') return null;
-      
+      if (!url || link.type !== "spotify") return null;
+
       // Handle various Spotify URL formats
       const patterns = [
-        /spotify:track:([a-zA-Z0-9]+)/,  // spotify:track:4iV5W9uYEdYUVa79Axb7Rh
-        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/,  // https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
-        /spotify\.com\/track\/([a-zA-Z0-9]+)/,  // https://spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
+        /spotify:track:([a-zA-Z0-9]+)/, // spotify:track:4iV5W9uYEdYUVa79Axb7Rh
+        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/, // https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
+        /spotify\.com\/track\/([a-zA-Z0-9]+)/, // https://spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
       ];
-      
+
       for (const pattern of patterns) {
         const match = url.match(pattern);
         if (match) return match[1];
       }
-      
+
       return null;
     };
 
     // Helper function to extract YouTube video ID from URL
     const extractYouTubeVideoId = (url) => {
-      if (!url || link.type !== 'youtube') return null;
-      
+      if (!url || link.type !== "youtube") return null;
+
       // Handle various YouTube URL formats
       const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,  // Most YouTube URLs
-        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,  // Old YouTube format
-        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,  // YouTube with other parameters
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/, // Most YouTube URLs
+        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/, // Old YouTube format
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/, // YouTube with other parameters
       ];
-      
+
       for (const pattern of patterns) {
         const match = url.match(pattern);
         if (match) return match[1];
       }
-      
+
       return null;
     };
 
     // Handle supported link types
-    if (link.type !== 'audio' && link.type !== 'spotify' && link.type !== 'youtube') {
+    if (
+      link.type !== "audio" &&
+      link.type !== "spotify" &&
+      link.type !== "youtube"
+    ) {
       req.flash("error", "Link viewer not available for this type");
       return res.redirect(`/songs/${songId}`);
     }
 
-    const artistName = song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist';
+    const artistName =
+      song.artists && song.artists.length > 0
+        ? song.artists[0].artist.name
+        : "Unknown Artist";
     const linkDisplayText = getLinkDisplayText(link);
-    
+
     res.render("songs/link-viewer", {
       title: song.title,
       pageTitle: `${song.title} | The Band Plan`,
@@ -558,7 +565,7 @@ router.get("/:songId/links/:linkId", async (req, res) => {
       link,
       getLinkDisplayText,
       extractSpotifyTrackId,
-      extractYouTubeVideoId
+      extractYouTubeVideoId,
     });
   } catch (error) {
     logger.logError("Song link viewer error:", error);
@@ -579,7 +586,16 @@ router.get("/:id", async (req, res) => {
           },
         },
         vocalist: true,
-        links: true,
+        links: {
+          include: {
+            creator: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
         gigDocuments: {
           include: {
             creator: true,
@@ -625,28 +641,28 @@ router.get("/:id", async (req, res) => {
         video: "Video",
         spotify: "Spotify",
         "apple-music": "Apple Music",
-        "apple_music": "Apple Music",
+        apple_music: "Apple Music",
         soundcloud: "SoundCloud",
         bandcamp: "Bandcamp",
         lyrics: "Lyrics",
         tab: "Tab",
         "bass tab": "Bass Tab",
-        "bass_tab": "Bass Tab",
+        bass_tab: "Bass Tab",
         chords: "Chords",
         "guitar tutorial": "Guitar Tutorial",
-        "guitar_tutorial": "Guitar Tutorial",
+        guitar_tutorial: "Guitar Tutorial",
         "bass tutorial": "Bass Tutorial",
-        "bass_tutorial": "Bass Tutorial",
+        bass_tutorial: "Bass Tutorial",
         "keyboard tutorial": "Keyboard Tutorial",
-        "keyboard_tutorial": "Keyboard Tutorial",
+        keyboard_tutorial: "Keyboard Tutorial",
         audio: "Audio File",
         "sheet-music": "Sheet Music",
-        "sheet_music": "Sheet Music",
+        sheet_music: "Sheet Music",
         "backing-track": "Backing Track",
-        "backing_track": "Backing Track",
+        backing_track: "Backing Track",
         karaoke: "Karaoke",
         "horn chart": "Horn Chart",
-        "horn_chart": "Horn Chart",
+        horn_chart: "Horn Chart",
         other: "Other",
       };
 
@@ -744,6 +760,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       artists,
       vocalists,
       currentUser,
+      fromAdmin: req.query.fromAdmin === "true",
     });
   } catch (error) {
     logger.logError("Edit song form error", error);
@@ -817,6 +834,7 @@ router.post(
           currentUser,
           errors: errors.array(),
           formData: req.body,
+          fromAdmin: req.body.fromAdmin === "true",
         });
       }
 
@@ -1037,11 +1055,23 @@ router.post(
       // Artist can only be added if currently blank
 
       req.flash("success", "Song updated successfully");
-      res.redirect(`/songs/${song.id}`);
+
+      // Redirect based on where the edit came from
+      if (req.body.fromAdmin === "true") {
+        res.redirect("/admin/songs");
+      } else {
+        res.redirect(`/songs/${song.id}`);
+      }
     } catch (error) {
       logger.logError("Update song error", error);
       req.flash("error", "Error updating song");
-      res.redirect(`/songs/${req.params.id}/edit`);
+
+      // Redirect back to edit form, preserving fromAdmin flag
+      if (req.body.fromAdmin === "true") {
+        res.redirect(`/songs/${req.params.id}/edit?fromAdmin=true`);
+      } else {
+        res.redirect(`/songs/${req.params.id}/edit`);
+      }
     }
   }
 );

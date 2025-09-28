@@ -7,26 +7,61 @@
    ======================================== */
 
 /* Set default text color for all text elements */
-body, p, span, div, td, th, li, 
-.text-muted, .small, .form-text,
-.timeline-content, .card-text, .card-body {
+body,
+p,
+span,
+div,
+td,
+th,
+li,
+.text-muted,
+.small,
+.form-text,
+.timeline-content,
+.card-text,
+.card-body {
   color: #aaaaaa !important;
 }
 
 /* Keep specific elements with their intended colors */
-h1, h2, h3, h4, h5, h6, .card-title, 
-.navbar-brand, .nav-link, .btn, 
-.badge, .alert, .text-danger, .text-success, 
-.text-warning, .text-info, .text-primary,
-a, a:hover, a:focus {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.card-title,
+.navbar-brand,
+.nav-link,
+.btn,
+.badge,
+.alert,
+.text-danger,
+.text-success,
+.text-warning,
+.text-info,
+.text-primary,
+a,
+a:hover,
+a:focus {
   color: inherit; /* Use Bootstrap's original colors */
 }
 
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
-  body, p, span, div, td, th, li, 
-  .text-muted, .small, .form-text,
-  .timeline-content, .card-text, .card-body {
+  body,
+  p,
+  span,
+  div,
+  td,
+  th,
+  li,
+  .text-muted,
+  .small,
+  .form-text,
+  .timeline-content,
+  .card-text,
+  .card-body {
     color: #aaaaaa !important;
   }
 }
@@ -170,6 +205,44 @@ a, a:hover, a:focus {
   color: white;
 }
 
+/* Custom darker purple for btn-info */
+.btn-info {
+  background-color: #6f42c1 !important;
+  border-color: #6f42c1 !important;
+  color: white !important;
+}
+
+.btn-info:hover {
+  background-color: #5a32a3 !important;
+  border-color: #5a32a3 !important;
+  color: white !important;
+}
+
+.btn-info:focus,
+.btn-info.focus {
+  background-color: #5a32a3 !important;
+  border-color: #5a32a3 !important;
+  box-shadow: 0 0 0 0.2rem rgba(111, 66, 193, 0.5) !important;
+}
+
+.btn-info:not(:disabled):not(.disabled):active,
+.btn-info:not(:disabled):not(.disabled).active {
+  background-color: #4c2a8a !important;
+  border-color: #4c2a8a !important;
+}
+
+.bi-pencil {
+  color: #555555 !important;
+}
+
+.bi-trash {
+  color: #555555 !important;
+}
+
+.btn-warning {
+  color: black !important;
+}
+
 /* ========================================
    SPECIAL COMPONENTS
    ======================================== */
@@ -208,13 +281,13 @@ a, a:hover, a:focus {
   background-color: #f8f9fa;
   border-radius: 12px;
   border: 2px solid #28a745;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
 }
 
 .timeline-item.latest:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .timeline-marker {
@@ -229,7 +302,7 @@ a, a:hover, a:focus {
 }
 
 .timeline-item:not(:last-child)::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -29px;
   top: 17px;
@@ -266,13 +339,15 @@ a, a:hover, a:focus {
    ======================================== */
 
 .gig-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   border: 1px solid #dee2e6;
 }
 
 .gig-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .gig-card .card-header {
@@ -286,23 +361,27 @@ a, a:hover, a:focus {
 }
 
 .artist-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   height: 100%;
 }
 
 .artist-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .venue-card {
   cursor: pointer;
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition:
+    transform 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
 }
 
 .venue-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .match-card {
@@ -312,7 +391,7 @@ a, a:hover, a:focus {
 
 .match-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* ========================================
@@ -327,7 +406,7 @@ a, a:hover, a:focus {
 
 .song-selection-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .song-selection-card.selected {
@@ -343,7 +422,7 @@ a, a:hover, a:focus {
 
 .venue-selection-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .venue-selection-card.selected {
@@ -379,53 +458,76 @@ a, a:hover, a:focus {
   .timeline-content {
     background: #343a40;
   }
-  
+
   .timeline-marker {
     border-color: #343a40;
   }
-  
+
   .timeline-item:not(:last-child)::before {
     background-color: #495057;
   }
-  
+
   .timeline-item.latest {
     background-color: #343a40;
     border-color: #28a745;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
-  
+
   .timeline-item.latest:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
-  
+
   .timeline-content strong {
     color: #f8f9fa;
   }
-  
+
   .song-selection-card.selected {
     background-color: #1a365d;
   }
-  
+
   .venue-selection-card.selected {
     background-color: #1a365d;
   }
-  
+
   .playlist-item:hover {
     background-color: #343a40;
   }
-  
+
   .audio-player {
     background: #343a40;
   }
-  
+
   .gig-card {
     background-color: #343a40;
     border-color: #495057;
   }
-  
+
   .gig-card .card-header,
   .gig-card .card-footer {
     background-color: #495057;
     border-color: #6c757d;
   }
+}
+
+/* Admin pages dark mode cards - only apply to cards without specific bg colors */
+.card:not([class*="bg-"]) {
+  background-color: #343a40 !important;
+  color: #ffffff !important;
+  border-color: #495057 !important;
+}
+
+.card:not([class*="bg-"]) .card-header {
+  background-color: #343a40 !important;
+  border-color: #495057 !important;
+  color: #ffffff !important;
+}
+
+.card:not([class*="bg-"]) .card-footer {
+  background-color: #343a40 !important;
+  border-color: #495057 !important;
+  color: #ffffff !important;
+}
+
+.card:not([class*="bg-"]) .table-dark {
+  background-color: #343a40 !important;
 }

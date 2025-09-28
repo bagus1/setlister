@@ -16,7 +16,7 @@ async function getWhitelistValidation(linkType) {
       "horn chart": "horn_chart",
       "apple music": "apple_music",
       "sheet-music": "sheet_music",
-      "backing-track": "backing_track"
+      "backing-track": "backing_track",
     };
     const mappedType = typeMapping[linkType] || linkType;
 
@@ -145,7 +145,7 @@ router.post(
         "horn chart": "horn_chart",
         "apple music": "apple_music",
         "sheet-music": "sheet_music",
-        "backing-track": "backing_track"
+        "backing-track": "backing_track",
       };
       const mappedType = typeMapping[type] || type;
 
@@ -197,6 +197,65 @@ router.delete("/:songId/links/:linkId", requireAuth, async (req, res) => {
     console.error("Delete link error:", error);
     req.flash("error", "Error deleting link");
     res.redirect(`/songs/${req.params.songId}`);
+  }
+});
+
+/**
+ * DELETE /songs/links/:linkId - Delete a song link
+ */
+router.delete("/links/:linkId", requireAuth, async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const userId = req.session.user.id;
+
+    // Get the link to check ownership
+    const link = await prisma.link.findUnique({
+      where: { id: parseInt(linkId) },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!link) {
+      return res.status(404).json({
+        success: false,
+        error: "Link not found",
+      });
+    }
+
+    // Check if user is moderator/admin or link creator
+    const isModerator =
+      link.creator &&
+      (link.creator.role === "admin" || link.creator.role === "moderator");
+    const isLinkCreator = link.creatorId === userId;
+
+    if (!isModerator && !isLinkCreator) {
+      return res.status(403).json({
+        success: false,
+        error: "Insufficient permissions",
+      });
+    }
+
+    // Delete the link
+    await prisma.link.delete({
+      where: { id: parseInt(linkId) },
+    });
+
+    res.json({
+      success: true,
+      message: "Link deleted successfully",
+    });
+  } catch (error) {
+    console.error("Song link deletion error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete link",
+    });
   }
 });
 

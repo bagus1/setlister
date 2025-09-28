@@ -1,0 +1,163 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-speedometer2"></i> Moderator Dashboard</h2>
+                <div class="text-muted">
+                    Welcome back, <strong><%= user.username %></strong>!
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="row mb-4">
+                <div class="col-md-2 mb-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalUsers %></h4>
+                                    <small>Total Users</small>
+                                </div>
+                                <i class="bi bi-people display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalVenues %></h4>
+                                    <small>Total Venues</small>
+                                </div>
+                                <i class="bi bi-geo-alt display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.pendingChanges %></h4>
+                                    <small>Pending Changes</small>
+                                </div>
+                                <i class="bi bi-clock display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalBands %></h4>
+                                    <small>Total Bands</small>
+                                </div>
+                                <i class="bi bi-music-note-beamed display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="card bg-secondary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalSongs %></h4>
+                                    <small>Total Songs</small>
+                                </div>
+                                <i class="bi bi-music-note display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0"><%= stats.totalArtists %></h4>
+                                    <small>Total Artists</small>
+                                </div>
+                                <i class="bi bi-person-badge display-4 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="/admin/venue-changes" class="btn btn-warning">
+                                    <i class="bi bi-clipboard-check"></i> Review Venue Changes (<%= stats.pendingChanges %>)
+                                </a>
+                                <a href="/admin/users" class="btn btn-primary">
+                                    <i class="bi bi-people"></i> Manage Users
+                                </a>
+                                <a href="/admin/venues" class="btn btn-success">
+                                    <i class="bi bi-geo-alt"></i> Manage Venues
+                                </a>
+                                <a href="/admin/songs" class="btn btn-info">
+                                    <i class="bi bi-music-note"></i> Song Management
+                                </a>
+                                <a href="/admin/whitelist-requests" class="btn btn-secondary">
+                                    <i class="bi bi-shield-check"></i> Manage Whitelist Requests
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+                        </div>
+                        <div class="card-body">
+                            <% if (recentActivity && recentActivity.length > 0) { %>
+                                <div class="list-group list-group-flush">
+                                    <% recentActivity.forEach(activity => { %>
+                                        <div class="list-group-item border-0 px-0">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6 class="mb-1"><%= activity.title %></h6>
+                                                    <p class="mb-1 small text-muted"><%= activity.description %></p>
+                                                </div>
+                                                <small class="text-muted"><%= activity.timeAgo %></small>
+                                            </div>
+                                        </div>
+                                    <% }) %>
+                                </div>
+                            <% } else { %>
+                                <p class="text-muted text-center">No recent activity</p>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Changes Alert -->
+            <% if (stats.pendingChanges > 0) { %>
+                <div class="alert alert-warning" role="alert">
+                    <h4 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Attention Required!</h4>
+                    <p>You have <strong><%= stats.pendingChanges %></strong> venue change suggestions waiting for review.</p>
+                    <hr>
+                    <a href="/admin/venue-changes" class="btn btn-warning btn-sm">
+                        <i class="bi bi-clipboard-check"></i> Review Now
+                    </a>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>

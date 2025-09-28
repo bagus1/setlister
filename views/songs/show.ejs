@@ -361,9 +361,9 @@
                                                                         <i class="bi bi-pencil"></i>
                                                                     </a>
                                                                     <button type="button" 
-                                                                            class="btn btn-sm  
+                                                                            class="btn btn-sm"
                                                                             title="Delete"
-                                                                            onclick="deleteGigDocument(<%= doc.id %>, '<%= song.id %>')">
+                                                                            onclick="deleteGigDocument(<%= doc.id %>, <%= song.id %>, event)">
                                                                         <i class="bi bi-trash"></i>
                                                                     </button>
                                                                 </div>
@@ -420,6 +420,7 @@
             });
 
             if (response.ok) {
+                debugger;
                 // Reload page to show updated data
                 location.reload();
             } else {
@@ -434,19 +435,38 @@
     // Initialize tooltips
 
     // Delete gig document function
-    function deleteGigDocument(docId, songId) {
-        if (confirm('Are you sure you want to delete this gig document? This action cannot be undone.')) {
-            fetch(`/songs/${songId}/docs/${docId}`, {
+    function deleteGigDocument(docId, songId, event) {
+        // Prevent double calls and event bubbling
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        
+        // Debug logging
+        console.log('deleteGigDocument called with:', { docId, songId });
+        
+        // Validate arguments
+        if (!docId || !songId) {
+            console.error('deleteGigDocument called with invalid arguments:', { docId, songId });
+            return;
+        }
+        
+        if (confirm('Arrre you sure you want to delete this gig document? This action cannot be undone.')) {
+            url = `/songs/${songId}/docs/${docId}`;
+            fetch(url, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                 },
             })
             .then(response => {
+                debugger;
                 if (response.ok) {
-                    // Reload the page to show updated list
-                    window.location.reload();
+                    // Redirect to the same page to show updated list
+                    window.location.href = window.location.href;
                 } else {
+                    debugger;
+                    console.error('Error:', error);
                     alert('Error deleting gig document. Please try again.');
                 }
             })

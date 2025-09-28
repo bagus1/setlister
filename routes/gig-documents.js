@@ -90,6 +90,7 @@ router.get("/:songId/docs/new", requireAuth, async (req, res) => {
 
     res.render("gig-documents/new", {
       title: `New Gig Document - ${song.title}`,
+      marqueeTitle: song.title, // Set marquee to song name
       song,
     });
   } catch (error) {
@@ -201,12 +202,12 @@ router.get("/:songId/docs/:id", async (req, res) => {
 
     const gigDocument = await prisma.gigDocument.findFirst({
       where: { id: parseInt(id), songId: parseInt(songId) },
-      include: { 
+      include: {
         song: {
           include: {
-            links: true
-          }
-        }
+            links: true,
+          },
+        },
       },
     });
 
@@ -271,28 +272,28 @@ router.get("/:songId/docs/:id", async (req, res) => {
         video: "Video",
         spotify: "Spotify",
         "apple-music": "Apple Music",
-        "apple_music": "Apple Music",
+        apple_music: "Apple Music",
         soundcloud: "SoundCloud",
         bandcamp: "Bandcamp",
         lyrics: "Lyrics",
         tab: "Tab",
         "bass tab": "Bass Tab",
-        "bass_tab": "Bass Tab",
+        bass_tab: "Bass Tab",
         chords: "Chords",
         "guitar tutorial": "Guitar Tutorial",
-        "guitar_tutorial": "Guitar Tutorial",
+        guitar_tutorial: "Guitar Tutorial",
         "bass tutorial": "Bass Tutorial",
-        "bass_tutorial": "Bass Tutorial",
+        bass_tutorial: "Bass Tutorial",
         "keyboard tutorial": "Keyboard Tutorial",
-        "keyboard_tutorial": "Keyboard Tutorial",
+        keyboard_tutorial: "Keyboard Tutorial",
         audio: "Audio File",
         "sheet-music": "Sheet Music",
-        "sheet_music": "Sheet Music",
+        sheet_music: "Sheet Music",
         "backing-track": "Backing Track",
-        "backing_track": "Backing Track",
+        backing_track: "Backing Track",
         karaoke: "Karaoke",
         "horn chart": "Horn Chart",
-        "horn_chart": "Horn Chart",
+        horn_chart: "Horn Chart",
         other: "Other",
       };
       const typeLabel = typeLabels[link.type] || "Link";
@@ -492,42 +493,6 @@ router.put(
   }
 );
 
-// DELETE /songs/:songId/docs/:id - Delete gig document
-router.delete("/:songId/docs/:id", requireAuth, async (req, res) => {
-  try {
-    const { songId, id } = req.params;
-    const userId = req.session.user.id;
-
-    const gigDocument = await prisma.gigDocument.findFirst({
-      where: { id: parseInt(id), songId: parseInt(songId) },
-    });
-
-    if (!gigDocument) {
-      req.flash("error", "Gig document not found");
-      return res.redirect(`/songs/${songId}/docs`);
-    }
-
-    // Check if current user is the creator of this document
-    if (gigDocument.createdById !== userId) {
-      req.flash(
-        "error",
-        `You can only edit gig documents that you created, but you can create a new better one! <a href="/songs/${songId}/docs/new" class="alert-link">Create a new better one</a>`
-      );
-      return res.redirect(`/songs/${songId}/docs/${id}`);
-    }
-
-    await prisma.gigDocument.delete({
-      where: { id: parseInt(id) },
-    });
-    req.flash("success", "Gig document deleted successfully");
-    res.redirect(`/songs/${songId}`);
-  } catch (error) {
-    console.error("Delete gig document error:", error);
-    req.flash("error", "Error deleting gig document");
-    res.redirect(`/songs/${req.params.songId}/docs`);
-  }
-});
-
 // POST /songs/:songId/docs/:id/set-preferred - Set as preferred document for band
 router.post(
   "/:songId/docs/:id/set-preferred",
@@ -565,5 +530,68 @@ router.post(
     }
   }
 );
+
+/**
+ * DELETE /songs/:songId/docs/:docId - Delete a gig document
+ */
+router.delete("/:songId/docs/:docId", requireAuth, async (req, res) => {
+  try {
+    const { songId, docId } = req.params;
+    const userId = req.session.user.id;
+
+    // Get the gig document to check ownership
+    const gigDocument = await prisma.gigDocument.findFirst({
+      where: {
+        id: parseInt(docId),
+        songId: parseInt(songId),
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!gigDocument) {
+      return res.status(404).json({
+        success: false,
+        error: "Gig document not found",
+      });
+    }
+
+    // Check if user is moderator/admin or document creator
+    const isModerator =
+      gigDocument.creator &&
+      (gigDocument.creator.role === "admin" ||
+        gigDocument.creator.role === "moderator");
+    const isDocumentCreator = gigDocument.createdById === userId;
+
+    if (!isModerator && !isDocumentCreator) {
+      return res.status(403).json({
+        success: false,
+        error: "Insufficient permissions",
+      });
+    }
+
+    // Delete the gig document
+    await prisma.gigDocument.delete({
+      where: { id: parseInt(docId) },
+    });
+
+    res.json({
+      success: true,
+      message: "Gig document deleted successfully",
+    });
+  } catch (error) {
+    console.error("Gig document deletion error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete gig document",
+    });
+  }
+});
 
 module.exports = router;

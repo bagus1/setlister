@@ -96,24 +96,37 @@ model BandMember {
 }
 
 model Song {
-  id           Int             @id @default(autoincrement())
-  title        String          @db.VarChar(255)
-  key          enum_songs_key?
-  time         Int?
-  bpm          Int?
-  vocalistId   Int?            @map("vocalist_id")
-  createdById  Int?            @map("created_by_id")
-  private      Boolean         @default(false)
-  createdAt    DateTime        @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  bandSongs    BandSong[]
-  gigDocuments GigDocument[]
-  links        Link[]
-  medleySongs  MedleySong[]
-  setlistSongs SetlistSong[]
-  artists      SongArtist[]
-  vocalist     Vocalist?       @relation(fields: [vocalistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  creator      User?           @relation("SongCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id             Int             @id @default(autoincrement())
+  title          String          @db.VarChar(255)
+  key            enum_songs_key?
+  time           Int?
+  bpm            Int?
+  vocalistId     Int?            @map("vocalist_id")
+  createdById    Int?            @map("created_by_id")
+  private        Boolean         @default(false)
+  
+  // OpenBook metadata fields
+  composer       String?         @db.VarChar(255)
+  lyricist       String?         @db.VarChar(255)
+  style          String?         @db.VarChar(100)
+  keySignature   String?         @db.VarChar(10) @map("key_signature")
+  timeSignature  String?         @db.VarChar(10) @map("time_signature")
+  tempo          Int?
+  structure      String?         @db.Text
+  copyrightInfo  String?         @db.Text @map("copyright_info")
+  yearComposed   Int?            @map("year_composed")
+  source         String?         @db.VarChar(100) @default("user")
+  
+  createdAt      DateTime        @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  bandSongs      BandSong[]
+  gigDocuments   GigDocument[]
+  links          Link[]
+  medleySongs    MedleySong[]
+  setlistSongs   SetlistSong[]
+  artists        SongArtist[]
+  vocalist       Vocalist?       @relation(fields: [vocalistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator        User?           @relation("SongCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("songs")
 }
@@ -323,6 +336,13 @@ enum enum_links_type {
   horn_chart        @map("horn chart")
   other
   video
+  
+  // OpenBook link types
+  pdf
+  midi
+  lead_sheet        @map("lead-sheet")
+  lilypond
+  postscript
 }
 
 enum enum_medleys_key {

@@ -1,24 +1,48 @@
 <div class="container mt-4">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h4 class="mb-1"><%= song.title %></h4>
-                            <p class="text-muted mb-0">
-                                by <strong><%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist' %></strong>
-                                <% if (song.vocalist) { %>
-                                    • Vocals: <strong><%= song.vocalist.name %></strong>
-                                <% } %>
-                            </p>
+        <% if (link.type === 'pdf') { %>
+            <!-- Two column layout for PDF leadsheets -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4 class="mb-1"><%= song.title %></h4>
+                                <p class="text-muted mb-0">
+                                    by <strong><%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist' %></strong>
+                                    <% if (song.vocalist) { %>
+                                        • Vocals: <strong><%= song.vocalist.name %></strong>
+                                    <% } %>
+                                </p>
+                            </div>
+                            <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Song
+                            </a>
                         </div>
-                        <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
-                            <i class="bi bi-arrow-left"></i> Back to Song
-                        </a>
                     </div>
-                </div>
-                <div class="card-body text-center">
+                    <div class="card-body text-center">
+        <% } else { %>
+            <!-- Single column layout for other link types -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4 class="mb-1"><%= song.title %></h4>
+                                <p class="text-muted mb-0">
+                                    by <strong><%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist' %></strong>
+                                    <% if (song.vocalist) { %>
+                                        • Vocals: <strong><%= song.vocalist.name %></strong>
+                                    <% } %>
+                                </p>
+                            </div>
+                            <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Song
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body text-center">
+        <% } %>
                     <% if (link.type === 'audio') { %>
                         <!-- Audio Player -->
                         <div class="mb-4">
@@ -207,37 +231,164 @@
                             </a>
                         </div>
                     <% } %>
-                </div>
-            </div>
-            
-            <!-- Song Info Card -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Song Information</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Title:</strong> <%= song.title %></p>
-                            <p><strong>Artist:</strong> <%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist' %></p>
-                            <% if (song.vocalist) { %>
-                                <p><strong>Vocalist:</strong> <%= song.vocalist.name %></p>
-                            <% } %>
-                        </div>
-                        <div class="col-md-6">
-                            <% if (song.key) { %>
-                                <p><strong>Key:</strong> <%= song.key %></p>
-                            <% } %>
-                            <% if (song.duration) { %>
-                                <p><strong>Duration:</strong> <%= song.duration %></p>
-                            <% } %>
-                            <% if (song.bpm) { %>
-                                <p><strong>BPM:</strong> <%= song.bpm %></p>
-                            <% } %>
-                        </div>
                     </div>
                 </div>
+                
+                <% if (link.type === 'pdf') { %>
+                    <!-- Song Info Card for PDF layout -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Song Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Title:</strong> <%= song.title %></p>
+                                    <p><strong>Artist:</strong> <%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist' %></p>
+                                    <% if (song.vocalist) { %>
+                                        <p><strong>Vocalist:</strong> <%= song.vocalist.name %></p>
+                                    <% } %>
+                                </div>
+                                <div class="col-md-6">
+                                    <% if (song.key) { %>
+                                        <p><strong>Key:</strong> <%= song.key %></p>
+                                    <% } %>
+                                    <% if (song.duration) { %>
+                                        <p><strong>Duration:</strong> <%= song.duration %></p>
+                                    <% } %>
+                                    <% if (song.bpm) { %>
+                                        <p><strong>BPM:</strong> <%= song.bpm %></p>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% } else { %>
+                    <!-- Song Info Card for other link types -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Song Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Title:</strong> <%= song.title %></p>
+                                    <p><strong>Artist:</strong> <%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name : 'Unknown Artist' %></p>
+                                    <% if (song.vocalist) { %>
+                                        <p><strong>Vocalist:</strong> <%= song.vocalist.name %></p>
+                                    <% } %>
+                                </div>
+                                <div class="col-md-6">
+                                    <% if (song.key) { %>
+                                        <p><strong>Key:</strong> <%= song.key %></p>
+                                    <% } %>
+                                    <% if (song.duration) { %>
+                                        <p><strong>Duration:</strong> <%= song.duration %></p>
+                                    <% } %>
+                                    <% if (song.bpm) { %>
+                                        <p><strong>BPM:</strong> <%= song.bpm %></p>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% } %>
             </div>
+            
+            <% if (link.type === 'pdf') { %>
+                <!-- Right column for PDF leadsheets with audio player -->
+                <div class="col-lg-4">
+                    <!-- Media Player Section -->
+                    <% if (song.links && song.links.length > 0) { %>
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-music-note-beamed"></i> Listen While Reading
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <!-- Link Selection Menu -->
+                                <div class="mb-3">
+                                    <label class="form-label small">Choose Audio/Video:</label>
+                                    <select class="form-select form-select-sm" id="mediaSelect" onchange="loadMediaPlayer()">
+                                        <option value="">Select a link...</option>
+                                        <% song.links.forEach(linkItem => { %>
+                                            <% if (['audio', 'spotify', 'youtube', 'midi'].includes(linkItem.type)) { %>
+                                                <% 
+                                                    let mediaId = null;
+                                                    if (linkItem.type === 'spotify') {
+                                                        mediaId = extractSpotifyTrackId(linkItem.url);
+                                                    } else if (linkItem.type === 'youtube') {
+                                                        mediaId = extractYouTubeVideoId(linkItem.url);
+                                                    }
+                                                %>
+                                                <option value="<%= linkItem.id %>" 
+                                                        data-type="<%= linkItem.type %>" 
+                                                        data-url="<%= linkItem.url %>"
+                                                        data-media-id="<%= mediaId || '' %>">
+                                                    <%= getLinkDisplayText(linkItem) %>
+                                                </option>
+                                            <% } %>
+                                        <% }) %>
+                                    </select>
+                                </div>
+                                
+                                <!-- Media Player Container -->
+                                <div id="mediaPlayerContainer" style="display: none;">
+                                    <div id="audioPlayer" style="display: none;">
+                                        <audio controls style="width: 100%; height: 40px;">
+                                            <source src="" type="audio/mpeg">
+                                            <source src="" type="audio/wav">
+                                            <source src="" type="audio/ogg">
+                                            <source src="" type="audio/mp4">
+                                            Your browser does not support the audio element.
+                                        </audio>
+                                    </div>
+                                    
+                                    <div id="midiPlayer" style="display: none;">
+                                        <div class="text-center">
+                                            <midi-player 
+                                                src="" 
+                                                sound-font
+                                                visualizer="#myVisualizer">
+                                            </midi-player>
+                                            <midi-visualizer 
+                                                type="piano-roll" 
+                                                id="myVisualizer" 
+                                                src="">
+                                            </midi-visualizer>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="spotifyPlayer" style="display: none;">
+                                        <iframe 
+                                            src=""
+                                            width="100%" 
+                                            height="152" 
+                                            frameborder="0" 
+                                            allowtransparency="true" 
+                                            allow="encrypted-media"
+                                            style="border-radius: 8px;">
+                                        </iframe>
+                                    </div>
+                                    
+                                    <div id="youtubePlayer" style="display: none;">
+                                        <div class="ratio ratio-16x9">
+                                            <iframe 
+                                                src=""
+                                                title="YouTube video player" 
+                                                frameborder="0" 
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                                allowfullscreen>
+                                            </iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+            <% } %>
         </div>
     </div>
 </div>
@@ -274,4 +425,65 @@ function openFullscreen() {
         window.open('<%= link.url %>', '_blank');
     }
 }
+
+function loadMediaPlayer() {
+    const select = document.getElementById('mediaSelect');
+    const container = document.getElementById('mediaPlayerContainer');
+    
+    // Hide all players first
+    document.getElementById('audioPlayer').style.display = 'none';
+    document.getElementById('midiPlayer').style.display = 'none';
+    document.getElementById('spotifyPlayer').style.display = 'none';
+    document.getElementById('youtubePlayer').style.display = 'none';
+    
+    if (select && select.value) {
+        const option = select.options[select.selectedIndex];
+        const type = option.dataset.type;
+        const url = option.dataset.url;
+        const mediaId = option.dataset.mediaId;
+        
+        container.style.display = 'block';
+        
+        if (type === 'audio') {
+            const audioPlayer = document.getElementById('audioPlayer');
+            const audio = audioPlayer.querySelector('audio');
+            audio.src = url;
+            audioPlayer.style.display = 'block';
+            
+        } else if (type === 'midi') {
+            const midiPlayer = document.getElementById('midiPlayer');
+            const player = midiPlayer.querySelector('midi-player');
+            const visualizer = midiPlayer.querySelector('midi-visualizer');
+            player.src = url;
+            visualizer.src = url;
+            midiPlayer.style.display = 'block';
+            
+        } else if (type === 'spotify' && mediaId) {
+            const spotifyPlayer = document.getElementById('spotifyPlayer');
+            const iframe = spotifyPlayer.querySelector('iframe');
+            iframe.src = `https://open.spotify.com/embed/track/${mediaId}`;
+            spotifyPlayer.style.display = 'block';
+            
+        } else if (type === 'youtube' && mediaId) {
+            const youtubePlayer = document.getElementById('youtubePlayer');
+            const iframe = youtubePlayer.querySelector('iframe');
+            iframe.src = `https://www.youtube.com/embed/${mediaId}`;
+            youtubePlayer.style.display = 'block';
+        }
+    } else if (container) {
+        container.style.display = 'none';
+    }
+}
+
+// Auto-select first option and load player on page load for PDF links
+document.addEventListener('DOMContentLoaded', function() {
+    <% if (link.type === 'pdf') { %>
+        const select = document.getElementById('mediaSelect');
+        if (select && select.options.length > 1) {
+            // Select the first non-placeholder option (index 1)
+            select.selectedIndex = 1;
+            loadMediaPlayer();
+        }
+    <% } %>
+});
 </script>

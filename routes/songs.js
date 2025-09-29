@@ -439,7 +439,7 @@ router.get("/:songId/links/:linkId", async (req, res) => {
   try {
     const { songId, linkId } = req.params;
 
-    // Get the song and link details
+    // Get the song and all its links
     const song = await prisma.song.findUnique({
       where: { id: parseInt(songId) },
       include: {
@@ -449,9 +449,7 @@ router.get("/:songId/links/:linkId", async (req, res) => {
           },
         },
         vocalist: true,
-        links: {
-          where: { id: parseInt(linkId) },
-        },
+        links: true, // Get all links for the audio player dropdown
       },
     });
 
@@ -460,12 +458,13 @@ router.get("/:songId/links/:linkId", async (req, res) => {
       return res.redirect("/songs");
     }
 
-    if (!song.links || song.links.length === 0) {
+    // Find the specific link being viewed
+    const link = song.links.find(l => l.id === parseInt(linkId));
+    
+    if (!link) {
       req.flash("error", "Link not found");
       return res.redirect(`/songs/${songId}`);
     }
-
-    const link = song.links[0];
 
     // Helper function for link display text
     const getLinkDisplayText = (link) => {

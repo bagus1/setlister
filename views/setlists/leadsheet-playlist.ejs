@@ -66,7 +66,7 @@
         }
         .pdf-iframe {
             width: 100%;
-            height: 700px;
+            height: 1050px;
             border: none;
             border-radius: 4px;
         }
@@ -141,22 +141,22 @@
                                         <div class="fw-bold">Select a lead sheet to view</div>
                                     </div>
                                     
-                                    <!-- PDF Viewer -->
-                                    <div id="pdfViewerContainer">
-                                        <div class="text-center text-muted">
-                                            <i class="bi bi-file-earmark-pdf fs-1"></i>
-                                            <p>No lead sheet selected</p>
-                                        </div>
-                                    </div>
-                                    
                                     <!-- Navigation Controls -->
-                                    <div class="mt-3 d-flex justify-content-between">
+                                    <div class="mb-3 d-flex justify-content-between">
                                         <button id="prevBtn" class="btn btn-outline-warning" onclick="showPrevious()" disabled>
                                             <i class="bi bi-chevron-left"></i> Previous
                                         </button>
                                         <button id="nextBtn" class="btn btn-outline-warning" onclick="showNext()" disabled>
                                             Next <i class="bi bi-chevron-right"></i>
                                         </button>
+                                    </div>
+                                    
+                                    <!-- PDF Viewer -->
+                                    <div id="pdfViewerContainer">
+                                        <div class="text-center text-muted">
+                                            <i class="bi bi-file-earmark-pdf fs-1"></i>
+                                            <p>No lead sheet selected</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

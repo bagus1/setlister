@@ -336,13 +336,10 @@ enum enum_links_type {
   backing_track     @map("backing-track")
   karaoke
   horn_chart        @map("horn chart")
-  other
-  video
-  
-  // OpenBook link types
   pdf
   midi
-  lead_sheet        @map("lead-sheet")
+  other
+  video
   lilypond
   postscript
 }

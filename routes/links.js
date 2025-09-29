@@ -104,6 +104,8 @@ router.post(
         "backing-track",
         "karaoke",
         "horn chart",
+        "pdf",
+        "midi",
         "other",
       ])
       .withMessage("Please select a valid link type"),

@@ -122,7 +122,9 @@
                                                         <i class="bi bi-pencil"></i>
                                                     </a>
                                                     <button type="button" class="btn btn-outline-danger" 
-                                                            onclick="deleteSong(<%= song.id %>, '<%= song.title.replace(/'/g, "\\'") %>')" 
+                                                            data-song-id="<%= song.id %>" 
+                                                            data-song-title="<%= song.title.replace(/'/g, '&#39;').replace(/"/g, '&quot;') %>"
+                                                            onclick="deleteSong(this.dataset.songId, this.dataset.songTitle)" 
                                                             title="Delete">
                                                         <i class="bi bi-trash"></i>
                                                     </button>

@@ -370,8 +370,8 @@ router.get("/songs", async (req, res) => {
       ? {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
-            { artist: { contains: search, mode: "insensitive" } },
-            { vocalist: { contains: search, mode: "insensitive" } },
+            { artists: { some: { artist: { name: { contains: search, mode: "insensitive" } } } } },
+            { vocalist: { name: { contains: search, mode: "insensitive" } } },
           ],
         }
       : {};

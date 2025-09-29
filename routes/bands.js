@@ -652,6 +652,72 @@ router.post(
   }
 );
 
+// POST /bands/:bandId/setlists/:setlistId/preferred-midi - Update preferred MIDI file for a song
+router.post(
+  "/:bandId/setlists/:setlistId/preferred-midi",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { songId, midiUrl } = req.body;
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const parsedSongId = parseInt(songId);
+      const userId = req.session.user.id;
+
+      // Verify user has access to this setlist
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
+
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Update or create BandSong preference
+      await prisma.bandSong.upsert({
+        where: {
+          bandId_songId: {
+            bandId: bandId,
+            songId: parsedSongId,
+          },
+        },
+        update: {
+          midi: midiUrl || null,
+          updatedAt: new Date(),
+        },
+        create: {
+          bandId: bandId,
+          songId: parsedSongId,
+          midi: midiUrl || null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      res.json({ success: true, message: "Preferred MIDI file updated" });
+    } catch (error) {
+      console.error("Update preferred MIDI error:", error);
+      res.status(500).json({ error: "Failed to update preferred MIDI file" });
+    }
+  }
+);
+
 // GET /bands/:bandId/setlists/:setlistId/playlist - Public playlist view
 router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
   try {
@@ -1099,6 +1165,348 @@ function extractYouTubeVideoId(url) {
   const match = url.match(regex);
   return match ? match[1] : null;
 }
+
+// GET /bands/:bandId/setlists/:setlistId/midi - Public MIDI playlist view
+router.get(
+  "/:bandId/setlists/:setlistId/midi",
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: {
+                    include: {
+                      artists: {
+                        include: {
+                          artist: true,
+                        },
+                      },
+                      vocalist: true,
+                      links: {
+                        where: { type: "midi" },
+                      },
+                    },
+                  },
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        return res.status(404).send("Setlist not found");
+      }
+
+      // Verify the setlist belongs to the specified band
+      if (setlist.band.id !== bandId) {
+        return res.status(404).send("Setlist not found");
+      }
+
+      // Load BandSong preferences for the band
+      const bandSongs = await prisma.bandSong.findMany({
+        where: { bandId: setlist.band.id },
+        select: {
+          songId: true,
+          midi: true,
+        },
+      });
+
+      // Create a map of songId -> preferred MIDI URL
+      const bandSongMap = {};
+      bandSongs.forEach((bandSong) => {
+        if (bandSong.midi) {
+          bandSongMap[bandSong.songId] = { midi: bandSong.midi };
+        }
+      });
+
+      // Collect MIDI links using preferred links when available
+      const midiLinks = [];
+
+      setlist.sets.forEach((set) => {
+        if (set.songs && set.name !== "Maybe") {
+          set.songs.forEach((setlistSong) => {
+            if (setlistSong.song && setlistSong.song.links && setlistSong.song.links.length > 0) {
+              const songId = setlistSong.song.id;
+              const bandSong = bandSongMap[songId];
+
+              // Get available MIDI links
+              const availableMidiLinks = setlistSong.song.links.filter(
+                (link) => link.type === "midi"
+              );
+
+              if (availableMidiLinks.length > 0) {
+                let selectedLink = null;
+
+                // Use preferred MIDI link if available
+                if (bandSong?.midi) {
+                  selectedLink = availableMidiLinks.find(
+                    (link) => link.url === bandSong.midi
+                  );
+                }
+
+                // Fallback to first available if no preference or preferred not found
+                if (!selectedLink) {
+                  selectedLink = availableMidiLinks[0];
+                }
+
+                if (selectedLink) {
+                  midiLinks.push({
+                    songTitle: setlistSong.song.title,
+                    artist:
+                      setlistSong.song.artists &&
+                      setlistSong.song.artists.length > 0
+                        ? setlistSong.song.artists[0].artist.name
+                        : null,
+                    set: set.name,
+                    order: setlistSong.order,
+                    url: selectedLink.url,
+                    description: selectedLink.description || 'MIDI File',
+                  });
+                }
+              }
+            }
+          });
+        }
+      });
+
+      res.render("setlists/midi-playlist", {
+        title: `MIDI Playlist - ${setlist.title}`,
+        pageTitle: `MIDI Playlist - ${setlist.title}`,
+        setlist,
+        band: setlist.band,
+        midiLinks,
+        user: req.session.user || null,
+      });
+    } catch (error) {
+      logger.logError("MIDI playlist error", error);
+      res.status(500).send("Error loading MIDI playlist");
+    }
+  }
+);
+
+// GET /bands/:bandId/setlists/:setlistId/leadsheets - Public leadsheet playlist view
+router.get(
+  "/:bandId/setlists/:setlistId/leadsheets",
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: {
+                    include: {
+                      artists: {
+                        include: {
+                          artist: true,
+                        },
+                      },
+                      vocalist: true,
+                      links: {
+                        where: { type: "pdf" },
+                      },
+                    },
+                  },
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        return res.status(404).send("Setlist not found");
+      }
+
+      // Verify the setlist belongs to the specified band
+      if (setlist.band.id !== bandId) {
+        return res.status(404).send("Setlist not found");
+      }
+
+      // Load BandSong preferences for the band
+      const bandSongs = await prisma.bandSong.findMany({
+        where: { bandId: setlist.band.id },
+        select: {
+          songId: true,
+          leadsheet: true,
+        },
+      });
+
+      // Create a map of songId -> preferred leadsheet URL
+      const bandSongMap = {};
+      bandSongs.forEach((bandSong) => {
+        if (bandSong.leadsheet) {
+          bandSongMap[bandSong.songId] = { leadsheet: bandSong.leadsheet };
+        }
+      });
+
+      // Collect leadsheet links using preferred links when available
+      const leadsheetLinks = [];
+
+      setlist.sets.forEach((set) => {
+        if (set.songs && set.name !== "Maybe") {
+          set.songs.forEach((setlistSong) => {
+            if (setlistSong.song && setlistSong.song.links && setlistSong.song.links.length > 0) {
+              const songId = setlistSong.song.id;
+              const bandSong = bandSongMap[songId];
+
+              // Get available leadsheet links
+              const availableLeadsheetLinks = setlistSong.song.links.filter(
+                (link) => link.type === "pdf"
+              );
+
+              if (availableLeadsheetLinks.length > 0) {
+                let selectedLink = null;
+
+                // Use preferred leadsheet link if available
+                if (bandSong?.leadsheet) {
+                  selectedLink = availableLeadsheetLinks.find(
+                    (link) => link.url === bandSong.leadsheet
+                  );
+                }
+
+                // Fallback to first available if no preference or preferred not found
+                if (!selectedLink) {
+                  selectedLink = availableLeadsheetLinks[0];
+                }
+
+                if (selectedLink) {
+                  leadsheetLinks.push({
+                    songTitle: setlistSong.song.title,
+                    artist:
+                      setlistSong.song.artists &&
+                      setlistSong.song.artists.length > 0
+                        ? setlistSong.song.artists[0].artist.name
+                        : null,
+                    set: set.name,
+                    order: setlistSong.order,
+                    url: selectedLink.url,
+                    description: selectedLink.description || 'Lead Sheet',
+                  });
+                }
+              }
+            }
+          });
+        }
+      });
+
+      res.render("setlists/leadsheet-playlist", {
+        title: `Lead Sheets - ${setlist.title}`,
+        pageTitle: `Lead Sheets - ${setlist.title}`,
+        setlist,
+        band: setlist.band,
+        leadsheetLinks,
+        user: req.session.user || null,
+      });
+    } catch (error) {
+      logger.logError("Leadsheet playlist error", error);
+      res.status(500).send("Error loading leadsheet playlist");
+    }
+  }
+);
+
+// POST /bands/:bandId/setlists/:setlistId/preferred-leadsheet - Update preferred leadsheet for a song
+router.post(
+  "/:bandId/setlists/:setlistId/preferred-leadsheet",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { songId, leadsheetUrl } = req.body;
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const parsedSongId = parseInt(songId);
+      const userId = req.session.user.id;
+
+      // Verify user has access to this setlist
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
+
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Update or create BandSong preference
+      await prisma.bandSong.upsert({
+        where: {
+          bandId_songId: {
+            bandId: bandId,
+            songId: parsedSongId,
+          },
+        },
+        update: {
+          leadsheet: leadsheetUrl || null,
+          updatedAt: new Date(),
+        },
+        create: {
+          bandId: bandId,
+          songId: parsedSongId,
+          leadsheet: leadsheetUrl || null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      res.json({ success: true, message: "Preferred leadsheet updated" });
+    } catch (error) {
+      console.error("Update preferred leadsheet error:", error);
+      res.status(500).json({ error: "Failed to update preferred leadsheet" });
+    }
+  }
+);
 
 // AUTHENTICATED ROUTES (authentication required)
 router.use(requireAuth);

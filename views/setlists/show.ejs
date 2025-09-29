@@ -366,6 +366,150 @@
                                                             </div>
                                                         </div>
                                                     </div>
+                                                    <div class="row">
+                                                        <div class="col-md-4">
+                                                            <h6 class="text-muted mb-2 small">MIDI Files</h6>
+                                                            <div class="dropdown mb-2">
+                                                                <button
+                                                                    class="btn btn-xs btn-outline-secondary dropdown-toggle w-100 py-1"
+                                                                    type="button"
+                                                                    data-bs-toggle="dropdown"
+                                                                    data-bs-boundary="viewport"
+                                                                    data-bs-popper-config='{"strategy":"fixed"}'
+                                                                    aria-expanded="false"
+                                                                    data-song-id="<%= setlistSong.song.id %>">
+                                                                    <% const bandSongMidi = (bandSongMap && bandSongMap[setlistSong.song.id]) || null; const
+                                                                        preferredMidiUrl = bandSongMidi && bandSongMidi.midi;
+                                                                        const availableMidiLinks = (setlistSong.song.links && setlistSong.song.links.filter(link => link.type === 'midi')) || [];
+                                                                        const preferredMidiLink = preferredMidiUrl ?
+                                                                        availableMidiLinks.find(l => l.url === preferredMidiUrl) :
+                                                                        null;
+                                                                        %>
+                                                                        <% if (preferredMidiLink) { %>
+                                                                            <%= preferredMidiLink.description || 'MIDI File' %>
+                                                                        <% } else if (availableMidiLinks.length > 0) { %>
+                                                                            <%= availableMidiLinks[0].description || 'MIDI File' %>
+                                                                        <% } else { %>
+                                                                            No MIDI files
+                                                                        <% } %>
+                                                                </button>
+                                                                <ul class="dropdown-menu">
+                                                                    <% if (availableMidiLinks.length > 0) { %>
+                                                                        <% availableMidiLinks.forEach((link) => { %>
+                                                                            <li>
+                                                                                <a class="dropdown-item <%= preferredMidiUrl === link.url ? 'active' : '' %>"
+                                                                                   href="#"
+                                                                                   data-song-id="<%= setlistSong.song.id %>"
+                                                                                   data-midi-url="<%= link.url %>"
+                                                                                   onclick="setPreferredMidi(this.dataset.songId, this.dataset.midiUrl)">
+                                                                                    <i class="bi bi-music-note-beamed me-1"></i>
+                                                                                    <%= link.description || 'MIDI File' %>
+                                                                                    <% if (preferredMidiUrl === link.url) { %>
+                                                                                        <i class="bi bi-check text-success ms-2"></i>
+                                                                                    <% } %>
+                                                                                </a>
+                                                                            </li>
+                                                                        <% }); %>
+                                                                            <li>
+                                                                                <hr class="dropdown-divider">
+                                                                            </li>
+                                                                            <li>
+                                                                                <a class="dropdown-item text-muted"
+                                                                                   href="#"
+                                                                                   data-song-id="<%= setlistSong.song.id %>"
+                                                                                   data-midi-url=""
+                                                                                   onclick="setPreferredMidi(this.dataset.songId, this.dataset.midiUrl || null)">
+                                                                                    <i class="bi bi-x-circle"></i> Clear preference
+                                                                                </a>
+                                                                            </li>
+                                                                    <% } else { %>
+                                                                        <li><span class="dropdown-item-text text-muted">No MIDI files available</span></li>
+                                                                    <% } %>
+                                                                    <li>
+                                                                        <hr class="dropdown-divider">
+                                                                    </li>
+                                                                    <li>
+                                                                        <a class="dropdown-item"
+                                                                           href="/songs/<%= setlistSong.song.id %>/links/new?type=midi">
+                                                                            <i class="bi bi-plus-circle"></i>
+                                                                            Add MIDI file
+                                                                        </a>
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <h6 class="text-muted mb-2 small">Lead Sheets</h6>
+                                                            <div class="dropdown mb-2">
+                                                                <button
+                                                                    class="btn btn-xs btn-outline-secondary dropdown-toggle w-100 py-1"
+                                                                    type="button"
+                                                                    data-bs-toggle="dropdown"
+                                                                    data-bs-boundary="viewport"
+                                                                    data-bs-popper-config='{"strategy":"fixed"}'
+                                                                    aria-expanded="false"
+                                                                    data-song-id="<%= setlistSong.song.id %>">
+                                                                    <% const bandSongLeadsheet = (bandSongMap && bandSongMap[setlistSong.song.id]) || null; const
+                                                                        preferredLeadsheetUrl = bandSongLeadsheet && bandSongLeadsheet.leadsheet;
+                                                                        const availableLeadsheetLinks = (setlistSong.song.links && setlistSong.song.links.filter(link => link.type === 'pdf')) || [];
+                                                                        const preferredLeadsheetLink = preferredLeadsheetUrl ?
+                                                                        availableLeadsheetLinks.find(l => l.url === preferredLeadsheetUrl) :
+                                                                        null;
+                                                                        %>
+                                                                        <% if (preferredLeadsheetLink) { %>
+                                                                            <%= preferredLeadsheetLink.description || 'Lead Sheet' %>
+                                                                        <% } else if (availableLeadsheetLinks.length > 0) { %>
+                                                                            <%= availableLeadsheetLinks[0].description || 'Lead Sheet' %>
+                                                                        <% } else { %>
+                                                                            No lead sheets
+                                                                        <% } %>
+                                                                </button>
+                                                                <ul class="dropdown-menu">
+                                                                    <% if (availableLeadsheetLinks.length > 0) { %>
+                                                                        <% availableLeadsheetLinks.forEach((link) => { %>
+                                                                            <li>
+                                                                                <a class="dropdown-item <%= preferredLeadsheetUrl === link.url ? 'active' : '' %>"
+                                                                                   href="#"
+                                                                                   data-song-id="<%= setlistSong.song.id %>"
+                                                                                   data-leadsheet-url="<%= link.url %>"
+                                                                                   onclick="setPreferredLeadsheet(this.dataset.songId, this.dataset.leadsheetUrl)">
+                                                                                    <i class="bi bi-file-earmark-pdf me-1"></i>
+                                                                                    <%= link.description || 'Lead Sheet' %>
+                                                                                    <% if (preferredLeadsheetUrl === link.url) { %>
+                                                                                        <i class="bi bi-check text-success ms-2"></i>
+                                                                                    <% } %>
+                                                                                </a>
+                                                                            </li>
+                                                                        <% }); %>
+                                                                            <li>
+                                                                                <hr class="dropdown-divider">
+                                                                            </li>
+                                                                            <li>
+                                                                                <a class="dropdown-item text-muted"
+                                                                                   href="#"
+                                                                                   data-song-id="<%= setlistSong.song.id %>"
+                                                                                   data-leadsheet-url=""
+                                                                                   onclick="setPreferredLeadsheet(this.dataset.songId, this.dataset.leadsheetUrl || null)">
+                                                                                    <i class="bi bi-x-circle"></i> Clear preference
+                                                                                </a>
+                                                                            </li>
+                                                                    <% } else { %>
+                                                                        <li><span class="dropdown-item-text text-muted">No lead sheets available</span></li>
+                                                                    <% } %>
+                                                                    <li>
+                                                                        <hr class="dropdown-divider">
+                                                                    </li>
+                                                                    <li>
+                                                                        <a class="dropdown-item"
+                                                                           href="/songs/<%= setlistSong.song.id %>/links/new?type=pdf">
+                                                                            <i class="bi bi-plus-circle"></i>
+                                                                            Add lead sheet
+                                                                        </a>
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -557,6 +701,50 @@
                                     </button>
                                 </div>
 
+                                <% 
+                                // Check if any songs have MIDI links
+                                let hasMidiLinks = false;
+                                setlist.sets.forEach(set => {
+                                    set.songs.forEach(setlistSong => {
+                                        if (setlistSong.song.links && setlistSong.song.links.some(link => link.type === 'midi')) {
+                                            hasMidiLinks = true;
+                                        }
+                                    });
+                                });
+                                %>
+                                <% if (hasMidiLinks) { %>
+                                <div class="d-flex gap-2">
+                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/midi" class="btn btn-success flex-fill" id="midiPlaylistButton">
+                                        <i class="bi bi-music-note-beamed"></i> MIDI Playlist
+                                    </a>
+                                    <button onclick="copyMidiPlaylistLink()" class="btn btn-outline-success" title="Copy MIDI playlist link">
+                                        <i class="bi bi-link-45deg"></i> Copy Link
+                                    </button>
+                                </div>
+                                <% } %>
+
+                                <% 
+                                // Check if any songs have PDF leadsheet links
+                                let hasLeadsheetLinks = false;
+                                setlist.sets.forEach(set => {
+                                    set.songs.forEach(setlistSong => {
+                                        if (setlistSong.song.links && setlistSong.song.links.some(link => link.type === 'pdf')) {
+                                            hasLeadsheetLinks = true;
+                                        }
+                                    });
+                                });
+                                %>
+                                <% if (hasLeadsheetLinks) { %>
+                                <div class="d-flex gap-2">
+                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/leadsheets" class="btn btn-warning flex-fill" id="leadsheetPlaylistButton">
+                                        <i class="bi bi-file-earmark-pdf"></i> Lead Sheets
+                                    </a>
+                                    <button onclick="copyLeadsheetPlaylistLink()" class="btn btn-outline-warning" title="Copy lead sheets playlist link">
+                                        <i class="bi bi-link-45deg"></i> Copy Link
+                                    </button>
+                                </div>
+                                <% } %>
+
                                 <% const savedUrl = setlist.recordingsUrl; %>
                                 <% if (savedUrl) { %>
                                 <div class="d-flex gap-2">
@@ -725,6 +913,58 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Error updating preferred audio file');
+            });
+    }
+
+    function setPreferredMidi(songId, midiUrl) {
+        fetch(`/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/preferred-midi`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                songId: songId,
+                midiUrl: midiUrl
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show updated preferences
+                    location.reload();
+                } else {
+                    alert('Error updating preferred MIDI file: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating preferred MIDI file');
+            });
+    }
+
+    function setPreferredLeadsheet(songId, leadsheetUrl) {
+        fetch(`/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/preferred-leadsheet`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                songId: songId,
+                leadsheetUrl: leadsheetUrl
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show updated preferences
+                    location.reload();
+                } else {
+                    alert('Error updating preferred lead sheet: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating preferred lead sheet');
             });
     }
 
@@ -909,6 +1149,62 @@
             } else {
                 // Fallback for older browsers
                 fallbackCopyTextToClipboard(youtubePlaylistUrl);
+            }
+        }
+
+        function copyMidiPlaylistLink() {
+            const midiPlaylistUrl = `${window.location.origin}/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/midi`;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                // Modern approach
+                navigator.clipboard.writeText(midiPlaylistUrl).then(() => {
+                    // Show success feedback
+                    const button = event.target.closest('button');
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                    button.classList.remove('btn-outline-success');
+                    button.classList.add('btn-success');
+
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.classList.remove('btn-success');
+                        button.classList.add('btn-outline-success');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    fallbackCopyTextToClipboard(midiPlaylistUrl);
+            });
+            } else {
+                // Fallback for older browsers
+                fallbackCopyTextToClipboard(midiPlaylistUrl);
+            }
+        }
+
+        function copyLeadsheetPlaylistLink() {
+            const leadsheetPlaylistUrl = `${window.location.origin}/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/leadsheets`;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                // Modern approach
+                navigator.clipboard.writeText(leadsheetPlaylistUrl).then(() => {
+                    // Show success feedback
+                    const button = event.target.closest('button');
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                    button.classList.remove('btn-outline-warning');
+                    button.classList.add('btn-warning');
+
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.classList.remove('btn-warning');
+                        button.classList.add('btn-outline-warning');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    fallbackCopyTextToClipboard(leadsheetPlaylistUrl);
+            });
+            } else {
+                // Fallback for older browsers
+                fallbackCopyTextToClipboard(leadsheetPlaylistUrl);
             }
         }
 

@@ -1,0 +1,328 @@
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0"><%= setlist.title %></h2>
+                <a href="/setlists/<%= setlist.id %>" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to Setlist
+                </a>
+            </div>
+        </div>
+    </div>
+
+<style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .leadsheet-item {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .leadsheet-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .leadsheet-item.active {
+            border-left: 4px solid #ffc107;
+            background-color: #fffbf0;
+        }
+        .set-badge {
+            background-color: #6c757d;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .pdf-viewer-container {
+            position: sticky;
+            top: 1rem;
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+        .playlist-controls {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .view-toggle .btn {
+            margin-right: 0.5rem;
+        }
+        .view-toggle .btn.active {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #000;
+        }
+        .pdf-iframe {
+            width: 100%;
+            height: 700px;
+            border: none;
+            border-radius: 4px;
+        }
+        .navigation-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .page-counter {
+            background-color: #f8f9fa;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 500;
+            color: #6c757d;
+        }
+        
+        /* Dark mode styles */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+                color: #e9ecef;
+            }
+            .leadsheet-item {
+                background-color: #2d3748;
+                color: #e9ecef;
+            }
+            .leadsheet-item.active {
+                background-color: #664d03;
+            }
+            .pdf-viewer-container {
+                background-color: #2d3748;
+                border: 1px solid #4a5568;
+            }
+            .playlist-controls {
+                background-color: #2d3748;
+                border: 1px solid #4a5568;
+            }
+            .page-counter {
+                background-color: #4a5568;
+                color: #e9ecef;
+            }
+        }
+    </style>
+
+    <div class="container">
+        <% if (leadsheetLinks && leadsheetLinks.length > 0) { %>
+            <div class="view-toggle text-center">
+                <button class="btn btn-outline-warning active" onclick="showViewerView()">
+                    <i class="bi bi-eye"></i> Viewer View
+                </button>
+                <button class="btn btn-outline-warning" onclick="showListView()">
+                    <i class="bi bi-list-ul"></i> List View
+                </button>
+            </div>
+
+            <div class="row">
+                <!-- Viewer View -->
+                <div class="col-12" id="viewerView">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="playlist-controls">
+                                <div class="navigation-controls">
+                                    <h4><i class="bi bi-file-earmark-pdf"></i> Lead Sheets</h4>
+                                    <div class="page-counter">
+                                        <span id="currentPage">1</span> of <span id="totalPages"><%= leadsheetLinks.length %></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="pdf-viewer-container">
+                                    <div id="currentLeadsheet" class="mb-3">
+                                        <div class="fw-bold">Select a lead sheet to view</div>
+                                    </div>
+                                    
+                                    <!-- PDF Viewer -->
+                                    <div id="pdfViewerContainer">
+                                        <div class="text-center text-muted">
+                                            <i class="bi bi-file-earmark-pdf fs-1"></i>
+                                            <p>No lead sheet selected</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Navigation Controls -->
+                                    <div class="mt-3 d-flex justify-content-between">
+                                        <button id="prevBtn" class="btn btn-outline-warning" onclick="showPrevious()" disabled>
+                                            <i class="bi bi-chevron-left"></i> Previous
+                                        </button>
+                                        <button id="nextBtn" class="btn btn-outline-warning" onclick="showNext()" disabled>
+                                            Next <i class="bi bi-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="pdf-viewer-container">
+                                <h6>Lead Sheets</h6>
+                                <div class="list-group">
+                                    <% leadsheetLinks.forEach((link, index) => { %>
+                                        <button class="list-group-item list-group-item-action d-flex align-items-center" 
+                                                onclick="showLeadsheetInViewer('<%= link.url %>', '<%= link.songTitle.replace(/'/g, "\\'") %>', '<%= (link.artist || '').replace(/'/g, "\\'") %>', <%= index %>)"
+                                                id="leadsheet-<%= index %>">
+                                            <span class="badge bg-secondary me-2"><%= index + 1 %></span>
+                                            <div class="text-start">
+                                                <div class="fw-bold"><%= link.songTitle %></div>
+                                                <% if (link.artist) { %>
+                                                    <div class="small text-muted"><%= link.artist %></div>
+                                                <% } %>
+                                                <div class="small text-muted"><%= link.set %></div>
+                                            </div>
+                                        </button>
+                                    <% }) %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- List View -->
+                <div class="col-12" id="listView" style="display: none;">
+                    <div class="row">
+                        <% leadsheetLinks.forEach((link, index) => { %>
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="leadsheet-item" onclick="showLeadsheetInViewer('<%= link.url %>', '<%= link.songTitle.replace(/'/g, "\\'") %>', '<%= (link.artist || '').replace(/'/g, "\\'") %>', <%= index %>)">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <i class="bi bi-file-earmark-pdf fs-3 text-warning"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold"><%= link.songTitle %></div>
+                                            <% if (link.artist) { %>
+                                                <div class="small text-muted"><%= link.artist %></div>
+                                            <% } %>
+                                            <div class="small">
+                                                <span class="set-badge"><%= link.set %></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                </div>
+            </div>
+        <% } else { %>
+            <div class="text-center py-5">
+                <i class="bi bi-file-earmark-pdf fs-1 text-muted"></i>
+                <h3 class="text-muted mt-3">No Lead Sheets Available</h3>
+                <p class="text-muted">This setlist doesn't have any lead sheet PDFs associated with its songs.</p>
+                <a href="/setlists/<%= setlist.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Setlist
+                </a>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+    let currentLeadsheetIndex = -1;
+    const leadsheetLinks = <%- JSON.stringify(leadsheetLinks) %>;
+
+    function showViewerView() {
+        document.getElementById('viewerView').style.display = 'block';
+        document.getElementById('listView').style.display = 'none';
+        document.querySelector('.view-toggle .btn:nth-child(1)').classList.add('active');
+        document.querySelector('.view-toggle .btn:nth-child(2)').classList.remove('active');
+    }
+
+    function showListView() {
+        document.getElementById('viewerView').style.display = 'none';
+        document.getElementById('listView').style.display = 'block';
+        document.querySelector('.view-toggle .btn:nth-child(1)').classList.remove('active');
+        document.querySelector('.view-toggle .btn:nth-child(2)').classList.add('active');
+    }
+
+    function showLeadsheetInViewer(url, title, artist, index) {
+        currentLeadsheetIndex = index;
+        
+        // Update current leadsheet display
+        document.getElementById('currentLeadsheet').innerHTML = `
+            <div class="fw-bold">${title}</div>
+            ${artist ? `<div class="small text-muted">${artist}</div>` : ''}
+        `;
+
+        // Update page counter
+        document.getElementById('currentPage').textContent = index + 1;
+
+        // Update playlist highlighting
+        document.querySelectorAll('.list-group-item').forEach((item, i) => {
+            item.classList.remove('active');
+            if (i === index) {
+                item.classList.add('active');
+            }
+        });
+
+        // Update PDF viewer
+        const container = document.getElementById('pdfViewerContainer');
+        container.innerHTML = `
+            <iframe 
+                src="${url}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0" 
+                class="pdf-iframe"
+                title="Lead Sheet PDF">
+                <p>Your browser does not support PDFs. 
+                    <a href="${url}" target="_blank">Download the PDF</a>
+                </p>
+            </iframe>
+        `;
+
+        // Update navigation buttons
+        updateNavigationButtons();
+    }
+
+    function showPrevious() {
+        if (currentLeadsheetIndex > 0) {
+            const prevIndex = currentLeadsheetIndex - 1;
+            const prevLeadsheet = leadsheetLinks[prevIndex];
+            showLeadsheetInViewer(prevLeadsheet.url, prevLeadsheet.songTitle, prevLeadsheet.artist, prevIndex);
+        }
+    }
+
+    function showNext() {
+        if (currentLeadsheetIndex < leadsheetLinks.length - 1) {
+            const nextIndex = currentLeadsheetIndex + 1;
+            const nextLeadsheet = leadsheetLinks[nextIndex];
+            showLeadsheetInViewer(nextLeadsheet.url, nextLeadsheet.songTitle, nextLeadsheet.artist, nextIndex);
+        }
+    }
+
+    function updateNavigationButtons() {
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        prevBtn.disabled = currentLeadsheetIndex <= 0;
+        nextBtn.disabled = currentLeadsheetIndex >= leadsheetLinks.length - 1;
+    }
+
+    // Auto-show first leadsheet when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        if (leadsheetLinks.length > 0) {
+            showLeadsheetInViewer(leadsheetLinks[0].url, leadsheetLinks[0].songTitle, leadsheetLinks[0].artist, 0);
+        }
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(event) {
+        if (currentLeadsheetIndex === -1) return;
+
+        switch(event.key) {
+            case 'ArrowLeft':
+                event.preventDefault();
+                showPrevious();
+                break;
+            case 'ArrowRight':
+                event.preventDefault();
+                showNext();
+                break;
+        }
+    });
+</script>

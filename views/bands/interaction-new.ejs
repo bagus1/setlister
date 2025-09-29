@@ -576,8 +576,9 @@ function autoPopulateMessageContent() {
         
         // Check if it's first contact or rebooking
         if (outcome === 'FIRST_CONTACT' || outcome === 'REBOOKING') {
-            // Check if it's an email contact
-            if (interactionType.startsWith('EMAIL_') || interactionType === 'EMAIL') {
+            // Check if it's an email or website contact form
+            if (interactionType.startsWith('EMAIL_') || interactionType === 'EMAIL' || 
+                interactionType.startsWith('WEBSITE_CONTACT_FORM_') || interactionType === 'WEBSITE_CONTACT_FORM') {
                 // Get the booking pitch from the band info
                 <% if (opportunity.band.bookingPitch) { %>
                     messageContentTextarea.value = <%- JSON.stringify(opportunity.band.bookingPitch) %>;

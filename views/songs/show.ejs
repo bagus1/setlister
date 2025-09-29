@@ -217,6 +217,48 @@
                                             <% } %>
                                         </div>
                                     </div>
+                                <% } else if (link.type === 'midi') { %>
+                                    <!-- MIDI Links - Non-clickable card with View button -->
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                            <%= getLinkDisplayText(link) %>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-play-circle"></i> View
+                                            </a>
+                                            <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-box-arrow-up-right"></i> Open
+                                            </a>
+                                            <% if (loggedIn && (user.role === 'admin' || user.role === 'moderator' || link.creatorId === user.id)) { %>
+                                                <button class="btn btn-sm" onclick="deleteSongLink(<%= link.id %>)" title="Delete link">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                <% } else if (link.type === 'pdf') { %>
+                                    <!-- PDF Links - Non-clickable card with View button -->
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-<%= getLinkIcon(link.type) %>"></i>
+                                            <%= getLinkDisplayText(link) %>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-file-earmark-pdf"></i> View
+                                            </a>
+                                            <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-box-arrow-up-right"></i> Open
+                                            </a>
+                                            <% if (loggedIn && (user.role === 'admin' || user.role === 'moderator' || link.creatorId === user.id)) { %>
+                                                <button class="btn btn-sm" onclick="deleteSongLink(<%= link.id %>)" title="Delete link">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            <% } %>
+                                        </div>
+                                    </div>
                                 <% } else { %>
                                     <!-- Non-audio links - Clickable card -->
                                     <div class="list-group-item d-flex justify-content-between align-items-center">
@@ -266,6 +308,8 @@
                                         <option value="karaoke">Karaoke</option>
                                         <option value="keyboard tutorial">Keyboard Tutorial</option>
                                         <option value="lyrics">Lyrics</option>
+                                        <option value="midi">MIDI File</option>
+                                        <option value="pdf">Lead Sheet (PDF)</option>
                                         <option value="other">Other</option>
                                         <option value="sheet-music">Sheet Music</option>
                                         <option value="soundcloud">SoundCloud</option>

@@ -255,13 +255,19 @@
         <div class="card">
             <div class="card-header">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <input type="text" class="form-control" id="searchSongs" placeholder="Search songs...">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <select class="form-select" id="filterArtist">
                             <option value="">All Artists</option>
                             <!-- Artists will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="filterGenre">
+                            <option value="">All Genres</option>
+                            <!-- Genres will be populated by JavaScript -->
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -313,6 +319,7 @@
                                 <div class="card song-selection-card <%= bandSongIds.includes(song.id) ? 'border-success border-3 bg-success bg-opacity-10' : '' %>"
                                     data-song-id="<%= song.id %>" data-title="<%= song.title.toLowerCase() %>"
                                     data-artist="<%= song.artists && song.artists.length > 0 ? song.artists[0].artist.name.toLowerCase() : '' %>"
+                                    data-genre="<%= song.style ? song.style.toLowerCase() : '' %>"
                                     data-key="<%= song.key || '' %>" style="cursor: pointer;">
                                     <div class="card-body">
                                         <div class="form-check">
@@ -549,6 +556,7 @@
         // Filtering functionality
         const searchInput = document.getElementById('searchSongs');
         const artistFilter = document.getElementById('filterArtist');
+        const genreFilter = document.getElementById('filterGenre');
         const keyFilter = document.getElementById('filterKey');
         const songItems = document.querySelectorAll('.song-selection-card');
 
@@ -566,10 +574,25 @@
             artistFilter.appendChild(option);
         });
 
+        // Populate genre filter
+        const genres = new Set();
+        songItems.forEach(item => {
+            const genre = item.dataset.genre;
+            if (genre) genres.add(genre);
+        });
+
+        Array.from(genres).sort().forEach(genre => {
+            const option = document.createElement('option');
+            option.value = genre;
+            option.textContent = genre;
+            genreFilter.appendChild(option);
+        });
+
         // Filter function
         function filterSongs() {
             const searchTerm = searchInput.value.toLowerCase();
             const selectedArtist = artistFilter.value;
+            const selectedGenre = genreFilter.value;
             const selectedKey = keyFilter.value;
 
             // Get all song cards and their parent containers
@@ -580,13 +603,15 @@
                 const container = songContainers[index];
                 const title = card.dataset.title;
                 const artist = card.dataset.artist;
+                const genre = card.dataset.genre;
                 const key = card.dataset.key;
 
                 const matchesSearch = title.includes(searchTerm) || artist.toLowerCase().includes(searchTerm);
                 const matchesArtist = !selectedArtist || artist === selectedArtist;
+                const matchesGenre = !selectedGenre || genre === selectedGenre;
                 const matchesKey = !selectedKey || key === selectedKey;
 
-                if (matchesSearch && matchesArtist && matchesKey) {
+                if (matchesSearch && matchesArtist && matchesGenre && matchesKey) {
                     container.classList.remove('d-none');
                 } else {
                     container.classList.add('d-none');
@@ -597,6 +622,7 @@
         // Event listeners for filtering
         searchInput.addEventListener('input', filterSongs);
         artistFilter.addEventListener('change', filterSongs);
+        genreFilter.addEventListener('change', filterSongs);
         keyFilter.addEventListener('change', filterSongs);
         
         // Carousel navigation function

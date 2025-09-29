@@ -496,6 +496,9 @@ router.get("/:songId/links/:linkId", async (req, res) => {
         karaoke: "Karaoke",
         "horn chart": "Horn Chart",
         horn_chart: "Horn Chart",
+        midi: "MIDI File",
+        pdf: "Lead Sheet",
+        lead_sheet: "Lead Sheet",
         other: "Other",
       };
 
@@ -545,7 +548,9 @@ router.get("/:songId/links/:linkId", async (req, res) => {
     if (
       link.type !== "audio" &&
       link.type !== "spotify" &&
-      link.type !== "youtube"
+      link.type !== "youtube" &&
+      link.type !== "midi" &&
+      link.type !== "pdf"
     ) {
       req.flash("error", "Link viewer not available for this type");
       return res.redirect(`/songs/${songId}`);
@@ -636,6 +641,8 @@ router.get("/:id", async (req, res) => {
         "backing-track": "music-player",
         karaoke: "mic",
         "horn chart": "file-earmark-music",
+        midi: "music-note-beamed",
+        pdf: "file-earmark-pdf",
         other: "link-45deg",
       };
       return icons[type] || "link-45deg";
@@ -669,6 +676,7 @@ router.get("/:id", async (req, res) => {
         karaoke: "Karaoke",
         "horn chart": "Horn Chart",
         horn_chart: "Horn Chart",
+        midi: "MIDI File",
         other: "Other",
       };
 

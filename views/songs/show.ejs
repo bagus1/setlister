@@ -94,6 +94,32 @@
 
                 <div class="row">
                     <div class="col-md-6">
+                        <strong>Genre:</strong>
+                        <p>
+                            <% if (song.style) { %>
+                                <span class="badge bg-info text-white">
+                                    <%= song.style %>
+                                </span>
+                                <% } else { %>
+                                    <span class="text-muted">Not specified</span>
+                                    <% } %>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Added by:</strong>
+                        <p>
+                            <% if (song.creator) { %>
+                                <i class="bi bi-person"></i>
+                                <%= song.creator.username.includes('@') ? song.creator.username.split('@')[0] : song.creator.username %>
+                                <% } else { %>
+                                    <span class="text-muted">Unknown</span>
+                                    <% } %>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
                         <strong>Added:</strong>
                         <p>
                             <%= new Date(song.createdAt).toLocaleDateString() %>

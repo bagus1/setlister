@@ -267,7 +267,13 @@
                     <div class="col-md-3">
                         <select class="form-select" id="filterGenre">
                             <option value="">All Genres</option>
-                            <!-- Genres will be populated by JavaScript -->
+                            <option value="blues">Blues</option>
+                            <option value="funk">Funk</option>
+                            <option value="jazz">Jazz</option>
+                            <option value="latin/jazz">Latin/Jazz</option>
+                            <option value="pop">Pop</option>
+                            <option value="r&b">R&B</option>
+                            <option value="rock">Rock</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -574,19 +580,7 @@
             artistFilter.appendChild(option);
         });
 
-        // Populate genre filter
-        const genres = new Set();
-        songItems.forEach(item => {
-            const genre = item.dataset.genre;
-            if (genre) genres.add(genre);
-        });
-
-        Array.from(genres).sort().forEach(genre => {
-            const option = document.createElement('option');
-            option.value = genre;
-            option.textContent = genre;
-            genreFilter.appendChild(option);
-        });
+        // Genre filter is now static - no need to populate dynamically
 
         // Filter function
         function filterSongs() {

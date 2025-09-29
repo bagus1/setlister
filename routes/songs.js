@@ -203,6 +203,7 @@ router.post(
         minutes = 0,
         seconds = 0,
         bpm,
+        style,
         private: isPrivate,
       } = req.body;
 
@@ -387,6 +388,7 @@ router.post(
           key: enumKey,
           time: totalTime,
           bpm: bpmInt,
+          style: style || null,
           vocalistId: vocalistId,
           createdById: req.session.user.id,
           private: isPrivate === "true",
@@ -871,6 +873,7 @@ router.post(
         minutes = 0,
         seconds = 0,
         bpm,
+        style,
         makePublic,
       } = req.body;
 
@@ -986,6 +989,7 @@ router.post(
         key: enumKey,
         time: totalTime || null,
         bpm: bpmValue,
+        style: style || null,
         vocalistId,
         updatedAt: new Date(),
       };
@@ -1029,6 +1033,7 @@ router.post(
             key: existingPublicSong.key || enumKey,
             time: existingPublicSong.time || totalTime || null,
             bpm: existingPublicSong.bpm || bpmValue,
+            style: existingPublicSong.style || style || null,
             vocalistId: existingPublicSong.vocalistId || vocalistId,
             updatedAt: new Date(),
           };

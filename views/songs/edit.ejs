@@ -94,6 +94,21 @@
                                 </div>
                             </div>
 
+                            <div class="mb-3">
+                                <label for="style" class="form-label">Genre</label>
+                                <select class="form-control" id="style" name="style">
+                                    <option value="">Select genre...</option>
+                                    <option value="Blues" <%= song.style === 'Blues' ? 'selected' : '' %>>Blues</option>
+                                    <option value="Funk" <%= song.style === 'Funk' ? 'selected' : '' %>>Funk</option>
+                                    <option value="Jazz" <%= song.style === 'Jazz' ? 'selected' : '' %>>Jazz</option>
+                                    <option value="Latin/Jazz" <%= song.style === 'Latin/Jazz' ? 'selected' : '' %>>Latin/Jazz</option>
+                                    <option value="Pop" <%= song.style === 'Pop' ? 'selected' : '' %>>Pop</option>
+                                    <option value="R&B" <%= song.style === 'R&B' ? 'selected' : '' %>>R&B</option>
+                                    <option value="Rock" <%= song.style === 'Rock' ? 'selected' : '' %>>Rock</option>
+                                </select>
+                                <div class="form-text">Optional: Select the musical genre/style</div>
+                            </div>
+
                             <!-- DEBUG: song.private=<%= song.private %>, song.createdById=<%= song.createdById %>, currentUser.id=<%= currentUser?.id %> -->
                             <% if (song.private && song.createdById === currentUser?.id) { %>
                             <!-- Private song owner can make it public -->

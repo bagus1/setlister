@@ -169,6 +169,22 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="style" class="form-label">Genre (Optional)</label>
+                                                <select class="form-select" id="style" name="style">
+                                                    <option value="">Select genre...</option>
+                                                    <option value="Blues" <%= typeof formData !== 'undefined' && formData.style === 'Blues' ? 'selected' : '' %>>Blues</option>
+                                                    <option value="Funk" <%= typeof formData !== 'undefined' && formData.style === 'Funk' ? 'selected' : '' %>>Funk</option>
+                                                    <option value="Jazz" <%= typeof formData !== 'undefined' && formData.style === 'Jazz' ? 'selected' : '' %>>Jazz</option>
+                                                    <option value="Latin/Jazz" <%= typeof formData !== 'undefined' && formData.style === 'Latin/Jazz' ? 'selected' : '' %>>Latin/Jazz</option>
+                                                    <option value="Pop" <%= typeof formData !== 'undefined' && formData.style === 'Pop' ? 'selected' : '' %>>Pop</option>
+                                                    <option value="R&B" <%= typeof formData !== 'undefined' && formData.style === 'R&B' ? 'selected' : '' %>>R&B</option>
+                                                    <option value="Rock" <%= typeof formData !== 'undefined' && formData.style === 'Rock' ? 'selected' : '' %>>Rock</option>
+                                                </select>
+                                                <div class="form-text">Optional: Select the musical genre/style</div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div class="mb-3">

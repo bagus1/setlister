@@ -333,7 +333,7 @@ h1 {
   border-radius: 0;
   margin-bottom: 0 !important;
   background-image: url("/images/marquee-bg.jpg");
-  background-size: contain;
+  background-size: 137px 123px;
   background-position: center;
   background-repeat: repeat-x;
   background-color: white !important;

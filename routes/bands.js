@@ -6178,6 +6178,8 @@ router.get("/:id/opportunities", requireAuth, async (req, res) => {
             name: true,
             city: true,
             state: true,
+            address: true,
+            zipCode: true,
           },
         },
         interactions: {

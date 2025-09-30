@@ -83,7 +83,9 @@
                                     <tr data-opportunity-id="<%= opportunity.id %>" data-venue-id="<%= opportunity.venue.id %>" data-status="<%= opportunity.status %>">
                                         <td>
                                             <div>
-                                                <strong><%= opportunity.name %></strong>
+                                                <a href="/bands/<%= band.id %>/opportunities/<%= opportunity.id %>" class="text-decoration-none">
+                                                    <strong><%= opportunity.name %></strong>
+                                                </a>
                                                 <% if (opportunity.notes && opportunity.notes.trim()) { %>
                                                     <br><small class="text-muted"><%= opportunity.notes.substring(0, 100) %><%= opportunity.notes.length > 100 ? '...' : '' %></small>
                                                 <% } %>
@@ -91,12 +93,36 @@
                                         </td>
                                         <td>
                                             <div>
-                                                <a href="/bands/<%= band.id %>/venues/<%= opportunity.venue.id %>" class="text-decoration-none">
+                                                <a href="/venues/<%= opportunity.venue.id %>" class="text-decoration-none">
                                                     <%= opportunity.venue.name %>
                                                 </a>
                                                 <% if (opportunity.venue.city || opportunity.venue.state) { %>
                                                     <br><small class="text-muted">
-                                                        <%= opportunity.venue.city %><%= opportunity.venue.city && opportunity.venue.state ? ', ' : '' %><%= opportunity.venue.state %>
+                                                        <%
+                                                            // Build full address for Google Maps
+                                                            let fullAddress = '';
+                                                            if (opportunity.venue.address) fullAddress += opportunity.venue.address;
+                                                            if (opportunity.venue.city) {
+                                                                if (fullAddress) fullAddress += ', ';
+                                                                fullAddress += opportunity.venue.city;
+                                                            }
+                                                            if (opportunity.venue.state) {
+                                                                if (fullAddress) fullAddress += ', ';
+                                                                fullAddress += opportunity.venue.state;
+                                                            }
+                                                            if (opportunity.venue.zipCode) {
+                                                                if (fullAddress) fullAddress += ' ';
+                                                                fullAddress += opportunity.venue.zipCode;
+                                                            }
+                                                            const googleMapsUrl = fullAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}` : '';
+                                                        %>
+                                                        <% if (googleMapsUrl) { %>
+                                                            <a href="<%= googleMapsUrl %>" target="_blank" class="text-decoration-none text-muted">
+                                                                <%= opportunity.venue.city %><%= opportunity.venue.city && opportunity.venue.state ? ', ' : '' %><%= opportunity.venue.state %>
+                                                            </a>
+                                                        <% } else { %>
+                                                            <%= opportunity.venue.city %><%= opportunity.venue.city && opportunity.venue.state ? ', ' : '' %><%= opportunity.venue.state %>
+                                                        <% } %>
                                                     </small>
                                                 <% } %>
                                             </div>

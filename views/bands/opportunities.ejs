@@ -6,8 +6,11 @@
                 <span class="text-muted">Manage all opportunities for this band</span>
             </div>
             <div>
-                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary me-2">
                     <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+                <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-building"></i> Band Venues
                 </a>
                 <a href="/bands/<%= band.id %>/venues" class="btn btn-primary">
                     <i class="bi bi-plus-circle"></i> New Opportunity

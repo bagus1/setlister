@@ -450,6 +450,26 @@ a:focus {
   text-align: center;
 }
 
+/* MIDI Player Styling */
+midi-player {
+  display: inline-block;
+  width: 250px;
+  margin: 3px;
+  vertical-align: bottom;
+  font-family: sans-serif;
+  font-size: 14px;
+}
+
+midi-visualizer {
+  max-width: 250px;
+  overflow: hidden;
+}
+
+midi-visualizer svg {
+  max-width: 250px !important;
+  width: 250px !important;
+}
+
 /* ========================================
    DARK MODE SUPPORT
    ======================================== */

@@ -1,0 +1,258 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><%= band.name %> - Opportunities</h2>
+                <span class="text-muted">Manage all opportunities for this band</span>
+            </div>
+            <div>
+                <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+                <a href="/bands/<%= band.id %>/venues" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> New Opportunity
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <% if (opportunities && opportunities.length > 0) { %>
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control bg-dark text-white border-secondary" id="searchOpportunities" placeholder="Search opportunities...">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select bg-dark text-white border-secondary" id="filterVenue">
+                                <option value="">All Venues</option>
+                                <% 
+                                // Get unique venues from opportunities
+                                var uniqueVenues = [];
+                                var seenVenues = {};
+                                for (var i = 0; i < opportunities.length; i++) {
+                                    var venue = opportunities[i].venue;
+                                    if (venue && !seenVenues[venue.id]) {
+                                        uniqueVenues.push(venue);
+                                        seenVenues[venue.id] = true;
+                                    }
+                                }
+                                uniqueVenues.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                                %>
+                                <% for (var j = 0; j < uniqueVenues.length; j++) { %>
+                                    <option value="<%= uniqueVenues[j].id %>"><%= uniqueVenues[j].name %></option>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select bg-dark text-white border-secondary" id="filterStatus">
+                                <option value="">All Statuses</option>
+                                <option value="PROSPECTING">Prospecting</option>
+                                <option value="CONTACTED">Contacted</option>
+                                <option value="NEGOTIATING">Negotiating</option>
+                                <option value="BOOKED">Booked</option>
+                                <option value="ARCHIVED">Archived</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-light" id="clearFilters">
+                                <i class="bi bi-x-circle"></i> Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-dark mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Opportunity</th>
+                                    <th>Venue</th>
+                                    <th>Status</th>
+                                    <th>Last Interaction</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="opportunitiesTableBody">
+                                <% for (var i = 0; i < opportunities.length; i++) { %>
+                                    <% var opportunity = opportunities[i]; %>
+                                    <tr data-opportunity-id="<%= opportunity.id %>" data-venue-id="<%= opportunity.venue.id %>" data-status="<%= opportunity.status %>">
+                                        <td>
+                                            <div>
+                                                <strong><%= opportunity.name %></strong>
+                                                <% if (opportunity.notes && opportunity.notes.trim()) { %>
+                                                    <br><small class="text-muted"><%= opportunity.notes.substring(0, 100) %><%= opportunity.notes.length > 100 ? '...' : '' %></small>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <a href="/bands/<%= band.id %>/venues/<%= opportunity.venue.id %>" class="text-decoration-none">
+                                                    <%= opportunity.venue.name %>
+                                                </a>
+                                                <% if (opportunity.venue.city || opportunity.venue.state) { %>
+                                                    <br><small class="text-muted">
+                                                        <%= opportunity.venue.city %><%= opportunity.venue.city && opportunity.venue.state ? ', ' : '' %><%= opportunity.venue.state %>
+                                                    </small>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-<%= opportunity.status === 'BOOKED' ? 'success' : opportunity.status === 'PROSPECTING' ? 'primary' : opportunity.status === 'CONTACTED' ? 'info' : opportunity.status === 'NEGOTIATING' ? 'warning' : 'secondary' %>">
+                                                <%= opportunity.status === 'PROSPECTING' ? 'Prospecting' : 
+                                                    opportunity.status === 'CONTACTED' ? 'Contacted' : 
+                                                    opportunity.status === 'NEGOTIATING' ? 'Negotiating' : 
+                                                    opportunity.status === 'BOOKED' ? 'Booked' : 
+                                                    opportunity.status === 'ARCHIVED' ? 'Archived' : opportunity.status %>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <% if (opportunity.interactions && opportunity.interactions.length > 0) { %>
+                                                <div>
+                                                    <%= new Date(opportunity.interactions[0].interactionDate).toLocaleDateString() %>
+                                                    <br><small class="text-muted"><%= opportunity.interactions[0].type %></small>
+                                                </div>
+                                            <% } else { %>
+                                                <span class="text-muted">No interactions yet</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <%= new Date(opportunity.createdAt).toLocaleDateString() %>
+                                                <br><small class="text-muted">by <%= opportunity.creator.username %></small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="More Actions">
+                                                    <i class="bi bi-three-dots-vertical"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    <li>
+                                                        <a class="dropdown-item" href="/bands/<%= band.id %>/opportunities/<%= opportunity.id %>" title="View Details">
+                                                            <i class="bi bi-eye me-2"></i>View Details
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="/bands/<%= band.id %>/opportunities/<%= opportunity.id %>/edit" title="Edit Opportunity">
+                                                            <i class="bi bi-pencil me-2"></i>Edit Opportunity
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="/bands/<%= band.id %>/opportunities/<%= opportunity.id %>/interactions/new" title="New Interaction">
+                                                            <i class="bi bi-plus-circle me-2"></i>New Interaction
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" onclick="confirmDelete(<%= opportunity.id %>, '<%= opportunity.venue.name %>')" title="Delete Opportunity">
+                                                            <i class="bi bi-trash me-2"></i>Delete Opportunity
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        <% } else { %>
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-calendar-event display-1 text-muted"></i>
+                    <h3 class="mt-3">No Opportunities Yet</h3>
+                    <p class="text-muted">Start by creating your first opportunity with a venue.</p>
+                    <a href="/bands/<%= band.id %>/venues" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create First Opportunity
+                    </a>
+                </div>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchOpportunities');
+    const venueFilter = document.getElementById('filterVenue');
+    const statusFilter = document.getElementById('filterStatus');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const tableBody = document.getElementById('opportunitiesTableBody');
+    
+    if (!tableBody) return; // Exit if no table body exists
+    
+    function filterOpportunities() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedVenue = venueFilter.value;
+        const selectedStatus = statusFilter.value;
+        
+        const rows = tableBody.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const opportunityName = row.querySelector('td:first-child').textContent.toLowerCase();
+            const venueId = row.getAttribute('data-venue-id');
+            const status = row.getAttribute('data-status');
+            
+            const matchesSearch = opportunityName.includes(searchTerm);
+            const matchesVenue = !selectedVenue || venueId === selectedVenue;
+            const matchesStatus = !selectedStatus || status === selectedStatus;
+            
+            if (matchesSearch && matchesVenue && matchesStatus) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    function clearFilters() {
+        searchInput.value = '';
+        venueFilter.value = '';
+        statusFilter.value = '';
+        filterOpportunities();
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('input', filterOpportunities);
+    venueFilter.addEventListener('change', filterOpportunities);
+    statusFilter.addEventListener('change', filterOpportunities);
+    clearFiltersBtn.addEventListener('click', clearFilters);
+});
+
+// Delete confirmation function
+function confirmDelete(opportunityId, venueName) {
+    if (confirm(`Are you sure you want to delete the opportunity for "${venueName}"? This action cannot be undone.`)) {
+        // Create a form to submit the DELETE request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/bands/<%= band.id %>/opportunities/${opportunityId}/delete`;
+        
+        // Add CSRF token if available
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken.getAttribute('content');
+            form.appendChild(csrfInput);
+        }
+        
+        // Add method override for DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>

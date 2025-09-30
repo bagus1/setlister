@@ -6132,6 +6132,158 @@ router.post(
   }
 );
 
+// GET /bands/:id/opportunities - List all opportunities for a band
+router.get("/:id/opportunities", requireAuth, async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const userId = req.session.user.id;
+
+    // Get band with members to check access
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: { id: true, username: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    // Check if user is a member of the band
+    const isMember = band.members.some(
+      (member) => member.user.id === userId
+    );
+    if (!isMember) {
+      req.flash("error", "You are not a member of this band");
+      return res.redirect("/bands");
+    }
+
+    // Get all opportunities for this band with related data
+    const opportunities = await prisma.opportunity.findMany({
+      where: {
+        bandId: parseInt(bandId),
+      },
+      include: {
+        venue: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            state: true,
+          },
+        },
+        interactions: {
+          select: {
+            id: true,
+            interactionDate: true,
+            type: true,
+          },
+          orderBy: {
+            interactionDate: "desc",
+          },
+          take: 1, // Get the most recent interaction
+        },
+        creator: {
+          select: {
+            username: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.render("bands/opportunities", {
+      pageTitle: `${band.name} - Opportunities`,
+      hasBandHeader: false,
+      band,
+      opportunities,
+    });
+  } catch (error) {
+    logger.logError("List opportunities error:", error);
+    req.flash("error", "An error occurred while loading opportunities");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// POST /bands/:bandId/opportunities/:opportunityId/delete - Delete an opportunity
+router.post("/:bandId/opportunities/:opportunityId/delete", requireAuth, async (req, res) => {
+  try {
+    const { bandId, opportunityId } = req.params;
+    const userId = req.session.user.id;
+
+    // Get band with members to check access
+    const band = await prisma.band.findUnique({
+      where: { id: parseInt(bandId) },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: { id: true, username: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    // Check if user is a member of the band
+    const isMember = band.members.some(
+      (member) => member.user.id === userId
+    );
+    if (!isMember) {
+      req.flash("error", "You don't have permission to access this band");
+      return res.redirect("/bands");
+    }
+
+    // Get the opportunity to verify it belongs to this band
+    const opportunity = await prisma.opportunity.findUnique({
+      where: { id: parseInt(opportunityId) },
+      include: {
+        venue: {
+          select: { name: true }
+        }
+      }
+    });
+
+    if (!opportunity) {
+      req.flash("error", "Opportunity not found");
+      return res.redirect(`/bands/${bandId}/opportunities`);
+    }
+
+    if (opportunity.bandId !== parseInt(bandId)) {
+      req.flash("error", "Opportunity does not belong to this band");
+      return res.redirect(`/bands/${bandId}/opportunities`);
+    }
+
+    // Delete the opportunity (this will cascade delete related interactions)
+    await prisma.opportunity.delete({
+      where: { id: parseInt(opportunityId) }
+    });
+
+    req.flash("success", `Opportunity for "${opportunity.venue.name}" has been deleted`);
+    res.redirect(`/bands/${bandId}/opportunities`);
+
+  } catch (error) {
+    logger.logError("Delete opportunity error:", error);
+    req.flash("error", "An error occurred while deleting the opportunity");
+    res.redirect(`/bands/${req.params.bandId}/opportunities`);
+  }
+});
+
 // GET /bands/:bandId/opportunities/:opportunityId - Show individual opportunity detail
 router.get(
   "/:bandId/opportunities/:opportunityId",
@@ -6788,7 +6940,7 @@ async function generateAISuggestion(context) {
 
   // Initialize Gemini
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
   // Build the prompt based on interaction type
   let prompt;

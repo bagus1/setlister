@@ -126,7 +126,7 @@
                     <!-- Purpose of Interaction -->
                     <div class="mb-3">
                         <label for="outcome" class="form-label">Purpose of Interaction</label>
-                        <select class="form-select" id="outcome" name="outcome" required>
+                        <select class="form-select" id="outcome" name="outcome" onchange="handleOutcomeChange()" required>
                             <option value="">Purpose</option>
                 <option value="FIRST_CONTACT">First Contact - Made initial contact</option>
                 <option value="REBOOKING">Initiate Rebooking - Requesting another gig</option>
@@ -280,9 +280,9 @@
                         <!-- Website Contact Tool -->
                         <div id="website-tool" class="mb-3" style="display: none;">
                             <% 
-                                const websiteContact = opportunity.venue.contacts?.find(contact => contact.contactType?.name === 'WEBSITE');
+                                const websiteContact = opportunity.venue.contacts?.find(contact => contact.contactType?.name === 'WEBSITE_CONTACT_FORM');
                             %>
-                            <% if (websiteContact && websiteContact.url) { %>
+                            <% if (websiteContact && (websiteContact.url || websiteContact.value)) { %>
                                 <div class="alert alert-info">
                                     <div class="d-flex align-items-center">
                                         <i class="bi bi-globe me-2"></i>
@@ -291,7 +291,7 @@
                                             <small>Click to open the contact form</small>
                                         </div>
                                         <div class="ms-auto">
-                                            <a href="<%= websiteContact.url %>" target="_blank" class="btn btn-primary btn-sm">
+                                            <a href="<%= websiteContact.url || websiteContact.value %>" target="_blank" class="btn btn-primary btn-sm">
                                                 <i class="bi bi-globe"></i> Open Contact Form
                                             </a>
                                         </div>
@@ -965,17 +965,23 @@ function getSelectedContactInfo() {
         const contactId = selectedType.split('_')[1];
         
         // Find the contact in the venue contacts array
-        <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
-            <% opportunity.venue.contacts.forEach(contact => { %>
-                if ('<%= contact.id %>' === contactId) {
-                    return {
+        const venueContacts = [
+            <% if (opportunity.venue.contacts && opportunity.venue.contacts.length > 0) { %>
+                <% opportunity.venue.contacts.forEach((contact, index) => { %>
+                    {
+                        id: '<%= contact.id %>',
                         name: '<%= contact.label || "" %>',
                         type: '<%= contact.contactType.displayName %>',
                         value: '<%= contact.value %>'
-                    };
-                }
-            <% }); %>
-        <% } %>
+                    }<%= index < opportunity.venue.contacts.length - 1 ? ',' : '' %>
+                <% }); %>
+            <% } %>
+        ];
+        
+        const foundContact = venueContacts.find(contact => contact.id === contactId);
+        if (foundContact) {
+            return foundContact;
+        }
     }
     
     // For venue phone or text message, return venue info

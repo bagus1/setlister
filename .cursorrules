@@ -22,7 +22,8 @@
 - Ask clarifying questions rather than jumping to solutions
 
 ## 🛠️ Technical Preferences:
-
+- Prefer AI runs server on port 3004
+- Prefer AI kills server by port, not just anything running node.
 - Prefer direct database queries over manage.js methods for SELECT operations
 - For INSERT, UPDATE, DELETE, or ALTER queries, ALWAYS ask for approval first
 - Check logs and existing debugging before adding new debugging code

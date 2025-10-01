@@ -13,9 +13,6 @@
                 <a href="/bands/<%= band.id %>/venues" class="btn btn-outline-success">
                     <i class="bi bi-geo-alt"></i> Our Venues
                 </a>
-                <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-outline-info">
-                    <i class="bi bi-plus-circle"></i> Pick Venues
-                </a>
                 <a href="/bands/<%= band.id %>/gigs" class="btn btn-outline-dark">
                     <i class="bi bi-calendar-event"></i> Gigs
                 </a>
@@ -87,6 +84,9 @@
                     <div class="small text-muted mb-3">Contact your venues</div>
                     <a href="/bands/<%= band.id %>/venues" class="btn btn-success btn-sm w-100 mb-2">
                         <i class="bi bi-geo-alt"></i> Book at Your Venues
+                    </a>
+                    <a href="/bands/<%= band.id %>/venue-picker" class="btn btn-outline-success btn-sm w-100 mb-2">
+                        <i class="bi bi-plus-circle"></i> Pick Venues
                     </a>
                     <a href="/bands/<%= band.id %>/gigs/new" class="btn btn-outline-success btn-sm w-100">
                         <i class="bi bi-calendar-plus"></i> Schedule a Gig

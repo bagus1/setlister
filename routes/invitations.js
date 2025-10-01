@@ -216,7 +216,7 @@ router.post(
 
       req.flash(
         "success",
-        `Welcome to ${invitation.band.name}! You've successfully joined the band.`
+        `Welcome to ${invitation.band.name}! You've successfully joined the band. The space here is completely collaborative, so you are in control of creating sets, editing existing sets, picking and adding songs for the band and even contacting venues to get gigs and more. Maybe you want to check out the latest setlist here. Just click on it to see the details, see the Music Stand Documents, and listen to provided audio and video. Or create your own new set and you'll be able to add songs that have been picked for the band and easily share links so others can check it out.`
       );
       res.redirect(`/bands/${invitation.bandId}`);
     } catch (error) {

@@ -1915,7 +1915,7 @@ router.post(
 
       const band = result;
 
-      req.flash("success", "Band created successfully!");
+      req.flash("success", "Band created successfully! The next thing to do is to add some songs your band might play using any of the 4 methods mentioned below.");
       res.redirect(`/bands/${band.id}`);
     } catch (error) {
       console.error("Create band error:", error);

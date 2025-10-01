@@ -174,7 +174,7 @@ router.post(
       } else {
         req.flash(
           "success",
-          "Registration successful! Welcome to The Band Plan"
+          "Registration successful! Welcome to The Band Plan. Now that you have an account, the best way to get started is to create your own band"
         );
       }
       res.redirect("/");

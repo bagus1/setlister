@@ -1442,6 +1442,144 @@ router.get(
   }
 );
 
+// GET /bands/:bandId/setlists/:setlistId/leadsheets/print - Print-friendly leadsheet view
+router.get(
+  "/:bandId/setlists/:setlistId/leadsheets/print",
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: {
+                    include: {
+                      artists: {
+                        include: {
+                          artist: true,
+                        },
+                      },
+                      vocalist: true,
+                      links: {
+                        where: { type: "pdf" },
+                      },
+                    },
+                  },
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        return res.status(404).send("Setlist not found");
+      }
+
+      // Verify the setlist belongs to the specified band
+      if (setlist.band.id !== bandId) {
+        return res.status(404).send("Setlist not found");
+      }
+
+      // Load BandSong preferences for the band
+      const bandSongs = await prisma.bandSong.findMany({
+        where: { bandId: setlist.band.id },
+        select: {
+          songId: true,
+          leadsheet: true,
+        },
+      });
+
+      // Create a map of songId -> preferred leadsheet URL
+      const bandSongMap = {};
+      bandSongs.forEach((bandSong) => {
+        if (bandSong.leadsheet) {
+          bandSongMap[bandSong.songId] = { leadsheet: bandSong.leadsheet };
+        }
+      });
+
+      // Collect leadsheet links using preferred links when available
+      const leadsheetLinks = [];
+
+      setlist.sets.forEach((set) => {
+        if (set.songs && set.name !== "Maybe") {
+          set.songs.forEach((setlistSong) => {
+            if (setlistSong.song && setlistSong.song.links && setlistSong.song.links.length > 0) {
+              const songId = setlistSong.song.id;
+              const bandSong = bandSongMap[songId];
+
+              // Get available leadsheet links
+              const availableLeadsheetLinks = setlistSong.song.links.filter(
+                (link) => link.type === "pdf"
+              );
+
+              if (availableLeadsheetLinks.length > 0) {
+                let selectedLink = null;
+
+                // Use preferred leadsheet link if available
+                if (bandSong?.leadsheet) {
+                  selectedLink = availableLeadsheetLinks.find(
+                    (link) => link.url === bandSong.leadsheet
+                  );
+                }
+
+                // Fallback to first available if no preference or preferred not found
+                if (!selectedLink) {
+                  selectedLink = availableLeadsheetLinks[0];
+                }
+
+                if (selectedLink) {
+                  leadsheetLinks.push({
+                    songTitle: setlistSong.song.title,
+                    artist:
+                      setlistSong.song.artists &&
+                      setlistSong.song.artists.length > 0
+                        ? setlistSong.song.artists[0].artist.name
+                        : null,
+                    set: set.name,
+                    order: setlistSong.order,
+                    url: selectedLink.url,
+                    description: selectedLink.description || 'Lead Sheet',
+                  });
+                }
+              }
+            }
+          });
+        }
+      });
+
+      res.render("setlists/leadsheet-print", {
+        title: `Lead Sheets - ${setlist.title} - Print`,
+        pageTitle: `Lead Sheets - ${setlist.title}`,
+        setlist,
+        band: setlist.band,
+        leadsheetLinks,
+        user: req.session.user || null,
+      });
+    } catch (error) {
+      logger.logError("Leadsheet print error", error);
+      res.status(500).send("Error loading leadsheet print view");
+    }
+  }
+);
+
 // POST /bands/:bandId/setlists/:setlistId/preferred-leadsheet - Update preferred leadsheet for a song
 router.post(
   "/:bandId/setlists/:setlistId/preferred-leadsheet",

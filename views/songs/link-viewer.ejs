@@ -312,7 +312,13 @@
                                     <label class="form-label small">Choose Audio/Video:</label>
                                     <select class="form-select form-select-sm" id="mediaSelect" onchange="loadMediaPlayer()">
                                         <option value="">Select a link...</option>
-                                        <% song.links.forEach(linkItem => { %>
+                                        <% 
+                                            let firstAudioLink = null;
+                                            song.links.forEach((linkItem, index) => { 
+                                                if (['audio', 'spotify', 'youtube', 'midi'].includes(linkItem.type) && !firstAudioLink) {
+                                                    firstAudioLink = linkItem;
+                                                }
+                                        %>
                                             <% if (['audio', 'spotify', 'youtube', 'midi'].includes(linkItem.type)) { %>
                                                 <% 
                                                     let mediaId = null;
@@ -325,7 +331,8 @@
                                                 <option value="<%= linkItem.id %>" 
                                                         data-type="<%= linkItem.type %>" 
                                                         data-url="<%= linkItem.url %>"
-                                                        data-media-id="<%= mediaId || '' %>">
+                                                        data-media-id="<%= mediaId || '' %>"
+                                                        <%= linkItem.id === firstAudioLink?.id ? 'selected' : '' %>>
                                                     <%= getLinkDisplayText(linkItem) %>
                                                 </option>
                                             <% } %>
@@ -475,13 +482,12 @@ function loadMediaPlayer() {
     }
 }
 
-// Auto-select first option and load player on page load for PDF links
+// Auto-load preselected audio on page load for PDF links
 document.addEventListener('DOMContentLoaded', function() {
     <% if (link.type === 'pdf') { %>
         const select = document.getElementById('mediaSelect');
-        if (select && select.options.length > 1) {
-            // Select the first non-placeholder option (index 1)
-            select.selectedIndex = 1;
+        if (select && select.selectedIndex > 0) {
+            // Load the preselected option (most recent audio)
             loadMediaPlayer();
         }
     <% } %>

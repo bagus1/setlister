@@ -78,7 +78,13 @@
                             <label class="form-label small">Choose Audio/Video:</label>
                             <select class="form-select form-select-sm" id="mediaSelect" onchange="loadMediaPlayer()">
                                 <option value="">Select a link...</option>
-                                <% gigDocument.song.links.forEach(link => { %>
+                                <% 
+                                    let firstAudioLink = null;
+                                    gigDocument.song.links.forEach((link, index) => { 
+                                        if (['audio', 'spotify', 'youtube'].includes(link.type) && !firstAudioLink) {
+                                            firstAudioLink = link;
+                                        }
+                                %>
                                     <% if (['audio', 'spotify', 'youtube'].includes(link.type)) { %>
                                         <% 
                                             let mediaId = null;
@@ -91,7 +97,8 @@
                                         <option value="<%= link.id %>" 
                                                 data-type="<%= link.type %>" 
                                                 data-url="<%= link.url %>"
-                                                data-media-id="<%= mediaId || '' %>">
+                                                data-media-id="<%= mediaId || '' %>"
+                                                <%= link.id === firstAudioLink?.id ? 'selected' : '' %>>
                                             <%= getLinkDisplayText(link) %>
                                         </option>
                                     <% } %>
@@ -418,12 +425,11 @@
         }
     }
 
-    // Auto-select first option and load player on page load
+    // Auto-load preselected audio on page load
     document.addEventListener('DOMContentLoaded', function() {
         const select = document.getElementById('mediaSelect');
-        if (select && select.options.length > 1) {
-            // Select the first non-placeholder option (index 1)
-            select.selectedIndex = 1;
+        if (select && select.selectedIndex > 0) {
+            // Load the preselected option (most recent audio)
             loadMediaPlayer();
         }
     });

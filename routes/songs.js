@@ -451,7 +451,11 @@ router.get("/:songId/links/:linkId", async (req, res) => {
           },
         },
         vocalist: true,
-        links: true, // Get all links for the audio player dropdown
+        links: {
+          orderBy: {
+            createdAt: 'desc', // Most recent first
+          },
+        },
       },
     });
 
@@ -606,6 +610,9 @@ router.get("/:id", async (req, res) => {
                 username: true,
               },
             },
+          },
+          orderBy: {
+            createdAt: 'desc', // Most recent first
           },
         },
         gigDocuments: {

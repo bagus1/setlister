@@ -205,7 +205,11 @@ router.get("/:songId/docs/:id", async (req, res) => {
       include: {
         song: {
           include: {
-            links: true,
+            links: {
+              orderBy: {
+                createdAt: 'desc', // Most recent first
+              },
+            },
           },
         },
       },

@@ -15,136 +15,140 @@
 
 
         <div class="row">
-            <div class="col-md-8">
-                    <div class="card">
-                <div class="card-header">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <h5 class="mb-0">
-                                <%= gigDocument.song.title %>
-                                <% if (gigDocument.song.artists && gigDocument.song.artists.length > 0) { %>
-                                    - <%= gigDocument.song.artists.map(a => a.artist.name).join(', ') %>
-                                <% } %>
-                            </h5>
-                            <small class="text-muted">
-                                <% if (gigDocument.song.vocalist) { %>
-                                    Vocalist: <%= gigDocument.song.vocalist.name %> •
-                                <% } %>
-                                <% if (gigDocument.song.key) { %>
-                                    Key: <%= gigDocument.song.key %> •
-                                <% } %>
-                                <% if (gigDocument.song.duration) { %>
-                                    Duration: <%= gigDocument.song.duration %>
-                                <% } %>
-                            </small>
+            <!-- Listen While Reading Panel - Shows first on mobile -->
+            <div class="col-md-4 order-md-2 order-1">
+                <!-- Media Player Section - Above Document Info -->
+                <% if (gigDocument.song.links && gigDocument.song.links.length > 0) { %>
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="bi bi-music-note-beamed"></i> Listen While Reading
+                            </h6>
                         </div>
-                        <div class="col-auto">
-                            <span class="badge bg-primary">
-                                <%= getTypeDisplayName(gigDocument.type) %>
-                            </span>
-                            <span class="badge bg-secondary">v<%= gigDocument.version %></span>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <% if (gigDocument.content && gigDocument.content.trim()) { %>
-                        <div class="gig-document-content">
-                            <%- gigDocument.content %>
-                        </div>
-                    <% } else { %>
-                        <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle"></i>
-                            This gig document doesn't have any content yet.
-                            <a href="/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit">Add content</a> to make it useful for gigs.
-                        </div>
-                    <% } %>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="col-md-4">
-            <!-- Media Player Section - Above Document Info -->
-            <% if (gigDocument.song.links && gigDocument.song.links.length > 0) { %>
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="bi bi-music-note-beamed"></i> Listen While Reading
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <!-- Link Selection Menu -->
-                        <div class="mb-3">
-                            <label class="form-label small">Choose Audio/Video:</label>
-                            <select class="form-select form-select-sm" id="mediaSelect" onchange="loadMediaPlayer()">
-                                <option value="">Select a link...</option>
-                                <% 
-                                    let firstAudioLink = null;
-                                    gigDocument.song.links.forEach((link, index) => { 
-                                        if (['audio', 'spotify', 'youtube'].includes(link.type) && !firstAudioLink) {
-                                            firstAudioLink = link;
-                                        }
-                                %>
-                                    <% if (['audio', 'spotify', 'youtube'].includes(link.type)) { %>
-                                        <% 
-                                            let mediaId = null;
-                                            if (link.type === 'spotify') {
-                                                mediaId = extractSpotifyTrackId(link.url);
-                                            } else if (link.type === 'youtube') {
-                                                mediaId = extractYouTubeVideoId(link.url);
+                        <div class="card-body">
+                            <!-- Link Selection Menu -->
+                            <div class="mb-3">
+                                <label class="form-label small">Choose Audio/Video:</label>
+                                <select class="form-select form-select-sm" id="mediaSelect" onchange="loadMediaPlayer()">
+                                    <option value="">Select a link...</option>
+                                    <% 
+                                        let firstAudioLink = null;
+                                        gigDocument.song.links.forEach((link, index) => { 
+                                            if (['audio', 'spotify', 'youtube'].includes(link.type) && !firstAudioLink) {
+                                                firstAudioLink = link;
                                             }
-                                        %>
-                                        <option value="<%= link.id %>" 
-                                                data-type="<%= link.type %>" 
-                                                data-url="<%= link.url %>"
-                                                data-media-id="<%= mediaId || '' %>"
-                                                <%= link.id === firstAudioLink?.id ? 'selected' : '' %>>
-                                            <%= getLinkDisplayText(link) %>
-                                        </option>
-                                    <% } %>
-                                <% }) %>
-                            </select>
-                        </div>
-                        
-                        <!-- Media Player Container -->
-                        <div id="mediaPlayerContainer" style="display: none;">
-                            <div id="audioPlayer" style="display: none;">
-                                <audio controls style="width: 100%; height: 40px;">
-                                    <source src="" type="audio/mpeg">
-                                    <source src="" type="audio/wav">
-                                    <source src="" type="audio/ogg">
-                                    <source src="" type="audio/mp4">
-                                    Your browser does not support the audio element.
-                                </audio>
+                                    %>
+                                        <% if (['audio', 'spotify', 'youtube'].includes(link.type)) { %>
+                                            <% 
+                                                let mediaId = null;
+                                                if (link.type === 'spotify') {
+                                                    mediaId = extractSpotifyTrackId(link.url);
+                                                } else if (link.type === 'youtube') {
+                                                    mediaId = extractYouTubeVideoId(link.url);
+                                                }
+                                            %>
+                                            <option value="<%= link.id %>" 
+                                                    data-type="<%= link.type %>" 
+                                                    data-url="<%= link.url %>"
+                                                    data-media-id="<%= mediaId || '' %>"
+                                                    <%= link.id === firstAudioLink?.id ? 'selected' : '' %>>
+                                                <%= getLinkDisplayText(link) %>
+                                            </option>
+                                        <% } %>
+                                    <% }) %>
+                                </select>
                             </div>
                             
-                            <div id="spotifyPlayer" style="display: none;">
-                                <iframe 
-                                    src=""
-                                    width="100%" 
-                                    height="152" 
-                                    frameborder="0" 
-                                    allowtransparency="true" 
-                                    allow="encrypted-media"
-                                    style="border-radius: 8px;">
-                                </iframe>
-                            </div>
-                            
-                            <div id="youtubePlayer" style="display: none;">
-                                <div class="ratio ratio-16x9">
+                            <!-- Media Player Container -->
+                            <div id="mediaPlayerContainer" style="display: none;">
+                                <div id="audioPlayer" style="display: none;">
+                                    <audio controls style="width: 100%; height: 40px;">
+                                        <source src="" type="audio/mpeg">
+                                        <source src="" type="audio/wav">
+                                        <source src="" type="audio/ogg">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                                
+                                <div id="spotifyPlayer" style="display: none;">
                                     <iframe 
-                                        src=""
-                                        title="YouTube video player" 
+                                        src="" 
+                                        width="100%" 
+                                        height="152" 
                                         frameborder="0" 
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                                        allowfullscreen>
+                                        allowtransparency="true" 
+                                        allow="encrypted-media"
+                                        title="Spotify Player">
+                                    </iframe>
+                                </div>
+                                
+                                <div id="youtubePlayer" style="display: none;">
+                                    <iframe 
+                                        src="" 
+                                        width="100%" 
+                                        height="200" 
+                                        frameborder="0" 
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                        allowfullscreen
+                                        title="YouTube Player">
                                     </iframe>
                                 </div>
                             </div>
                         </div>
                     </div>
+                <% } %>
+            </div>
+
+            <!-- Main Document Content -->
+            <div class="col-md-8 order-md-1 order-2">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h5 class="mb-0">
+                                    <%= gigDocument.song.title %>
+                                    <% if (gigDocument.song.artists && gigDocument.song.artists.length > 0) { %>
+                                        - <%= gigDocument.song.artists.map(a => a.artist.name).join(', ') %>
+                                    <% } %>
+                                </h5>
+                                <small class="text-muted">
+                                    <% if (gigDocument.song.vocalist) { %>
+                                        Vocalist: <%= gigDocument.song.vocalist.name %> •
+                                    <% } %>
+                                    <% if (gigDocument.song.key) { %>
+                                        Key: <%= gigDocument.song.key %> •
+                                    <% } %>
+                                    <% if (gigDocument.song.duration) { %>
+                                        Duration: <%= gigDocument.song.duration %>
+                                    <% } %>
+                                </small>
+                            </div>
+                            <div class="col-auto">
+                                <span class="badge bg-primary">
+                                    <%= getTypeDisplayName(gigDocument.type) %>
+                                </span>
+                                <span class="badge bg-secondary">v<%= gigDocument.version %></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <% if (gigDocument.content && gigDocument.content.trim()) { %>
+                            <div class="gig-document-content">
+                                <%- gigDocument.content %>
+                            </div>
+                        <% } else { %>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                This gig document doesn't have any content yet.
+                                <a href="/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit">Add content</a> to make it useful for gigs.
+                            </div>
+                        <% } %>
+                    </div>
                 </div>
-            <% } %>
+            </div>
+
+            <!-- Other Panels - Show below on mobile -->
+            <div class="col-md-4 order-md-3 order-3">
 
             <div class="card">
                 <div class="card-header">

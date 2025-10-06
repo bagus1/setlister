@@ -426,7 +426,7 @@ router.get("/:id", async (req, res) => {
     logger.logInfo(`Social types found: ${socialTypes.length}`);
 
     res.render("venues/show", {
-      pageTitle: venue.name,
+      pageTitle: `${venue.name} - The Band Plan`,
       venue,
       contactTypes,
       socialTypes,

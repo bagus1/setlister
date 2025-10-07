@@ -647,7 +647,7 @@ function processHtmlContent(htmlContent) {
     // Check if we found any songs
     if (songCount === 0) {
       throw new Error(
-        "No songs could be extracted from this document. Please ensure your Google Doc has songs separated by page breaks and each song title is clearly formatted."
+        "No songs could be extracted from this document. Please ensure your Google Doc has songs separated by page breaks (Ctrl+Enter / Cmd+Enter) and each song title is clearly formatted using Heading 1, 2, or 3 format."
       );
     }
 
@@ -738,7 +738,7 @@ router.post("/admin/process-google-doc", async (req, res) => {
     // Check if we have songs before proceeding
     if (!result.extractedSongs || result.extractedSongs.length === 0) {
       throw new Error(
-        "No songs could be extracted from this document. Please ensure your Google Doc has songs separated by page breaks and each song title is clearly formatted."
+        "No songs could be extracted from this document. Please ensure your Google Doc has songs separated by page breaks (Ctrl+Enter / Cmd+Enter) and each song title is clearly formatted using Heading 1, 2, or 3 format."
       );
     }
 
@@ -939,7 +939,7 @@ router.post("/admin/process-google-doc", async (req, res) => {
       )
     ) {
       userFriendlyError =
-        "Sorry, we can't process that doc. Make sure your Google Doc has songs separated by page breaks and each song title is clearly formatted.";
+        "Sorry, we can't process that doc. Make sure your Google Doc has songs separated by page breaks (Ctrl+Enter / Cmd+Enter) and each song title is clearly formatted using Heading 1, 2, or 3 format.";
     } else if (error.message) {
       userFriendlyError = error.message;
     }

@@ -18,6 +18,7 @@
         padding: 1rem;
         margin-bottom: 1rem;
         border-left: 4px solid #28a745;
+        cursor: default !important;
     }
     .song-title {
         font-weight: 600;
@@ -112,7 +113,12 @@
                             <div class="song-header">
                                 <div class="song-number"><%= index + 1 %></div>
                                 <div class="flex-grow-1">
-                                    <div class="song-title"><%= setlistSong.song.title %></div>
+                                    <div class="song-title">
+                                        <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>" 
+                                           class="text-decoration-none text-dark">
+                                            <%= setlistSong.song.title %>
+                                        </a>
+                                    </div>
                                     <% if (setlistSong.song.artists && setlistSong.song.artists.length > 0) { %>
                                         <div class="song-artist">by <%= setlistSong.song.artists[0].artist.name %></div>
                                     <% } %>
@@ -197,7 +203,7 @@
                                     <% if (hasDocs) { %>
                                         <div class="list-group">
                                             <% setlistSong.song.gigDocuments.forEach(doc => { %>
-                                                <a href="/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                                <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
                                                     <div>
                                                         <i class="bi bi-file-earmark-text text-success"></i>
                                                         <%= getTypeDisplayName(doc.type) %> - v<%= doc.version %>

@@ -79,10 +79,17 @@
                                                     </span>
                                                     <div>
                                                         <strong>
-                                                            <a href="/songs/<%= setlistSong.song.id %>"
-                                                                class="text-decoration-none">
-                                                                <%= setlistSong.song.title %>
-                                                            </a>
+                                                            <% if (setlist.band && setlist.band.id) { %>
+                                                                <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>"
+                                                                    class="text-decoration-none">
+                                                                    <%= setlistSong.song.title %>
+                                                                </a>
+                                                            <% } else { %>
+                                                                <a href="/songs/<%= setlistSong.song.id %>"
+                                                                    class="text-decoration-none">
+                                                                    <%= setlistSong.song.title %>
+                                                                </a>
+                                                            <% } %>
                                                         </strong>
                                                         <% if (setlistSong.song.artists && setlistSong.song.artists.length>
                                                             0) { %>

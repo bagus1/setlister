@@ -1,0 +1,186 @@
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-pencil"></i> Edit Song: <%= song.title %>
+                </h4>
+            </div>
+            <div class="card-body">
+                <% if (typeof errors !=='undefined' && errors.length> 0) { %>
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            <% errors.forEach(error=> { %>
+                                <li>
+                                    <%= error.msg %>
+                                </li>
+                                <% }) %>
+                        </ul>
+                    </div>
+                    <% } %>
+
+                        <form action="/bands/<%= band.id %>/songs/<%= song.id %>/update" method="POST">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Song Title</label>
+                                <input type="text" class="form-control bg-light" id="title" name="title"
+                                    value="<%= song.title %>" readonly>
+                                <div class="form-text text-muted">Song title cannot be edited</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="artist" class="form-label">Artist</label>
+                                <% if (song.artists && song.artists.length > 0 && song.artists[0].artist.name) { %>
+                                    <input type="text" class="form-control bg-light" id="artist" name="artist"
+                                        value="<%= song.artists[0].artist.name %>" readonly>
+                                    <div class="form-text text-muted">Artist cannot be edited once assigned</div>
+                                <% } else { %>
+                                    <input type="text" class="form-control" id="artist" name="artist"
+                                        value="" list="artistsList" placeholder="Start typing artist name...">
+                                    <datalist id="artistsList">
+                                        <% artists.forEach(artist => { %>
+                                            <option value="<%= artist.name %>">
+                                        <% }) %>
+                                    </datalist>
+                                    <div class="form-text">Type to search existing artists or enter a new one</div>
+                                <% } %>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="vocalist" class="form-label">Vocalist</label>
+                                <input type="text" class="form-control" id="vocalist" name="vocalist"
+                                    value="<%= song.vocalist ? song.vocalist.name : '' %>" list="vocalistsList"
+                                    placeholder="Who sings this song?">
+                                <datalist id="vocalistsList">
+                                    <% vocalists.forEach(vocalist=> { %>
+                                        <option value="<%= vocalist.name %>">
+                                            <% }) %>
+                                </datalist>
+                                <div class="form-text">Type to search existing vocalists or enter a new one</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="key" class="form-label">Key</label>
+                                <select class="form-control" id="key" name="key">
+                                    <option value="">Select key...</option>
+                                    <% ['C', 'Cm' , 'C#' , 'C#m' , 'Db' , 'Dbm' , 'D' , 'Dm' , 'D#' , 'D#m' , 'Eb'
+                                        , 'Ebm' , 'E' , 'Em' , 'F' , 'Fm' , 'F#' , 'F#m' , 'Gb' , 'Gbm' , 'G' , 'Gm'
+                                        , 'G#' , 'G#m' , 'Ab' , 'Abm' , 'A' , 'Am' , 'A#' , 'A#m' , 'Bb' , 'Bbm' , 'B'
+                                        , 'Bm' ].forEach(k=> { %>
+                                        <option value="<%= k %>" <% if (song.key===k) { %> selected<% } %>><%= k %>
+                                        </option>
+                                        <% }) %>
+                                </select>
+                                <div class="form-text">Optional: Select the musical key of the song.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="time" class="form-label">Duration (Optional)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="timeMinutes" name="minutes" placeholder="Min" min="0"
+                                        max="59">
+                                    <span class="input-group-text">:</span>
+                                    <input type="number" class="form-control" id="timeSeconds" name="seconds" placeholder="Sec" min="0"
+                                        max="59">
+                                    <input type="hidden" id="time" name="time">
+                                </div>
+                                <div class="form-text">Used to calculate setlist timing</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="bpm" class="form-label">BPM (Beats Per Minute)</label>
+                                <input type="number" class="form-control" id="bpm" name="bpm"
+                                    value="<%= song.bpm || '' %>" placeholder="Beats per minute" min="40" max="300">
+                                <div class="form-text">Optional: Tempo in beats per minute. Typical range: 60-180 BPM.
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="style" class="form-label">Genre</label>
+                                <select class="form-control" id="style" name="style">
+                                    <option value="">Select genre...</option>
+                                    <option value="Blues" <%= song.style === 'Blues' ? 'selected' : '' %>>Blues</option>
+                                    <option value="Funk" <%= song.style === 'Funk' ? 'selected' : '' %>>Funk</option>
+                                    <option value="Jazz" <%= song.style === 'Jazz' ? 'selected' : '' %>>Jazz</option>
+                                    <option value="Latin/Jazz" <%= song.style === 'Latin/Jazz' ? 'selected' : '' %>>Latin/Jazz</option>
+                                    <option value="Pop" <%= song.style === 'Pop' ? 'selected' : '' %>>Pop</option>
+                                    <option value="R&B" <%= song.style === 'R&B' ? 'selected' : '' %>>R&B</option>
+                                    <option value="Rock" <%= song.style === 'Rock' ? 'selected' : '' %>>Rock</option>
+                                </select>
+                                <div class="form-text">Optional: Select the musical genre/style</div>
+                            </div>
+
+                            <!-- DEBUG: song.private=<%= song.private %>, song.createdById=<%= song.createdById %>, currentUser.id=<%= currentUser?.id %> -->
+                            <% if (song.private && song.createdById === currentUser?.id) { %>
+                            <!-- Private song owner can make it public -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="makePublic" name="makePublic" value="true">
+                                    <label class="form-check-label" for="makePublic">
+                                        <i class="bi bi-globe"></i> Make this song public
+                                    </label>
+                                    <div class="form-text">Currently private - checking this will make it visible to all users</div>
+                                </div>
+                            </div>
+                            <% } else { %>
+                            <!-- Show current privacy status (read-only) -->
+                            <div class="mb-3">
+                                <div class="alert <%= song.private ? 'alert-warning' : 'alert-info' %>" role="alert">
+                                    <i class="bi <%= song.private ? 'bi-lock-fill' : 'bi-globe' %>"></i>
+                                    <strong>Privacy Status:</strong> 
+                                    <%= song.private ? 'Private' : 'Public' %>
+                                    <div class="form-text mt-1">
+                                        <%= song.private ? 'This song is only visible to you and your band members when added to setlists' : 'This song is visible to all users' %>
+                                    </div>
+                                </div>
+                            </div>
+                            <% } %>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Update Song
+                                </button>
+                            </div>
+                        </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Handle time input conversion
+    document.addEventListener('DOMContentLoaded', () => {
+        const minutesInput = document.getElementById('timeMinutes');
+        const secondsInput = document.getElementById('timeSeconds');
+        const timeInput = document.getElementById('time');
+
+  // Initialize with existing song time
+  <% if (song.time) { %>
+    const totalTime = <%= song.time %>;
+            minutesInput.value = Math.floor(totalTime / 60);
+            secondsInput.value = totalTime % 60;
+            timeInput.value = totalTime;
+  <% } %>
+
+            function updateTimeValue() {
+                const minutes = parseInt(minutesInput.value) || 0;
+                const seconds = parseInt(secondsInput.value) || 0;
+                const totalSeconds = (minutes * 60) + seconds;
+                timeInput.value = totalSeconds > 0 ? totalSeconds : '';
+            }
+
+        minutesInput.addEventListener('input', updateTimeValue);
+        secondsInput.addEventListener('input', updateTimeValue);
+
+  // Handle form data override if it exists
+  <% if (typeof formData !== 'undefined' && formData.time) { %>
+    const formTime = <%= formData.time %>;
+            minutesInput.value = Math.floor(formTime / 60);
+            secondsInput.value = formTime % 60;
+            timeInput.value = formTime;
+  <% } %>
+});
+</script>
+

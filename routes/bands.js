@@ -4314,6 +4314,913 @@ router.get("/:id/songs/new", async (req, res) => {
   }
 });
 
+// GET /bands/:id/songs/:songId - Show song in band context
+router.get("/:id/songs/:songId", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const userId = req.session.user.id;
+
+    // Check band membership
+    const band = await prisma.band.findFirst({
+      where: {
+        id: bandId,
+        members: {
+          some: { userId: userId },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    // Check if song is in band's repertoire
+    const bandSong = await prisma.bandSong.findFirst({
+      where: {
+        bandId: bandId,
+        songId: songId,
+      },
+    });
+
+    if (!bandSong) {
+      req.flash("error", "This song is not in your band's repertoire");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    // Get full song data
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+        creator: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        links: {
+          include: {
+            creator: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        gigDocuments: {
+          include: {
+            creator: true,
+          },
+        },
+      },
+    });
+
+    if (!song) {
+      req.flash("error", "Song not found");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    // Helper functions (same as songs.js)
+    const getLinkIcon = (type) => {
+      const icons = {
+        youtube: "youtube",
+        video: "camera-video",
+        spotify: "spotify",
+        "apple-music": "music-note",
+        soundcloud: "cloud",
+        bandcamp: "music-note-beamed",
+        lyrics: "file-text",
+        tab: "music-note",
+        "bass tab": "music-note-beamed",
+        chords: "music-note-list",
+        "guitar tutorial": "play-circle",
+        "bass tutorial": "play-circle-fill",
+        "keyboard tutorial": "play-btn",
+        audio: "headphones",
+        "sheet-music": "file-earmark-music",
+        "backing-track": "music-player",
+        karaoke: "mic",
+        "horn chart": "file-earmark-music",
+        midi: "music-note-beamed",
+        pdf: "file-earmark-pdf",
+        other: "link-45deg",
+      };
+      return icons[type] || "link-45deg";
+    };
+
+    const getLinkDisplayText = (link) => {
+      const typeLabels = {
+        youtube: "YouTube",
+        video: "Video",
+        spotify: "Spotify",
+        "apple-music": "Apple Music",
+        apple_music: "Apple Music",
+        soundcloud: "SoundCloud",
+        bandcamp: "Bandcamp",
+        lyrics: "Lyrics",
+        tab: "Tab",
+        "bass tab": "Bass Tab",
+        bass_tab: "Bass Tab",
+        chords: "Chords",
+        "guitar tutorial": "Guitar Tutorial",
+        guitar_tutorial: "Guitar Tutorial",
+        "bass tutorial": "Bass Tutorial",
+        bass_tutorial: "Bass Tutorial",
+        "keyboard tutorial": "Keyboard Tutorial",
+        keyboard_tutorial: "Keyboard Tutorial",
+        audio: "Audio File",
+        "sheet-music": "Sheet Music",
+        sheet_music: "Sheet Music",
+        "backing-track": "Backing Track",
+        backing_track: "Backing Track",
+        karaoke: "Karaoke",
+        "horn chart": "Horn Chart",
+        horn_chart: "Horn Chart",
+        midi: "MIDI File",
+        other: "Other",
+      };
+
+      const typeLabel = typeLabels[link.type] || "Link";
+      return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
+    };
+
+    const getTypeIcon = (type) => {
+      const icons = {
+        chords: "music-note-list",
+        "bass-tab": "music-note-beamed",
+        "guitar-tab": "music-note",
+        lyrics: "file-text",
+      };
+      return icons[type] || "file-earmark-text";
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
+    let pageTitle = song.title;
+    if (song.artists && song.artists.length > 0) {
+      pageTitle = `${song.title} by ${song.artists[0].artist.name}`;
+    }
+
+    res.render("bands/songs/show", {
+      title: song.title,
+      pageTitle,
+      marqueeTitle: song.title,
+      band,
+      song,
+      hasBandHeader: false,
+      loggedIn: true,
+      currentUser: req.session.user,
+      getLinkIcon,
+      getLinkDisplayText,
+      getTypeIcon,
+      getTypeDisplayName,
+      currentUrl: req.originalUrl,
+    });
+  } catch (error) {
+    logger.logError("Band song show error", error);
+    req.flash("error", "Error loading song");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// Helper function to verify band membership and get band
+async function verifyBandAccess(bandId, userId) {
+  const band = await prisma.band.findFirst({
+    where: {
+      id: bandId,
+      members: {
+        some: { userId: userId },
+      },
+    },
+  });
+  return band;
+}
+
+// GET /bands/:id/songs/:songId/edit - Edit song in band context
+router.get("/:id/songs/:songId/edit", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const userId = req.session.user.id;
+
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+      },
+    });
+
+    if (!song) {
+      req.flash("error", "Song not found");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, canMakePrivate: true },
+    });
+
+    const artists = await prisma.artist.findMany({
+      orderBy: { name: "asc" },
+    });
+
+    const vocalists = await prisma.vocalist.findMany({
+      orderBy: { name: "asc" },
+    });
+
+    res.render("bands/songs/edit", {
+      title: `Edit ${song.title}`,
+      pageTitle: "Edit Song",
+      marqueeTitle: song.title,
+      band,
+      song,
+      artists,
+      vocalists,
+      currentUser,
+      hasBandHeader: false,
+    });
+  } catch (error) {
+    logger.logError("Band song edit form error", error);
+    req.flash("error", "Error loading edit form");
+    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}`);
+  }
+});
+
+// POST /bands/:id/songs/:songId/update - Update song in band context
+router.post("/:id/songs/:songId/update", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const userId = req.session.user.id;
+
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+      include: {
+        artists: { include: { artist: true } },
+        vocalist: true,
+      },
+    });
+
+    if (!song) {
+      req.flash("error", "Song not found");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    const {
+      artist,
+      vocalist,
+      key,
+      minutes = 0,
+      seconds = 0,
+      bpm,
+      style,
+    } = req.body;
+
+    // Calculate total time in seconds
+    const totalTime = (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
+
+    // Convert display key to enum value
+    let enumKey = null;
+    if (key && key.trim()) {
+      const keyMap = {
+        "C#": "C_", "Db": "Db", "D": "D", "D#": "D_", "Eb": "Eb",
+        "E": "E", "F": "F", "F#": "F_", "Gb": "Gb", "G": "G",
+        "G#": "G_", "Ab": "Ab", "A": "A", "A#": "A_", "Bb": "Bb", "B": "B",
+        "C#m": "C_m", "Dm": "Dm", "D#m": "D_m", "Ebm": "Ebm",
+        "Em": "Em", "Fm": "Fm", "F#m": "F_m", "Gm": "Gm",
+        "G#m": "G_m", "Am": "Am", "A#m": "A_m", "Bbm": "Bbm", "Bm": "Bm", "Cm": "Cm",
+      };
+      enumKey = keyMap[key] || null;
+    }
+
+    // Handle artist
+    let artistId = null;
+    if (artist && artist.trim()) {
+      let existingArtist = await prisma.artist.findFirst({
+        where: { name: { equals: artist.trim(), mode: "insensitive" } },
+      });
+
+      if (!existingArtist) {
+        existingArtist = await prisma.artist.create({
+          data: { name: artist.trim(), createdAt: new Date(), updatedAt: new Date() },
+        });
+      }
+      artistId = existingArtist.id;
+    }
+
+    // Handle vocalist
+    let vocalistId = null;
+    if (vocalist && vocalist.trim()) {
+      let existingVocalist = await prisma.vocalist.findFirst({
+        where: { name: { equals: vocalist.trim(), mode: "insensitive" } },
+      });
+
+      if (!existingVocalist) {
+        existingVocalist = await prisma.vocalist.create({
+          data: { name: vocalist.trim(), createdAt: new Date(), updatedAt: new Date() },
+        });
+      }
+      vocalistId = existingVocalist.id;
+    }
+
+    const bpmValue = bpm && bpm.trim() ? parseInt(bpm) : null;
+
+    const updateData = {
+      key: enumKey,
+      time: totalTime || null,
+      bpm: bpmValue,
+      style: style && style.trim() ? style.trim() : null,
+      vocalistId: vocalistId,
+      updatedAt: new Date(),
+    };
+
+    // Update artist if provided and song doesn't have one
+    if (artistId && (!song.artists || song.artists.length === 0)) {
+      await prisma.songArtist.create({
+        data: {
+          songId: song.id,
+          artistId: artistId,
+        },
+      });
+    }
+
+    // Update song
+    await prisma.song.update({
+      where: { id: song.id },
+      data: updateData,
+    });
+
+    req.flash("success", "Song updated successfully");
+    res.redirect(`/bands/${bandId}/songs/${songId}`);
+  } catch (error) {
+    logger.logError("Band song update error", error);
+    req.flash("error", "Error updating song");
+    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}/edit`);
+  }
+});
+
+// POST /bands/:id/songs/:songId/links - Add link in band context
+router.post("/:id/songs/:songId/links", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const userId = req.session.user.id;
+
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+    });
+
+    if (!song) {
+      req.flash("error", "Song not found");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    const { type, url, description } = req.body;
+
+    // Map form values to enum values
+    const typeMapping = {
+      "guitar tutorial": "guitar_tutorial",
+      "bass tutorial": "bass_tutorial",
+      "keyboard tutorial": "keyboard_tutorial",
+      "bass tab": "bass_tab",
+      "horn chart": "horn_chart",
+      "apple music": "apple_music",
+      "sheet-music": "sheet_music",
+      "backing-track": "backing_track",
+    };
+    const mappedType = typeMapping[type] || type;
+
+    await prisma.link.create({
+      data: {
+        songId: song.id,
+        createdById: userId,
+        type: mappedType,
+        url: url.trim(),
+        description: description ? description.trim() : null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    req.flash("success", "Link added successfully");
+    res.redirect(`/bands/${bandId}/songs/${songId}`);
+  } catch (error) {
+    logger.logError("Band song add link error", error);
+    req.flash("error", "Error adding link");
+    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}`);
+  }
+});
+
+// GET /bands/:id/songs/:songId/docs/new - New gig doc in band context
+router.get("/:id/songs/:songId/docs/new", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const userId = req.session.user.id;
+
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+      },
+    });
+
+    if (!song) {
+      req.flash("error", "Song not found");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    res.render("bands/songs/docs/new", {
+      title: `New Music Stand Document - ${song.title}`,
+      marqueeTitle: song.title,
+      band,
+      song,
+      hasBandHeader: false,
+    });
+  } catch (error) {
+    logger.logError("Band gig doc new form error", error);
+    req.flash("error", "Error loading form");
+    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}`);
+  }
+});
+
+// POST /bands/:id/songs/:songId/docs - Create gig doc in band context
+router.post("/:id/songs/:songId/docs", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const userId = req.session.user.id;
+
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+    });
+
+    if (!song) {
+      req.flash("error", "Song not found");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    const { type, content } = req.body;
+
+    // Auto-increment version
+    let docVersion = 1;
+    const existingDocs = await prisma.gigDocument.findMany({
+      where: { songId: songId, type: type },
+      orderBy: { version: "desc" },
+      take: 1,
+    });
+    if (existingDocs.length > 0) {
+      docVersion = existingDocs[0].version + 1;
+    }
+
+    const typeLabels = {
+      chords: "Chords",
+      "bass-tab": "Bass Tab",
+      "guitar-tab": "Guitar Tab",
+      lyrics: "Lyrics",
+    };
+
+    await prisma.gigDocument.create({
+      data: {
+        songId: song.id,
+        type,
+        version: docVersion,
+        content: content ? content.trim() : null,
+        createdById: userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    req.flash(
+      "success",
+      `Music Stand document created successfully: ${typeLabels[type]} - v${docVersion}`
+    );
+    res.redirect(`/bands/${bandId}/songs/${songId}`);
+  } catch (error) {
+    logger.logError("Band gig doc create error", error);
+    req.flash("error", "Error creating document");
+    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}/docs/new`);
+  }
+});
+
+// GET /bands/:id/songs/:songId/docs/:docId - Show gig doc in band context
+router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const docId = parseInt(req.params.docId);
+    const userId = req.session?.user?.id;
+
+    // Get band - don't require membership for viewing
+    const band = await prisma.band.findUnique({
+      where: { id: bandId },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    const gigDocument = await prisma.gigDocument.findUnique({
+      where: { id: docId },
+      include: {
+        song: {
+          include: {
+            artists: {
+              include: {
+                artist: true,
+              },
+            },
+            links: {
+              include: {
+                creator: {
+                  select: {
+                    id: true,
+                    username: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: 'desc',
+              },
+            },
+          },
+        },
+        creator: true,
+      },
+    });
+
+    if (!gigDocument || gigDocument.song.id !== songId) {
+      req.flash("error", "Document not found");
+      return res.redirect(`/bands/${bandId}/songs/${songId}`);
+    }
+
+    // Check if this is a print request
+    const isPrintRequest = req.query.print === "true";
+
+    const getTypeIcon = (type) => {
+      const icons = {
+        chords: "music-note-list",
+        "bass-tab": "music-note-beamed",
+        "guitar-tab": "music-note",
+        lyrics: "file-text",
+      };
+      return icons[type] || "file-earmark-text";
+    };
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
+    const getLinkIcon = (type) => {
+      const icons = {
+        youtube: "youtube",
+        video: "camera-video",
+        spotify: "spotify",
+        "apple-music": "music-note",
+        soundcloud: "cloud",
+        bandcamp: "music-note-beamed",
+        lyrics: "file-text",
+        tab: "music-note",
+        "bass tab": "music-note-beamed",
+        chords: "music-note-list",
+        "guitar tutorial": "play-circle",
+        "bass tutorial": "play-circle-fill",
+        "keyboard tutorial": "play-btn",
+        audio: "headphones",
+        "sheet-music": "file-earmark-music",
+        "backing-track": "music-player",
+        karaoke: "mic",
+        "horn chart": "file-earmark-music",
+        other: "link-45deg",
+      };
+      return icons[type] || "link-45deg";
+    };
+
+    const getLinkDisplayText = (link) => {
+      const typeLabels = {
+        youtube: "YouTube",
+        video: "Video",
+        spotify: "Spotify",
+        "apple-music": "Apple Music",
+        apple_music: "Apple Music",
+        soundcloud: "SoundCloud",
+        bandcamp: "Bandcamp",
+        lyrics: "Lyrics",
+        tab: "Tab",
+        "bass tab": "Bass Tab",
+        bass_tab: "Bass Tab",
+        chords: "Chords",
+        "guitar tutorial": "Guitar Tutorial",
+        guitar_tutorial: "Guitar Tutorial",
+        "bass tutorial": "Bass Tutorial",
+        bass_tutorial: "Bass Tutorial",
+        "keyboard tutorial": "Keyboard Tutorial",
+        keyboard_tutorial: "Keyboard Tutorial",
+        audio: "Audio File",
+        "sheet-music": "Sheet Music",
+        sheet_music: "Sheet Music",
+        "backing-track": "Backing Track",
+        backing_track: "Backing Track",
+        karaoke: "Karaoke",
+        "horn chart": "Horn Chart",
+        horn_chart: "Horn Chart",
+        other: "Other",
+      };
+      const typeLabel = typeLabels[link.type] || "Link";
+      return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
+    };
+
+    const extractSpotifyTrackId = (url) => {
+      if (!url) return null;
+      const patterns = [
+        /spotify:track:([a-zA-Z0-9]+)/,
+        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/,
+        /spotify\.com\/track\/([a-zA-Z0-9]+)/,
+      ];
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+      return null;
+    };
+
+    const extractYouTubeVideoId = (url) => {
+      if (!url) return null;
+      const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+      ];
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+      return null;
+    };
+
+    if (isPrintRequest) {
+      // For print requests, render without any layout and with minimal content
+      res.render("gig-documents/print", {
+        title: `${getTypeDisplayName(gigDocument.type)} - v${gigDocument.version} - ${gigDocument.song.title}`,
+        gigDocument,
+        song: gigDocument.song,
+        band,
+        layout: false,
+        getTypeIcon,
+        getTypeDisplayName,
+      });
+    } else {
+      // For normal viewing, render with layout
+      res.render("bands/songs/docs/show", {
+        title: `${gigDocument.song.title} - ${getTypeDisplayName(gigDocument.type)}`,
+        pageTitle: gigDocument.song.title,
+        marqueeTitle: gigDocument.song.title,
+        band,
+        gigDocument,
+        loggedIn: !!userId,
+        currentUser: req.session?.user,
+        user: req.session?.user,
+        getTypeIcon,
+        getTypeDisplayName,
+        getLinkIcon,
+        getLinkDisplayText,
+        extractSpotifyTrackId,
+        extractYouTubeVideoId,
+        hasBandHeader: false,
+      });
+    }
+  } catch (error) {
+    logger.logError("Band gig doc show error", error);
+    req.flash("error", "Error loading document");
+    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}`);
+  }
+});
+
+// GET /bands/:id/songs/:songId/docs/:docId/edit - Edit gig doc in band context
+router.get("/:id/songs/:songId/docs/:docId/edit", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const docId = parseInt(req.params.docId);
+    const userId = req.session.user.id;
+
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const gigDocument = await prisma.gigDocument.findUnique({
+      where: { id: docId },
+      include: {
+        song: {
+          include: {
+            artists: {
+              include: {
+                artist: true,
+              },
+            },
+          },
+        },
+        creator: true,
+      },
+    });
+
+    if (!gigDocument || gigDocument.song.id !== songId) {
+      req.flash("error", "Document not found");
+      return res.redirect(`/bands/${bandId}/songs/${songId}`);
+    }
+
+    // Check if user is the creator or has permission
+    if (gigDocument.createdById !== userId && req.session.user.role !== 'admin' && req.session.user.role !== 'moderator') {
+      req.flash("error", "You don't have permission to edit this document");
+      return res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
+    }
+
+    const getTypeDisplayName = (type) => {
+      const names = {
+        chords: "Chords",
+        "bass-tab": "Bass Tab",
+        "guitar-tab": "Guitar Tab",
+        lyrics: "Lyrics",
+      };
+      return names[type] || type;
+    };
+
+    res.render("bands/songs/docs/edit", {
+      title: `Edit ${getTypeDisplayName(gigDocument.type)} - ${gigDocument.song.title}`,
+      pageTitle: "Edit Music Stand Document",
+      marqueeTitle: gigDocument.song.title,
+      band,
+      gigDocument,
+      getTypeDisplayName,
+      hasBandHeader: false,
+    });
+  } catch (error) {
+    logger.logError("Band gig doc edit form error", error);
+    req.flash("error", "Error loading edit form");
+    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}`);
+  }
+});
+
+// POST /bands/:id/songs/:songId/docs/:docId/update - Update gig doc in band context
+router.post("/:id/songs/:songId/docs/:docId/update", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const docId = parseInt(req.params.docId);
+    const userId = req.session.user.id;
+
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      req.flash("error", "Band not found or you don't have permission");
+      return res.redirect("/bands");
+    }
+
+    const gigDocument = await prisma.gigDocument.findUnique({
+      where: { id: docId },
+      include: {
+        song: true,
+      },
+    });
+
+    if (!gigDocument || gigDocument.song.id !== songId) {
+      req.flash("error", "Document not found");
+      return res.redirect(`/bands/${bandId}/songs/${songId}`);
+    }
+
+    // Check if user is the creator or has permission
+    if (gigDocument.createdById !== userId && req.session.user.role !== 'admin' && req.session.user.role !== 'moderator') {
+      req.flash("error", "You don't have permission to edit this document");
+      return res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
+    }
+
+    const { content } = req.body;
+
+    await prisma.gigDocument.update({
+      where: { id: docId },
+      data: {
+        content: content ? content.trim() : null,
+        updatedAt: new Date(),
+      },
+    });
+
+    req.flash("success", "Music Stand document updated successfully");
+    res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
+  } catch (error) {
+    logger.logError("Band gig doc update error", error);
+    req.flash("error", "Error updating document");
+    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}/docs/${req.params.docId}/edit`);
+  }
+});
+
+// DELETE /bands/:id/songs/:songId/docs/:docId - Delete gig doc in band context
+router.delete("/:id/songs/:songId/docs/:docId", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const docId = parseInt(req.params.docId);
+    const userId = req.session.user.id;
+
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      return res.status(403).json({ success: false, error: "Band not found or you don't have permission" });
+    }
+
+    const gigDocument = await prisma.gigDocument.findUnique({
+      where: { id: docId },
+      include: {
+        song: true,
+      },
+    });
+
+    if (!gigDocument || gigDocument.song.id !== songId) {
+      return res.status(404).json({ success: false, error: "Document not found" });
+    }
+
+    // Check if user is the creator or has permission
+    if (gigDocument.createdById !== userId && req.session.user.role !== 'admin' && req.session.user.role !== 'moderator') {
+      return res.status(403).json({ success: false, error: "You don't have permission to delete this document" });
+    }
+
+    await prisma.gigDocument.delete({
+      where: { id: docId },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.logError("Band gig doc delete error", error);
+    res.status(500).json({ success: false, error: "Error deleting document" });
+  }
+});
+
 // POST /bands/:id/new-list - Process new list creation
 router.post("/:id/new-list", async (req, res) => {
   try {

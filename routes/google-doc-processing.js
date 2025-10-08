@@ -252,7 +252,7 @@ function processHtmlContent(htmlContent) {
     console.log("=== End HTML Structure Analysis ===");
 
     // Filter out empty sections and merge adjacent empty ones
-    const songs = [];
+    let songs = [];
     for (let i = 0; i < rawSongs.length; i++) {
       const content = rawSongs[i].trim();
       if (content && content.length > 0) {
@@ -268,25 +268,7 @@ function processHtmlContent(htmlContent) {
         const hasContent = hasAnyHtmlContent && hasTextContent;
 
         // Debug logging for skipped sections
-        if (!hasContent) {
-          console.log(`\n=== SECTION ${i} SKIPPED ===`);
-          console.log(`Reason: Content validation failed`);
-          console.log(`hasParagraph: ${!!hasParagraph}`);
-          console.log(`hasDiv: ${!!hasDiv}`);
-          console.log(`hasSpan: ${!!hasSpan}`);
-          console.log(`hasTextContent: ${!!hasTextContent}`);
-          console.log(`hasAnyHtmlContent: ${hasAnyHtmlContent}`);
-          console.log(`contentLength: ${content.length}`);
-          console.log(`Content preview (first 300 chars):`);
-          console.log(content.substring(0, 300));
-          console.log(
-            `All HTML tags found:`,
-            content.match(/<[^>]+>/g)?.slice(0, 10) || []
-          );
-          console.log(`=== END SKIPPED SECTION ${i} ===\n`);
-        } else {
-          console.log(`Section ${i} ACCEPTED - hasContent: true`);
-        }
+       
 
         if (hasContent) {
           songs.push(rawSongs[i]);
@@ -298,11 +280,7 @@ function processHtmlContent(htmlContent) {
       }
     }
 
-    console.log(`\n=== CONTENT FILTERING SUMMARY ===`);
-    console.log(`Raw sections: ${rawSongs.length}`);
-    console.log(`Valid sections: ${songs.length}`);
-    console.log(`Skipped sections: ${rawSongs.length - songs.length}`);
-    console.log(`=== END FILTERING SUMMARY ===\n`);
+    
 
     // Store section counts for later use
     const sectionCounts = {
@@ -343,10 +321,117 @@ function processHtmlContent(htmlContent) {
       }
     }
 
-    // If no headings found, use page break parsing
+    // If no headings found, try detecting centered+bold+underlined text (common Google Docs pattern)
     if (!detectedHeadingLevel) {
-      console.log(`No heading tags detected, using page break parsing`);
+      console.log(`No heading tags detected, trying centered+bold+underlined pattern...`);
+      
+      for (let i = 0; i < songs.length; i++) {
+        const songContent = songs[i];
+        if (!songContent.trim()) continue;
+        
+        // Try centered + bold + underlined (CSS class-based format from HTML export)
+        const centeredBoldUnderlineMatch = songContent.match(/<p class="[^"]*c11[^"]*"><span class="[^"]*c[68][^"]*[^"]*">[^<]+<\/span><\/p>/i);
+        
+        if (centeredBoldUnderlineMatch) {
+          detectedHeadingLevel = "centered-bold-underline";
+          headingPattern = /<p class="[^"]*c11[^"]*"><span class="[^"]*c[68][^"]*[^"]*">([^<]+)<\/span><\/p>/gi;
+          console.log(`Detected centered+bold+underlined as song title format (class-based)`);
+          break;
+        }
+        
+        // Try centered + bold (inline style-based format from Google Drive API)
+        // Looking for: text-align:center AND font-weight:700 (bold) AND text-decoration:underline
+        const inlineCenteredBoldMatch = songContent.match(/<p[^>]*text-align:\s*center[^>]*><span[^>]*font-weight:\s*700[^>]*text-decoration:\s*underline[^>]*>[^<]+<\/span><\/p>/i);
+        
+        if (inlineCenteredBoldMatch) {
+          detectedHeadingLevel = "centered-bold-underline-inline";
+          headingPattern = /<p[^>]*text-align:\s*center[^>]*><span[^>]*font-weight:\s*700[^>]*text-decoration:\s*underline[^>]*>([^<]+)<\/span><\/p>/gi;
+          console.log(`Detected centered+bold+underlined as song title format (inline style)`);
+          break;
+        }
+        
+        // Fallback: Try centered + bold (without underline) - class-based
+        const centeredBoldMatch = songContent.match(/<p class="[^"]*c11[^"]*"><span class="[^"]*">[^<]+<\/span><\/p>/i);
+        
+        if (centeredBoldMatch) {
+          detectedHeadingLevel = "centered-bold";
+          headingPattern = /<p class="[^"]*c11[^"]*"><span class="[^"]*">([^<]+)<\/span><\/p>/gi;
+          console.log(`Detected centered+bold as song title format (class-based)`);
+          break;
+        }
+        
+        // Fallback: Try centered + bold (without underline) - inline style
+        const inlineCenteredMatch = songContent.match(/<p[^>]*text-align:\s*center[^>]*><span[^>]*font-weight:\s*700[^>]*>[^<]+<\/span><\/p>/i);
+        
+        if (inlineCenteredMatch) {
+          detectedHeadingLevel = "centered-bold-inline";
+          headingPattern = /<p[^>]*text-align:\s*center[^>]*><span[^>]*font-weight:\s*700[^>]*>([^<]+)<\/span><\/p>/gi;
+          console.log(`Detected centered+bold as song title format (inline style)`);
+          break;
+        }
+        
+        // Final fallback: Just centered text - class-based
+        const centeredOnlyMatch = songContent.match(/<p class="[^"]*c11[^"]*">([^<]+)<\/p>/i);
+        
+        if (centeredOnlyMatch) {
+          detectedHeadingLevel = "centered";
+          headingPattern = /<p class="[^"]*c11[^"]*">([^<]+)<\/p>/gi;
+          console.log(`Detected centered text as song title format (class-based)`);
+          break;
+        }
+        
+        // Final fallback: Just centered text - inline style
+        const inlineCenteredOnlyMatch = songContent.match(/<p[^>]*text-align:\s*center[^>]*>([^<]+)<\/p>/i);
+        
+        if (inlineCenteredOnlyMatch) {
+          detectedHeadingLevel = "centered-inline";
+          headingPattern = /<p[^>]*text-align:\s*center[^>]*>([^<]+)<\/p>/gi;
+          console.log(`Detected centered text as song title format (inline style)`);
+          break;
+        }
+      }
+    }
+    
+    // If still no pattern found, use page break parsing
+    if (!detectedHeadingLevel) {
+      console.log(`No title pattern detected, using page break parsing`);
       usePageBreakParsing = true;
+    }
+    
+    // If we detected a centered title pattern but only have 1 section (no page breaks),
+    // we need to split the content by the detected title pattern
+    if (detectedHeadingLevel && headingPattern && songs.length === 1 && !usePageBreakParsing) {
+      console.log(`Splitting single section by detected title pattern: ${detectedHeadingLevel}`);
+      const singleSection = songs[0];
+      
+      // Find all matches of the title pattern
+      const titleMatches = [];
+      let match;
+      // Reset lastIndex for global regex
+      headingPattern.lastIndex = 0;
+      while ((match = headingPattern.exec(singleSection)) !== null) {
+        titleMatches.push({
+          fullMatch: match[0],
+          title: match[1],
+          index: match.index
+        });
+      }
+      
+      console.log(`Found ${titleMatches.length} title matches in single section`);
+      
+      if (titleMatches.length > 1) {
+        // Split the content at each title match
+        const newSongs = [];
+        for (let i = 0; i < titleMatches.length; i++) {
+          const startIndex = titleMatches[i].index;
+          const endIndex = i < titleMatches.length - 1 ? titleMatches[i + 1].index : singleSection.length;
+          const songSection = singleSection.substring(startIndex, endIndex);
+          newSongs.push(songSection);
+        }
+        
+        console.log(`Split into ${newSongs.length} song sections`);
+        songs = newSongs;
+      }
     }
 
     // Second pass: Extract songs using detected heading pattern
@@ -537,46 +622,47 @@ function processHtmlContent(htmlContent) {
           }
         }
       } else {
-        // Heading-based parsing (existing logic)
-        // Pattern 1: Look for the first non-empty h1 tag with content
-        const h1Matches = songContent.match(/<h1[^>]*>.*?<\/h1>/gi);
-        if (h1Matches) {
-          for (const h1Match of h1Matches) {
-            // Extract text content from h1 tag
-            const textMatch = h1Match.match(/<h1[^>]*>(.*?)<\/h1>/i);
-            if (textMatch && textMatch[1]) {
-              // Remove HTML tags and get clean text
-              const cleanText = textMatch[1].replace(/<[^>]*>/g, "").trim();
-              if (cleanText && cleanText.length > 0) {
-                songTitle = sanitizeFilename(cleanText);
-                console.log(
-                  `Song ${index}: Extracted title: "${cleanText}" -> sanitized: "${songTitle}"`
-                );
-                break; // Use the first non-empty title found
-              }
+        // Heading-based parsing (for h1, h2, h3, or centered paragraph patterns)
+        
+        // Use the detected heading pattern to extract the title
+        if (headingPattern) {
+          // Create a fresh regex from the pattern to avoid lastIndex issues
+          const patternSource = headingPattern.source;
+          const patternFlags = headingPattern.flags.replace(/g/g, ''); // Remove global flag
+          const freshPattern = new RegExp(patternSource, patternFlags);
+          
+          const textMatch = songContent.match(freshPattern);
+          if (textMatch && textMatch[1]) {
+            const cleanText = textMatch[1].replace(/<[^>]*>/g, "").trim();
+            if (cleanText && cleanText.length > 0) {
+              songTitle = sanitizeFilename(cleanText);
+              console.log(
+                `Song ${index}: Extracted title using ${detectedHeadingLevel}: "${cleanText}" -> sanitized: "${songTitle}"`
+              );
             }
           }
         }
-
-        // If still untitled, try alternative patterns
-        if (songTitle === "untitled") {
-          // Pattern 2: <h1...><span...>title</span>
-          const titleMatch1 = songContent.match(
-            /<h1[^>]*>.*?<span[^>]*>([^<]*?)<\/span>/i
-          );
-          if (titleMatch1 && titleMatch1[1] && titleMatch1[1].trim()) {
-            songTitle = sanitizeFilename(titleMatch1[1]);
-            console.log(
-              `Song ${index}: Extracted title: "${titleMatch1[1]}" -> sanitized: "${songTitle}"`
-            );
-          } else {
-            // Pattern 3: <h1...>title</h1> (without span)
-            const titleMatch2 = songContent.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-            if (titleMatch2 && titleMatch2[1] && titleMatch2[1].trim()) {
-              songTitle = sanitizeFilename(titleMatch2[1]);
-              console.log(
-                `Song ${index}: Extracted title: "${titleMatch2[1]}" -> sanitized: "${songTitle}"`
-              );
+        
+        // If still untitled, try legacy H1-specific patterns as fallback
+        if (songTitle === "untitled" && (detectedHeadingLevel === "h1" || detectedHeadingLevel === "h2" || detectedHeadingLevel === "h3")) {
+          // Pattern 1: Look for the first non-empty heading tag with content
+          const headingTag = detectedHeadingLevel;
+          const headingMatches = songContent.match(new RegExp(`<${headingTag}[^>]*>.*?</${headingTag}>`, 'gi'));
+          if (headingMatches) {
+            for (const headingMatch of headingMatches) {
+              // Extract text content from heading tag
+              const textMatch = headingMatch.match(new RegExp(`<${headingTag}[^>]*>(.*?)</${headingTag}>`, 'i'));
+              if (textMatch && textMatch[1]) {
+                // Remove HTML tags and get clean text
+                const cleanText = textMatch[1].replace(/<[^>]*>/g, "").trim();
+                if (cleanText && cleanText.length > 0) {
+                  songTitle = sanitizeFilename(cleanText);
+                  console.log(
+                    `Song ${index}: Extracted title (legacy): "${cleanText}" -> sanitized: "${songTitle}"`
+                  );
+                  break; // Use the first non-empty title found
+                }
+              }
             }
           }
         }
@@ -598,16 +684,27 @@ function processHtmlContent(htmlContent) {
             `Section ${index} - Using ${remainingParagraphs.length} paragraphs after title as song content`
           );
         } else {
-          // For heading-based parsing, remove the heading as before
-          songBodyContent = songContent
-            .replace(
-              new RegExp(
-                `<${detectedHeadingLevel}[^>]*>.*?<\/${detectedHeadingLevel}>`,
-                "gi"
-              ),
-              ""
-            )
-            .trim();
+          // For heading-based parsing, remove the heading/title paragraph
+          if (detectedHeadingLevel === "h1" || detectedHeadingLevel === "h2" || detectedHeadingLevel === "h3") {
+            // Remove standard HTML heading tags
+            songBodyContent = songContent
+              .replace(
+                new RegExp(
+                  `<${detectedHeadingLevel}[^>]*>.*?<\/${detectedHeadingLevel}>`,
+                  "gi"
+                ),
+                ""
+              )
+              .trim();
+          } else if (headingPattern) {
+            // For centered paragraph patterns, remove using the pattern
+            songBodyContent = songContent
+              .replace(headingPattern, "")
+              .trim();
+          } else {
+            // Fallback: use entire content
+            songBodyContent = songContent.trim();
+          }
         }
         console.log("title:  ", songTitle);
         console.log("cooontent:  ", songBodyContent.length);
@@ -719,7 +816,6 @@ router.post("/admin/process-google-doc", async (req, res) => {
       contentLength: htmlContent.length,
     });
 
-    console.log("Bagus was here");
     // Process the HTML content directly
     const result = processHtmlContent(htmlContent);
 
@@ -733,8 +829,6 @@ router.post("/admin/process-google-doc", async (req, res) => {
       skippedSectionsCount: result.skippedSectionsCount || 0,
     };
 
-    console.log("Bagus was here 3");
-
     // Check if we have songs before proceeding
     if (!result.extractedSongs || result.extractedSongs.length === 0) {
       throw new Error(
@@ -742,11 +836,6 @@ router.post("/admin/process-google-doc", async (req, res) => {
       );
     }
 
-    console.log(
-      "result BAGUS FULL LENGTH:  ",
-      result.extractedSongs[0].fullContent.length
-    );
-    console.log("=== Google Doc processing completed successfully ===");
 
     // Instead of session storage and redirect, directly render the quickset confirmation page
     // Extract the essential data needed for quickset
@@ -920,8 +1009,20 @@ router.post("/admin/process-google-doc", async (req, res) => {
       createSetlist: createSetlist,
     };
 
-    // Redirect to the quickset confirmation page
-    res.redirect(`/bands/${bandId}/quick-set/confirm`);
+    // Save session before redirect to ensure data persists
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to save session data",
+        });
+      }
+      
+      console.log("Session saved successfully, redirecting to confirmation page");
+      // Redirect to the quickset confirmation page
+      res.redirect(`/bands/${bandId}/quick-set/confirm`);
+    });
   } catch (error) {
     console.error("=== ERROR processing Google Doc ===");
     console.error("Error details:", error);
@@ -932,7 +1033,9 @@ router.post("/admin/process-google-doc", async (req, res) => {
     // Check for specific parsing error
     let userFriendlyError = "Failed to process Google Doc";
 
-    if (
+    if (error.message && error.message.includes("File not found")) {
+      userFriendlyError = "Unable to access Google Doc. The document you're trying to import cannot be accessed. Please make sure the document is shared properly.";
+    } else if (
       error.message &&
       error.message.includes(
         "Cannot read properties of undefined (reading 'fullContent')"
@@ -944,9 +1047,16 @@ router.post("/admin/process-google-doc", async (req, res) => {
       userFriendlyError = error.message;
     }
 
-    res.status(500).json({
-      success: false,
+    // Get bandId for redirect
+    const bandId = req.body.bandId || req.params.id;
+    
+    // Render error page with error message
+    res.render("bands/google-doc-error", {
+      pageTitle: "Google Doc Import Error",
+      band: { id: bandId },
+      hasBandHeader: false,
       error: userFriendlyError,
+      googleDocUrl: req.body.googleDocUrl,
     });
   }
 });

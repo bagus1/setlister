@@ -4404,11 +4404,20 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
     const bandId = parseInt(req.params.id);
     const userId = req.session.user.id;
 
+    // Debug: Log session state
+    console.log("=== QUICKSET CONFIRM PAGE ACCESSED ===");
+    console.log("Band ID from URL:", bandId);
+    console.log("Session has quickSetData:", !!req.session.quickSetData);
+    console.log("Session quickSetData bandId:", req.session.quickSetData?.bandId);
+    console.log("Session quickSetData keys:", req.session.quickSetData ? Object.keys(req.session.quickSetData) : "none");
+    console.log("=== END SESSION DEBUG ===");
+
     // Check if we have session data
     if (
       !req.session.quickSetData ||
       req.session.quickSetData.bandId !== bandId
     ) {
+      console.log("ERROR: Session data missing or bandId mismatch");
       req.flash("error", "No setlist data found. Please try again.");
       return res.redirect(`/bands/${bandId}`);
     }

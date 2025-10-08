@@ -1,0 +1,102 @@
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <!-- Error Message -->
+      <% if (error) { %>
+        <div class="alert alert-danger mb-4">
+          <h5 class="alert-heading">
+            <i class="bi bi-exclamation-triangle"></i> Error Processing Google Doc
+          </h5>
+          <p class="mb-0"><%= error %></p>
+        </div>
+      <% } %>
+
+      <!-- Sharing Instructions Card -->
+      <% if (googleDocUrl) { %>
+        <div class="card mb-4">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+              <i class="bi bi-info-circle"></i> How to Share Your Google Doc
+            </h5>
+          </div>
+          <div class="card-body">
+            <p class="mb-3">
+              To allow The Band Plan to access your Google Doc, you need to change the sharing settings:
+            </p>
+            
+            <ol class="mb-3">
+              <li>
+                <strong>Open your Google Doc</strong>
+                <% if (googleDocUrl) { %>
+                  <div class="mt-2">
+                    <a href="<%= googleDocUrl %>" target="_blank" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-box-arrow-up-right"></i> Open Document
+                    </a>
+                  </div>
+                <% } %>
+              </li>
+              <li class="mt-3">
+                <strong>Click the "Share" button</strong> (top-right corner)
+              </li>
+              <li class="mt-3">
+                <strong>Under "General access"</strong>, click the dropdown that says "Restricted"
+              </li>
+              <li class="mt-3">
+                <strong>Select "Anyone with the link"</strong>
+              </li>
+              <li class="mt-3">
+                <strong>Make sure the role is set to "Viewer"</strong>
+              </li>
+              <li class="mt-3">
+                <strong>Click "Done"</strong>
+              </li>
+            </ol>
+
+            <div class="alert alert-warning mb-0">
+              <i class="bi bi-shield-check"></i>
+              <strong>Privacy Note:</strong> Setting the document to "Anyone with the link" means anyone with the URL can view it, but they cannot edit it. Only you can edit the document.
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      
+      <!-- Formatting Instructions Card (always shown) -->
+      <div class="card mb-4">
+        <div class="card-header bg-warning">
+          <h5 class="mb-0">
+            <i class="bi bi-info-circle"></i> Document Formatting Tips
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="mb-3">
+            To ensure your Google Doc can be processed correctly:
+          </p>
+          
+          <ul class="mb-3">
+            <li><strong>Use page breaks (command/ctrl-Enter)</strong> to separate each song</li>
+            <li><strong>Put the song title</strong> at the top of each page</li>
+            <li><strong>Format titles</strong> using Heading 1, 2, or 3, OR center+bold+underline them</li>
+            <li><strong>Include chords, lyrics, and notes</strong> below the title</li>
+          </ul>
+
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-lightbulb"></i>
+            <strong>Tip:</strong> If you're not using page breaks, make sure each song title is formatted consistently (all centered and bold, or all using the same heading level).
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="d-flex gap-2">
+        <a href="/bands/<%= band.id %>/new-doc" class="btn btn-primary">
+          <i class="bi bi-arrow-left"></i> Try Again
+        </a>
+        <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+          <i class="bi bi-house"></i> Back to Band
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+

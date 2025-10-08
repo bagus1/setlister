@@ -74,7 +74,7 @@ a:focus {
 .song-card {
   border: 1px solid #333333;
   border-radius: 4px;
-  /* padding: 3px 5px; */
+  padding: 3px 5px;
   margin: 3px 0;
   cursor: grab;
   /* background: white; */

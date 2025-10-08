@@ -331,6 +331,21 @@
     <!-- Right Column: Quick Set + Other Tools -->
     <div class="col-md-3">
 
+        <!-- Add Song Panel -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-music-note-beamed"></i> Add Song
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="small text-muted mb-3">Add a single song to your band's repertoire</div>
+                <a href="/bands/<%= band.id %>/songs/new" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-plus-circle"></i> Add New Song
+                </a>
+            </div>
+        </div>
+
         <!-- Quick Set Creation Section -->
         <div class="card mb-4">
             <div class="card-header">

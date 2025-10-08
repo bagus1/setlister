@@ -84,6 +84,7 @@ router.get("/users", async (req, res) => {
         username: true,
         email: true,
         role: true,
+        canMakePrivate: true,
         createdAt: true,
         _count: {
           select: {
@@ -143,6 +144,41 @@ router.post("/users/:id/role", async (req, res) => {
   } catch (error) {
     console.error("Error updating user role:", error);
     req.flash("error", "Failed to update user role");
+    res.redirect("/admin/users");
+  }
+});
+
+/**
+ * POST /admin/users/:id/toggle-private - Toggle canMakePrivate permission
+ */
+router.post("/users/:id/toggle-private", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    // Get current user state
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, canMakePrivate: true },
+    });
+
+    if (!user) {
+      req.flash("error", "User not found");
+      return res.redirect("/admin/users");
+    }
+
+    // Toggle the canMakePrivate setting
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { canMakePrivate: !user.canMakePrivate },
+      select: { id: true, username: true, canMakePrivate: true },
+    });
+
+    const status = updatedUser.canMakePrivate ? "enabled" : "disabled";
+    req.flash("success", `Private song creation ${status} for ${updatedUser.username}`);
+    res.redirect("/admin/users");
+  } catch (error) {
+    console.error("Error toggling private song permission:", error);
+    req.flash("error", "Failed to update permission");
     res.redirect("/admin/users");
   }
 });

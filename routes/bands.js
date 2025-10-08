@@ -2732,7 +2732,10 @@ router.post("/:id/songs/new", async (req, res) => {
   try {
     const bandId = parseInt(req.params.id);
     const userId = req.session.user.id;
-    const { title, artist, content, docType } = req.body;
+    const { 
+      title, artist, vocalist, key, minutes, seconds, bpm, style, makePrivate,
+      content, docType, linkType, linkUrl, linkDescription 
+    } = req.body;
 
     // Check band membership
     const band = await prisma.band.findFirst({
@@ -2849,10 +2852,57 @@ router.post("/:id/songs/new", async (req, res) => {
 
     // Create new song if it doesn't exist
     if (!song) {
+      // Handle vocalist
+      let vocalistId = null;
+      if (vocalist && vocalist.trim()) {
+        let existingVocalist = await prisma.vocalist.findFirst({
+          where: { name: { equals: vocalist.trim(), mode: "insensitive" } },
+        });
+
+        if (!existingVocalist) {
+          existingVocalist = await prisma.vocalist.create({
+            data: { name: vocalist.trim(), createdAt: new Date(), updatedAt: new Date() },
+          });
+        }
+        vocalistId = existingVocalist.id;
+      }
+
+      // Convert display key to enum value
+      let enumKey = null;
+      if (key && key.trim()) {
+        const keyMap = {
+          "C#": "C_", "Db": "Db", "D": "D", "D#": "D_", "Eb": "Eb",
+          "E": "E", "F": "F", "F#": "F_", "Gb": "Gb", "G": "G",
+          "G#": "G_", "Ab": "Ab", "A": "A", "A#": "A_", "Bb": "Bb", "B": "B",
+          "C#m": "C_m", "Dm": "Dm", "D#m": "D_m", "Ebm": "Ebm",
+          "Em": "Em", "Fm": "Fm", "F#m": "F_m", "Gm": "Gm",
+          "G#m": "G_m", "Am": "Am", "A#m": "A_m", "Bbm": "Bbm", "Bm": "Bm", "Cm": "Cm",
+        };
+        enumKey = keyMap[key] || null;
+      }
+
+      // Calculate total time in seconds
+      const totalTime = (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
+      const bpmValue = bpm && bpm.trim() ? parseInt(bpm) : null;
+
+      // Check if user can make private songs
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { canMakePrivate: true },
+      });
+      
+      const isPrivate = currentUser && currentUser.canMakePrivate && makePrivate === 'true';
+
       song = await prisma.song.create({
         data: {
           title: title.trim(),
           createdById: userId,
+          vocalistId: vocalistId,
+          key: enumKey,
+          time: totalTime || null,
+          bpm: bpmValue,
+          style: style && style.trim() ? style.trim() : null,
+          private: isPrivate,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -2921,19 +2971,39 @@ router.post("/:id/songs/new", async (req, res) => {
       });
     }
 
-    let successMessage;
-    if (isExistingSong) {
-      successMessage = `Song "${song.title}" already exists and has been added to ${band.name}'s repertoire!`;
-    } else {
-      successMessage = `Song "${song.title}" created and added to ${band.name} successfully!`;
+    // Create link if provided
+    if (linkType && linkUrl && linkUrl.trim()) {
+      // Map form values to enum values
+      const typeMapping = {
+        "guitar tutorial": "guitar_tutorial",
+        "bass tutorial": "bass_tutorial",
+        "keyboard tutorial": "keyboard_tutorial",
+        "bass tab": "bass_tab",
+        "horn chart": "horn_chart",
+        "apple music": "apple_music",
+        "sheet-music": "sheet_music",
+        "backing-track": "backing_track",
+      };
+      const mappedType = typeMapping[linkType] || linkType;
+
+      await prisma.link.create({
+        data: {
+          songId: song.id,
+          createdById: userId,
+          type: mappedType,
+          url: linkUrl.trim(),
+          description: linkDescription && linkDescription.trim() ? linkDescription.trim() : null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
     }
 
-    if (content && content.trim() && docType) {
-      if (isExistingSong) {
-        successMessage += ` Additional gig document added.`;
-      } else {
-        successMessage += ` Gig document created.`;
-      }
+    let successMessage;
+    if (isExistingSong) {
+      successMessage = `Song "${song.title}" already exists and has been added to ${band.name}'s repertoire! It's ready to be used in Setlists!`;
+    } else {
+      successMessage = `Song "${song.title}" created and added to ${band.name} successfully! It's ready to be used in Setlists!`;
     }
 
     req.flash("success", successMessage);
@@ -4301,11 +4371,19 @@ router.get("/:id/songs/new", async (req, res) => {
       take: 100, // Limit for performance
     });
 
+    // Get vocalists for datalist
+    const vocalists = await prisma.vocalist.findMany({
+      orderBy: { name: "asc" },
+      take: 100, // Limit for performance
+    });
+
     res.render("bands/songs/new", {
       pageTitle: "Add Your New Single",
       band,
       hasBandHeader: false,
       artists,
+      vocalists,
+      currentUser: req.session.user,
     });
   } catch (error) {
     console.error("New song page error:", error);

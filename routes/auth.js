@@ -161,6 +161,7 @@ router.post(
         username: user.username,
         email: user.email,
         role: user.role,
+        canMakePrivate: user.canMakePrivate,
       };
 
       // Log successful registration
@@ -226,6 +227,7 @@ router.post(
           email: true,
           password: true,
           role: true,
+          canMakePrivate: true,
         },
       });
       if (!user) {
@@ -331,6 +333,7 @@ router.post(
         username: user.username,
         email: user.email,
         role: user.role,
+        canMakePrivate: user.canMakePrivate,
       };
 
       // Log successful login

@@ -15,7 +15,7 @@
               </div>
               <div class="col-md-6">
                 <div class="mb-3">
-                  <label for="artist" class="form-label">Artist (Optional)</label>
+                  <label for="artist" class="form-label">Artist</label>
                   <input type="text" class="form-control" id="artist" name="artist"
                          list="artistsList" placeholder="Start typing artist name...">
                   <datalist id="artistsList">
@@ -28,6 +28,96 @@
                 </div>
               </div>
             </div>
+
+            <!-- Additional song details -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="vocalist" class="form-label">Vocalist</label>
+                  <input type="text" class="form-control" id="vocalist" name="vocalist"
+                         list="vocalistsList" placeholder="Who sings this song?">
+                  <datalist id="vocalistsList">
+                    <% if (typeof vocalists !== 'undefined') { %>
+                      <% vocalists.forEach(vocalist => { %>
+                        <option value="<%= vocalist.name %>">
+                      <% }) %>
+                    <% } %>
+                  </datalist>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="key" class="form-label">Key</label>
+                  <select class="form-control" id="key" name="key">
+                    <option value="">Select key...</option>
+                    <% ['C', 'Cm', 'C#', 'C#m', 'Db', 'Dbm', 'D', 'Dm', 'D#', 'D#m', 'Eb', 'Ebm', 'E', 'Em', 'F', 'Fm', 'F#', 'F#m', 'Gb', 'Gbm', 'G', 'Gm', 'G#', 'G#m', 'Ab', 'Abm', 'A', 'Am', 'A#', 'A#m', 'Bb', 'Bbm', 'B', 'Bm'].forEach(k => { %>
+                      <option value="<%= k %>"><%= k %></option>
+                    <% }) %>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-4">
+                <div class="mb-3">
+                  <label for="time" class="form-label">Duration</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="timeMinutes" name="minutes" 
+                           placeholder="Min" min="0" max="59">
+                    <span class="input-group-text">:</span>
+                    <input type="number" class="form-control" id="timeSeconds" name="seconds" 
+                           placeholder="Sec" min="0" max="59">
+                  </div>
+                  <div class="form-text">Used to calculate setlist timing</div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="mb-3">
+                  <label for="bpm" class="form-label">BPM</label>
+                  <input type="number" class="form-control" id="bpm" name="bpm"
+                         placeholder="Beats per minute" min="40" max="300">
+                  <div class="form-text">Tempo in beats per minute</div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="mb-3">
+                  <label for="style" class="form-label">Genre</label>
+                  <select class="form-control" id="style" name="style">
+                    <option value="">Select genre...</option>
+                    <option value="Blues">Blues</option>
+                    <option value="Funk">Funk</option>
+                    <option value="Jazz">Jazz</option>
+                    <option value="Latin/Jazz">Latin/Jazz</option>
+                    <option value="Pop">Pop</option>
+                    <option value="R&B">R&B</option>
+                    <option value="Rock">Rock</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Privacy setting -->
+            <% if (currentUser && currentUser.canMakePrivate) { %>
+              <div class="mb-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="makePrivate" name="makePrivate" value="true">
+                  <label class="form-check-label" for="makePrivate">
+                    <i class="bi bi-lock-fill"></i> Make this song private
+                  </label>
+                  <div class="form-text">Private songs are only visible to you and band members</div>
+                </div>
+              </div>
+            <% } else if (currentUser) { %>
+              <!-- User doesn't have permission to make private songs -->
+              <div class="mb-4">
+                <div class="alert alert-info small">
+                  <i class="bi bi-info-circle"></i> 
+                  <strong>Note:</strong> This song will be public and visible to all users. 
+                  Contact support if you need private song functionality.
+                </div>
+              </div>
+            <% } %>
 
             <!-- Gig document editor -->
             <div class="mb-4">
@@ -46,6 +136,55 @@
                 <option value="guitar-tab">Guitar Tab</option>
                 <option value="lyrics">Lyrics</option>
               </select>
+            </div>
+
+            <!-- Link section -->
+            <div class="mb-4">
+              <h6 class="mb-3">
+                <i class="bi bi-link-45deg"></i> Add a Link (Optional)
+              </h6>
+              
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="linkType" class="form-label">Link Type</label>
+                  <select class="form-select" id="linkType" name="linkType">
+                    <option value="">Select link type...</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="spotify">Spotify</option>
+                    <option value="audio">Audio File</option>
+                    <option value="video">Video</option>
+                    <option value="apple-music">Apple Music</option>
+                    <option value="soundcloud">SoundCloud</option>
+                    <option value="bandcamp">Bandcamp</option>
+                    <option value="lyrics">Lyrics</option>
+                    <option value="tab">Tab</option>
+                    <option value="bass tab">Bass Tab</option>
+                    <option value="chords">Chords</option>
+                    <option value="guitar tutorial">Guitar Tutorial</option>
+                    <option value="bass tutorial">Bass Tutorial</option>
+                    <option value="keyboard tutorial">Keyboard Tutorial</option>
+                    <option value="sheet-music">Sheet Music</option>
+                    <option value="backing-track">Backing Track</option>
+                    <option value="karaoke">Karaoke</option>
+                    <option value="horn chart">Horn Chart</option>
+                    <option value="midi">MIDI File</option>
+                    <option value="pdf">PDF</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                  <label for="linkUrl" class="form-label">Link URL</label>
+                  <input type="url" class="form-control" id="linkUrl" name="linkUrl" 
+                         placeholder="https://...">
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="linkDescription" class="form-label">Link Description (Optional)</label>
+                <input type="text" class="form-control" id="linkDescription" name="linkDescription" 
+                       placeholder="e.g., Official video, Live performance, etc.">
+              </div>
             </div>
 
             <!-- Submit buttons -->
@@ -82,6 +221,7 @@
           <p class="small">
             This will create a new song and add it to <strong><%= band.name %></strong>'s repertoire. 
             If you add content above, it will also create a gig document for the song.
+            If you add a link, it will be saved to the song as well.
           </p>
         </div>
       </div>

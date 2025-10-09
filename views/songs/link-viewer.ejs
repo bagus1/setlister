@@ -15,9 +15,15 @@
                                     <% } %>
                                 </p>
                             </div>
-                            <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-left"></i> Back to Song
-                            </a>
+                            <% if (typeof band !== 'undefined' && band) { %>
+                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Song
+                                </a>
+                            <% } else { %>
+                                <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Song
+                                </a>
+                            <% } %>
                         </div>
                     </div>
                     <div class="card-body text-center">
@@ -36,9 +42,15 @@
                                     <% } %>
                                 </p>
                             </div>
-                            <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-left"></i> Back to Song
-                            </a>
+                            <% if (typeof band !== 'undefined' && band) { %>
+                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Song
+                                </a>
+                            <% } else { %>
+                                <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Song
+                                </a>
+                            <% } %>
                         </div>
                     </div>
                     <div class="card-body text-center">

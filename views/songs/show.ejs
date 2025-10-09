@@ -212,9 +212,15 @@
                                                 <source src="<%= link.url %>" type="audio/mp4">
                                                 Your browser does not support the audio element.
                                             </audio>
-                                            <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
-                                                <i class="bi bi-play-circle"></i> View
-                                            </a>
+                                            <% if (typeof band !== 'undefined' && band) { %>
+                                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-play-circle"></i> View
+                                                </a>
+                                            <% } else { %>
+                                                <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-play-circle"></i> View
+                                                </a>
+                                            <% } %>
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>
@@ -233,9 +239,15 @@
                                             <%= getLinkDisplayText(link) %>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
-                                            <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
-                                                <i class="bi bi-play-circle"></i> View
-                                            </a>
+                                            <% if (typeof band !== 'undefined' && band) { %>
+                                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-play-circle"></i> View
+                                                </a>
+                                            <% } else { %>
+                                                <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-play-circle"></i> View
+                                                </a>
+                                            <% } %>
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>
@@ -254,9 +266,15 @@
                                             <%= getLinkDisplayText(link) %>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
-                                            <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
-                                                <i class="bi bi-play-circle"></i> View
-                                            </a>
+                                            <% if (typeof band !== 'undefined' && band) { %>
+                                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-play-circle"></i> View
+                                                </a>
+                                            <% } else { %>
+                                                <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-play-circle"></i> View
+                                                </a>
+                                            <% } %>
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>
@@ -275,9 +293,15 @@
                                             <%= getLinkDisplayText(link) %>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
-                                            <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
-                                                <i class="bi bi-play-circle"></i> View
-                                            </a>
+                                            <% if (typeof band !== 'undefined' && band) { %>
+                                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-play-circle"></i> View
+                                                </a>
+                                            <% } else { %>
+                                                <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-play-circle"></i> View
+                                                </a>
+                                            <% } %>
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>
@@ -296,9 +320,15 @@
                                             <%= getLinkDisplayText(link) %>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
-                                            <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
-                                                <i class="bi bi-file-earmark-pdf"></i> View
-                                            </a>
+                                            <% if (typeof band !== 'undefined' && band) { %>
+                                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-file-earmark-pdf"></i> View
+                                                </a>
+                                            <% } else { %>
+                                                <a href="/songs/<%= song.id %>/links/<%= link.id %>" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-file-earmark-pdf"></i> View
+                                                </a>
+                                            <% } %>
                                             <a href="<%= link.url %>" target="_blank" class="btn btn-outline-primary btn-sm">
                                                 <i class="bi bi-box-arrow-up-right"></i> Open
                                             </a>
@@ -339,7 +369,11 @@
                 <% if (loggedIn) { %>
                     <div>
                         <h6>Add New Link:</h6>
-                        <form action="/songs/<%= song.id %>/links" method="POST">
+                        <% if (typeof band !== 'undefined' && band) { %>
+                            <form action="/bands/<%= band.id %>/songs/<%= song.id %>/links" method="POST">
+                        <% } else { %>
+                            <form action="/songs/<%= song.id %>/links" method="POST">
+                        <% } %>
                             <div class="row">
                                 <div class="col-md-3">
                                     <label for="type" class="form-label">Type</label>

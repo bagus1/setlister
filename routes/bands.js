@@ -4773,6 +4773,160 @@ router.post("/:id/songs/:songId/update", requireAuth, async (req, res) => {
   }
 });
 
+// GET /bands/:id/songs/:songId/links/:linkId - Show link viewer in band context
+router.get("/:id/songs/:songId/links/:linkId", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const songId = parseInt(req.params.songId);
+    const linkId = parseInt(req.params.linkId);
+
+    // Get band (no membership required for viewing)
+    const band = await prisma.band.findUnique({
+      where: { id: bandId },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    // Get the song and all its links
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+      include: {
+        artists: {
+          include: {
+            artist: true,
+          },
+        },
+        vocalist: true,
+        links: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
+    });
+
+    if (!song) {
+      req.flash("error", "Song not found");
+      return res.redirect(`/bands/${bandId}`);
+    }
+
+    // Find the specific link being viewed
+    const link = song.links.find(l => l.id === linkId);
+    
+    if (!link) {
+      req.flash("error", "Link not found");
+      return res.redirect(`/bands/${bandId}/songs/${songId}`);
+    }
+
+    // Helper function for link display text
+    const getLinkDisplayText = (link) => {
+      const typeLabels = {
+        youtube: "YouTube",
+        video: "Video",
+        spotify: "Spotify",
+        "apple-music": "Apple Music",
+        apple_music: "Apple Music",
+        soundcloud: "SoundCloud",
+        bandcamp: "Bandcamp",
+        lyrics: "Lyrics",
+        tab: "Tab",
+        "bass tab": "Bass Tab",
+        bass_tab: "Bass Tab",
+        chords: "Chords",
+        "guitar tutorial": "Guitar Tutorial",
+        guitar_tutorial: "Guitar Tutorial",
+        "bass tutorial": "Bass Tutorial",
+        bass_tutorial: "Bass Tutorial",
+        "keyboard tutorial": "Keyboard Tutorial",
+        keyboard_tutorial: "Keyboard Tutorial",
+        audio: "Audio File",
+        "sheet-music": "Sheet Music",
+        sheet_music: "Sheet Music",
+        "backing-track": "Backing Track",
+        backing_track: "Backing Track",
+        karaoke: "Karaoke",
+        "horn chart": "Horn Chart",
+        horn_chart: "Horn Chart",
+        midi: "MIDI File",
+        pdf: "Lead Sheet",
+        lead_sheet: "Lead Sheet",
+        other: "Other",
+      };
+
+      const typeLabel = typeLabels[link.type] || "Link";
+      return link.description ? `${typeLabel}: ${link.description}` : typeLabel;
+    };
+
+    // Helper function to extract Spotify track ID from URL
+    const extractSpotifyTrackId = (url) => {
+      if (!url || link.type !== "spotify") return null;
+
+      const patterns = [
+        /spotify:track:([a-zA-Z0-9]+)/,
+        /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/,
+        /spotify\.com\/track\/([a-zA-Z0-9]+)/,
+      ];
+
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+
+      return null;
+    };
+
+    // Helper function to extract YouTube video ID from URL
+    const extractYouTubeVideoId = (url) => {
+      if (!url || link.type !== "youtube") return null;
+
+      const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+      ];
+
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+
+      return null;
+    };
+
+    // Handle supported link types
+    if (
+      link.type !== "audio" &&
+      link.type !== "spotify" &&
+      link.type !== "youtube" &&
+      link.type !== "midi" &&
+      link.type !== "pdf"
+    ) {
+      req.flash("error", "Link viewer not available for this type");
+      return res.redirect(`/bands/${bandId}/songs/${songId}`);
+    }
+
+    res.render("songs/link-viewer", {
+      title: song.title,
+      pageTitle: `${song.title} | The Band Plan`,
+      marqueeTitle: song.title,
+      song,
+      link,
+      band,
+      getLinkDisplayText,
+      extractSpotifyTrackId,
+      extractYouTubeVideoId,
+      hasBandHeader: false,
+    });
+  } catch (error) {
+    logger.logError("Band song link viewer error:", error);
+    req.flash("error", "An error occurred loading the link viewer");
+    res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
 // POST /bands/:id/songs/:songId/links - Add link in band context
 router.post("/:id/songs/:songId/links", requireAuth, async (req, res) => {
   try {

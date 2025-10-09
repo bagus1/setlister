@@ -5117,6 +5117,8 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
         layout: false,
         getTypeIcon,
         getTypeDisplayName,
+        fromRehearsal,
+        setlistId,
       });
     } else {
       // For normal viewing, render with layout

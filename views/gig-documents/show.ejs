@@ -4,9 +4,16 @@
                 <%= getTypeDisplayName(gigDocument.type) %> - v<%= gigDocument.version %>
             </h1>
             <div class="btn-group">
-                <button onclick="window.open('?print=true', '_blank')" class="btn btn-primary">
+                <% 
+                    // Build print URL preserving from/setlistId params
+                    let printUrl = '?print=true';
+                    if (typeof fromRehearsal !== 'undefined' && fromRehearsal && typeof setlistId !== 'undefined' && setlistId) {
+                        printUrl += '&from=rehearsal&setlistId=' + setlistId;
+                    }
+                %>
+                <a href="<%= printUrl %>" class="btn btn-primary">
                     <i class="bi bi-printer"></i> Print
-                </button>
+                </a>
                 <% if (typeof fromRehearsal !== 'undefined' && fromRehearsal && typeof setlistId !== 'undefined' && setlistId) { %>
                     <a href="/bands/<%= band.id %>/setlists/<%= setlistId %>/rehearsal" class="btn btn-success">
                         <i class="bi bi-arrow-left"></i> Back to Rehearsal

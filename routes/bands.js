@@ -4995,6 +4995,10 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
 
     // Check if this is a print request
     const isPrintRequest = req.query.print === "true";
+    
+    // Check if user came from rehearsal view
+    const fromRehearsal = req.query.from === "rehearsal";
+    const setlistId = req.query.setlistId ? parseInt(req.query.setlistId) : null;
 
     const getTypeIcon = (type) => {
       const icons = {
@@ -5132,6 +5136,8 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
         extractSpotifyTrackId,
         extractYouTubeVideoId,
         hasBandHeader: false,
+        fromRehearsal,
+        setlistId,
       });
     }
   } catch (error) {

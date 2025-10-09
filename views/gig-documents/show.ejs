@@ -7,6 +7,11 @@
                 <button onclick="window.open('?print=true', '_blank')" class="btn btn-primary">
                     <i class="bi bi-printer"></i> Print
                 </button>
+                <% if (typeof fromRehearsal !== 'undefined' && fromRehearsal && typeof setlistId !== 'undefined' && setlistId) { %>
+                    <a href="/bands/<%= band.id %>/setlists/<%= setlistId %>/rehearsal" class="btn btn-success">
+                        <i class="bi bi-arrow-left"></i> Back to Rehearsal
+                    </a>
+                <% } %>
                 <% if (typeof band !== 'undefined' && band) { %>
                     <a href="/bands/<%= band.id %>/songs/<%= gigDocument.song.id %>" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left"></i> Back to Song

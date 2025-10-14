@@ -91,8 +91,9 @@ router.get("/recording-tips", (req, res) => {
     <div class="">
       <h3>🎙️ Key Takeaways</h3>
       <ul>
+        <li><strong>Best quality:</strong> Use a computer connected to your mixer via audio interface</li>
+        <li><strong>Good quality:</strong> Connect phone/tablet to mixer with audio interface</li>
         <li><strong>Phone placement matters</strong> - Keep recording device away from vocalists</li>
-        <li><strong>Use an audio interface</strong> - Get a balanced mix from your mixer</li>
         <li><strong>Designate a recorder</strong> - Someone who doesn't need the site or doesn't sing during the performance</li>
         <li><strong>Test before the gig</strong> - Do a quick recording to check levels</li>
       </ul>
@@ -113,40 +114,7 @@ router.get("/recording-tips", (req, res) => {
     
     <h3>Recommended Solutions</h3>
     
-    <h4>Option 1: Use an Audio Interface (Best Quality)</h4>
-    <p>
-      Connect your phone or tablet to your mixing board using an audio interface:
-    </p>
-    <ul>
-      <li><strong>USB Audio Interface</strong> - Connect mixer output to your device (e.g., Focusrite Scarlett Solo, Behringer U-Phoria)</li>
-      <li><strong>Direct Line-In</strong> - If your device has a line-in port, connect directly from mixer</li>
-      <li><strong>Benefits:</strong> 
-        <ul>
-          <li>Balanced mix of all instruments</li>
-          <li>Professional sound quality</li>
-          <li>Control levels from the mixer</li>
-        </ul>
-      </li>
-    </ul>
-    
-    <h4>Option 2: Designate a Non-Performer as Recorder</h4>
-    <p>
-      Have someone who doesn't need to view The Band Plan during the performance handle the recording:
-    </p>
-    <ul>
-      <li><strong>Sound person</strong> - If you have a sound engineer, they can record from the booth</li>
-      <li><strong>Non-singing member</strong> - A band member who doesn't need to view lyrics/chords</li>
-      <li><strong>Friend/audience member</strong> - Someone who can hold a device in a good location</li>
-      <li><strong>Benefits:</strong>
-        <ul>
-          <li>Optimal microphone placement</li>
-          <li>No need to worry about viewing the site</li>
-          <li>Can monitor recording quality during performance</li>
-        </ul>
-      </li>
-    </ul>
-    
-    <h4>Option 3: Use a Computer Connected to Your Mixer (Recommended for Best Quality)</h4>
+    <h4>Option 1: Use a Computer Connected to Your Mixer (Best Quality)</h4>
     <p>
       If you already have a computer connected to your mixer (for streaming, recording, or processing), 
       you can use that computer to record directly in The Band Plan:
@@ -166,23 +134,66 @@ router.get("/recording-tips", (req, res) => {
       </li>
     </ul>
     
-    <div class="alert alert-info">
-      <strong>💡 Pro Tip:</strong> This is often the best solution if you're already using a laptop for setlists, 
+    <div class="alert alert-success">
+      <strong>💡 Best Choice:</strong> This is often the best solution if you're already using a laptop for setlists, 
       backing tracks, or streaming. The audio quality will be excellent since it's coming directly from your mixer.
     </div>
     
-    <h4>Option 4: Use a Separate Recording Device</h4>
+    <h4>Option 2: Connect Phone/Tablet to Your Mixer with Audio Interface</h4>
     <p>
-      Use a dedicated device just for recording:
+      Connect your phone or tablet to your mixing board using an audio interface:
     </p>
     <ul>
-      <li><strong>Second phone/tablet</strong> - Place it in an optimal location for capturing the full band</li>
-      <li><strong>Digital recorder</strong> - Zoom H4n, Tascam DR-40, etc. (you'll need to upload the file afterward)</li>
+      <li><strong>USB Audio Interface</strong> - Connect mixer output to your device (e.g., Focusrite Scarlett Solo, Behringer U-Phoria)</li>
+      <li><strong>Required adapters:</strong>
+        <ul>
+          <li>iPhone/iPad: Lightning to USB Camera Adapter + USB interface</li>
+          <li>Android: USB-C to USB adapter + USB interface</li>
+        </ul>
+      </li>
+      <li><strong>Benefits:</strong> 
+        <ul>
+          <li>Balanced mix of all instruments</li>
+          <li>Professional sound quality</li>
+          <li>Control levels from the mixer</li>
+          <li>Can still view The Band Plan during performance</li>
+        </ul>
+      </li>
+    </ul>
+    
+    <h4>Option 3: Use Your Phone/Tablet's Built-in Microphone</h4>
+    <p>
+      The simplest approach - just use your device's microphone. This works well if you pay attention to placement:
+    </p>
+    <ul>
+      <li><strong>Placement is critical:</strong>
+        <ul>
+          <li>Keep the device <strong>away from vocalists</strong> to avoid their voice overpowering the mix</li>
+          <li>Center of the room - Equal distance from all instruments</li>
+          <li>Ear level - Position at listening height (not on the floor)</li>
+          <li>Away from speakers - Avoid direct PA bleed</li>
+          <li>Stable surface - Don't let it move during the show</li>
+        </ul>
+      </li>
+      <li><strong>Who should record:</strong>
+        <ul>
+          <li>Designate someone who doesn't need to view The Band Plan during the performance</li>
+          <li>Sound person or non-singing member who doesn't need lyrics/chords</li>
+          <li>Friend or audience member who can place the device optimally</li>
+        </ul>
+      </li>
       <li><strong>Benefits:</strong>
         <ul>
-          <li>Dedicated device = better placement options</li>
-          <li>No performance interruptions</li>
-          <li>Higher quality with professional recorders</li>
+          <li>No additional equipment needed</li>
+          <li>Quick and easy setup</li>
+          <li>Good for rehearsals and reference recordings</li>
+        </ul>
+      </li>
+      <li><strong>Limitations:</strong>
+        <ul>
+          <li>Quality depends heavily on room acoustics and placement</li>
+          <li>If vocalist holds the device, their voice may dominate the recording</li>
+          <li>Less control over the mix</li>
         </ul>
       </li>
     </ul>
@@ -382,3 +393,4 @@ Next Song Title (first paragraph)
 });
 
 module.exports = router;
+

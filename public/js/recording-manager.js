@@ -1,6 +1,7 @@
 /**
  * Recording Manager - Handles in-browser audio recording with persistent state
  * Allows users to record their sets while navigating the site
+ * Uses IndexedDB to persist audio chunks across page navigations
  */
 
 class RecordingManager {
@@ -13,9 +14,138 @@ class RecordingManager {
     this.audioContext = null;
     this.analyser = null;
     this.animationId = null;
+    this.db = null;
+    this.chunkCounter = 0;
 
-    // Check if recording is in progress on page load
-    this.checkExistingRecording();
+    // Initialize IndexedDB
+    this.initIndexedDB().then(() => {
+      // Check if recording is in progress on page load
+      this.checkExistingRecording();
+    });
+  }
+
+  /**
+   * Initialize IndexedDB for storing audio chunks
+   */
+  async initIndexedDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("RecordingDB", 1);
+
+      request.onerror = () => {
+        console.error("IndexedDB error:", request.error);
+        reject(request.error);
+      };
+
+      request.onsuccess = () => {
+        this.db = request.result;
+        console.log("IndexedDB initialized");
+        resolve();
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+
+        // Create object store for audio chunks
+        if (!db.objectStoreNames.contains("audioChunks")) {
+          const objectStore = db.createObjectStore("audioChunks", {
+            keyPath: "id",
+          });
+          objectStore.createIndex("recordingId", "recordingId", {
+            unique: false,
+          });
+          objectStore.createIndex("timestamp", "timestamp", { unique: false });
+        }
+      };
+    });
+  }
+
+  /**
+   * Save audio chunk to IndexedDB
+   */
+  async saveChunkToIndexedDB(chunk, recordingId) {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(["audioChunks"], "readwrite");
+      const objectStore = transaction.objectStore("audioChunks");
+
+      const chunkData = {
+        id: `${recordingId}-${this.chunkCounter++}`,
+        recordingId: recordingId,
+        timestamp: Date.now(),
+        data: chunk,
+      };
+
+      const request = objectStore.add(chunkData);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => {
+        console.error("Error saving chunk to IndexedDB:", request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Load all chunks for a recording from IndexedDB
+   */
+  async loadChunksFromIndexedDB(recordingId) {
+    if (!this.db) return [];
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(["audioChunks"], "readonly");
+      const objectStore = transaction.objectStore("audioChunks");
+      const index = objectStore.index("recordingId");
+      const request = index.getAll(recordingId);
+
+      request.onsuccess = () => {
+        const chunks = request.result
+          .sort((a, b) => a.timestamp - b.timestamp)
+          .map((item) => item.data);
+        console.log(`Loaded ${chunks.length} chunks from IndexedDB`);
+        resolve(chunks);
+      };
+
+      request.onerror = () => {
+        console.error("Error loading chunks from IndexedDB:", request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Clear all chunks for a recording from IndexedDB
+   */
+  async clearChunksFromIndexedDB(recordingId) {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(["audioChunks"], "readwrite");
+      const objectStore = transaction.objectStore("audioChunks");
+      const index = objectStore.index("recordingId");
+      const request = index.getAllKeys(recordingId);
+
+      request.onsuccess = () => {
+        const keys = request.result;
+        const deleteTransaction = this.db.transaction(
+          ["audioChunks"],
+          "readwrite"
+        );
+        const deleteStore = deleteTransaction.objectStore("audioChunks");
+
+        keys.forEach((key) => deleteStore.delete(key));
+
+        deleteTransaction.oncomplete = () => {
+          console.log(`Cleared ${keys.length} chunks from IndexedDB`);
+          resolve();
+        };
+      };
+
+      request.onerror = () => {
+        console.error("Error clearing chunks from IndexedDB:", request.error);
+        reject(request.error);
+      };
+    });
   }
 
   /**
@@ -28,6 +158,12 @@ class RecordingManager {
     if (recordingState) {
       const data = JSON.parse(recordingState);
 
+      // Check if there are saved chunks in IndexedDB
+      const savedChunks = await this.loadChunksFromIndexedDB(data.setlistId);
+      console.log(
+        `Found active recording with ${savedChunks.length} saved chunks`
+      );
+
       // Recording was in progress - resume UI
       await this.resumeRecording(data);
     }
@@ -38,6 +174,10 @@ class RecordingManager {
    */
   async startRecording(setlistId, setlistTitle) {
     try {
+      // Clear any old chunks from previous recordings of this setlist
+      await this.clearChunksFromIndexedDB(setlistId);
+      this.chunkCounter = 0;
+
       // Request microphone access
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -56,10 +196,12 @@ class RecordingManager {
         audioBitsPerSecond: 128000,
       });
 
-      // Collect audio chunks
-      this.mediaRecorder.ondataavailable = (event) => {
+      // Collect audio chunks and save to IndexedDB
+      this.mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0) {
           this.audioChunks.push(event.data);
+          // Save to IndexedDB for persistence
+          await this.saveChunkToIndexedDB(event.data, setlistId);
         }
       };
 
@@ -137,6 +279,12 @@ class RecordingManager {
    */
   async resumeRecording(data) {
     try {
+      // Load previously recorded chunks from IndexedDB
+      const savedChunks = await this.loadChunksFromIndexedDB(data.setlistId);
+      this.audioChunks = savedChunks;
+      this.chunkCounter = savedChunks.length;
+      console.log(`Resumed with ${this.audioChunks.length} saved chunks`);
+
       // Request microphone access again
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -153,9 +301,11 @@ class RecordingManager {
         audioBitsPerSecond: 128000,
       });
 
-      this.mediaRecorder.ondataavailable = (event) => {
+      this.mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0) {
           this.audioChunks.push(event.data);
+          // Save to IndexedDB for persistence
+          await this.saveChunkToIndexedDB(event.data, data.setlistId);
         }
       };
 
@@ -351,6 +501,7 @@ class RecordingManager {
       blobType: audioBlob.type,
       setlistId,
       duration,
+      chunksCount: this.audioChunks.length,
     });
 
     try {
@@ -375,6 +526,9 @@ class RecordingManager {
       const result = await response.json();
       console.log("Upload successful:", result);
 
+      // Clear IndexedDB chunks
+      await this.clearChunksFromIndexedDB(setlistId);
+
       // Clear state
       localStorage.removeItem("activeRecording");
 
@@ -389,8 +543,19 @@ class RecordingManager {
   /**
    * Clean up recording resources (including localStorage)
    */
-  cleanup() {
+  async cleanup() {
     this.cleanupResources();
+
+    // Clear IndexedDB chunks
+    const recordingState = localStorage.getItem("activeRecording");
+    if (recordingState) {
+      try {
+        const data = JSON.parse(recordingState);
+        await this.clearChunksFromIndexedDB(data.setlistId);
+      } catch (error) {
+        console.error("Error clearing IndexedDB during cleanup:", error);
+      }
+    }
 
     // Clear state
     localStorage.removeItem("activeRecording");
@@ -432,6 +597,7 @@ class RecordingManager {
 
     // Reset chunks
     this.audioChunks = [];
+    this.chunkCounter = 0;
   }
 
   /**

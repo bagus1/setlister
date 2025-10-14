@@ -492,6 +492,118 @@ function undoLastRegion() {
     }
 }
 
+// Add unlisted song
+async function addUnlistedSong() {
+    const titleInput = document.getElementById('unlistedSongTitle');
+    const songTitle = titleInput.value.trim();
+    
+    if (!songTitle) {
+        alert('Please enter a song title');
+        return;
+    }
+    
+    if (!selectedRegion) {
+        alert('Please select a region on the waveform first');
+        return;
+    }
+    
+    try {
+        // Add song to band
+        const response = await fetch('/bands/<%= setlist.band.id %>/songs/quick-add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title: songTitle })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to add song');
+        }
+        
+        const result = await response.json();
+        
+        // Assign to region
+        assignSongToRegion(result.songId, songTitle, 999); // Use 999 as placeholder index
+        
+        // Clear input
+        titleInput.value = '';
+        
+        showInstruction(`✓ "${songTitle}" added to band and assigned to region!`);
+        
+    } catch (error) {
+        console.error('Error adding unlisted song:', error);
+        alert('Failed to add song. Please try again.');
+    }
+}
+
+// Allow Enter key in unlisted song input
+document.addEventListener('DOMContentLoaded', function() {
+    const unlistedInput = document.getElementById('unlistedSongTitle');
+    if (unlistedInput) {
+        unlistedInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addUnlistedSong();
+            }
+        });
+    }
+});
+
+// Add unlisted song
+async function addUnlistedSong() {
+    const titleInput = document.getElementById('unlistedSongTitle');
+    const songTitle = titleInput.value.trim();
+    
+    if (!songTitle) {
+        alert('Please enter a song title');
+        return;
+    }
+    
+    if (!selectedRegion) {
+        alert('Please select a region on the waveform first');
+        return;
+    }
+    
+    try {
+        // Add song to band
+        const response = await fetch('/bands/<%= setlist.band.id %>/songs/quick-add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title: songTitle })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to add song');
+        }
+        
+        const result = await response.json();
+        
+        // Assign to region
+        assignSongToRegion(result.songId, songTitle, 999); // Use 999 as placeholder index
+        
+        // Clear input
+        titleInput.value = '';
+        
+        showInstruction(`✓ "${songTitle}" added to band and assigned to region!`);
+        
+    } catch (error) {
+        console.error('Error adding unlisted song:', error);
+        alert('Failed to add song. Please try again.');
+    }
+}
+
+// Allow Enter key in unlisted song input
+const unlistedInput = document.getElementById('unlistedSongTitle');
+if (unlistedInput) {
+    unlistedInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            addUnlistedSong();
+        }
+    });
+}
+
 // Helper function to format time
 function formatTime(seconds) {
     if (!seconds || isNaN(seconds)) return '0:00.0';

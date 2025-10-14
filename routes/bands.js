@@ -176,7 +176,16 @@ router.get(
                   username: true,
                 },
               },
-              splits: true,
+              splits: {
+                include: {
+                  song: {
+                    select: {
+                      id: true,
+                      title: true,
+                    },
+                  },
+                },
+              },
             },
             orderBy: {
               createdAt: "desc",
@@ -2887,6 +2896,93 @@ router.get("/:id/songs", async (req, res) => {
     console.error("Band songs error:", error);
     req.flash("error", "An error occurred loading band songs");
     res.redirect(`/bands/${req.params.id}`);
+  }
+});
+
+// POST /bands/:id/songs/quick-add - Quick add song with just title (for recording splits)
+router.post("/:id/songs/quick-add", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { title } = req.body;
+
+    // Check band membership
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: "Song title is required" });
+    }
+
+    // Check if song already exists (case-insensitive)
+    const existingSong = await prisma.song.findFirst({
+      where: {
+        title: {
+          equals: title.trim(),
+          mode: "insensitive",
+        },
+      },
+    });
+
+    let song;
+    let isExisting = false;
+
+    if (existingSong) {
+      song = existingSong;
+      isExisting = true;
+
+      // Check if already in band
+      const existingBandSong = await prisma.bandSong.findFirst({
+        where: {
+          bandId: bandId,
+          songId: existingSong.id,
+        },
+      });
+
+      if (!existingBandSong) {
+        // Add to band
+        await prisma.bandSong.create({
+          data: {
+            bandId: bandId,
+            songId: existingSong.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+    } else {
+      // Create new song
+      song = await prisma.song.create({
+        data: {
+          title: title.trim(),
+          createdById: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Add to band
+      await prisma.bandSong.create({
+        data: {
+          bandId: bandId,
+          songId: song.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      songId: song.id,
+      title: song.title,
+      isExisting,
+    });
+  } catch (error) {
+    logger.logError("Quick add song error", error);
+    res.status(500).json({ error: "Failed to add song" });
   }
 });
 

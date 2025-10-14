@@ -110,3 +110,5 @@ temp_schema_comparison/
 
 # Google Cloud Service Account credentials
 *api*.json
+
+uploads/

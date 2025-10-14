@@ -85,118 +85,213 @@ router.get("/", (req, res) => {
   });
 });
 
-// GET /legal/recording-tips - Recording tips and best practices
+// Redirect old URL to new one
 router.get("/recording-tips", (req, res) => {
+  res.redirect("/legal/recording-instructions");
+});
+
+// GET /legal/recording-instructions - Recording instructions and best practices
+router.get("/recording-instructions", (req, res) => {
   const htmlContent = `
-    <div class="">
-      <h3>🎙️ Key Takeaways</h3>
-      <ul>
-        <li><strong>Best quality:</strong> Use a computer connected to your mixer via audio interface</li>
-        <li><strong>Good quality:</strong> Connect phone/tablet to mixer with audio interface</li>
-        <li><strong>Phone placement matters</strong> - Keep recording device away from vocalists</li>
-        <li><strong>Designate a recorder</strong> - Someone who doesn't need the site or doesn't sing during the performance</li>
-        <li><strong>Test before the gig</strong> - Do a quick recording to check levels</li>
-      </ul>
+    <div class="alert alert-info">
+      <h3>📝 Introduction</h3>
+      <p class="mb-0">
+        The Band Plan allows you to record your performances directly in your browser, or upload recordings 
+        you've made with other equipment. Once uploaded, you can split your full set recording into individual 
+        song files that are linked to your setlist for easy playback and sharing.
+      </p>
     </div>
 
-    <h2>Recording Setup Considerations</h2>
+    <h2>Recording Instructions</h2>
     
-    <h3>The Phone Proximity Problem</h3>
-    <p>
-      If you're using the same phone or device to both <strong>view The Band Plan</strong> (for lyrics, chords, etc.) 
-      and <strong>record your performance</strong>, you may encounter audio balance issues:
-    </p>
+    <h3>How to Record Directly in The Band Plan</h3>
     
-    <div class="alert alert-warning">
-      <strong>⚠️ Issue:</strong> If your device is close to a vocalist who's also viewing it during the performance, 
-      their voice may overpower other instruments in the recording since the microphone is so close to them.
-    </div>
-    
-    <h3>Recommended Solutions</h3>
-    
-    <h4>Option 1: Use a Computer Connected to Your Mixer (Best Quality)</h4>
-    <p>
-      If you already have a computer connected to your mixer (for streaming, recording, or processing), 
-      you can use that computer to record directly in The Band Plan:
-    </p>
-    <ul>
-      <li><strong>Open The Band Plan on the mixer computer</strong> - Navigate to your setlist and click "Record This Set"</li>
-      <li><strong>Select your audio interface</strong> - When the browser prompts for microphone permission, choose your audio interface from the dropdown</li>
-      <li><strong>Get a perfect mix</strong> - The recording will capture exactly what's coming out of your mixer</li>
-      <li><strong>Benefits:</strong>
-        <ul>
-          <li>Professional sound quality from your mixer</li>
-          <li>Balanced mix of all instruments and vocals</li>
-          <li>No phone proximity issues</li>
-          <li>Direct digital connection (no analog degradation)</li>
-          <li>Automatic upload when you're done</li>
+    <ol class="mb-4">
+      <li class="mb-3">
+        <strong>Navigate to your setlist</strong> - Go to the setlist you want to record and click the 
+        <span class="badge bg-danger">Record This Set</span> button (located in the Recording panel on the right side).
+      </li>
+      
+      <li class="mb-3">
+        <strong>Grant microphone permission</strong> - Your browser will ask for permission to use your microphone. 
+        Click "Allow" to begin recording. If you have an audio interface connected, select it from the dropdown.
+      </li>
+      
+      <li class="mb-3">
+        <strong>Recording starts immediately</strong> - A floating widget will appear showing the recording timer 
+        and waveform. You can minimize this widget if needed.
+      </li>
+      
+      <li class="mb-3">
+        <strong>Navigate freely</strong> - While recording, you can browse to other pages on The Band Plan 
+        (view different songs, gig docs, print views, etc.). The recording continues in the background.
+        <div class="alert alert-warning mt-2">
+          <strong>⚠️ Important:</strong> Don't leave The Band Plan site or close your browser tab, 
+          or your recording will end.
+        </div>
+      </li>
+      
+      <li class="mb-3">
+        <strong>Stop when finished</strong> - When your set is complete, click the 
+        <span class="badge bg-secondary">Stop</span> button in the recording widget. 
+        The recording will be uploaded and you'll be taken to the "Split" page.
+      </li>
+      
+      <li class="mb-3">
+        <strong>Split your recording</strong> - On the split page, you can:
+        <ul class="mt-2">
+          <li>Listen to the full recording with a waveform visualization</li>
+          <li>Click and drag on the waveform to select portions of the recording</li>
+          <li>Click a song name on the right to assign that region to the song</li>
+          <li>Use <kbd>ESC</kbd> to undo the last region if you make a mistake</li>
+          <li>Add unlisted songs using the form below the song list (if you played something not in your setlist)</li>
         </ul>
       </li>
-    </ul>
+      
+      <li class="mb-3">
+        <strong>Process the splits</strong> - Once all songs are assigned, click 
+        <span class="badge bg-success">Process Splits</span>. The system will extract each song 
+        as a separate MP3 file.
+      </li>
+      
+      <li class="mb-3">
+        <strong>Listen to your recordings</strong> - You'll be taken to the Recordings page where 
+        you can play all your split songs in order using the master player.
+      </li>
+    </ol>
     
     <div class="alert alert-success">
-      <strong>💡 Best Choice:</strong> This is often the best solution if you're already using a laptop for setlists, 
-      backing tracks, or streaming. The audio quality will be excellent since it's coming directly from your mixer.
+      <h4>💡 Pro Tip</h4>
+      <p class="mb-0">
+        <strong>Try it out first!</strong> Before your actual gig or rehearsal, do a test recording 
+        to familiarize yourself with the process and check your audio levels.
+      </p>
     </div>
     
-    <h4>Option 2: Connect Phone/Tablet to Your Mixer with Audio Interface</h4>
+    <h3>Splitting Later</h3>
     <p>
-      Connect your phone or tablet to your mixing board using an audio interface:
+      If you're not ready to split your recording immediately, that's okay! You can come back later:
     </p>
-    <ul>
-      <li><strong>USB Audio Interface</strong> - Connect mixer output to your device (e.g., Focusrite Scarlett Solo, Behringer U-Phoria)</li>
-      <li><strong>Required adapters:</strong>
-        <ul>
-          <li>iPhone/iPad: Lightning to USB Camera Adapter + USB interface</li>
-          <li>Android: USB-C to USB adapter + USB interface</li>
-        </ul>
-      </li>
-      <li><strong>Benefits:</strong> 
-        <ul>
-          <li>Balanced mix of all instruments</li>
-          <li>Professional sound quality</li>
-          <li>Control levels from the mixer</li>
-          <li>Can still view The Band Plan during performance</li>
-        </ul>
-      </li>
-    </ul>
+    <ol>
+      <li>Go to your setlist page</li>
+      <li>Click the <span class="badge bg-primary">Recordings</span> button in the Setlist Actions panel</li>
+      <li>Click on any recording to view it and access the split page</li>
+    </ol>
     
-    <h4>Option 3: Use Your Phone/Tablet's Built-in Microphone</h4>
+    <hr class="my-5">
+    
+    <h2>Recording Options: Best to Last</h2>
+    <p>Different recording setups provide different audio quality. Here they are, ranked from best to worst:</p>
+    
+    <div class="card mb-3">
+      <div class="card-body">
+        <h4 class="card-title">🏆 Best: Record Separately and Upload MP3s</h4>
+        <p>
+          For the absolute best quality, record with dedicated equipment and upload your files:
+        </p>
+        <ul>
+          <li>Use a digital recorder (Zoom H4n, Tascam DR-40, etc.) or studio equipment</li>
+          <li>Record in a high-quality format</li>
+          <li>Export as MP3 for manageable file sizes</li>
+          <li>Go to your setlist's Recordings page and use the upload form</li>
+        </ul>
+        <p class="mb-0"><strong>Why this is best:</strong> Professional equipment, no browser limitations, full control over recording settings.</p>
+      </div>
+    </div>
+    
+    <div class="card mb-3">
+      <div class="card-body">
+        <h4 class="card-title">🥈 Next Best: Computer Connected to Mixer</h4>
+        <p>
+          If you have a computer connected to your mixer (for streaming, backing tracks, etc.):
+        </p>
+        <ul>
+          <li>Open The Band Plan on that computer</li>
+          <li>Navigate to your setlist and click "Record This Set"</li>
+          <li>Select your audio interface when prompted</li>
+          <li>Get a perfect mix directly from your mixer</li>
+        </ul>
+        <p class="mb-0"><strong>Why this works:</strong> Professional sound quality, balanced mix, direct digital connection, automatic upload.</p>
+      </div>
+    </div>
+    
+    <div class="card mb-3">
+      <div class="card-body">
+        <h4 class="card-title">🥉 Next Best: Audio Interface on Phone/Tablet</h4>
+        <p>
+          Connect your phone or tablet to your mixer using an audio interface:
+        </p>
+        <ul>
+          <li><strong>Equipment needed:</strong> USB audio interface (Focusrite Scarlett, Behringer UMC22, etc.)</li>
+          <li><strong>For iPhone/iPad:</strong> Lightning to USB Camera Adapter + USB interface</li>
+          <li><strong>For Android:</strong> USB-C to USB adapter + USB interface</li>
+          <li>Feed from mixer → interface → phone/tablet running The Band Plan</li>
+        </ul>
+        <p class="mb-0"><strong>Why this works:</strong> Balanced mix, can view setlist during performance, good quality.</p>
+      </div>
+    </div>
+    
+    <div class="card mb-3">
+      <div class="card-body">
+        <h4 class="card-title">📱 Next Best: Phone in Center of Room</h4>
+        <p>
+          Place a phone or tablet in the center of the room with its built-in microphone:
+        </p>
+        <ul>
+          <li>Position at ear level, equal distance from all instruments</li>
+          <li>Away from speakers to avoid PA bleed</li>
+          <li>On a stable surface (don't let it move)</li>
+          <li>Use a dedicated device if possible (not the one displaying lyrics)</li>
+        </ul>
+        <p class="mb-0"><strong>Why this works:</strong> Simple setup, captures the room sound, works for reference recordings.</p>
+      </div>
+    </div>
+    
+    <div class="card mb-3">
+      <div class="card-body">
+        <h4 class="card-title">👥 Next Best: Non-Singing Band Member Records</h4>
+        <p>
+          Have someone who doesn't sing do the recording:
+        </p>
+        <ul>
+          <li>Band member who doesn't need lyrics/chords</li>
+          <li>Instrumentalist who plays by ear</li>
+          <li>They can have The Band Plan open and recording in front of them</li>
+          <li>Better microphone placement since they're not singing into it</li>
+        </ul>
+        <p class="mb-0"><strong>Why this works:</strong> More balanced recording, vocalist won't overpower the mix.</p>
+      </div>
+    </div>
+    
+    <div class="card mb-3 border-warning">
+      <div class="card-body">
+        <h4 class="card-title">⚠️ Last Resort: Phone While Singing</h4>
+        <p>
+          Having your phone record while you sing right in front of it:
+        </p>
+        <ul>
+          <li>Your vocal will be very prominent in the mix</li>
+          <li>Other instruments may sound distant</li>
+          <li>Still useful for reference and memory</li>
+        </ul>
+        <p class="mb-0"><strong>The issue:</strong> Microphone proximity - your voice is inches from the mic while other sounds are feet away.</p>
+      </div>
+    </div>
+    
+    <hr class="my-4">
+    
+    <h3>Option 4: Link to External Playlists</h3>
     <p>
-      The simplest approach - just use your device's microphone. This works well if you pay attention to placement:
+      If your recordings are already hosted elsewhere (YouTube, SoundCloud, etc.), you can create 
+      a playlist on The Band Plan without uploading files:
     </p>
-    <ul>
-      <li><strong>Placement is critical:</strong>
-        <ul>
-          <li>Keep the device <strong>away from vocalists</strong> to avoid their voice overpowering the mix</li>
-          <li>Center of the room - Equal distance from all instruments</li>
-          <li>Ear level - Position at listening height (not on the floor)</li>
-          <li>Away from speakers - Avoid direct PA bleed</li>
-          <li>Stable surface - Don't let it move during the show</li>
-        </ul>
-      </li>
-      <li><strong>Who should record:</strong>
-        <ul>
-          <li>Designate someone who doesn't need to view The Band Plan during the performance</li>
-          <li>Sound person or non-singing member who doesn't need lyrics/chords</li>
-          <li>Friend or audience member who can place the device optimally</li>
-        </ul>
-      </li>
-      <li><strong>Benefits:</strong>
-        <ul>
-          <li>No additional equipment needed</li>
-          <li>Quick and easy setup</li>
-          <li>Good for rehearsals and reference recordings</li>
-        </ul>
-      </li>
-      <li><strong>Limitations:</strong>
-        <ul>
-          <li>Quality depends heavily on room acoustics and placement</li>
-          <li>If vocalist holds the device, their voice may dominate the recording</li>
-          <li>Less control over the mix</li>
-        </ul>
-      </li>
-    </ul>
+    <ol>
+      <li>Go to your setlist page</li>
+      <li>Look for the "Listen to the Set" form in the Setlist Actions panel</li>
+      <li>Add links to your recordings hosted on other platforms</li>
+      <li>The Band Plan will create a playlist for you</li>
+    </ol>
+    <p><strong>Note:</strong> This doesn't allow splitting, but it's a quick way to link your existing recordings to a setlist.</p>
     
     <h3>Microphone Placement Tips</h3>
     
@@ -275,16 +370,16 @@ router.get("/recording-tips", (req, res) => {
       </p>
     </div>
     
-    <h3>Getting Help</h3>
+    <h3>Questions or Issues?</h3>
     
     <p>
-      If you're having issues with recording quality or need advice on equipment, 
-      reach out to the community or check our tutorial videos for visual guides on optimal setup.
+      If you're having trouble with recording, splitting, or uploading, or need advice on equipment, 
+      please reach out for support. We're here to help you capture your best performances!
     </p>
   `;
 
   res.render("legal/document", {
-    title: "Recording Tips & Best Practices",
+    title: "Recording Instructions",
     content: htmlContent,
     currentUrl: req.originalUrl,
   });

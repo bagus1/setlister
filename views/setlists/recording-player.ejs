@@ -1,0 +1,368 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="bi bi-play-circle"></i> Recording</h1>
+                    <h2 class="h4 text-muted">
+                        <%= setlist.title %> - <%= setlist.band.name %>
+                    </h2>
+                    <p class="small text-muted mb-0">
+                        <i class="bi bi-calendar"></i> 
+                        <%= new Date(recording.createdAt).toLocaleString('en-US', { 
+                            weekday: 'long',
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit'
+                        }) %>
+                        • <i class="bi bi-person"></i> <%= recording.creator.username %>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <% if (!recording.isProcessed) { %>
+                        <a href="/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
+                           class="btn btn-primary">
+                            <i class="bi bi-scissors"></i> Split into Songs
+                        </a>
+                    <% } %>
+                    <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings" 
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Recordings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-9">
+            <% if (recording.isProcessed && recording.splits.length > 0 && recording.splits.some(s => s.filePath)) { %>
+                <!-- Main Player for Split Songs -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-play-circle"></i> Audio Player
+                        </h5>
+                        <div class="mt-2">
+                            <span class="badge bg-info">
+                                <i class="bi bi-music-note-list"></i> <%= recording.splits.filter(s => s.filePath).length %> songs
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body text-center">
+                        <audio id="audioPlayer" controls class="w-100">
+                            <source src="" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                        
+                        <div class="mt-3">
+                            <button id="prevBtn" class="btn btn-outline-primary me-2" disabled>
+                                <i class="bi bi-skip-backward-fill"></i> Previous
+                            </button>
+                            <button id="restartBtn" class="btn btn-outline-warning me-2" disabled>
+                                <i class="bi bi-arrow-repeat"></i> Restart
+                            </button>
+                            <button id="nextBtn" class="btn btn-outline-primary" disabled>
+                                <i class="bi bi-skip-forward-fill"></i> Next
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Playlist -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-music-note-list"></i> Playlist
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul id="playlist" class="list-group list-group-flush">
+                            <% recording.splits.forEach((split, index) => { %>
+                                <% if (split.filePath) { %>
+                                    <li class="list-group-item playlist-item" 
+                                        data-index="<%= index %>" 
+                                        data-url="<%= split.filePath %>"
+                                        data-title="<%= split.song.title %>"
+                                        style="cursor: pointer;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-light text-dark me-3">
+                                                    <%= index + 1 %>
+                                                </span>
+                                                <div>
+                                                    <strong class="song-title"><%= split.song.title %></strong>
+                                                    <br><small class="text-muted">
+                                                        Duration: <%= Math.floor(split.duration / 60) %>:<%= Math.floor(split.duration % 60).toString().padStart(2, '0') %>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <a href="<%= split.filePath %>" 
+                                               class="btn btn-sm btn-outline-success" 
+                                               download
+                                               onclick="event.stopPropagation();">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        </div>
+                                    </li>
+                                <% } %>
+                            <% }) %>
+                        </ul>
+                    </div>
+                </div>
+            <% } else { %>
+                <!-- Show full recording if not split yet -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-play-circle"></i> Full Set Recording
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <audio controls style="width: 100%; margin-bottom: 1rem;">
+                            <source src="<%= recording.filePath %>" type="audio/webm">
+                            <source src="<%= recording.filePath %>" type="audio/mp3">
+                            Your browser does not support the audio element.
+                        </audio>
+                        
+                        <div class="alert alert-info text-center">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>This recording hasn't been split into individual songs yet.</strong>
+                            <p class="mb-2 mt-2">You can split it to create playable tracks for each song.</p>
+                            <a href="/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
+                               class="btn btn-primary">
+                                <i class="bi bi-scissors"></i> Split into Songs
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-3">
+            <% if (recording.isProcessed && recording.splits.length > 0) { %>
+                <!-- Full Recording Player in Sidebar -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="bi bi-music-note-beamed"></i> Full Recording
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <audio controls style="width: 100%;">
+                            <source src="<%= recording.filePath %>" type="audio/webm">
+                            <source src="<%= recording.filePath %>" type="audio/mp3">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <div class="text-center mt-2">
+                            <small class="text-muted">
+                                <%= Math.floor(recording.duration / 60) %>:<%= (recording.duration % 60).toString().padStart(2, '0') %>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+
+            <!-- Recording Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Recording Info
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Setlist:</strong> <%= setlist.title %></p>
+                    <% if (setlist.date) { %>
+                        <p><strong>Gig Date:</strong> <%= new Date(setlist.date).toLocaleDateString() %></p>
+                    <% } %>
+                    <p><strong>Recorded by:</strong> <%= recording.creator.username %></p>
+                    <p><strong>Recorded at:</strong> <%= new Date(recording.createdAt).toLocaleString() %></p>
+                    <p>
+                        <strong>Status:</strong> 
+                        <% if (recording.isProcessed) { %>
+                            <span class="badge bg-success">Processed</span>
+                        <% } else { %>
+                            <span class="badge bg-warning">Not Split</span>
+                        <% } %>
+                    </p>
+                    <% if (recording.splits.length > 0) { %>
+                        <p><strong>Songs extracted:</strong> <%= recording.splits.length %></p>
+                    <% } %>
+                    <% if (recording.fileSize) { %>
+                        <p><strong>File Size:</strong> <%= (Number(recording.fileSize) / (1024 * 1024)).toFixed(1) %> MB</p>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-gear"></i> Actions
+                    </h6>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <% if (!recording.isProcessed) { %>
+                        <a href="/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
+                           class="btn btn-primary">
+                            <i class="bi bi-scissors"></i> Split into Songs
+                        </a>
+                    <% } %>
+                    <a href="<%= recording.filePath %>" 
+                       download 
+                       class="btn btn-outline-success">
+                        <i class="bi bi-download"></i> Download Full
+                    </a>
+                    <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>" 
+                       class="btn btn-outline-info">
+                        <i class="bi bi-music-note-list"></i> View Setlist
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.playlist-item {
+    transition: background 0.2s, color 0.2s;
+}
+
+.playlist-item:hover {
+    background: #343a40 !important;
+    color: white !important;
+}
+
+.playlist-item:hover .song-title,
+.playlist-item:hover .text-muted {
+    color: white !important;
+}
+
+.playlist-item:hover .badge {
+    background: #495057 !important;
+    color: white !important;
+}
+
+.playlist-item.active {
+    background: #212529 !important;
+    color: white !important;
+    border-left: 4px solid #0d6efd;
+}
+
+.playlist-item.active .song-title,
+.playlist-item.active .text-muted {
+    color: white !important;
+}
+
+.playlist-item.active .badge {
+    background: #495057 !important;
+    color: white !important;
+}
+</style>
+
+<script>
+let currentTrackIndex = 0;
+let playlist = [];
+const audioPlayer = document.getElementById('audioPlayer');
+const prevBtn = document.getElementById('prevBtn');
+const restartBtn = document.getElementById('restartBtn');
+const nextBtn = document.getElementById('nextBtn');
+
+// Initialize playlist from DOM
+document.addEventListener('DOMContentLoaded', function() {
+    const playlistItems = document.querySelectorAll('.playlist-item');
+    playlist = Array.from(playlistItems).map(item => ({
+        url: item.dataset.url,
+        title: item.dataset.title
+    }));
+    
+    if (playlist.length > 0) {
+        updateButtons();
+        loadTrack(0);
+    }
+});
+
+// Load and play a track
+function loadTrack(index) {
+    if (index < 0 || index >= playlist.length) return;
+    
+    currentTrackIndex = index;
+    const track = playlist[index];
+    
+    // Update audio source
+    audioPlayer.src = track.url;
+    
+    // Update active state in playlist
+    document.querySelectorAll('.playlist-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+    });
+    
+    // Update buttons
+    updateButtons();
+    
+    // Try to auto-play
+    const playPromise = audioPlayer.play();
+    
+    if (playPromise !== undefined) {
+        playPromise
+            .then(() => {
+                console.log('Auto-play started successfully');
+            })
+            .catch(error => {
+                console.log('Auto-play blocked, user must click play:', error);
+            });
+    }
+}
+
+// Update button states
+function updateButtons() {
+    if (prevBtn) prevBtn.disabled = currentTrackIndex === 0;
+    if (nextBtn) nextBtn.disabled = currentTrackIndex === playlist.length - 1;
+    if (restartBtn) restartBtn.disabled = false;
+}
+
+// Event listeners
+if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+        if (currentTrackIndex > 0) {
+            loadTrack(currentTrackIndex - 1);
+        }
+    });
+}
+
+if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+        audioPlayer.currentTime = 0;
+        audioPlayer.play().catch(e => console.log('Play prevented:', e));
+    });
+}
+
+if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+        if (currentTrackIndex < playlist.length - 1) {
+            loadTrack(currentTrackIndex + 1);
+        }
+    });
+}
+
+// Auto-advance to next track
+if (audioPlayer) {
+    audioPlayer.addEventListener('ended', () => {
+        if (currentTrackIndex < playlist.length - 1) {
+            loadTrack(currentTrackIndex + 1);
+        }
+    });
+}
+
+// Click on playlist item to play
+document.addEventListener('click', (e) => {
+    const playlistItem = e.target.closest('.playlist-item');
+    if (playlistItem && !e.target.closest('a')) {
+        const index = parseInt(playlistItem.dataset.index);
+        loadTrack(index);
+    }
+});
+</script>

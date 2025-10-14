@@ -23,9 +23,6 @@
                 <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/copy" class="btn btn-outline-info">
                     <i class="bi bi-files"></i> Copy Setlist
                 </a>
-                 <button onclick="startRecording('<%= setlist.id %>')" class="btn btn-danger">
-                    <i class="bi bi-record-circle"></i> Record This Set
-                </button>
                 <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-primary">
                     <i class="bi bi-people"></i> Back to Band
                 </a>
@@ -546,6 +543,23 @@
 
     <div class="col-md-4">
 
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-record-circle"></i> Recording
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button onclick="startRecording('<%= setlist.id %>')" class="btn btn-danger">
+                        <i class="bi bi-record-circle"></i> Record This Set
+                    </button>
+                    <a href="/legal/recording-tips" target="_blank" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-lightbulb"></i> Recording Tips
+                    </a>
+                </div>
+            </div>
+        </div>
 
         <div class="card">
             <div class="card-header">

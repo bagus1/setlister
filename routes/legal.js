@@ -85,6 +85,200 @@ router.get("/", (req, res) => {
   });
 });
 
+// GET /legal/recording-tips - Recording tips and best practices
+router.get("/recording-tips", (req, res) => {
+  const htmlContent = `
+    <div class="">
+      <h3>🎙️ Key Takeaways</h3>
+      <ul>
+        <li><strong>Phone placement matters</strong> - Keep recording device away from vocalists</li>
+        <li><strong>Use an audio interface</strong> - Get a balanced mix from your mixer</li>
+        <li><strong>Designate a recorder</strong> - Someone who doesn't need the site or doesn't sing during the performance</li>
+        <li><strong>Test before the gig</strong> - Do a quick recording to check levels</li>
+      </ul>
+    </div>
+
+    <h2>Recording Setup Considerations</h2>
+    
+    <h3>The Phone Proximity Problem</h3>
+    <p>
+      If you're using the same phone or device to both <strong>view The Band Plan</strong> (for lyrics, chords, etc.) 
+      and <strong>record your performance</strong>, you may encounter audio balance issues:
+    </p>
+    
+    <div class="alert alert-warning">
+      <strong>⚠️ Issue:</strong> If your device is close to a vocalist who's also viewing it during the performance, 
+      their voice may overpower other instruments in the recording since the microphone is so close to them.
+    </div>
+    
+    <h3>Recommended Solutions</h3>
+    
+    <h4>Option 1: Use an Audio Interface (Best Quality)</h4>
+    <p>
+      Connect your phone or tablet to your mixing board using an audio interface:
+    </p>
+    <ul>
+      <li><strong>USB Audio Interface</strong> - Connect mixer output to your device (e.g., Focusrite Scarlett Solo, Behringer U-Phoria)</li>
+      <li><strong>Direct Line-In</strong> - If your device has a line-in port, connect directly from mixer</li>
+      <li><strong>Benefits:</strong> 
+        <ul>
+          <li>Balanced mix of all instruments</li>
+          <li>Professional sound quality</li>
+          <li>Control levels from the mixer</li>
+        </ul>
+      </li>
+    </ul>
+    
+    <h4>Option 2: Designate a Non-Performer as Recorder</h4>
+    <p>
+      Have someone who doesn't need to view The Band Plan during the performance handle the recording:
+    </p>
+    <ul>
+      <li><strong>Sound person</strong> - If you have a sound engineer, they can record from the booth</li>
+      <li><strong>Non-singing member</strong> - A band member who doesn't need to view lyrics/chords</li>
+      <li><strong>Friend/audience member</strong> - Someone who can hold a device in a good location</li>
+      <li><strong>Benefits:</strong>
+        <ul>
+          <li>Optimal microphone placement</li>
+          <li>No need to worry about viewing the site</li>
+          <li>Can monitor recording quality during performance</li>
+        </ul>
+      </li>
+    </ul>
+    
+    <h4>Option 3: Use a Computer Connected to Your Mixer (Recommended for Best Quality)</h4>
+    <p>
+      If you already have a computer connected to your mixer (for streaming, recording, or processing), 
+      you can use that computer to record directly in The Band Plan:
+    </p>
+    <ul>
+      <li><strong>Open The Band Plan on the mixer computer</strong> - Navigate to your setlist and click "Record This Set"</li>
+      <li><strong>Select your audio interface</strong> - When the browser prompts for microphone permission, choose your audio interface from the dropdown</li>
+      <li><strong>Get a perfect mix</strong> - The recording will capture exactly what's coming out of your mixer</li>
+      <li><strong>Benefits:</strong>
+        <ul>
+          <li>Professional sound quality from your mixer</li>
+          <li>Balanced mix of all instruments and vocals</li>
+          <li>No phone proximity issues</li>
+          <li>Direct digital connection (no analog degradation)</li>
+          <li>Automatic upload when you're done</li>
+        </ul>
+      </li>
+    </ul>
+    
+    <div class="alert alert-info">
+      <strong>💡 Pro Tip:</strong> This is often the best solution if you're already using a laptop for setlists, 
+      backing tracks, or streaming. The audio quality will be excellent since it's coming directly from your mixer.
+    </div>
+    
+    <h4>Option 4: Use a Separate Recording Device</h4>
+    <p>
+      Use a dedicated device just for recording:
+    </p>
+    <ul>
+      <li><strong>Second phone/tablet</strong> - Place it in an optimal location for capturing the full band</li>
+      <li><strong>Digital recorder</strong> - Zoom H4n, Tascam DR-40, etc. (you'll need to upload the file afterward)</li>
+      <li><strong>Benefits:</strong>
+        <ul>
+          <li>Dedicated device = better placement options</li>
+          <li>No performance interruptions</li>
+          <li>Higher quality with professional recorders</li>
+        </ul>
+      </li>
+    </ul>
+    
+    <h3>Microphone Placement Tips</h3>
+    
+    <h4>For Phone/Tablet Recording:</h4>
+    <ul>
+      <li><strong>Center of the room</strong> - Equal distance from all instruments</li>
+      <li><strong>Ear level</strong> - Position at listening height (not on the floor or ceiling)</li>
+      <li><strong>Away from speakers</strong> - Avoid direct PA bleed</li>
+      <li><strong>Stable surface</strong> - Don't let it move during the show</li>
+      <li><strong>Check orientation</strong> - Some phones have directional mics - test which side sounds best</li>
+    </ul>
+    
+    <h3>Before You Record</h3>
+    
+    <h4>Pre-Gig Checklist:</h4>
+    <ul>
+      <li>✅ <strong>Test record</strong> - Do a 30-second test during sound check</li>
+      <li>✅ <strong>Check battery</strong> - Full charge or plugged in</li>
+      <li>✅ <strong>Clear storage</strong> - Make sure you have enough space (500MB+ recommended)</li>
+      <li>✅ <strong>Set volume levels</strong> - Listen back to your test to check for clipping or low volume</li>
+      <li>✅ <strong>Disable notifications</strong> - Turn on Do Not Disturb mode</li>
+      <li>✅ <strong>Keep screen on</strong> - The Band Plan handles this automatically</li>
+    </ul>
+    
+    <h3>During Recording</h3>
+    
+    <ul>
+      <li><strong>Don't touch the device</strong> - Handling noise will be captured</li>
+      <li><strong>Monitor occasionally</strong> - Glance to make sure recording is still running</li>
+      <li><strong>Note any issues</strong> - Remember if there were sound problems for later reference</li>
+    </ul>
+    
+    <h3>After Recording</h3>
+    
+    <ul>
+      <li><strong>Don't close the browser</strong> - Let the upload complete</li>
+      <li><strong>Split while fresh</strong> - Mark song boundaries while you remember the set</li>
+      <li><strong>Label clearly</strong> - If adding unlisted songs, use accurate titles</li>
+    </ul>
+    
+    <h3>Recommended Equipment (Optional)</h3>
+    
+    <div class="alert alert-info">
+      <p>While you can record great audio with just your phone, here are some affordable upgrades:</p>
+      <ul>
+        <li><strong>USB Audio Interface</strong> ($50-100) - Focusrite Scarlett Solo, Behringer UMC22</li>
+        <li><strong>Lightning to USB adapter</strong> ($15-30) - To connect interface to iPhone/iPad</li>
+        <li><strong>USB-C to USB adapter</strong> ($10-20) - For Android devices</li>
+        <li><strong>Phone tripod/stand</strong> ($10-25) - Keep device stable</li>
+      </ul>
+    </div>
+    
+    <h3>Audio Quality Expectations</h3>
+    
+    <p><strong>What you'll get:</strong></p>
+    <ul>
+      <li>✅ Reference recordings for practice and improvement</li>
+      <li>✅ Memory of live performances</li>
+      <li>✅ Individual song files for sharing</li>
+      <li>✅ Documentation of your band's progress</li>
+    </ul>
+    
+    <p><strong>What you won't get:</strong></p>
+    <ul>
+      <li>❌ Studio-quality multi-track recordings</li>
+      <li>❌ Perfect balance without proper equipment</li>
+      <li>❌ Isolated instrument tracks (everything is mixed together)</li>
+    </ul>
+    
+    <div class="alert alert-primary">
+      <h4>💡 Pro Tip: Build Your Setup Gradually</h4>
+      <p class="mb-0">
+        Start with just your phone and improve your setup over time. Even a basic recording is valuable 
+        for tracking your progress and sharing with bandmates. As you get more serious, invest in 
+        better equipment like audio interfaces and dedicated recorders.
+      </p>
+    </div>
+    
+    <h3>Getting Help</h3>
+    
+    <p>
+      If you're having issues with recording quality or need advice on equipment, 
+      reach out to the community or check our tutorial videos for visual guides on optimal setup.
+    </p>
+  `;
+
+  res.render("legal/document", {
+    title: "Recording Tips & Best Practices",
+    content: htmlContent,
+    currentUrl: req.originalUrl,
+  });
+});
+
 // GET /legal/google-doc-formatting-guide - Google Doc formatting guide
 router.get("/google-doc-formatting-guide", (req, res) => {
   const htmlContent = `

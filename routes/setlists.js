@@ -32,13 +32,14 @@ const upload = multer({
   },
   fileFilter: function (req, file, cb) {
     // Accept audio files only
-    const allowedTypes = /webm|mp3|wav|m4a|ogg/;
-    const extname = allowedTypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
-    const mimetype = allowedTypes.test(file.mimetype);
+    const allowedExtensions = /\.(webm|mp3|wav|m4a|ogg)$/i;
+    const extname = allowedExtensions.test(file.originalname);
+    
+    // Check if it's an audio MIME type (audio/mpeg, audio/wav, etc.)
+    const isAudioMimetype = file.mimetype.startsWith('audio/');
 
-    if (mimetype && extname) {
+    // Accept if either the extension is valid OR it's an audio mimetype
+    if (extname || isAudioMimetype) {
       return cb(null, true);
     } else {
       cb(new Error("Only audio files are allowed!"));
@@ -2721,6 +2722,87 @@ router.post(
     } catch (error) {
       logger.logError("Recording upload error", error);
       res.status(500).json({ error: "Failed to upload recording" });
+    }
+  }
+);
+
+// POST /setlists/:id/recordings/upload - Upload existing recording file
+router.post(
+  "/:id/recordings/upload",
+  requireAuth,
+  upload.single("audioFile"),
+  async (req, res) => {
+    try {
+      const setlistId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+
+      // Verify setlist exists and user has access
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
+
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No audio file uploaded" });
+      }
+
+      // Get duration from the uploaded file using FFmpeg
+      const filePath = req.file.path;
+      const duration = await new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+          if (err) {
+            logger.logError("FFmpeg probe error:", err);
+            reject(err);
+          } else {
+            resolve(Math.floor(metadata.format.duration || 0));
+          }
+        });
+      });
+
+      // Convert file path to web-accessible URL
+      const recordingPath = `/uploads/recordings/${req.file.filename}`;
+      const fileSize = req.file.size || 0;
+      const format = path.extname(req.file.filename).substring(1) || "mp3";
+
+      // Save to database
+      const recording = await prisma.recording.create({
+        data: {
+          setlistId,
+          filePath: recordingPath,
+          fileSize,
+          duration,
+          format,
+          createdById: userId,
+          isProcessed: false,
+        },
+      });
+
+      console.log(`Recording uploaded: ${req.file.filename} (${(fileSize / 1024 / 1024).toFixed(2)}MB, ${duration}s) - ID: ${recording.id}`);
+      
+      res.json({
+        success: true,
+        recordingId: recording.id,
+        message: "Recording uploaded successfully",
+      });
+    } catch (error) {
+      logger.logError("File upload error", error);
+      res.status(500).json({ error: "Failed to upload file" });
     }
   }
 );

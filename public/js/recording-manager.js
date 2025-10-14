@@ -426,6 +426,25 @@ class RecordingManager {
   }
 
   /**
+   * Get actual duration from audio blob by loading it
+   */
+  getAudioDuration(blob) {
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      audio.addEventListener('loadedmetadata', () => {
+        resolve(Math.floor(audio.duration));
+        URL.revokeObjectURL(audio.src);
+      });
+      audio.addEventListener('error', () => {
+        // Fallback to elapsed time if we can't read the audio
+        resolve(Math.floor((Date.now() - this.startTime) / 1000));
+        URL.revokeObjectURL(audio.src);
+      });
+      audio.src = URL.createObjectURL(blob);
+    });
+  }
+
+  /**
    * Stop recording and upload
    */
   async stopRecording() {
@@ -457,13 +476,14 @@ class RecordingManager {
             throw new Error("Recording data not found");
           }
 
-          // Calculate duration
-          const duration = Math.floor((Date.now() - this.startTime) / 1000);
-
           // Create blob from collected chunks
           const audioBlob = new Blob(this.audioChunks, {
             type: this.mediaRecorder.mimeType || "audio/webm",
           });
+
+          // Calculate actual duration from the audio blob
+          // We'll get the real duration from the audio file itself
+          const duration = await this.getAudioDuration(audioBlob);
 
           // Stop timer and animation (but keep localStorage for now)
           this.cleanupResources();
@@ -650,11 +670,6 @@ function toggleWidget() {
   }
 }
 
-// Warn before leaving page if recording
-window.addEventListener("beforeunload", (e) => {
-  if (localStorage.getItem("activeRecording")) {
-    e.preventDefault();
-    e.returnValue = "Recording in progress. Are you sure you want to leave?";
-    return e.returnValue;
-  }
-});
+// Note: No beforeunload warning needed since recording persists via IndexedDB
+// Users can navigate freely within the site and the recording continues
+// The floating widget and localStorage state track the active recording

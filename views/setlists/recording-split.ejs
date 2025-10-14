@@ -437,7 +437,7 @@ document.getElementById('processSplitsBtn').addEventListener('click', async func
         if (response.ok) {
             const result = await response.json();
             alert(`Successfully split ${splits.length} songs!`);
-            window.location.href = '/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>';
+            window.location.href = '/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings';
         } else {
             throw new Error('Failed to process splits');
         }

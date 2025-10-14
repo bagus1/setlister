@@ -1,0 +1,46 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <a href="/help" class="btn btn-outline-secondary mb-3">
+                <i class="bi bi-arrow-left"></i> Back to Help
+            </a>
+            
+            <!-- Help Navigation -->
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <a href="/help/getting-started" class="btn btn-sm <%= currentUrl.includes('/getting-started') ? 'btn-primary' : 'btn-outline-primary' %>">
+                            Getting Started
+                        </a>
+                        <a href="/help/recording-instructions" class="btn btn-sm <%= currentUrl.includes('/recording-instructions') ? 'btn-primary' : 'btn-outline-primary' %>">
+                            Recording
+                        </a>
+                        <a href="/help/google-doc-formatting" class="btn btn-sm <%= currentUrl.includes('/google-doc-formatting') ? 'btn-primary' : 'btn-outline-primary' %>">
+                            Google Docs
+                        </a>
+                        <a href="/help/songs-and-setlists" class="btn btn-sm <%= currentUrl.includes('/songs-and-setlists') ? 'btn-primary' : 'btn-outline-primary' %>">
+                            Songs & Setlists
+                        </a>
+                        <a href="/help/gig-documents" class="btn btn-sm <%= currentUrl.includes('/gig-documents') ? 'btn-primary' : 'btn-outline-primary' %>">
+                            Gig Docs
+                        </a>
+                        <a href="/help/venue-booking" class="btn btn-sm <%= currentUrl.includes('/venue-booking') ? 'btn-primary' : 'btn-outline-primary' %>">
+                            Venues
+                        </a>
+                        <a href="/help/become-moderator" class="btn btn-sm <%= currentUrl.includes('/become-moderator') ? 'btn-primary' : 'btn-outline-primary' %>">
+                            Moderator
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content -->
+            <div class="card">
+                <div class="card-body">
+                    <%- content %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

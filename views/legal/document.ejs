@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= title %> - The Band Plan</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
       body {
         font-family:
@@ -52,6 +56,65 @@
       strong {
         color: #2c3e50;
       }
+      /* Override Bootstrap card styling for better readability */
+      .card {
+        background: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+      }
+      .card-body {
+        color: #333 !important;
+        background: #ffffff !important;
+      }
+      .card-body * {
+        color: #333 !important;
+      }
+      .card-body strong,
+      .card-title {
+        color: #2c3e50 !important;
+      }
+      .card-body p,
+      .card-body li,
+      .card-body ul,
+      .card-body ol {
+        color: #333 !important;
+      }
+      /* Alert styling */
+      .alert {
+        border-radius: 5px;
+        background: #f8f9fa;
+      }
+      .alert * {
+        color: #333 !important;
+      }
+      .alert-info {
+        background-color: #d1ecf1 !important;
+        border-color: #bee5eb !important;
+      }
+      .alert-success {
+        background-color: #d4edda !important;
+        border-color: #c3e6cb !important;
+      }
+      .alert-warning {
+        background-color: #fff3cd !important;
+        border-color: #ffeaa7 !important;
+      }
+      .alert-primary {
+        background-color: #cce5ff !important;
+        border-color: #b8daff !important;
+      }
+      /* Badge styling */
+      .badge {
+        padding: 0.35em 0.65em;
+      }
+      /* Keyboard key styling */
+      kbd {
+        background-color: #f8f9fa;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        padding: 2px 6px;
+        font-size: 0.9em;
+        color: #333;
+      }
       .legal-nav {
         background: #ecf0f1;
         padding: 15px;
@@ -62,10 +125,12 @@
       .legal-nav a {
         color: #3498db;
         text-decoration: none;
-        margin: 0 15px;
-        padding: 10px 5px;
+        margin: 0 5px;
+        padding: 8px 10px;
         border-radius: 3px;
         transition: background-color 0.2s;
+        display: inline-block;
+        font-size: 0.95em;
       }
       .legal-nav a:hover {
         background-color: #3498db;
@@ -108,30 +173,67 @@
   </head>
   <body>
     <div class="legal-container">
-      <a href="/legal" class="back-link">← Back to Legal Documents</a>
+      <% if (currentUrl.includes('/help/')) { %>
+        <a href="/help" class="back-link">← Back to Help</a>
+        
+        <div class="legal-nav">
+          <a
+            href="/help/getting-started"
+            class="<%= currentUrl.includes('/getting-started') ? 'active' : '' %>"
+            >Getting Started</a
+          >
+          <a
+            href="/help/recording-instructions"
+            class="<%= currentUrl.includes('/recording-instructions') ? 'active' : '' %>"
+            >Recording</a
+          >
+          <a
+            href="/help/google-doc-formatting"
+            class="<%= currentUrl.includes('/google-doc-formatting') ? 'active' : '' %>"
+            >Google Docs</a
+          >
+          <a
+            href="/help/songs-and-setlists"
+            class="<%= currentUrl.includes('/songs-and-setlists') ? 'active' : '' %>"
+            >Songs & Setlists</a
+          >
+          <a
+            href="/help/gig-documents"
+            class="<%= currentUrl.includes('/gig-documents') ? 'active' : '' %>"
+            >Gig Docs</a
+          >
+          <a
+            href="/help/venue-booking"
+            class="<%= currentUrl.includes('/venue-booking') ? 'active' : '' %>"
+            >Venues</a
+          >
+          <a
+            href="/help/become-moderator"
+            class="<%= currentUrl.includes('/become-moderator') ? 'active' : '' %>"
+            >Moderator</a
+          >
+        </div>
+      <% } else { %>
+        <a href="/legal" class="back-link">← Back to Legal Documents</a>
 
-      <div class="legal-nav">
-        <a
-          href="/legal/terms"
-          class="<%= currentUrl.includes('/terms') ? 'active' : '' %>"
-          >Terms of Service</a
-        >
-        <a
-          href="/legal/privacy"
-          class="<%= currentUrl.includes('/privacy') ? 'active' : '' %>"
-          >Privacy Policy</a
-        >
-        <a
-          href="/legal/dmca"
-          class="<%= currentUrl.includes('/dmca') ? 'active' : '' %>"
-          >DMCA Policy</a
-        >
-        <a
-          href="/legal/google-doc-formatting-guide"
-          class="<%= currentUrl.includes('/google-doc-formatting-guide') ? 'active' : '' %>"
-          >Google Doc Guide</a
-        >
-      </div>
+        <div class="legal-nav">
+          <a
+            href="/legal/terms"
+            class="<%= currentUrl.includes('/terms') ? 'active' : '' %>"
+            >Terms of Service</a
+          >
+          <a
+            href="/legal/privacy"
+            class="<%= currentUrl.includes('/privacy') ? 'active' : '' %>"
+            >Privacy Policy</a
+          >
+          <a
+            href="/legal/dmca"
+            class="<%= currentUrl.includes('/dmca') ? 'active' : '' %>"
+            >DMCA Policy</a
+          >
+        </div>
+      <% } %>
 
       <h1><%= title %></h1>
 

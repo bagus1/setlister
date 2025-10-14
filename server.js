@@ -26,6 +26,7 @@ const invitationRoutes = require("./routes/invitations");
 const bulkAddSongsRoutes = require("./routes/bulk-add-songs");
 const linkRoutes = require("./routes/links");
 const legalRoutes = require("./routes/legal");
+const helpRoutes = require("./routes/help");
 const whitelistRequestRoutes = require("./routes/whitelist-requests");
 const googleDocProcessingRoutes =
   require("./routes/google-doc-processing").router;
@@ -133,6 +134,7 @@ app.use("/songs", linkRoutes);
 app.use("/songs", require("./routes/gig-documents"));
 app.use("/songs", songRoutes);
 app.use("/legal", legalRoutes);
+app.use("/help", helpRoutes);
 app.use("/whitelist-request", whitelistRequestRoutes);
 app.use("/google-docs", googleDocProcessingRoutes);
 app.use("/venues", venueRoutes);

@@ -1,0 +1,504 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Split Recording</h1>
+                    <h2 class="h5 text-muted"><%= setlist.title %></h2>
+                </div>
+                <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Setlist
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Waveform Editor -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-scissors"></i> Mark Song Boundaries
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Waveform Container -->
+                    <div id="waveform" style="min-height: 200px;"></div>
+                    
+                    <!-- Regions Timeline -->
+                    <div id="wave-timeline" style="min-height: 20px; margin-top: 10px;"></div>
+                    
+                    <!-- Playback Controls -->
+                    <div class="mt-3 d-flex justify-content-center gap-2 align-items-center">
+                        <button id="playPauseBtn" class="btn btn-primary">
+                            <i class="bi bi-play-fill"></i> Play
+                        </button>
+                        <button id="stopBtn" class="btn btn-secondary">
+                            <i class="bi bi-stop-fill"></i> Stop
+                        </button>
+                        <div class="mx-3" style="width: 120px; text-align: center;">
+                            <span id="currentTime">0:00</span> / <span id="totalTime">0:00</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="zoom" class="mb-0">Zoom:</label>
+                            <input type="range" id="zoom" min="1" max="500" value="1" class="form-range" style="width: 150px;">
+                        </div>
+                    </div>
+                    
+                    <!-- Dynamic Instructions -->
+                    <div id="instructionBox" class="mt-3 alert alert-info">
+                        <strong><i class="bi bi-info-circle"></i> Instructions:</strong>
+                        <p class="mb-0 mt-2" id="instructionText">
+                            Click and <strong>drag</strong> across the waveform to mark where a song starts and ends (Press <kbd>ESC</kbd> to undo)
+                        </p>
+                    </div>
+                    
+                    <!-- Utility Buttons -->
+                    <div class="mt-3 d-flex gap-2 justify-content-center flex-wrap">
+                        <button id="undoBtn" onclick="undoLastRegion()" class="btn btn-outline-warning" disabled>
+                            <i class="bi bi-arrow-counterclockwise"></i> Undo Last Region <kbd>ESC</kbd>
+                        </button>
+                        <button id="autoDetectBtn" class="btn btn-outline-info">
+                            <i class="bi bi-magic"></i> Auto-Detect Silence
+                        </button>
+                        <button id="processSplitsBtn" class="btn btn-success" disabled>
+                            <i class="bi bi-scissors"></i> Process Splits
+                        </button>
+                    </div>
+                    <div id="processSplitsStatus" class="text-center mt-2">
+                        <small class="text-muted">Assign songs to regions to enable processing</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Song List Sidebar -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-music-note-list"></i> Songs in Setlist
+                    </h5>
+                </div>
+                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                    <div id="songsList">
+                        <% let songIndex = 1; %>
+                        <% setlist.sets.filter(set => set.name !== 'Maybe').forEach(set => { %>
+                            <% if (set.songs && set.songs.length > 0) { %>
+                                <h6 class="text-primary mt-3 mb-2"><%= set.name %></h6>
+                                <% set.songs.forEach(setlistSong => { %>
+                                    <div class="song-item mb-2 p-2 border rounded" 
+                                         data-song-id="<%= setlistSong.song.id %>"
+                                         data-song-index="<%= songIndex %>"
+                                         style="cursor: pointer; transition: background 0.2s;"
+                                         onclick="assignSongToRegion(<%= setlistSong.song.id %>, '<%= setlistSong.song.title.replace(/'/g, "\\'") %>', <%= songIndex %>)">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong><%= songIndex %>. <%= setlistSong.song.title %></strong>
+                                                <% if (setlistSong.song.artists && setlistSong.song.artists.length > 0) { %>
+                                                    <div class="small text-muted">
+                                                        <%= setlistSong.song.artists[0].artist.name %>
+                                                    </div>
+                                                <% } %>
+                                            </div>
+                                            <span class="badge bg-secondary" id="song-badge-<%= setlistSong.song.id %>" style="display: none;">
+                                                Assigned
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <% songIndex++; %>
+                                <% }) %>
+                            <% } %>
+                        <% }) %>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- WaveSurfer.js -->
+<script src="https://unpkg.com/wavesurfer.js@7"></script>
+<script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+<script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.min.js"></script>
+
+<style>
+.song-item:hover {
+    background: #f8f9fa !important;
+}
+
+.song-item.assigned {
+    background: #d4edda !important;
+    border-color: #28a745 !important;
+}
+
+#waveform {
+    cursor: crosshair !important;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px;
+    background: #f8f9fa;
+}
+
+/* Style the regions to be more visible */
+#waveform [data-id] {
+    border: 2px solid rgba(0, 0, 0, 0.3) !important;
+    border-radius: 4px;
+}
+
+#waveform [data-id]:hover {
+    border-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Region handles */
+#waveform [data-id] [part="region-handle"] {
+    width: 8px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+}
+
+#waveform [data-id] [part="region-handle"]:hover {
+    background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Region content label */
+#waveform [data-id] [part="region-content"] {
+    font-weight: bold;
+    font-size: 14px;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+    padding: 4px 8px;
+}
+</style>
+
+<script>
+// Initialize WaveSurfer with Regions plugin
+const wsRegions = WaveSurfer.Regions.create();
+
+const wavesurfer = WaveSurfer.create({
+    container: '#waveform',
+    waveColor: '#6f42c1',
+    progressColor: '#28a745',
+    cursorColor: '#dc3545',
+    height: 200,
+    normalize: true,
+    plugins: [
+        wsRegions,
+        WaveSurfer.Timeline.create({
+            container: '#wave-timeline'
+        })
+    ]
+});
+
+// Track regions and song assignments
+let selectedRegion = null;
+const regionSongMap = {};
+const regionCreationOrder = []; // Track regions in order of creation
+
+// Load audio file
+wavesurfer.load('<%= recording.path %>');
+
+// Update time display
+let lastDisplayedTime = -1;
+
+wavesurfer.on('ready', function() {
+    document.getElementById('totalTime').textContent = formatTime(wavesurfer.getDuration());
+    
+    // Enable drag to create regions
+    wsRegions.enableDragSelection({
+        color: 'rgba(0, 123, 255, 0.3)'
+    });
+    
+    console.log('WaveSurfer ready - you can now drag on the waveform to create regions');
+});
+
+wavesurfer.on('audioprocess', function() {
+    const currentTime = wavesurfer.getCurrentTime();
+    // Round to tenths to prevent jitter
+    const roundedTime = Math.floor(currentTime * 10) / 10;
+    
+    // Only update display if the tenths value changed
+    if (roundedTime !== lastDisplayedTime) {
+        document.getElementById('currentTime').textContent = formatTime(roundedTime);
+        lastDisplayedTime = roundedTime;
+    }
+});
+
+// Play/Pause button
+document.getElementById('playPauseBtn').addEventListener('click', function() {
+    wavesurfer.playPause();
+    const icon = this.querySelector('i');
+    if (wavesurfer.isPlaying()) {
+        icon.className = 'bi bi-pause-fill';
+        this.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+    } else {
+        icon.className = 'bi bi-play-fill';
+        this.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+    }
+});
+
+// Stop button
+document.getElementById('stopBtn').addEventListener('click', function() {
+    wavesurfer.stop();
+    const playBtn = document.getElementById('playPauseBtn');
+    playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+});
+
+// Zoom control
+document.getElementById('zoom').addEventListener('input', function(e) {
+    wavesurfer.zoom(Number(e.target.value));
+});
+
+// Region event handlers
+wsRegions.on('region-created', (region) => {
+    console.log('Region created:', region.start, '-', region.end);
+    
+    // Track in creation order
+    regionCreationOrder.push(region);
+    
+    // Auto-select the newly created region
+    selectedRegion = region;
+    
+    // Set blue color for new region
+    region.setOptions({ 
+        color: 'rgba(0, 123, 255, 0.4)'
+    });
+    
+    highlightRegion(region);
+    updateProcessButton();
+    updateUndoButton();
+    
+    // Show instruction
+    showInstruction('Now click a song on the right to assign it to this region (Press ESC to undo)');
+});
+
+wsRegions.on('region-clicked', (region, e) => {
+    e.stopPropagation();
+    
+    // Only allow selection if region not already assigned
+    if (!regionSongMap[region.id]) {
+        selectedRegion = region;
+        highlightRegion(region);
+        console.log('Region selected:', region.id);
+        showInstruction('Click a song on the right to assign it to this region');
+    } else {
+        const assignment = regionSongMap[region.id];
+        showInstruction(`This region is already assigned to "${assignment.songTitle}"`);
+    }
+});
+
+wsRegions.on('region-updated', (region) => {
+    updateProcessButton();
+});
+
+// Highlight selected region
+function highlightRegion(region) {
+    const regions = wsRegions.getRegions();
+    regions.forEach(r => {
+        if (r === region) {
+            r.setOptions({ color: 'rgba(40, 167, 69, 0.5)' });
+        } else {
+            r.setOptions({ color: 'rgba(0, 123, 255, 0.3)' });
+        }
+    });
+}
+
+// Show dynamic instruction
+function showInstruction(text) {
+    const instructionText = document.getElementById('instructionText');
+    if (instructionText) {
+        instructionText.innerHTML = text;
+    }
+}
+
+// Assign song to selected region
+function assignSongToRegion(songId, songTitle, songIndex) {
+    if (!selectedRegion) {
+        showInstruction('⚠️ Please create a region first by dragging on the waveform above');
+        return;
+    }
+    
+    // Check if this song is already assigned to a different region
+    const existingAssignment = Object.values(regionSongMap).find(a => a.songId === songId);
+    if (existingAssignment) {
+        showInstruction(`⚠️ "${songTitle}" is already assigned to another region`);
+        return;
+    }
+    
+    // Store assignment
+    regionSongMap[selectedRegion.id] = {
+        songId,
+        songTitle,
+        songIndex,
+        start: selectedRegion.start,
+        end: selectedRegion.end
+    };
+    
+    // Update region label and color
+    selectedRegion.setOptions({
+        content: `${songIndex}. ${songTitle}`,
+        color: 'rgba(40, 167, 69, 0.4)',
+        drag: false,  // Lock the region once assigned
+        resize: true   // But still allow resizing
+    });
+    
+    // Mark song as assigned
+    const songItem = document.querySelector(`[data-song-id="${songId}"]`);
+    if (songItem) {
+        songItem.classList.add('assigned');
+        const badge = document.getElementById(`song-badge-${songId}`);
+        if (badge) badge.style.display = 'inline-block';
+    }
+    
+    // Clear selection and show next instruction
+    selectedRegion = null;
+    const remainingCount = <%= setlist.sets.flatMap(s => s.songs).length %> - Object.keys(regionSongMap).length;
+    
+    if (remainingCount > 0) {
+        showInstruction(`✓ Song assigned! Now create another region for the next song (${remainingCount} remaining, Press <kbd>ESC</kbd> to undo)`);
+    } else {
+        showInstruction('✓ All songs assigned! You can now click "Process Splits" below');
+    }
+    
+    updateProcessButton();
+}
+
+// Update process button state
+function updateProcessButton() {
+    const btn = document.getElementById('processSplitsBtn');
+    const statusText = document.getElementById('processSplitsStatus')?.querySelector('small');
+    const assignedCount = Object.keys(regionSongMap).length;
+    
+    if (assignedCount > 0) {
+        btn.disabled = false;
+        if (statusText) {
+            statusText.textContent = `${assignedCount} song(s) ready to process`;
+        }
+    } else {
+        btn.disabled = true;
+        if (statusText) {
+            statusText.textContent = 'Assign songs to regions to enable processing';
+        }
+    }
+}
+
+// Update undo button state
+function updateUndoButton() {
+    const undoBtn = document.getElementById('undoBtn');
+    if (undoBtn) {
+        undoBtn.disabled = regionCreationOrder.length === 0;
+    }
+}
+
+// Process splits
+document.getElementById('processSplitsBtn').addEventListener('click', async function() {
+    if (Object.keys(regionSongMap).length === 0) {
+        alert('Please assign songs to regions first');
+        return;
+    }
+    
+    const splits = Object.values(regionSongMap).map(assignment => ({
+        songId: assignment.songId,
+        songTitle: assignment.songTitle,
+        start: Math.floor(assignment.start),
+        end: Math.floor(assignment.end),
+        duration: Math.floor(assignment.end - assignment.start)
+    }));
+    
+    // Show loading
+    this.disabled = true;
+    this.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+    
+    try {
+        const response = await fetch('/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/process', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ splits })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            alert(`Successfully split ${splits.length} songs!`);
+            window.location.href = '/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>';
+        } else {
+            throw new Error('Failed to process splits');
+        }
+    } catch (error) {
+        console.error('Processing error:', error);
+        alert('Failed to process splits. Please try again.');
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-scissors"></i> Process Splits';
+    }
+});
+
+// Auto-detect silence (simplified version)
+document.getElementById('autoDetectBtn').addEventListener('click', function() {
+    alert('Auto-detect feature coming soon! For now, please manually create regions by clicking and dragging on the waveform.');
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Escape key - undo last region
+    if (e.key === 'Escape' || e.key === 'Esc') {
+        undoLastRegion();
+    }
+});
+
+// Undo last region
+function undoLastRegion() {
+    if (regionCreationOrder.length === 0) {
+        showInstruction('⚠️ No regions to undo');
+        return;
+    }
+    
+    // Get the most recent region
+    const lastRegion = regionCreationOrder.pop();
+    
+    // If it was assigned to a song, unassign it
+    if (regionSongMap[lastRegion.id]) {
+        const assignment = regionSongMap[lastRegion.id];
+        
+        // Unmark the song
+        const songItem = document.querySelector(`[data-song-id="${assignment.songId}"]`);
+        if (songItem) {
+            songItem.classList.remove('assigned');
+            const badge = document.getElementById(`song-badge-${assignment.songId}`);
+            if (badge) badge.style.display = 'none';
+        }
+        
+        // Remove from map
+        delete regionSongMap[lastRegion.id];
+    }
+    
+    // Remove the region from waveform
+    lastRegion.remove();
+    
+    // Clear selection if this was the selected region
+    if (selectedRegion === lastRegion) {
+        selectedRegion = null;
+    }
+    
+    // Update UI
+    updateProcessButton();
+    updateUndoButton();
+    
+    const remaining = regionCreationOrder.length;
+    if (remaining > 0) {
+        showInstruction(`✓ Region removed. ${remaining} region(s) remaining (Press ESC to undo more)`);
+    } else {
+        showInstruction('Click and <strong>drag</strong> across the waveform to mark where a song starts and ends');
+    }
+}
+
+// Helper function to format time
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '0:00.0';
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    const tenths = Math.floor((seconds % 1) * 10);
+    return `${minutes}:${secs.toString().padStart(2, '0')}.${tenths}`;
+}
+</script>
+

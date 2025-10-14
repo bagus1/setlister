@@ -27,7 +27,8 @@ const bulkAddSongsRoutes = require("./routes/bulk-add-songs");
 const linkRoutes = require("./routes/links");
 const legalRoutes = require("./routes/legal");
 const whitelistRequestRoutes = require("./routes/whitelist-requests");
-const googleDocProcessingRoutes = require("./routes/google-doc-processing").router;
+const googleDocProcessingRoutes =
+  require("./routes/google-doc-processing").router;
 const venueRoutes = require("./routes/venues");
 
 const app = express();
@@ -42,6 +43,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 app.use(methodOverride("_method"));
 app.use(express.static("public"));
+app.use("/uploads", express.static("uploads"));
 
 // Session configuration
 app.use(

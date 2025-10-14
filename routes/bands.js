@@ -147,6 +147,160 @@ function isSetlistEditable(setlist) {
 // PUBLIC ROUTES (no authentication required)
 // These routes are accessible without login
 
+// GET /bands/:bandId/setlists/:setlistId/recordings - List recordings for a setlist
+router.get(
+  "/:bandId/setlists/:setlistId/recordings",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const userId = req.session.user.id;
+
+      // Get setlist
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          recordings: {
+            include: {
+              creator: {
+                select: {
+                  id: true,
+                  username: true,
+                },
+              },
+              splits: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.bandId !== bandId) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.band.members.length === 0) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      res.render("setlists/recordings-index", {
+        title: `Recordings - ${setlist.title}`,
+        pageTitle: `Recordings`,
+        marqueeTitle: setlist.title,
+        setlist,
+        recordings: setlist.recordings,
+        hasBandHeader: true,
+        band: setlist.band,
+      });
+    } catch (error) {
+      logger.logError("Recordings index error", error);
+      req.flash("error", "Error loading recordings");
+      res.redirect("/bands");
+    }
+  }
+);
+
+// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId - View/play a specific recording
+router.get(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get setlist
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+        },
+      });
+
+      if (
+        !setlist ||
+        setlist.bandId !== bandId ||
+        setlist.band.members.length === 0
+      ) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      // Get recording
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+        include: {
+          creator: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+          splits: {
+            include: {
+              song: {
+                select: {
+                  id: true,
+                  title: true,
+                },
+              },
+            },
+            orderBy: {
+              startTime: "asc",
+            },
+          },
+        },
+      });
+
+      if (!recording || recording.setlistId !== setlistId) {
+        req.flash("error", "Recording not found");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      res.render("setlists/recording-player", {
+        title: `Recording - ${setlist.title}`,
+        pageTitle: `Recording`,
+        marqueeTitle: setlist.title,
+        setlist,
+        recording,
+        hasBandHeader: true,
+        band: setlist.band,
+      });
+    } catch (error) {
+      logger.logError("Recording player error", error);
+      req.flash("error", "Error loading recording");
+      res.redirect("/bands");
+    }
+  }
+);
+
 // GET /bands/:bandId/setlists/:setlistId/rehearsal - Public rehearsal view
 router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
   try {
@@ -1167,280 +1321,282 @@ function extractYouTubeVideoId(url) {
 }
 
 // GET /bands/:bandId/setlists/:setlistId/midi - Public MIDI playlist view
-router.get(
-  "/:bandId/setlists/:setlistId/midi",
-  async (req, res) => {
-    try {
-      const bandId = parseInt(req.params.bandId);
-      const setlistId = parseInt(req.params.setlistId);
+router.get("/:bandId/setlists/:setlistId/midi", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
 
-      const setlist = await prisma.setlist.findUnique({
-        where: { id: setlistId },
-        include: {
-          band: {
-            select: {
-              id: true,
-              name: true,
-            },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
           },
-          sets: {
-            include: {
-              songs: {
-                include: {
-                  song: {
-                    include: {
-                      artists: {
-                        include: {
-                          artist: true,
-                        },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
                       },
-                      vocalist: true,
-                      links: {
-                        where: { type: "midi" },
-                      },
+                    },
+                    vocalist: true,
+                    links: {
+                      where: { type: "midi" },
                     },
                   },
                 },
-                orderBy: {
-                  order: "asc",
-                },
+              },
+              orderBy: {
+                order: "asc",
               },
             },
-            orderBy: {
-              order: "asc",
-            },
+          },
+          orderBy: {
+            order: "asc",
           },
         },
-      });
+      },
+    });
 
-      if (!setlist) {
-        return res.status(404).send("Setlist not found");
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Load BandSong preferences for the band
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
+      select: {
+        songId: true,
+        midi: true,
+      },
+    });
+
+    // Create a map of songId -> preferred MIDI URL
+    const bandSongMap = {};
+    bandSongs.forEach((bandSong) => {
+      if (bandSong.midi) {
+        bandSongMap[bandSong.songId] = { midi: bandSong.midi };
       }
+    });
 
-      // Verify the setlist belongs to the specified band
-      if (setlist.band.id !== bandId) {
-        return res.status(404).send("Setlist not found");
-      }
+    // Collect MIDI links using preferred links when available
+    const midiLinks = [];
 
-      // Load BandSong preferences for the band
-      const bandSongs = await prisma.bandSong.findMany({
-        where: { bandId: setlist.band.id },
-        select: {
-          songId: true,
-          midi: true,
-        },
-      });
+    setlist.sets.forEach((set) => {
+      if (set.songs && set.name !== "Maybe") {
+        set.songs.forEach((setlistSong) => {
+          if (
+            setlistSong.song &&
+            setlistSong.song.links &&
+            setlistSong.song.links.length > 0
+          ) {
+            const songId = setlistSong.song.id;
+            const bandSong = bandSongMap[songId];
 
-      // Create a map of songId -> preferred MIDI URL
-      const bandSongMap = {};
-      bandSongs.forEach((bandSong) => {
-        if (bandSong.midi) {
-          bandSongMap[bandSong.songId] = { midi: bandSong.midi };
-        }
-      });
+            // Get available MIDI links
+            const availableMidiLinks = setlistSong.song.links.filter(
+              (link) => link.type === "midi"
+            );
 
-      // Collect MIDI links using preferred links when available
-      const midiLinks = [];
+            if (availableMidiLinks.length > 0) {
+              let selectedLink = null;
 
-      setlist.sets.forEach((set) => {
-        if (set.songs && set.name !== "Maybe") {
-          set.songs.forEach((setlistSong) => {
-            if (setlistSong.song && setlistSong.song.links && setlistSong.song.links.length > 0) {
-              const songId = setlistSong.song.id;
-              const bandSong = bandSongMap[songId];
+              // Use preferred MIDI link if available
+              if (bandSong?.midi) {
+                selectedLink = availableMidiLinks.find(
+                  (link) => link.url === bandSong.midi
+                );
+              }
 
-              // Get available MIDI links
-              const availableMidiLinks = setlistSong.song.links.filter(
-                (link) => link.type === "midi"
-              );
+              // Fallback to first available if no preference or preferred not found
+              if (!selectedLink) {
+                selectedLink = availableMidiLinks[0];
+              }
 
-              if (availableMidiLinks.length > 0) {
-                let selectedLink = null;
-
-                // Use preferred MIDI link if available
-                if (bandSong?.midi) {
-                  selectedLink = availableMidiLinks.find(
-                    (link) => link.url === bandSong.midi
-                  );
-                }
-
-                // Fallback to first available if no preference or preferred not found
-                if (!selectedLink) {
-                  selectedLink = availableMidiLinks[0];
-                }
-
-                if (selectedLink) {
-                  midiLinks.push({
-                    songTitle: setlistSong.song.title,
-                    artist:
-                      setlistSong.song.artists &&
-                      setlistSong.song.artists.length > 0
-                        ? setlistSong.song.artists[0].artist.name
-                        : null,
-                    set: set.name,
-                    order: setlistSong.order,
-                    url: selectedLink.url,
-                    description: selectedLink.description || 'MIDI File',
-                  });
-                }
+              if (selectedLink) {
+                midiLinks.push({
+                  songTitle: setlistSong.song.title,
+                  artist:
+                    setlistSong.song.artists &&
+                    setlistSong.song.artists.length > 0
+                      ? setlistSong.song.artists[0].artist.name
+                      : null,
+                  set: set.name,
+                  order: setlistSong.order,
+                  url: selectedLink.url,
+                  description: selectedLink.description || "MIDI File",
+                });
               }
             }
-          });
-        }
-      });
+          }
+        });
+      }
+    });
 
-      res.render("setlists/midi-playlist", {
-        title: `MIDI Playlist - ${setlist.title}`,
-        pageTitle: `MIDI Playlist - ${setlist.title}`,
-        setlist,
-        band: setlist.band,
-        midiLinks,
-        user: req.session.user || null,
-      });
-    } catch (error) {
-      logger.logError("MIDI playlist error", error);
-      res.status(500).send("Error loading MIDI playlist");
-    }
+    res.render("setlists/midi-playlist", {
+      title: `MIDI Playlist - ${setlist.title}`,
+      pageTitle: `MIDI Playlist - ${setlist.title}`,
+      setlist,
+      band: setlist.band,
+      midiLinks,
+      user: req.session.user || null,
+    });
+  } catch (error) {
+    logger.logError("MIDI playlist error", error);
+    res.status(500).send("Error loading MIDI playlist");
   }
-);
+});
 
 // GET /bands/:bandId/setlists/:setlistId/leadsheets - Public leadsheet playlist view
-router.get(
-  "/:bandId/setlists/:setlistId/leadsheets",
-  async (req, res) => {
-    try {
-      const bandId = parseInt(req.params.bandId);
-      const setlistId = parseInt(req.params.setlistId);
+router.get("/:bandId/setlists/:setlistId/leadsheets", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
 
-      const setlist = await prisma.setlist.findUnique({
-        where: { id: setlistId },
-        include: {
-          band: {
-            select: {
-              id: true,
-              name: true,
-            },
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
           },
-          sets: {
-            include: {
-              songs: {
-                include: {
-                  song: {
-                    include: {
-                      artists: {
-                        include: {
-                          artist: true,
-                        },
+        },
+        sets: {
+          include: {
+            songs: {
+              include: {
+                song: {
+                  include: {
+                    artists: {
+                      include: {
+                        artist: true,
                       },
-                      vocalist: true,
-                      links: {
-                        where: { type: "pdf" },
-                      },
+                    },
+                    vocalist: true,
+                    links: {
+                      where: { type: "pdf" },
                     },
                   },
                 },
-                orderBy: {
-                  order: "asc",
-                },
+              },
+              orderBy: {
+                order: "asc",
               },
             },
-            orderBy: {
-              order: "asc",
-            },
+          },
+          orderBy: {
+            order: "asc",
           },
         },
-      });
+      },
+    });
 
-      if (!setlist) {
-        return res.status(404).send("Setlist not found");
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Verify the setlist belongs to the specified band
+    if (setlist.band.id !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Load BandSong preferences for the band
+    const bandSongs = await prisma.bandSong.findMany({
+      where: { bandId: setlist.band.id },
+      select: {
+        songId: true,
+        leadsheet: true,
+      },
+    });
+
+    // Create a map of songId -> preferred leadsheet URL
+    const bandSongMap = {};
+    bandSongs.forEach((bandSong) => {
+      if (bandSong.leadsheet) {
+        bandSongMap[bandSong.songId] = { leadsheet: bandSong.leadsheet };
       }
+    });
 
-      // Verify the setlist belongs to the specified band
-      if (setlist.band.id !== bandId) {
-        return res.status(404).send("Setlist not found");
-      }
+    // Collect leadsheet links using preferred links when available
+    const leadsheetLinks = [];
 
-      // Load BandSong preferences for the band
-      const bandSongs = await prisma.bandSong.findMany({
-        where: { bandId: setlist.band.id },
-        select: {
-          songId: true,
-          leadsheet: true,
-        },
-      });
+    setlist.sets.forEach((set) => {
+      if (set.songs && set.name !== "Maybe") {
+        set.songs.forEach((setlistSong) => {
+          if (
+            setlistSong.song &&
+            setlistSong.song.links &&
+            setlistSong.song.links.length > 0
+          ) {
+            const songId = setlistSong.song.id;
+            const bandSong = bandSongMap[songId];
 
-      // Create a map of songId -> preferred leadsheet URL
-      const bandSongMap = {};
-      bandSongs.forEach((bandSong) => {
-        if (bandSong.leadsheet) {
-          bandSongMap[bandSong.songId] = { leadsheet: bandSong.leadsheet };
-        }
-      });
+            // Get available leadsheet links
+            const availableLeadsheetLinks = setlistSong.song.links.filter(
+              (link) => link.type === "pdf"
+            );
 
-      // Collect leadsheet links using preferred links when available
-      const leadsheetLinks = [];
+            if (availableLeadsheetLinks.length > 0) {
+              let selectedLink = null;
 
-      setlist.sets.forEach((set) => {
-        if (set.songs && set.name !== "Maybe") {
-          set.songs.forEach((setlistSong) => {
-            if (setlistSong.song && setlistSong.song.links && setlistSong.song.links.length > 0) {
-              const songId = setlistSong.song.id;
-              const bandSong = bandSongMap[songId];
+              // Use preferred leadsheet link if available
+              if (bandSong?.leadsheet) {
+                selectedLink = availableLeadsheetLinks.find(
+                  (link) => link.url === bandSong.leadsheet
+                );
+              }
 
-              // Get available leadsheet links
-              const availableLeadsheetLinks = setlistSong.song.links.filter(
-                (link) => link.type === "pdf"
-              );
+              // Fallback to first available if no preference or preferred not found
+              if (!selectedLink) {
+                selectedLink = availableLeadsheetLinks[0];
+              }
 
-              if (availableLeadsheetLinks.length > 0) {
-                let selectedLink = null;
-
-                // Use preferred leadsheet link if available
-                if (bandSong?.leadsheet) {
-                  selectedLink = availableLeadsheetLinks.find(
-                    (link) => link.url === bandSong.leadsheet
-                  );
-                }
-
-                // Fallback to first available if no preference or preferred not found
-                if (!selectedLink) {
-                  selectedLink = availableLeadsheetLinks[0];
-                }
-
-                if (selectedLink) {
-                  leadsheetLinks.push({
-                    songTitle: setlistSong.song.title,
-                    artist:
-                      setlistSong.song.artists &&
-                      setlistSong.song.artists.length > 0
-                        ? setlistSong.song.artists[0].artist.name
-                        : null,
-                    set: set.name,
-                    order: setlistSong.order,
-                    url: selectedLink.url,
-                    description: selectedLink.description || 'Lead Sheet',
-                  });
-                }
+              if (selectedLink) {
+                leadsheetLinks.push({
+                  songTitle: setlistSong.song.title,
+                  artist:
+                    setlistSong.song.artists &&
+                    setlistSong.song.artists.length > 0
+                      ? setlistSong.song.artists[0].artist.name
+                      : null,
+                  set: set.name,
+                  order: setlistSong.order,
+                  url: selectedLink.url,
+                  description: selectedLink.description || "Lead Sheet",
+                });
               }
             }
-          });
-        }
-      });
+          }
+        });
+      }
+    });
 
-      res.render("setlists/leadsheet-playlist", {
-        title: `Lead Sheets - ${setlist.title}`,
-        pageTitle: `Lead Sheets - ${setlist.title}`,
-        setlist,
-        band: setlist.band,
-        leadsheetLinks,
-        user: req.session.user || null,
-      });
-    } catch (error) {
-      logger.logError("Leadsheet playlist error", error);
-      res.status(500).send("Error loading leadsheet playlist");
-    }
+    res.render("setlists/leadsheet-playlist", {
+      title: `Lead Sheets - ${setlist.title}`,
+      pageTitle: `Lead Sheets - ${setlist.title}`,
+      setlist,
+      band: setlist.band,
+      leadsheetLinks,
+      user: req.session.user || null,
+    });
+  } catch (error) {
+    logger.logError("Leadsheet playlist error", error);
+    res.status(500).send("Error loading leadsheet playlist");
   }
-);
+});
 
 // GET /bands/:bandId/setlists/:setlistId/leadsheets/print - Print-friendly leadsheet view
 router.get(
@@ -1521,7 +1677,11 @@ router.get(
       setlist.sets.forEach((set) => {
         if (set.songs && set.name !== "Maybe") {
           set.songs.forEach((setlistSong) => {
-            if (setlistSong.song && setlistSong.song.links && setlistSong.song.links.length > 0) {
+            if (
+              setlistSong.song &&
+              setlistSong.song.links &&
+              setlistSong.song.links.length > 0
+            ) {
               const songId = setlistSong.song.id;
               const bandSong = bandSongMap[songId];
 
@@ -1556,7 +1716,7 @@ router.get(
                     set: set.name,
                     order: setlistSong.order,
                     url: selectedLink.url,
-                    description: selectedLink.description || 'Lead Sheet',
+                    description: selectedLink.description || "Lead Sheet",
                   });
                 }
               }
@@ -2053,7 +2213,10 @@ router.post(
 
       const band = result;
 
-      req.flash("success", "Band created successfully! The next thing to do is to add some songs your band might play using any of the 4 methods mentioned below.");
+      req.flash(
+        "success",
+        "Band created successfully! The next thing to do is to add some songs your band might play using any of the 4 methods mentioned below."
+      );
       res.redirect(`/bands/${band.id}`);
     } catch (error) {
       console.error("Create band error:", error);
@@ -2732,9 +2895,21 @@ router.post("/:id/songs/new", async (req, res) => {
   try {
     const bandId = parseInt(req.params.id);
     const userId = req.session.user.id;
-    const { 
-      title, artist, vocalist, key, minutes, seconds, bpm, style, makePrivate,
-      content, docType, linkType, linkUrl, linkDescription 
+    const {
+      title,
+      artist,
+      vocalist,
+      key,
+      minutes,
+      seconds,
+      bpm,
+      style,
+      makePrivate,
+      content,
+      docType,
+      linkType,
+      linkUrl,
+      linkDescription,
     } = req.body;
 
     // Check band membership
@@ -2861,7 +3036,11 @@ router.post("/:id/songs/new", async (req, res) => {
 
         if (!existingVocalist) {
           existingVocalist = await prisma.vocalist.create({
-            data: { name: vocalist.trim(), createdAt: new Date(), updatedAt: new Date() },
+            data: {
+              name: vocalist.trim(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
           });
         }
         vocalistId = existingVocalist.id;
@@ -2871,18 +3050,43 @@ router.post("/:id/songs/new", async (req, res) => {
       let enumKey = null;
       if (key && key.trim()) {
         const keyMap = {
-          "C#": "C_", "Db": "Db", "D": "D", "D#": "D_", "Eb": "Eb",
-          "E": "E", "F": "F", "F#": "F_", "Gb": "Gb", "G": "G",
-          "G#": "G_", "Ab": "Ab", "A": "A", "A#": "A_", "Bb": "Bb", "B": "B",
-          "C#m": "C_m", "Dm": "Dm", "D#m": "D_m", "Ebm": "Ebm",
-          "Em": "Em", "Fm": "Fm", "F#m": "F_m", "Gm": "Gm",
-          "G#m": "G_m", "Am": "Am", "A#m": "A_m", "Bbm": "Bbm", "Bm": "Bm", "Cm": "Cm",
+          "C#": "C_",
+          Db: "Db",
+          D: "D",
+          "D#": "D_",
+          Eb: "Eb",
+          E: "E",
+          F: "F",
+          "F#": "F_",
+          Gb: "Gb",
+          G: "G",
+          "G#": "G_",
+          Ab: "Ab",
+          A: "A",
+          "A#": "A_",
+          Bb: "Bb",
+          B: "B",
+          "C#m": "C_m",
+          Dm: "Dm",
+          "D#m": "D_m",
+          Ebm: "Ebm",
+          Em: "Em",
+          Fm: "Fm",
+          "F#m": "F_m",
+          Gm: "Gm",
+          "G#m": "G_m",
+          Am: "Am",
+          "A#m": "A_m",
+          Bbm: "Bbm",
+          Bm: "Bm",
+          Cm: "Cm",
         };
         enumKey = keyMap[key] || null;
       }
 
       // Calculate total time in seconds
-      const totalTime = (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
+      const totalTime =
+        (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
       const bpmValue = bpm && bpm.trim() ? parseInt(bpm) : null;
 
       // Check if user can make private songs
@@ -2890,8 +3094,9 @@ router.post("/:id/songs/new", async (req, res) => {
         where: { id: userId },
         select: { canMakePrivate: true },
       });
-      
-      const isPrivate = currentUser && currentUser.canMakePrivate && makePrivate === 'true';
+
+      const isPrivate =
+        currentUser && currentUser.canMakePrivate && makePrivate === "true";
 
       song = await prisma.song.create({
         data: {
@@ -2992,7 +3197,10 @@ router.post("/:id/songs/new", async (req, res) => {
           createdById: userId,
           type: mappedType,
           url: linkUrl.trim(),
-          description: linkDescription && linkDescription.trim() ? linkDescription.trim() : null,
+          description:
+            linkDescription && linkDescription.trim()
+              ? linkDescription.trim()
+              : null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -4453,7 +4661,7 @@ router.get("/:id/songs/:songId", async (req, res) => {
             },
           },
           orderBy: {
-            createdAt: 'desc',
+            createdAt: "desc",
           },
         },
         gigDocuments: {
@@ -4697,12 +4905,36 @@ router.post("/:id/songs/:songId/update", requireAuth, async (req, res) => {
     let enumKey = null;
     if (key && key.trim()) {
       const keyMap = {
-        "C#": "C_", "Db": "Db", "D": "D", "D#": "D_", "Eb": "Eb",
-        "E": "E", "F": "F", "F#": "F_", "Gb": "Gb", "G": "G",
-        "G#": "G_", "Ab": "Ab", "A": "A", "A#": "A_", "Bb": "Bb", "B": "B",
-        "C#m": "C_m", "Dm": "Dm", "D#m": "D_m", "Ebm": "Ebm",
-        "Em": "Em", "Fm": "Fm", "F#m": "F_m", "Gm": "Gm",
-        "G#m": "G_m", "Am": "Am", "A#m": "A_m", "Bbm": "Bbm", "Bm": "Bm", "Cm": "Cm",
+        "C#": "C_",
+        Db: "Db",
+        D: "D",
+        "D#": "D_",
+        Eb: "Eb",
+        E: "E",
+        F: "F",
+        "F#": "F_",
+        Gb: "Gb",
+        G: "G",
+        "G#": "G_",
+        Ab: "Ab",
+        A: "A",
+        "A#": "A_",
+        Bb: "Bb",
+        B: "B",
+        "C#m": "C_m",
+        Dm: "Dm",
+        "D#m": "D_m",
+        Ebm: "Ebm",
+        Em: "Em",
+        Fm: "Fm",
+        "F#m": "F_m",
+        Gm: "Gm",
+        "G#m": "G_m",
+        Am: "Am",
+        "A#m": "A_m",
+        Bbm: "Bbm",
+        Bm: "Bm",
+        Cm: "Cm",
       };
       enumKey = keyMap[key] || null;
     }
@@ -4716,7 +4948,11 @@ router.post("/:id/songs/:songId/update", requireAuth, async (req, res) => {
 
       if (!existingArtist) {
         existingArtist = await prisma.artist.create({
-          data: { name: artist.trim(), createdAt: new Date(), updatedAt: new Date() },
+          data: {
+            name: artist.trim(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
         });
       }
       artistId = existingArtist.id;
@@ -4731,7 +4967,11 @@ router.post("/:id/songs/:songId/update", requireAuth, async (req, res) => {
 
       if (!existingVocalist) {
         existingVocalist = await prisma.vocalist.create({
-          data: { name: vocalist.trim(), createdAt: new Date(), updatedAt: new Date() },
+          data: {
+            name: vocalist.trim(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
         });
       }
       vocalistId = existingVocalist.id;
@@ -4802,7 +5042,7 @@ router.get("/:id/songs/:songId/links/:linkId", async (req, res) => {
         vocalist: true,
         links: {
           orderBy: {
-            createdAt: 'desc',
+            createdAt: "desc",
           },
         },
       },
@@ -4814,8 +5054,8 @@ router.get("/:id/songs/:songId/links/:linkId", async (req, res) => {
     }
 
     // Find the specific link being viewed
-    const link = song.links.find(l => l.id === linkId);
-    
+    const link = song.links.find((l) => l.id === linkId);
+
     if (!link) {
       req.flash("error", "Link not found");
       return res.redirect(`/bands/${bandId}/songs/${songId}`);
@@ -5133,7 +5373,7 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
                 },
               },
               orderBy: {
-                createdAt: 'desc',
+                createdAt: "desc",
               },
             },
           },
@@ -5149,10 +5389,12 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
 
     // Check if this is a print request
     const isPrintRequest = req.query.print === "true";
-    
+
     // Check if user came from rehearsal view
     const fromRehearsal = req.query.from === "rehearsal";
-    const setlistId = req.query.setlistId ? parseInt(req.query.setlistId) : null;
+    const setlistId = req.query.setlistId
+      ? parseInt(req.query.setlistId)
+      : null;
 
     const getTypeIcon = (type) => {
       const icons = {
@@ -5304,162 +5546,198 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
 });
 
 // GET /bands/:id/songs/:songId/docs/:docId/edit - Edit gig doc in band context
-router.get("/:id/songs/:songId/docs/:docId/edit", requireAuth, async (req, res) => {
-  try {
-    const bandId = parseInt(req.params.id);
-    const songId = parseInt(req.params.songId);
-    const docId = parseInt(req.params.docId);
-    const userId = req.session.user.id;
+router.get(
+  "/:id/songs/:songId/docs/:docId/edit",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.id);
+      const songId = parseInt(req.params.songId);
+      const docId = parseInt(req.params.docId);
+      const userId = req.session.user.id;
 
-    const band = await verifyBandAccess(bandId, userId);
-    if (!band) {
-      req.flash("error", "Band not found or you don't have permission");
-      return res.redirect("/bands");
-    }
+      const band = await verifyBandAccess(bandId, userId);
+      if (!band) {
+        req.flash("error", "Band not found or you don't have permission");
+        return res.redirect("/bands");
+      }
 
-    const gigDocument = await prisma.gigDocument.findUnique({
-      where: { id: docId },
-      include: {
-        song: {
-          include: {
-            artists: {
-              include: {
-                artist: true,
+      const gigDocument = await prisma.gigDocument.findUnique({
+        where: { id: docId },
+        include: {
+          song: {
+            include: {
+              artists: {
+                include: {
+                  artist: true,
+                },
               },
             },
           },
+          creator: true,
         },
-        creator: true,
-      },
-    });
+      });
 
-    if (!gigDocument || gigDocument.song.id !== songId) {
-      req.flash("error", "Document not found");
-      return res.redirect(`/bands/${bandId}/songs/${songId}`);
-    }
+      if (!gigDocument || gigDocument.song.id !== songId) {
+        req.flash("error", "Document not found");
+        return res.redirect(`/bands/${bandId}/songs/${songId}`);
+      }
 
-    // Check if user is the creator or has permission
-    if (gigDocument.createdById !== userId && req.session.user.role !== 'admin' && req.session.user.role !== 'moderator') {
-      req.flash("error", "You don't have permission to edit this document");
-      return res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
-    }
+      // Check if user is the creator or has permission
+      if (
+        gigDocument.createdById !== userId &&
+        req.session.user.role !== "admin" &&
+        req.session.user.role !== "moderator"
+      ) {
+        req.flash("error", "You don't have permission to edit this document");
+        return res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
+      }
 
-    const getTypeDisplayName = (type) => {
-      const names = {
-        chords: "Chords",
-        "bass-tab": "Bass Tab",
-        "guitar-tab": "Guitar Tab",
-        lyrics: "Lyrics",
+      const getTypeDisplayName = (type) => {
+        const names = {
+          chords: "Chords",
+          "bass-tab": "Bass Tab",
+          "guitar-tab": "Guitar Tab",
+          lyrics: "Lyrics",
+        };
+        return names[type] || type;
       };
-      return names[type] || type;
-    };
 
-    res.render("bands/songs/docs/edit", {
-      title: `Edit ${getTypeDisplayName(gigDocument.type)} - ${gigDocument.song.title}`,
-      pageTitle: "Edit Music Stand Document",
-      marqueeTitle: gigDocument.song.title,
-      band,
-      gigDocument,
-      getTypeDisplayName,
-      hasBandHeader: false,
-    });
-  } catch (error) {
-    logger.logError("Band gig doc edit form error", error);
-    req.flash("error", "Error loading edit form");
-    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}`);
+      res.render("bands/songs/docs/edit", {
+        title: `Edit ${getTypeDisplayName(gigDocument.type)} - ${gigDocument.song.title}`,
+        pageTitle: "Edit Music Stand Document",
+        marqueeTitle: gigDocument.song.title,
+        band,
+        gigDocument,
+        getTypeDisplayName,
+        hasBandHeader: false,
+      });
+    } catch (error) {
+      logger.logError("Band gig doc edit form error", error);
+      req.flash("error", "Error loading edit form");
+      res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}`);
+    }
   }
-});
+);
 
 // POST /bands/:id/songs/:songId/docs/:docId/update - Update gig doc in band context
-router.post("/:id/songs/:songId/docs/:docId/update", requireAuth, async (req, res) => {
-  try {
-    const bandId = parseInt(req.params.id);
-    const songId = parseInt(req.params.songId);
-    const docId = parseInt(req.params.docId);
-    const userId = req.session.user.id;
+router.post(
+  "/:id/songs/:songId/docs/:docId/update",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.id);
+      const songId = parseInt(req.params.songId);
+      const docId = parseInt(req.params.docId);
+      const userId = req.session.user.id;
 
-    const band = await verifyBandAccess(bandId, userId);
-    if (!band) {
-      req.flash("error", "Band not found or you don't have permission");
-      return res.redirect("/bands");
+      const band = await verifyBandAccess(bandId, userId);
+      if (!band) {
+        req.flash("error", "Band not found or you don't have permission");
+        return res.redirect("/bands");
+      }
+
+      const gigDocument = await prisma.gigDocument.findUnique({
+        where: { id: docId },
+        include: {
+          song: true,
+        },
+      });
+
+      if (!gigDocument || gigDocument.song.id !== songId) {
+        req.flash("error", "Document not found");
+        return res.redirect(`/bands/${bandId}/songs/${songId}`);
+      }
+
+      // Check if user is the creator or has permission
+      if (
+        gigDocument.createdById !== userId &&
+        req.session.user.role !== "admin" &&
+        req.session.user.role !== "moderator"
+      ) {
+        req.flash("error", "You don't have permission to edit this document");
+        return res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
+      }
+
+      const { content } = req.body;
+
+      await prisma.gigDocument.update({
+        where: { id: docId },
+        data: {
+          content: content ? content.trim() : null,
+          updatedAt: new Date(),
+        },
+      });
+
+      req.flash("success", "Music Stand document updated successfully");
+      res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
+    } catch (error) {
+      logger.logError("Band gig doc update error", error);
+      req.flash("error", "Error updating document");
+      res.redirect(
+        `/bands/${req.params.id}/songs/${req.params.songId}/docs/${req.params.docId}/edit`
+      );
     }
-
-    const gigDocument = await prisma.gigDocument.findUnique({
-      where: { id: docId },
-      include: {
-        song: true,
-      },
-    });
-
-    if (!gigDocument || gigDocument.song.id !== songId) {
-      req.flash("error", "Document not found");
-      return res.redirect(`/bands/${bandId}/songs/${songId}`);
-    }
-
-    // Check if user is the creator or has permission
-    if (gigDocument.createdById !== userId && req.session.user.role !== 'admin' && req.session.user.role !== 'moderator') {
-      req.flash("error", "You don't have permission to edit this document");
-      return res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
-    }
-
-    const { content } = req.body;
-
-    await prisma.gigDocument.update({
-      where: { id: docId },
-      data: {
-        content: content ? content.trim() : null,
-        updatedAt: new Date(),
-      },
-    });
-
-    req.flash("success", "Music Stand document updated successfully");
-    res.redirect(`/bands/${bandId}/songs/${songId}/docs/${docId}`);
-  } catch (error) {
-    logger.logError("Band gig doc update error", error);
-    req.flash("error", "Error updating document");
-    res.redirect(`/bands/${req.params.id}/songs/${req.params.songId}/docs/${req.params.docId}/edit`);
   }
-});
+);
 
 // DELETE /bands/:id/songs/:songId/docs/:docId - Delete gig doc in band context
-router.delete("/:id/songs/:songId/docs/:docId", requireAuth, async (req, res) => {
-  try {
-    const bandId = parseInt(req.params.id);
-    const songId = parseInt(req.params.songId);
-    const docId = parseInt(req.params.docId);
-    const userId = req.session.user.id;
+router.delete(
+  "/:id/songs/:songId/docs/:docId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.id);
+      const songId = parseInt(req.params.songId);
+      const docId = parseInt(req.params.docId);
+      const userId = req.session.user.id;
 
-    const band = await verifyBandAccess(bandId, userId);
-    if (!band) {
-      return res.status(403).json({ success: false, error: "Band not found or you don't have permission" });
+      const band = await verifyBandAccess(bandId, userId);
+      if (!band) {
+        return res.status(403).json({
+          success: false,
+          error: "Band not found or you don't have permission",
+        });
+      }
+
+      const gigDocument = await prisma.gigDocument.findUnique({
+        where: { id: docId },
+        include: {
+          song: true,
+        },
+      });
+
+      if (!gigDocument || gigDocument.song.id !== songId) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Document not found" });
+      }
+
+      // Check if user is the creator or has permission
+      if (
+        gigDocument.createdById !== userId &&
+        req.session.user.role !== "admin" &&
+        req.session.user.role !== "moderator"
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "You don't have permission to delete this document",
+        });
+      }
+
+      await prisma.gigDocument.delete({
+        where: { id: docId },
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.logError("Band gig doc delete error", error);
+      res
+        .status(500)
+        .json({ success: false, error: "Error deleting document" });
     }
-
-    const gigDocument = await prisma.gigDocument.findUnique({
-      where: { id: docId },
-      include: {
-        song: true,
-      },
-    });
-
-    if (!gigDocument || gigDocument.song.id !== songId) {
-      return res.status(404).json({ success: false, error: "Document not found" });
-    }
-
-    // Check if user is the creator or has permission
-    if (gigDocument.createdById !== userId && req.session.user.role !== 'admin' && req.session.user.role !== 'moderator') {
-      return res.status(403).json({ success: false, error: "You don't have permission to delete this document" });
-    }
-
-    await prisma.gigDocument.delete({
-      where: { id: docId },
-    });
-
-    res.json({ success: true });
-  } catch (error) {
-    logger.logError("Band gig doc delete error", error);
-    res.status(500).json({ success: false, error: "Error deleting document" });
   }
-});
+);
 
 // POST /bands/:id/new-list - Process new list creation
 router.post("/:id/new-list", async (req, res) => {
@@ -5555,8 +5833,14 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
     console.log("=== QUICKSET CONFIRM PAGE ACCESSED ===");
     console.log("Band ID from URL:", bandId);
     console.log("Session has quickSetData:", !!req.session.quickSetData);
-    console.log("Session quickSetData bandId:", req.session.quickSetData?.bandId);
-    console.log("Session quickSetData keys:", req.session.quickSetData ? Object.keys(req.session.quickSetData) : "none");
+    console.log(
+      "Session quickSetData bandId:",
+      req.session.quickSetData?.bandId
+    );
+    console.log(
+      "Session quickSetData keys:",
+      req.session.quickSetData ? Object.keys(req.session.quickSetData) : "none"
+    );
     console.log("=== END SESSION DEBUG ===");
 
     // Check if we have session data
@@ -7452,9 +7736,7 @@ router.get("/:id/opportunities", requireAuth, async (req, res) => {
     }
 
     // Check if user is a member of the band
-    const isMember = band.members.some(
-      (member) => member.user.id === userId
-    );
+    const isMember = band.members.some((member) => member.user.id === userId);
     if (!isMember) {
       req.flash("error", "You are not a member of this band");
       return res.redirect("/bands");
@@ -7512,73 +7794,77 @@ router.get("/:id/opportunities", requireAuth, async (req, res) => {
 });
 
 // POST /bands/:bandId/opportunities/:opportunityId/delete - Delete an opportunity
-router.post("/:bandId/opportunities/:opportunityId/delete", requireAuth, async (req, res) => {
-  try {
-    const { bandId, opportunityId } = req.params;
-    const userId = req.session.user.id;
+router.post(
+  "/:bandId/opportunities/:opportunityId/delete",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { bandId, opportunityId } = req.params;
+      const userId = req.session.user.id;
 
-    // Get band with members to check access
-    const band = await prisma.band.findUnique({
-      where: { id: parseInt(bandId) },
-      include: {
-        members: {
-          include: {
-            user: {
-              select: { id: true, username: true },
+      // Get band with members to check access
+      const band = await prisma.band.findUnique({
+        where: { id: parseInt(bandId) },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: { id: true, username: true },
+              },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!band) {
-      req.flash("error", "Band not found");
-      return res.redirect("/bands");
-    }
-
-    // Check if user is a member of the band
-    const isMember = band.members.some(
-      (member) => member.user.id === userId
-    );
-    if (!isMember) {
-      req.flash("error", "You don't have permission to access this band");
-      return res.redirect("/bands");
-    }
-
-    // Get the opportunity to verify it belongs to this band
-    const opportunity = await prisma.opportunity.findUnique({
-      where: { id: parseInt(opportunityId) },
-      include: {
-        venue: {
-          select: { name: true }
-        }
+      if (!band) {
+        req.flash("error", "Band not found");
+        return res.redirect("/bands");
       }
-    });
 
-    if (!opportunity) {
-      req.flash("error", "Opportunity not found");
-      return res.redirect(`/bands/${bandId}/opportunities`);
+      // Check if user is a member of the band
+      const isMember = band.members.some((member) => member.user.id === userId);
+      if (!isMember) {
+        req.flash("error", "You don't have permission to access this band");
+        return res.redirect("/bands");
+      }
+
+      // Get the opportunity to verify it belongs to this band
+      const opportunity = await prisma.opportunity.findUnique({
+        where: { id: parseInt(opportunityId) },
+        include: {
+          venue: {
+            select: { name: true },
+          },
+        },
+      });
+
+      if (!opportunity) {
+        req.flash("error", "Opportunity not found");
+        return res.redirect(`/bands/${bandId}/opportunities`);
+      }
+
+      if (opportunity.bandId !== parseInt(bandId)) {
+        req.flash("error", "Opportunity does not belong to this band");
+        return res.redirect(`/bands/${bandId}/opportunities`);
+      }
+
+      // Delete the opportunity (this will cascade delete related interactions)
+      await prisma.opportunity.delete({
+        where: { id: parseInt(opportunityId) },
+      });
+
+      req.flash(
+        "success",
+        `Opportunity for "${opportunity.venue.name}" has been deleted`
+      );
+      res.redirect(`/bands/${bandId}/opportunities`);
+    } catch (error) {
+      logger.logError("Delete opportunity error:", error);
+      req.flash("error", "An error occurred while deleting the opportunity");
+      res.redirect(`/bands/${req.params.bandId}/opportunities`);
     }
-
-    if (opportunity.bandId !== parseInt(bandId)) {
-      req.flash("error", "Opportunity does not belong to this band");
-      return res.redirect(`/bands/${bandId}/opportunities`);
-    }
-
-    // Delete the opportunity (this will cascade delete related interactions)
-    await prisma.opportunity.delete({
-      where: { id: parseInt(opportunityId) }
-    });
-
-    req.flash("success", `Opportunity for "${opportunity.venue.name}" has been deleted`);
-    res.redirect(`/bands/${bandId}/opportunities`);
-
-  } catch (error) {
-    logger.logError("Delete opportunity error:", error);
-    req.flash("error", "An error occurred while deleting the opportunity");
-    res.redirect(`/bands/${req.params.bandId}/opportunities`);
   }
-});
+);
 
 // GET /bands/:bandId/opportunities/:opportunityId - Show individual opportunity detail
 router.get(
@@ -8236,7 +8522,7 @@ async function generateAISuggestion(context) {
 
   // Initialize Gemini
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
   // Build the prompt based on interaction type
   let prompt;

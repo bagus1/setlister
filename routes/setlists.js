@@ -3,6 +3,48 @@ const { body, validationResult } = require("express-validator");
 const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const ffmpeg = require("fluent-ffmpeg");
+
+// Configure multer for audio file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, "../uploads/recordings");
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, "recording-" + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Accept audio files only
+    const allowedTypes = /webm|mp3|wav|m4a|ogg/;
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error("Only audio files are allowed!"));
+    }
+  },
+});
 
 // Helper function to capture complete setlist state
 async function captureSetlistState(setlistId) {
@@ -308,7 +350,6 @@ function generateDetailedSummary(changes, totalSongs) {
 
 const router = express.Router();
 
-
 // Redirect old youtube-playlist route to new nested URL
 router.get("/:id/youtube-playlist", async (req, res) => {
   try {
@@ -322,7 +363,9 @@ router.get("/:id/youtube-playlist", async (req, res) => {
       return res.status(404).send("Setlist not found");
     }
 
-    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/youtube-playlist`);
+    res.redirect(
+      `/bands/${setlist.bandId}/setlists/${setlistId}/youtube-playlist`
+    );
   } catch (error) {
     logger.logError("Redirect youtube-playlist error", error);
     res.status(500).send("Error redirecting");
@@ -481,7 +524,7 @@ router.get("/:id/rehearsal", async (req, res) => {
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      select: { bandId: true }
+      select: { bandId: true },
     });
 
     if (!setlist) {
@@ -500,10 +543,10 @@ router.get("/:id/listen", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
     const { url } = req.query;
-    
+
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      select: { bandId: true }
+      select: { bandId: true },
     });
 
     if (!setlist) {
@@ -511,7 +554,9 @@ router.get("/:id/listen", async (req, res) => {
     }
 
     const redirectUrl = `/bands/${setlist.bandId}/setlists/${setlistId}/listen`;
-    const finalUrl = url ? `${redirectUrl}?url=${encodeURIComponent(url)}` : redirectUrl;
+    const finalUrl = url
+      ? `${redirectUrl}?url=${encodeURIComponent(url)}`
+      : redirectUrl;
     res.redirect(finalUrl);
   } catch (error) {
     logger.logError("Listen redirect error", error);
@@ -712,11 +757,11 @@ router.get("/:id/playlist", async (req, res) => {
       where: { id: setlistId },
       select: { bandId: true },
     });
-    
+
     if (!setlist) {
       return res.status(404).send("Setlist not found");
     }
-    
+
     res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/playlist`);
   } catch (error) {
     logger.logError("Redirect playlist error", error);
@@ -947,10 +992,10 @@ router.get("/:id/playlist", async (req, res) => {
 router.get("/:id/print", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
-    
+
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      select: { bandId: true }
+      select: { bandId: true },
     });
 
     if (!setlist) {
@@ -968,10 +1013,10 @@ router.get("/:id/print", async (req, res) => {
 router.get("/:id/gig-view", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
-    
+
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      select: { bandId: true }
+      select: { bandId: true },
     });
 
     if (!setlist) {
@@ -989,10 +1034,10 @@ router.get("/:id/gig-view", async (req, res) => {
 router.get("/:id/edit", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
-    
+
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      select: { bandId: true }
+      select: { bandId: true },
     });
 
     if (!setlist) {
@@ -1072,10 +1117,10 @@ function isSetlistEditable(setlist) {
 router.get("/:id", async (req, res) => {
   try {
     const setlistId = parseInt(req.params.id);
-    
+
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      select: { bandId: true }
+      select: { bandId: true },
     });
 
     if (!setlist) {
@@ -1382,7 +1427,6 @@ router.get("/:id/old", async (req, res) => {
   }
 });
 
-
 // GET /setlists/:id/copy - Show copy setlist form
 // Redirect old copy route to new nested URL
 router.get("/:id/copy", async (req, res) => {
@@ -1391,7 +1435,7 @@ router.get("/:id/copy", async (req, res) => {
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
-      select: { bandId: true }
+      select: { bandId: true },
     });
 
     if (!setlist) {
@@ -1577,7 +1621,9 @@ router.post(
         "success",
         `Setlist "${title}" created successfully from "${originalSetlist.title}"!`
       );
-      res.redirect(`/bands/${originalSetlist.bandId}/setlists/${newSetlist.id}/edit`);
+      res.redirect(
+        `/bands/${originalSetlist.bandId}/setlists/${newSetlist.id}/edit`
+      );
     } catch (error) {
       console.error("Copy setlist error:", error);
       req.flash("error", "An error occurred copying the setlist");
@@ -1687,34 +1733,37 @@ router.post("/:id/save", async (req, res) => {
     // Create version record
     if (currentState) {
       const changeSummary = generateChangeSummary(previousState, currentState);
-      
+
       // Use a transaction to handle race conditions
       try {
         await prisma.$transaction(async (tx) => {
           // Get next version number within transaction
           const lastVersion = await tx.setlistVersion.findFirst({
-        where: { setlistId },
-        orderBy: { versionNumber: "desc" },
-        select: { versionNumber: true },
-      });
+            where: { setlistId },
+            orderBy: { versionNumber: "desc" },
+            select: { versionNumber: true },
+          });
 
-      const nextVersionNumber = (lastVersion?.versionNumber || 0) + 1;
+          const nextVersionNumber = (lastVersion?.versionNumber || 0) + 1;
 
           // Create version record within transaction
           await tx.setlistVersion.create({
-        data: {
-          setlistId,
-          versionNumber: nextVersionNumber,
-          createdById: userId,
-          setlistData: currentState,
-          changeSummary,
-        },
-      });
+            data: {
+              setlistId,
+              versionNumber: nextVersionNumber,
+              createdById: userId,
+              setlistData: currentState,
+              changeSummary,
+            },
+          });
         });
       } catch (versionError) {
         // If version creation fails due to race condition, log but don't fail the entire save
-        if (versionError.code === 'P2002') {
-          logger.logError("[SAVE] Version creation failed due to race condition, continuing without version", versionError);
+        if (versionError.code === "P2002") {
+          logger.logError(
+            "[SAVE] Version creation failed due to race condition, continuing without version",
+            versionError
+          );
         } else {
           throw versionError; // Re-throw if it's a different error
         }
@@ -1740,7 +1789,7 @@ router.get("/:id/versions", async (req, res) => {
     if (!setlist) {
       return res.status(404).send("Setlist not found");
     }
-    
+
     res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/versions`);
   } catch (error) {
     logger.logError("Redirect versions error", error);
@@ -1761,8 +1810,10 @@ router.get("/:id/versions/:versionId/view", async (req, res) => {
     if (!setlist) {
       return res.status(404).send("Setlist not found");
     }
-    
-    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/versions/${versionId}/view`);
+
+    res.redirect(
+      `/bands/${setlist.bandId}/setlists/${setlistId}/versions/${versionId}/view`
+    );
   } catch (error) {
     logger.logError("Redirect version view error", error);
     res.status(500).send("Error redirecting");
@@ -1783,13 +1834,14 @@ router.post("/:id/restore/:versionId", async (req, res) => {
       return res.status(404).json({ error: "Setlist not found" });
     }
 
-    res.redirect(`/bands/${setlist.bandId}/setlists/${setlistId}/versions/${versionId}/restore`);
+    res.redirect(
+      `/bands/${setlist.bandId}/setlists/${setlistId}/versions/${versionId}/restore`
+    );
   } catch (error) {
     logger.logError("Redirect restore error", error);
     res.status(500).json({ error: "Error redirecting" });
   }
 });
-
 
 // POST /setlists/:id/preferred-gig-document - Update preferred gig document for a song
 router.post("/:id/preferred-gig-document", async (req, res) => {
@@ -2541,5 +2593,366 @@ router.post("/:id/preferred-youtube", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+// GET /setlists/:id/recordings - List all recordings for a setlist
+router.get("/:id/recordings", requireAuth, async (req, res) => {
+  try {
+    const setlistId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Get setlist
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: {
+          include: {
+            members: {
+              where: { userId },
+            },
+          },
+        },
+        recordings: {
+          include: {
+            creator: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+            splits: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      req.flash("error", "Setlist not found");
+      return res.redirect("/bands");
+    }
+
+    if (setlist.band.members.length === 0) {
+      req.flash("error", "Not authorized");
+      return res.redirect("/bands");
+    }
+
+    res.render("setlists/recordings-index", {
+      title: `Recordings - ${setlist.title}`,
+      pageTitle: `Recordings`,
+      marqueeTitle: setlist.title,
+      setlist,
+      recordings: setlist.recordings,
+      hasBandHeader: true,
+      band: setlist.band,
+    });
+  } catch (error) {
+    logger.logError("Recordings index error", error);
+    req.flash("error", "Error loading recordings");
+    res.redirect("/bands");
+  }
+});
+
+// POST /setlists/:id/recordings - Upload recording
+router.post(
+  "/:id/recordings",
+  requireAuth,
+  upload.single("audio"),
+  async (req, res) => {
+    try {
+      const setlistId = parseInt(req.params.id);
+      const userId = req.session.user.id;
+
+      // Verify setlist exists and user has access
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
+
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No audio file uploaded" });
+      }
+
+      // Convert file path to web-accessible URL
+      // req.file.path could be absolute or relative, extract just the relative part
+      const duration = parseInt(req.body.duration) || 0;
+      const fileSize = req.file.size || 0;
+
+      // Get just the filename and construct the web path
+      const recordingPath = `/uploads/recordings/${req.file.filename}`;
+
+      // Determine format from file extension
+      const format = path.extname(req.file.filename).substring(1) || "webm";
+
+      // Save to database
+      const recording = await prisma.recording.create({
+        data: {
+          setlistId,
+          filePath: recordingPath,
+          fileSize: BigInt(fileSize),
+          duration,
+          format,
+          createdById: userId,
+        },
+      });
+
+      res.json({
+        success: true,
+        recordingId: recording.id,
+        message: "Recording uploaded successfully",
+      });
+    } catch (error) {
+      logger.logError("Recording upload error", error);
+      res.status(500).json({ error: "Failed to upload recording" });
+    }
+  }
+);
+
+// GET /setlists/:id/recordings/:recordingId/split - Show split page
+router.get(
+  "/:id/recordings/:recordingId/split",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const setlistId = parseInt(req.params.id);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get setlist with all songs
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: true,
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.band.members.length === 0) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      // Get recording from database
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording) {
+        req.flash("error", "Recording not found");
+        return res.redirect(`/bands/${setlist.band.id}/setlists/${setlistId}`);
+      }
+
+      if (recording.setlistId !== setlistId) {
+        req.flash("error", "Recording does not belong to this setlist");
+        return res.redirect(`/bands/${setlist.band.id}/setlists/${setlistId}`);
+      }
+
+      res.render("setlists/recording-split", {
+        title: `Split Recording - ${setlist.title}`,
+        pageTitle: `Split Recording`,
+        marqueeTitle: setlist.title,
+        setlist,
+        recording: {
+          id: recording.id,
+          path: recording.filePath,
+          duration: recording.duration,
+        },
+        hasBandHeader: true,
+        band: setlist.band,
+      });
+    } catch (error) {
+      logger.logError("Recording split page error", error);
+      req.flash("error", "Error loading split page");
+      res.redirect("/bands");
+    }
+  }
+);
+
+// POST /setlists/:id/recordings/:recordingId/process - Process recording splits
+router.post(
+  "/:id/recordings/:recordingId/process",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const setlistId = parseInt(req.params.id);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+      const { splits } = req.body;
+
+      // Verify access
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+        },
+      });
+
+      if (!setlist || setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Get recording
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording || recording.setlistId !== setlistId) {
+        return res.status(404).json({ error: "Recording not found" });
+      }
+
+      if (!splits || !Array.isArray(splits) || splits.length === 0) {
+        return res.status(400).json({ error: "No splits provided" });
+      }
+
+      // Create splits directory organized by setlist
+      const setlistSplitsDir = path.join(
+        __dirname,
+        `../uploads/recordings/splits/${setlistId}`
+      );
+      if (!fs.existsSync(setlistSplitsDir)) {
+        fs.mkdirSync(setlistSplitsDir, { recursive: true });
+      }
+
+      // Process each split with FFmpeg
+      const createdSplits = [];
+      const inputPath = path.join(
+        __dirname,
+        "..",
+        recording.filePath.substring(1)
+      ); // Remove leading /
+
+      for (const split of splits) {
+        // Create split metadata first
+        const recordingSplit = await prisma.recordingSplit.create({
+          data: {
+            recordingId: recording.id,
+            songId: split.songId,
+            startTime: split.start,
+            endTime: split.end,
+            duration: split.duration,
+            filePath: null, // Will update after extraction
+          },
+        });
+
+        // Generate output filename
+        const outputFilename = `split-${recordingSplit.id}-${split.songTitle.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.mp3`;
+        const outputPath = path.join(setlistSplitsDir, outputFilename);
+        const webPath = `/uploads/recordings/splits/${setlistId}/${outputFilename}`;
+
+        // Extract audio segment using FFmpeg
+        await new Promise((resolve, reject) => {
+          ffmpeg(inputPath)
+            .setStartTime(split.start)
+            .setDuration(split.duration)
+            .output(outputPath)
+            .audioCodec("libmp3lame")
+            .audioBitrate("192k")
+            .on("end", () => {
+              console.log(`Split extracted: ${outputFilename}`);
+              resolve();
+            })
+            .on("error", (err) => {
+              console.error(`FFmpeg error for ${outputFilename}:`, err);
+              reject(err);
+            })
+            .run();
+        });
+
+        // Update split with file path
+        await prisma.recordingSplit.update({
+          where: { id: recordingSplit.id },
+          data: { filePath: webPath },
+        });
+
+        // Create Link to attach to the song
+        const link = await prisma.link.create({
+          data: {
+            songId: split.songId,
+            createdById: userId,
+            type: "audio",
+            url: webPath,
+            description: `Live recording - ${setlist.title}`,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+        // Link the split to the Link record
+        await prisma.recordingSplit.update({
+          where: { id: recordingSplit.id },
+          data: { linkId: link.id },
+        });
+
+        createdSplits.push(recordingSplit);
+      }
+
+      // Mark recording as processed
+      await prisma.recording.update({
+        where: { id: recordingId },
+        data: {
+          isProcessed: true,
+          processedAt: new Date(),
+        },
+      });
+
+      res.json({
+        success: true,
+        message: `Successfully created ${createdSplits.length} splits`,
+        splits: createdSplits.length,
+      });
+    } catch (error) {
+      logger.logError("Recording process splits error", error);
+      res.status(500).json({ error: "Failed to process splits" });
+    }
+  }
+);
 
 module.exports = router;

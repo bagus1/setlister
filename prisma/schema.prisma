@@ -31,6 +31,7 @@ model User {
   opportunities  Opportunity[]
   venueChangesSuggested VenueChange[] @relation("VenueChangeSuggestedBy")
   venueChangesReviewed VenueChange[] @relation("VenueChangeReviewedBy")
+  recordings     Recording[]      @relation("RecordingCreator")
 
   @@map("users")
 }
@@ -127,6 +128,7 @@ model Song {
   artists        SongArtist[]
   vocalist       Vocalist?       @relation(fields: [vocalistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   creator        User?           @relation("SongCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recordingSplits RecordingSplit[]
 
   @@map("songs")
 }
@@ -182,6 +184,7 @@ model Setlist {
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   sets          SetlistSet[]
   versions      SetlistVersion[]
+  recordings    Recording[]
   band          Band         @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   creator       User?        @relation("SetlistCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -282,6 +285,7 @@ model Link {
   updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   song        Song            @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   creator     User?           @relation("LinkCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recordingSplit RecordingSplit?
 
   @@map("links")
 }
@@ -716,5 +720,55 @@ model VenueChange {
   @@index([venueId])
   @@index([status])
   @@index([createdAt])
+}
+
+// Full set recording from a gig/rehearsal
+model Recording {
+  id            Int       @id @default(autoincrement())
+  setlistId     Int       @map("setlist_id")
+  setlist       Setlist   @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  
+  filePath      String    @db.VarChar(500) @map("file_path")
+  fileSize      BigInt?   @map("file_size")  // In bytes
+  duration      Int       // Total duration in seconds
+  format        String    @default("webm") @db.VarChar(10)
+  
+  createdById   Int       @map("created_by_id")
+  creator       User      @relation("RecordingCreator", fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  isProcessed   Boolean   @default(false) @map("is_processed")
+  processedAt   DateTime? @map("processed_at") @db.Timestamptz(6)
+  
+  splits        RecordingSplit[]
+  
+  @@map("recordings")
+  @@index([setlistId])
+  @@index([createdById])
+}
+
+// Individual song extracted from a recording
+model RecordingSplit {
+  id            Int       @id @default(autoincrement())
+  recordingId   Int       @map("recording_id")
+  recording     Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  
+  songId        Int       @map("song_id")
+  song          Song      @relation(fields: [songId], references: [id])
+  
+  startTime     Float     @map("start_time")  // Seconds in original recording
+  endTime       Float     @map("end_time")    // Seconds in original recording
+  duration      Float     // Calculated duration
+  
+  filePath      String?   @db.VarChar(500) @map("file_path")  // Extracted segment file
+  
+  linkId        Int?      @unique @map("link_id")
+  link          Link?     @relation(fields: [linkId], references: [id])
+  
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  @@map("recording_splits")
+  @@index([recordingId])
+  @@index([songId])
 }
 

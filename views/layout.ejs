@@ -28,6 +28,42 @@
 </head>
 
 <body>
+    <!-- Recording Widget - Persists across all pages if recording is active -->
+    <div id="recordingWidget" class="recording-widget" style="display: none;">
+        <div class="widget-header">
+            <div class="recording-indicator">
+                <span class="recording-pulse"></span>
+                <strong>RECORDING</strong>
+            </div>
+            <button class="minimize-btn" onclick="toggleWidget()" title="Minimize">
+                <i class="bi bi-dash"></i>
+            </button>
+        </div>
+        
+        <div class="widget-body">
+            <div class="recording-info">
+                <div class="timer" id="recordingTimer">00:00:00</div>
+                <div class="setlist-name">Setlist</div>
+                <canvas id="miniWaveform" width="290" height="40"></canvas>
+            </div>
+            
+            <div class="widget-controls">
+                <button onclick="stopRecording()" class="btn btn-sm btn-dark stop-recording-btn">
+                    <i class="bi bi-stop-circle"></i> Stop
+                </button>
+            </div>
+        </div>
+        
+        <!-- Minimized state -->
+        <div class="widget-minimized" style="display: none;">
+            <span class="recording-pulse"></span>
+            <span id="miniTimer">00:00</span>
+            <button onclick="stopRecording()" class="btn btn-sm btn-dark stop-recording-btn">
+                <i class="bi bi-stop"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="margin-bottom: -5px;">
         <div class="container">
@@ -232,6 +268,9 @@
 
     <!-- HTML MIDI Player -->
     <script src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.58,npm/@magenta/music@1.23.1/es6/core.js,npm/html-midi-player@1.5.0"></script>
+    
+    <!-- Recording Manager -->
+    <script src="/js/recording-manager.js"></script>
 </body>
 
 </html>

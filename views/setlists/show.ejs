@@ -23,6 +23,9 @@
                 <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/copy" class="btn btn-outline-info">
                     <i class="bi bi-files"></i> Copy Setlist
                 </a>
+                 <button onclick="startRecording('<%= setlist.id %>')" class="btn btn-danger">
+                    <i class="bi bi-record-circle"></i> Record This Set
+                </button>
                 <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-primary">
                     <i class="bi bi-people"></i> Back to Band
                 </a>
@@ -542,7 +545,146 @@
     </div>
 
     <div class="col-md-4">
-        <div class="card mb-4">
+
+
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-gear"></i> Setlist Actions
+                </h6>
+            </div>
+            <div class="card-body">
+
+                <div class="d-grid gap-2">
+                    <div class="d-flex gap-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/gig-view"
+                            class="btn btn-success flex-fill" id="musicStandButton">
+                            <i class="bi bi-music-note-beamed"></i> Music Stand
+                        </a>
+                        <button onclick="copyGigViewLink()" class="btn btn-outline-success"
+                            title="Copy music stand link">
+                            <i class="bi bi-link-45deg"></i> Copy Link
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/rehearsal" class="btn btn-light flex-fill" style="background-color: #e91e63; border-color: #e91e63; color: white;" id="rehearsalViewButton">
+                            <i class="bi bi-music-note-beamed"></i> Rehearsal View
+                        </a>
+                        <button onclick="copyRehearsalLink()" class="btn btn-outline-light" style="border-color: #e91e63; color: #e91e63;" title="Copy rehearsal view link">
+                            <i class="bi bi-link-45deg"></i> Copy Link
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/playlist" class="btn btn-info flex-fill" id="viewPlaylistButton">
+                            <i class="bi bi-music-note-list"></i> Audio Playlist
+                        </a>
+                        <button onclick="copyPlaylistLink()" class="btn btn-outline-info" title="Copy playlist link">
+                            <i class="bi bi-link-45deg"></i> Copy Link
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/youtube-playlist" class="btn btn-danger flex-fill" id="youtubePlaylistButton">
+                            <i class="bi bi-youtube"></i> YouTube Playlist
+                        </a>
+                        <button onclick="copyYoutubePlaylistLink()" class="btn btn-outline-danger" title="Copy YouTube playlist link">
+                            <i class="bi bi-link-45deg"></i> Copy Link
+                        </button>
+                    </div>
+
+                    <% 
+                    // Check if any songs have MIDI links
+                    let hasMidiLinks = false;
+                    setlist.sets.forEach(set => {
+                        set.songs.forEach(setlistSong => {
+                            if (setlistSong.song.links && setlistSong.song.links.some(link => link.type === 'midi')) {
+                                hasMidiLinks = true;
+                            }
+                        });
+                    });
+                    %>
+                    <% if (hasMidiLinks) { %>
+                    <div class="d-flex gap-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/midi" class="btn btn-success flex-fill" id="midiPlaylistButton">
+                            <i class="bi bi-music-note-beamed"></i> MIDI Playlist
+                        </a>
+                        <button onclick="copyMidiPlaylistLink()" class="btn btn-outline-success" title="Copy MIDI playlist link">
+                            <i class="bi bi-link-45deg"></i> Copy Link
+                        </button>
+                    </div>
+                    <% } %>
+
+                    <% 
+                    // Check if any songs have PDF leadsheet links
+                    let hasLeadsheetLinks = false;
+                    setlist.sets.forEach(set => {
+                        set.songs.forEach(setlistSong => {
+                            if (setlistSong.song.links && setlistSong.song.links.some(link => link.type === 'pdf')) {
+                                hasLeadsheetLinks = true;
+                            }
+                        });
+                    });
+                    %>
+                    <% if (hasLeadsheetLinks) { %>
+                    <div class="d-flex gap-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/leadsheets" class="btn btn-warning flex-fill" id="leadsheetPlaylistButton">
+                            <i class="bi bi-file-earmark-pdf"></i> Lead Sheets
+                        </a>
+                        <button onclick="copyLeadsheetPlaylistLink()" class="btn btn-outline-warning" title="Copy lead sheets playlist link">
+                            <i class="bi bi-link-45deg"></i> Copy Link
+                        </button>
+                    </div>
+                    <% } %>
+
+                    <div class="d-flex gap-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/recordings" class="btn btn-outline-danger flex-fill">
+                            <i class="bi bi-music-note-list"></i> Recordings
+                        </a>
+                    </div>
+
+                    <% const savedUrl = setlist.recordingsUrl; %>
+                    <% if (savedUrl) { %>
+                    <div class="d-flex gap-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/listen?url=<%= encodeURIComponent(savedUrl) %>" class="btn btn-primary flex-fill">
+                            <i class="bi bi-headphones"></i> Listen to the Set
+                        </a>
+                        <button onclick="copyListenLink()" class="btn btn-outline-primary" title="Copy listen link">
+                            <i class="bi bi-link-45deg"></i> Copy Link
+                        </button>
+                    </div>
+                    <% } %>
+
+                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/print" class="btn btn-outline-primary">
+                        <i class="bi bi-printer"></i> Print View
+                    </a>
+
+                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/export" class="btn btn-outline-secondary">
+                        <i class="bi bi-download"></i> Export as Text
+                    </a>
+
+                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/export-csv" class="btn btn-outline-warning">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
+                    </a>
+
+                    <button onclick="copyTitlesToClipboard()" class="btn btn-outline-success">
+                        <i class="bi bi-clipboard"></i> Copy Titles
+                    </button>
+
+                    <% if (!savedUrl) { %>
+                    <div class="mt-2">
+                        <form class="input-group" id="recordingsUrlForm">
+                            <input type="url" class="form-control" name="recordingsUrl" placeholder="Paste player URL (e.g., https://www.bagus.org/kdg/index.jsp?dA=8249)" required>
+                            <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-save"></i> Save</button>
+                        </form>
+                        <small class="text-muted">After your show, if you've recorded it, paste a link to your recordings list here and we'll try to make a player for it</small>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-4" style="margin-top: 10px;">
             <div class="card-header">
                 <h6 class="mb-0">
                     <i class="bi bi-info-circle"></i> Setlist Info
@@ -660,145 +802,6 @@
                 <% } %>
             </div>
         </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-gear"></i> Setlist Actions
-                </h6>
-            </div>
-            <div class="card-body">
-
-                <div class="d-grid gap-2">
-                                <div class="d-flex gap-2">
-                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/gig-view"
-                                        class="btn btn-success flex-fill" id="musicStandButton">
-                                        <i class="bi bi-music-note-beamed"></i> Music Stand
-                                    </a>
-                                    <button onclick="copyGigViewLink()" class="btn btn-outline-success"
-                                        title="Copy music stand link">
-                                        <i class="bi bi-link-45deg"></i> Copy Link
-                                    </button>
-                                </div>
-
-                                <div class="d-flex gap-2">
-                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/rehearsal" class="btn btn-light flex-fill" style="background-color: #e91e63; border-color: #e91e63; color: white;" id="rehearsalViewButton">
-                                        <i class="bi bi-music-note-beamed"></i> Rehearsal View
-                                    </a>
-                                    <button onclick="copyRehearsalLink()" class="btn btn-outline-light" style="border-color: #e91e63; color: #e91e63;" title="Copy rehearsal view link">
-                                        <i class="bi bi-link-45deg"></i> Copy Link
-                                    </button>
-                                </div>
-
-                                <div class="d-flex gap-2">
-                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/playlist" class="btn btn-info flex-fill" id="viewPlaylistButton">
-                                        <i class="bi bi-music-note-list"></i> Audio Playlist
-                                    </a>
-                                    <button onclick="copyPlaylistLink()" class="btn btn-outline-info" title="Copy playlist link">
-                                        <i class="bi bi-link-45deg"></i> Copy Link
-                                    </button>
-                                </div>
-
-                                <div class="d-flex gap-2">
-                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/youtube-playlist" class="btn btn-danger flex-fill" id="youtubePlaylistButton">
-                                        <i class="bi bi-youtube"></i> YouTube Playlist
-                                    </a>
-                                    <button onclick="copyYoutubePlaylistLink()" class="btn btn-outline-danger" title="Copy YouTube playlist link">
-                                        <i class="bi bi-link-45deg"></i> Copy Link
-                                    </button>
-                                </div>
-
-                                <% 
-                                // Check if any songs have MIDI links
-                                let hasMidiLinks = false;
-                                setlist.sets.forEach(set => {
-                                    set.songs.forEach(setlistSong => {
-                                        if (setlistSong.song.links && setlistSong.song.links.some(link => link.type === 'midi')) {
-                                            hasMidiLinks = true;
-                                        }
-                                    });
-                                });
-                                %>
-                                <% if (hasMidiLinks) { %>
-                                <div class="d-flex gap-2">
-                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/midi" class="btn btn-success flex-fill" id="midiPlaylistButton">
-                                        <i class="bi bi-music-note-beamed"></i> MIDI Playlist
-                                    </a>
-                                    <button onclick="copyMidiPlaylistLink()" class="btn btn-outline-success" title="Copy MIDI playlist link">
-                                        <i class="bi bi-link-45deg"></i> Copy Link
-                                    </button>
-                                </div>
-                                <% } %>
-
-                                <% 
-                                // Check if any songs have PDF leadsheet links
-                                let hasLeadsheetLinks = false;
-                                setlist.sets.forEach(set => {
-                                    set.songs.forEach(setlistSong => {
-                                        if (setlistSong.song.links && setlistSong.song.links.some(link => link.type === 'pdf')) {
-                                            hasLeadsheetLinks = true;
-                                        }
-                                    });
-                                });
-                                %>
-                                <% if (hasLeadsheetLinks) { %>
-                                <div class="d-flex gap-2">
-                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/leadsheets" class="btn btn-warning flex-fill" id="leadsheetPlaylistButton">
-                                        <i class="bi bi-file-earmark-pdf"></i> Lead Sheets
-                                    </a>
-                                    <button onclick="copyLeadsheetPlaylistLink()" class="btn btn-outline-warning" title="Copy lead sheets playlist link">
-                                        <i class="bi bi-link-45deg"></i> Copy Link
-                                    </button>
-                                </div>
-                                <% } %>
-
-                                <% const savedUrl = setlist.recordingsUrl; %>
-                                <% if (savedUrl) { %>
-                                <div class="d-flex gap-2">
-                                    <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/listen?url=<%= encodeURIComponent(savedUrl) %>" class="btn btn-primary flex-fill">
-                                        <i class="bi bi-headphones"></i> Listen to the Set
-                                    </a>
-                                    <button onclick="copyListenLink()" class="btn btn-outline-primary" title="Copy listen link">
-                                        <i class="bi bi-link-45deg"></i> Copy Link
-                                    </button>
-                                </div>
-                                <% } %>
-
-                                <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/print" class="btn btn-outline-primary">
-                                    <i class="bi bi-printer"></i> Print View
-                                </a>
-
-                                <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/export" class="btn btn-outline-secondary">
-                                    <i class="bi bi-download"></i> Export as Text
-                                </a>
-
-                                <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/export-csv" class="btn btn-outline-warning">
-                                    <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
-                                </a>
-
-                                <button onclick="copyTitlesToClipboard()" class="btn btn-outline-success">
-                                    <i class="bi bi-clipboard"></i> Copy Titles
-                                </button>
-
-                                <% if (!savedUrl) { %>
-                                <div class="mt-2">
-                                    <form class="input-group" id="recordingsUrlForm">
-                                        <input type="url" class="form-control" name="recordingsUrl" placeholder="Paste player URL (e.g., https://www.bagus.org/kdg/index.jsp?dA=8249)" required>
-                                        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-save"></i> Save</button>
-                                    </form>
-                                    <small class="text-muted">After your show, if you've recorded it, paste a link to your recordings list here and we'll try to make a player for it</small>
-                                </div>
-                                <% } %>
-
-                                <hr>
-
-                                <a href="/bands/<%= setlist.band.id %>" class="btn btn-outline-info">
-                                    <i class="bi bi-people"></i> Back to Band
-                                </a>
-                            </div>
-            </div>
-        </div>
-
         <% if (setlist.SetlistSets && setlist.SetlistSets.length> 0) { %>
             <div class="card mt-3">
                 <div class="card-header">

@@ -173,6 +173,15 @@ window.addEventListener('resize', function() {
         positionLogo(img);
     }
 });
+
+// Also run on DOMContentLoaded as backup
+document.addEventListener('DOMContentLoaded', function() {
+    const img = document.getElementById('primaryLogo');
+    if (img && img.complete) {
+        // Image already loaded, position it now
+        positionLogo(img);
+    }
+});
 </script>
 
     <div class="container mb-5">

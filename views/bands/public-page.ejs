@@ -82,14 +82,14 @@
     <div class="container" id="heroContainer">
         <% if (primaryLogo) { %>
             <!-- Logo will be positioned by JS based on aspect ratio -->
-            <div id="logoContainer" class="text-center mb-3">
+            <div id="logoContainer" class="mb-3">
                 <img id="primaryLogo" src="<%= primaryLogo.filePath %>" alt="<%= band.name %> Logo" 
                      style="max-width: 250px; max-height: 200px;" 
                      onload="positionLogo(this)">
             </div>
         <% } %>
         
-        <div id="heroText" class="<%= primaryLogo ? '' : 'text-center' %>">
+        <div id="heroText" class="<%= primaryLogo ? '' : 'text-center' %>" style="<%= primaryLogo ? 'overflow: auto;' : '' %>">
             <% if (band.tagline) { %>
                 <p class="tagline mb-3"><%= band.tagline %></p>
             <% } %>

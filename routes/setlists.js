@@ -2994,24 +2994,8 @@ router.post(
           data: { filePath: webPath },
         });
 
-        // Create Link to attach to the song
-        const link = await prisma.link.create({
-          data: {
-            songId: split.songId,
-            createdById: userId,
-            type: "audio",
-            url: webPath,
-            description: `Live recording - ${setlist.title}`,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-
-        // Link the split to the Link record
-        await prisma.recordingSplit.update({
-          where: { id: recordingSplit.id },
-          data: { linkId: link.id },
-        });
+        // Note: We don't automatically create Links anymore
+        // Users can promote recordings to the global song later if they want
 
         createdSplits.push(recordingSplit);
       }
@@ -3033,6 +3017,84 @@ router.post(
     } catch (error) {
       logger.logError("Recording process splits error", error);
       res.status(500).json({ error: "Failed to process splits" });
+    }
+  }
+);
+
+// POST /setlists/:id/recordings/splits/:splitId/promote - Promote a split to song's global links
+router.post(
+  "/:id/recordings/splits/:splitId/promote",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const setlistId = parseInt(req.params.id);
+      const splitId = parseInt(req.params.splitId);
+      const userId = req.session.user.id;
+      const { songId } = req.body;
+
+      // Get the split and verify access
+      const split = await prisma.recordingSplit.findUnique({
+        where: { id: splitId },
+        include: {
+          recording: {
+            include: {
+              setlist: {
+                include: {
+                  band: {
+                    include: {
+                      members: {
+                        where: { userId },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          song: true,
+        },
+      });
+
+      if (!split) {
+        return res.status(404).json({ error: "Split not found" });
+      }
+
+      if (split.recording.setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Check if already promoted (has a linkId)
+      if (split.linkId) {
+        return res.status(400).json({ error: "This recording is already added to the song" });
+      }
+
+      // Create Link for the global song
+      const link = await prisma.link.create({
+        data: {
+          songId: songId,
+          createdById: userId,
+          type: "audio",
+          url: split.filePath,
+          description: `Live recording - ${split.recording.setlist.title} (${new Date(split.recording.createdAt).toLocaleDateString()})`,
+        },
+      });
+
+      // Update split to reference the link
+      await prisma.recordingSplit.update({
+        where: { id: splitId },
+        data: { linkId: link.id },
+      });
+
+      console.log(`Recording split ${splitId} promoted to song ${songId} - Link ${link.id} created`);
+
+      res.json({
+        success: true,
+        message: "Recording added to song successfully",
+        linkId: link.id,
+      });
+    } catch (error) {
+      logger.logError("Promote split error", error);
+      res.status(500).json({ error: "Failed to add recording to song" });
     }
   }
 );

@@ -919,7 +919,7 @@ router.get("/become-moderator", (req, res) => {
       <div class="card-body">
         <h4 class="card-title">📧 Application Process</h4>
         <ol class="mb-0">
-          <li class="mb-2"><strong>Email us</strong> at <a href="mailto:bagus@krewedegroove.com">bagus@krewedegroove.com</a></li>
+          <li class="mb-2"><strong>Email us</strong> at <a href="mailto:support@thebandplan.com">support@thebandplan.com</a></li>
           <li class="mb-2"><strong>Include the following:</strong>
             <ul class="mt-2">
               <li>Your username on The Band Plan</li>
@@ -979,7 +979,7 @@ router.get("/become-moderator", (req, res) => {
     <div class="alert alert-success mt-4">
       <h4>🎉 Ready to Apply?</h4>
       <p class="mb-0">
-        Email us at <strong><a href="mailto:bagus@krewedegroove.com">bagus@krewedegroove.com</a></strong> 
+        Email us at <strong><a href="mailto:support@thebandplan.com">support@thebandplan.com</a></strong> 
         with your application. We're excited to hear from you and appreciate your interest in helping 
         The Band Plan community!
       </p>

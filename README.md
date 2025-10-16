@@ -71,7 +71,7 @@ A real-time collaborative setlist management system for bands. Multiple band mem
    # Required for production
    NODE_ENV=production
    SESSION_SECRET=generate-a-very-long-random-secure-string-at-least-a-billion-characters-long
-   FROM_EMAIL=noreply@yourdomain.com
+   FROM_EMAIL=noreply@thebandplan.com
    BASE_URL=https://yourdomain.com
 
    # Optional - for email invitations
@@ -166,7 +166,7 @@ Configure these in your cPanel Node.js app settings:
 ```
 NODE_ENV=production
 SESSION_SECRET=your-very-long-random-secret-string
-FROM_EMAIL=noreply@yourdomain.com
+FROM_EMAIL=noreply@thebandplan.com
 BASE_URL=https://yourdomain.com
 SENDGRID_API_KEY=your_sendgrid_api_key_here
 ```

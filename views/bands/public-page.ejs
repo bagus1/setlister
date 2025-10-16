@@ -84,7 +84,7 @@
             <!-- Logo will be positioned by JS based on aspect ratio -->
             <div id="logoContainer" class="text-center mb-3">
                 <img id="primaryLogo" src="<%= primaryLogo.filePath %>" alt="<%= band.name %> Logo" 
-                     style="max-width: 400px; max-height: 200px; display: none;" 
+                     style="max-width: 250px; max-height: 200px;" 
                      onload="positionLogo(this)">
             </div>
         <% } %>
@@ -164,9 +164,6 @@ function positionLogo(img) {
     // Text height will add naturally - no need to force extra space
     const minHeight = displayedHeight + 60; // displayed logo + CSS padding
     heroSection.style.minHeight = minHeight + 'px';
-    
-    // Show the image after positioning
-    img.style.display = 'block';
 }
 
 // Handle window resize for responsive layout

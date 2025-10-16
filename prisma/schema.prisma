@@ -61,15 +61,51 @@ model Band {
   id           Int              @id @default(autoincrement())
   name         String           @db.VarChar(255)
   description  String?
+  
+  // EPK Basic Info
+  slug         String?          @unique @db.VarChar(100)
+  isPublic     Boolean          @default(false) @map("is_public")
+  bio          String?          @db.Text
+  tagline      String?          @db.VarChar(255)
+  genres       String?          @db.VarChar(500)
+  hometown     String?          @db.VarChar(255)
+  formedYear   Int?             @map("formed_year")
+  
+  // Existing booking fields
   websiteUrl   String?          @db.VarChar(500) @map("website_url")
   epkUrl       String?          @db.VarChar(500) @map("epk_url")
   bookingPitch String?          @db.Text @map("booking_pitch")
   contactName  String?          @db.VarChar(255) @map("contact_name")
   contactEmail String?          @db.VarChar(255) @map("contact_email")
   contactPhone String?          @db.VarChar(50) @map("contact_phone")
+  
+  // Payment Information
+  venmoHandle  String?          @db.VarChar(100) @map("venmo_handle")
+  paypalEmail  String?          @db.VarChar(255) @map("paypal_email")
+  checkPayee   String?          @db.VarChar(255) @map("check_payee")
+  checkAddress String?          @db.Text @map("check_address")
+  
+  // Technical Rider Info
+  minStageSize String?          @db.VarChar(100) @map("min_stage_size")
+  soundRequirements String?     @db.Text @map("sound_requirements")
+  lightingRequirements String?  @db.Text @map("lighting_requirements")
+  setupTime    Int?             @map("setup_time") // minutes
+  breakdownTime Int?            @map("breakdown_time") // minutes
+  setLengthMin Int?             @map("set_length_min") // minutes
+  setLengthMax Int?             @map("set_length_max") // minutes
+  
+  // Display Preferences
+  showMembers     Boolean       @default(true) @map("show_members")
+  showSetlists    Boolean       @default(false) @map("show_setlists")
+  showRecordings  Boolean       @default(false) @map("show_recordings")
+  showGigs        Boolean       @default(true) @map("show_gigs")
+  showVenues      Boolean       @default(true) @map("show_venues")
+  
   createdById  Int              @map("created_by_id")
   createdAt    DateTime         @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relationships
   invitations  BandInvitation[]
   members      BandMember[]
   songs        BandSong[]
@@ -78,19 +114,36 @@ model Band {
   setlists     Setlist[]
   opportunities Opportunity[]
   gigs         Gig[]
+  photos       BandPhoto[]
+  videos       BandVideo[]
+  audioSamples BandAudio[]
+  logos        BandLogo[]
+  pressQuotes  BandPressQuote[]
+  socialLinks  BandSocialLink[]
 
   @@map("bands")
+  @@index([slug])
+  @@index([isPublic])
 }
 
 model BandMember {
-  id        Int                     @id @default(autoincrement())
-  userId    Int                     @map("user_id")
-  bandId    Int                     @map("band_id")
-  role      enum_band_members_role? @default(member)
-  createdAt DateTime                @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
-  band      Band                    @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user      User                    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id          Int                     @id @default(autoincrement())
+  userId      Int                     @map("user_id")
+  bandId      Int                     @map("band_id")
+  role        enum_band_members_role? @default(member)
+  
+  // EPK Display Fields
+  displayName String?                 @db.VarChar(255) @map("display_name")
+  instrument  String?                 @db.VarChar(255)
+  bio         String?                 @db.Text
+  photoUrl    String?                 @db.VarChar(500) @map("photo_url")
+  isFeatured  Boolean                 @default(false) @map("is_featured")
+  sortOrder   Int                     @default(0) @map("sort_order")
+  
+  createdAt   DateTime                @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  band        Band                    @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user        User                    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([userId, bandId], map: "band_members_user_id_band_id")
   @@map("band_members")
@@ -770,5 +823,125 @@ model RecordingSplit {
   @@map("recording_splits")
   @@index([recordingId])
   @@index([songId])
+}
+
+// EPK Models
+
+model BandPhoto {
+  id          Int      @id @default(autoincrement())
+  bandId      Int      @map("band_id")
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  
+  filePath    String   @db.VarChar(500) @map("file_path")
+  caption     String?  @db.VarChar(500)
+  category    String?  @db.VarChar(50) // 'performance', 'promo', 'poster', 'candid'
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  sortOrder   Int      @default(0) @map("sort_order")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@map("band_photos")
+  @@index([bandId])
+  @@index([isPrimary])
+}
+
+model BandVideo {
+  id          Int      @id @default(autoincrement())
+  bandId      Int      @map("band_id")
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  
+  title       String   @db.VarChar(255)
+  description String?  @db.Text
+  
+  // Either YouTube URL or uploaded file
+  youtubeUrl  String?  @db.VarChar(500) @map("youtube_url")
+  filePath    String?  @db.VarChar(500) @map("file_path")
+  
+  thumbnailUrl String? @db.VarChar(500) @map("thumbnail_url")
+  duration    Int?     // seconds
+  sortOrder   Int      @default(0) @map("sort_order")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@map("band_videos")
+  @@index([bandId])
+}
+
+model BandAudio {
+  id          Int      @id @default(autoincrement())
+  bandId      Int      @map("band_id")
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  
+  title       String   @db.VarChar(255)
+  description String?  @db.Text
+  
+  // Either external URL (Spotify, SoundCloud) or uploaded file
+  externalUrl String?  @db.VarChar(500) @map("external_url")
+  filePath    String?  @db.VarChar(500) @map("file_path")
+  
+  duration    Int?     // seconds
+  sortOrder   Int      @default(0) @map("sort_order")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@map("band_audio")
+  @@index([bandId])
+}
+
+model BandLogo {
+  id          Int      @id @default(autoincrement())
+  bandId      Int      @map("band_id")
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  
+  name        String   @db.VarChar(255) // 'Transparent', 'Neon', 'Gray Circle'
+  filePath    String   @db.VarChar(500) @map("file_path")
+  fileType    String   @db.VarChar(50) @map("file_type") // 'png', 'jpg', 'svg', 'ai', 'pdf'
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@map("band_logos")
+  @@index([bandId])
+}
+
+model BandPressQuote {
+  id          Int      @id @default(autoincrement())
+  bandId      Int      @map("band_id")
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  
+  quote       String   @db.Text
+  attribution String   @db.VarChar(255) // 'Michael Belochi, owner of BOCO Cider'
+  source      String?  @db.VarChar(255) // Publication or venue name
+  date        DateTime? @db.Date
+  sortOrder   Int      @default(0) @map("sort_order")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@map("band_press_quotes")
+  @@index([bandId])
+}
+
+model BandSocialLink {
+  id          Int      @id @default(autoincrement())
+  bandId      Int      @map("band_id")
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  
+  platform    String   @db.VarChar(50) // 'spotify', 'facebook', 'instagram', 'youtube', 'twitter', 'website'
+  url         String   @db.VarChar(500)
+  handle      String?  @db.VarChar(255) // @username if applicable
+  sortOrder   Int      @default(0) @map("sort_order")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@map("band_social_links")
+  @@index([bandId])
+  @@index([platform])
 }
 

@@ -24,6 +24,7 @@ model User {
   location       String?          @db.VarChar(255)
   instruments    String?          @db.VarChar(500) // "Bass, Vocals, Guitar"
   website        String?          @db.VarChar(500)
+  openToOpportunities Boolean     @default(false) @map("open_to_opportunities")
   
   createdAt      DateTime         @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)

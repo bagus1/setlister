@@ -4,6 +4,11 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
+                <% if (band.slug && band.isPublic) { %>
+                    <a href="/<%= band.slug %>" class="btn btn-success me-2" target="_blank">
+                        <i class="bi bi-eye"></i> View Public Page
+                    </a>
+                <% } %>
                 <a href="/bands/<%= band.id %>/edit" class="btn btn-outline-warning">
                     <i class="bi bi-pencil"></i> Edit Band
                 </a>

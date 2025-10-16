@@ -2472,6 +2472,24 @@ router.get("/:id/edit", async (req, res) => {
             },
           },
         },
+        photos: {
+          orderBy: { sortOrder: 'asc' },
+        },
+        videos: {
+          orderBy: { sortOrder: 'asc' },
+        },
+        audioSamples: {
+          orderBy: { sortOrder: 'asc' },
+        },
+        logos: {
+          orderBy: { sortOrder: 'asc' },
+        },
+        pressQuotes: {
+          orderBy: { sortOrder: 'asc' },
+        },
+        socialLinks: {
+          orderBy: { sortOrder: 'asc' },
+        },
       },
     });
 
@@ -2503,6 +2521,7 @@ router.get("/:id/edit", async (req, res) => {
     res.render("bands/edit", {
       title: `Edit ${band.name}`,
       band,
+      hasBandHeader: true,
     });
   } catch (error) {
     logger.logError("Edit band error", error);

@@ -1,100 +1,182 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= band.name %> | The Band Plan</title>
-    <meta name="description" content="<%= band.bio ? band.bio.substring(0, 160) : band.description || band.name %>">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-    <style>
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 80px 0 60px;
-            margin-bottom: 40px;
-        }
-        .hero-section h1 {
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .hero-section .tagline {
-            font-size: 1.25rem;
-            opacity: 0.9;
-        }
-        .section-title {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 30px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #667eea;
-        }
-        .photo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-        .photo-card img {
-            width: 100%;
-            height: 250px;
-            object-fit: cover;
-            border-radius: 8px;
-        }
-        .member-card {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .member-card img {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 15px;
-        }
-        .press-quote {
-            background: #f8f9fa;
-            padding: 30px;
-            border-left: 4px solid #667eea;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
-        .press-quote blockquote {
-            font-size: 1.1rem;
-            font-style: italic;
-            margin-bottom: 15px;
-        }
-        .social-links a {
-            font-size: 2rem;
-            margin: 0 15px;
-            color: #667eea;
-            transition: color 0.3s;
-        }
-        .social-links a:hover {
-            color: #764ba2;
-        }
-        .gig-card {
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin-bottom: 15px;
-            background: #f8f9fa;
-        }
-    </style>
-</head>
-<body>
-    <!-- Hero Section -->
-    <div class="hero-section">
-        <div class="container text-center">
-            <h1><%= band.name %></h1>
+<style>
+    .hero-section {
+        background: #343a40;
+        color: #e9ecef;
+        padding: 30px 30px 30px 30px;
+        margin-bottom: 40px;
+    }
+    .hero-section .tagline {
+        font-size: 1.25rem;
+        opacity: 0.9;
+    }
+    .section-title {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 30px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+    }
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+    .photo-card img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    .member-card {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .member-card img {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 15px;
+    }
+    .press-quote {
+        background: #f8f9fa;
+        padding: 30px;
+        border-left: 4px solid #667eea;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+    .press-quote blockquote {
+        font-size: 1.1rem;
+        font-style: italic;
+        margin-bottom: 15px;
+    }
+    .social-links a {
+        font-size: 2rem;
+        margin: 0 15px;
+        color: #667eea;
+        transition: color 0.3s;
+    }
+    .social-links a:hover {
+        color: #764ba2;
+    }
+    .gig-card {
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+    }
+    .logo-card:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+</style>
+
+<!-- Hero Section -->
+<div class="hero-section">
+    <% 
+    // Find primary logo
+    const primaryLogo = band.photos && band.photos.find(p => p.category === 'logo' && p.isPrimary);
+    %>
+    
+    <div class="container" id="heroContainer">
+        <% if (primaryLogo) { %>
+            <!-- Logo will be positioned by JS based on aspect ratio -->
+            <div id="logoContainer" class="text-center mb-3">
+                <img id="primaryLogo" src="<%= primaryLogo.filePath %>" alt="<%= band.name %> Logo" 
+                     style="max-width: 400px; max-height: 200px; display: none;" 
+                     onload="positionLogo(this)">
+            </div>
+        <% } %>
+        
+        <div id="heroText" class="<%= primaryLogo ? '' : 'text-center' %>">
             <% if (band.tagline) { %>
-                <p class="tagline"><%= band.tagline %></p>
+                <p class="tagline mb-3"><%= band.tagline %></p>
             <% } %>
             <% if (band.hometown) { %>
-                <p><i class="bi bi-geo-alt"></i> <%= band.hometown %></p>
+                <p class="mb-2"><i class="bi bi-geo-alt"></i> <%= band.hometown %></p>
+            <% } %>
+            <% if (band.genres) { %>
+                <p class="mb-0"><i class="bi bi-music-note-beamed"></i> <%= band.genres %></p>
             <% } %>
         </div>
     </div>
+</div>
+
+<script>
+function positionLogo(img) {
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
+    const aspectRatio = width / height;
+    
+    const heroContainer = document.getElementById('heroContainer');
+    const logoContainer = document.getElementById('logoContainer');
+    const heroText = document.getElementById('heroText');
+    const heroSection = document.querySelector('.hero-section');
+    
+    let maxWidth, maxHeight;
+    
+    // Banner logo (wide) - aspect ratio > 2.5
+    if (aspectRatio > 2.5) {
+        // Center horizontally, full width
+        heroContainer.className = 'container';
+        logoContainer.className = 'text-center mb-4';
+        logoContainer.style.float = 'none';
+        maxWidth = 800;
+        maxHeight = 150;
+        img.style.maxWidth = maxWidth + 'px';
+        img.style.maxHeight = maxHeight + 'px';
+        img.style.margin = '0 auto';
+        heroText.className = 'text-center';
+    } 
+    // Square or portrait logo - aspect ratio <= 2.5
+    else {
+        // Create side-by-side layout on larger screens
+        heroContainer.className = 'container';
+        logoContainer.className = 'float-start me-4 mb-3';
+        maxWidth = 250;
+        maxHeight = 200;
+        img.style.maxWidth = maxWidth + 'px';
+        img.style.maxHeight = maxHeight + 'px';
+        heroText.className = '';
+        
+        // On mobile, stack vertically
+        if (window.innerWidth < 768) {
+            logoContainer.className = 'text-center mb-3';
+            logoContainer.style.float = 'none';
+            heroText.className = 'text-center';
+        }
+    }
+    
+    // Calculate actual displayed dimensions
+    let displayedWidth, displayedHeight;
+    
+    // Scale to fit within max constraints while preserving aspect ratio
+    const widthScale = maxWidth / width;
+    const heightScale = maxHeight / height;
+    const scale = Math.min(widthScale, heightScale, 1); // Don't upscale
+    
+    displayedWidth = width * scale;
+    displayedHeight = height * scale;
+    
+    // Set hero section min-height based on DISPLAYED logo height only
+    // The padding (30px top + 30px bottom) is already in CSS
+    // Text height will add naturally - no need to force extra space
+    const minHeight = displayedHeight + 60; // displayed logo + CSS padding
+    heroSection.style.minHeight = minHeight + 'px';
+    
+    // Show the image after positioning
+    img.style.display = 'block';
+}
+
+// Handle window resize for responsive layout
+window.addEventListener('resize', function() {
+    const img = document.getElementById('primaryLogo');
+    if (img) {
+        positionLogo(img);
+    }
+});
+</script>
 
     <div class="container mb-5">
         <!-- Bio Section -->
@@ -132,7 +214,17 @@
                                     <i class="bi bi-person-fill" style="font-size: 4rem;"></i>
                                 </div>
                             <% } %>
-                            <h5><%= member.displayName || member.user.username %></h5>
+                            
+                            <% if (member.user.slug && member.user.isPublic) { %>
+                                <h5>
+                                    <a href="/musicians/<%= member.user.slug %>" class="text-decoration-none">
+                                        <%= member.displayName || member.user.username %>
+                                    </a>
+                                </h5>
+                            <% } else { %>
+                                <h5><%= member.displayName || member.user.username %></h5>
+                            <% } %>
+                            
                             <% if (member.instrument) { %>
                                 <p class="text-muted"><%= member.instrument %></p>
                             <% } %>
@@ -146,17 +238,111 @@
         </section>
         <% } %>
 
-        <!-- Photos Section -->
-        <% if (band.photos && band.photos.length > 0) { %>
+        <!-- Performance Photos Section -->
+        <% 
+        const performancePhotos = band.photos && band.photos.filter(p => p.category === 'performance');
+        %>
+        <% if (performancePhotos && performancePhotos.length > 0) { %>
         <section class="mb-5">
-            <h2 class="section-title">Photos</h2>
+            <h2 class="section-title">Performance Photos</h2>
             <div class="photo-grid">
-                <% band.photos.forEach(photo => { %>
+                <% performancePhotos.forEach(photo => { %>
                     <div class="photo-card">
                         <img src="<%= photo.filePath %>" alt="<%= photo.caption || band.name %>">
                         <% if (photo.caption) { %>
                             <p class="mt-2"><%= photo.caption %></p>
                         <% } %>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Event Posters Section -->
+        <% 
+        const posters = band.photos && band.photos.filter(p => p.category === 'poster');
+        %>
+        <% if (posters && posters.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Event Posters</h2>
+            <div class="photo-grid">
+                <% posters.forEach(photo => { %>
+                    <div class="photo-card">
+                        <img src="<%= photo.filePath %>" alt="<%= photo.caption || band.name %>">
+                        <% if (photo.caption) { %>
+                            <p class="mt-2"><%= photo.caption %></p>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Promo Shots Section -->
+        <% 
+        const promoPhotos = band.photos && band.photos.filter(p => p.category === 'promo');
+        %>
+        <% if (promoPhotos && promoPhotos.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Promo Shots</h2>
+            <div class="photo-grid">
+                <% promoPhotos.forEach(photo => { %>
+                    <div class="photo-card">
+                        <img src="<%= photo.filePath %>" alt="<%= photo.caption || band.name %>">
+                        <% if (photo.caption) { %>
+                            <p class="mt-2"><%= photo.caption %></p>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- General Photos Section -->
+        <% 
+        const generalPhotos = band.photos && band.photos.filter(p => !p.category || p.category === '');
+        %>
+        <% if (generalPhotos && generalPhotos.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Photos</h2>
+            <div class="photo-grid">
+                <% generalPhotos.forEach(photo => { %>
+                    <div class="photo-card">
+                        <img src="<%= photo.filePath %>" alt="<%= photo.caption || band.name %>">
+                        <% if (photo.caption) { %>
+                            <p class="mt-2"><%= photo.caption %></p>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Logos Section -->
+        <% 
+        const logos = band.photos && band.photos.filter(p => p.category === 'logo');
+        %>
+        <% if (logos && logos.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Band Logos</h2>
+            <p class="text-muted mb-4">Click any logo to download the full resolution version</p>
+            <div class="row g-4">
+                <% logos.forEach(logo => { %>
+                    <div class="col-md-4 col-sm-6 text-center">
+                        <a href="<%= logo.filePath %>" download class="text-decoration-none">
+                            <div class="card h-100 logo-card" style="transition: transform 0.2s;">
+                                <div class="card-body d-flex flex-column justify-content-center" style="min-height: 200px;">
+                                    <img src="<%= logo.filePath %>" alt="<%= logo.caption || band.name + ' Logo' %>" 
+                                         style="max-width: 100%; max-height: 180px; object-fit: contain;">
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <small><i class="bi bi-download"></i> <%= logo.caption || 'Download Logo' %></small>
+                                    <% if (logo.isPrimary) { %>
+                                        <br><span class="badge bg-primary mt-1">Primary Logo</span>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </a>
                     </div>
                 <% }) %>
             </div>
@@ -172,16 +358,47 @@
                     <div class="col-md-6 mb-4">
                         <h5><%= video.title %></h5>
                         <% if (video.youtubeUrl) { %>
-                            <div class="ratio ratio-16x9">
-                                <iframe src="<%= video.youtubeUrl.replace('watch?v=', 'embed/') %>" allowfullscreen></iframe>
-                            </div>
+                            <% 
+                            const url = video.youtubeUrl;
+                            const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+                            const isVideoFile = /\.(mov|mp4|webm|avi|m4v)(\?|$)/i.test(url);
+                            
+                            if (isYouTube) {
+                                // YouTube embed
+                                let embedUrl = url;
+                                if (embedUrl.includes('watch?v=')) {
+                                    embedUrl = embedUrl.replace('watch?v=', 'embed/');
+                                } else if (embedUrl.includes('youtu.be/')) {
+                                    embedUrl = embedUrl.replace('youtu.be/', 'youtube.com/embed/');
+                                }
+                                embedUrl = embedUrl.split('&')[0];
+                            %>
+                                <div class="ratio ratio-16x9 mb-2">
+                                    <iframe src="<%= embedUrl %>" allowfullscreen 
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                                </div>
+                            <% } else if (isVideoFile) { %>
+                                <!-- Direct video file -->
+                                <video controls class="w-100 mb-2" style="max-height: 400px; background: #000;">
+                                    <source src="<%= url %>">
+                                    Your browser does not support video playback.
+                                </video>
+                            <% } else { %>
+                                <!-- Other URL - provide link to open -->
+                                <div class="mb-2">
+                                    <a href="<%= url %>" target="_blank" class="btn btn-primary">
+                                        <i class="bi bi-play-circle"></i> Watch Video
+                                    </a>
+                                </div>
+                            <% } %>
                         <% } else if (video.filePath) { %>
-                            <video controls class="w-100">
+                            <video controls class="w-100 mb-2" style="max-height: 400px; background: #000;">
                                 <source src="<%= video.filePath %>">
+                                Your browser does not support video playback.
                             </video>
                         <% } %>
                         <% if (video.description) { %>
-                            <p class="mt-2"><%= video.description %></p>
+                            <p class="text-muted small"><%= video.description %></p>
                         <% } %>
                     </div>
                 <% }) %>
@@ -262,7 +479,8 @@
             <% if (band.socialLinks && band.socialLinks.length > 0) { %>
                 <div class="social-links mb-4">
                     <% band.socialLinks.forEach(social => { %>
-                        <a href="<%= social.url %>" target="_blank" title="<%= social.platform %>">
+                        <a href="<%= social.url %>" target="_blank" 
+                           title="<%= social.platform.charAt(0).toUpperCase() + social.platform.slice(1) %><%= social.handle ? ' - ' + social.handle : '' %>">
                             <% if (social.platform === 'facebook') { %>
                                 <i class="bi bi-facebook"></i>
                             <% } else if (social.platform === 'instagram') { %>
@@ -273,6 +491,14 @@
                                 <i class="bi bi-youtube"></i>
                             <% } else if (social.platform === 'spotify') { %>
                                 <i class="bi bi-spotify"></i>
+                            <% } else if (social.platform === 'soundcloud') { %>
+                                <i class="bi bi-cloud"></i>
+                            <% } else if (social.platform === 'bandcamp') { %>
+                                <i class="bi bi-vinyl"></i>
+                            <% } else if (social.platform === 'tiktok') { %>
+                                <i class="bi bi-tiktok"></i>
+                            <% } else if (social.platform === 'website') { %>
+                                <i class="bi bi-globe"></i>
                             <% } else { %>
                                 <i class="bi bi-link-45deg"></i>
                             <% } %>
@@ -293,24 +519,25 @@
                     <strong>Phone:</strong> <%= band.contactPhone %>
                 </p>
             <% } %>
-            <% if (band.websiteUrl) { %>
-                <p class="mb-2">
-                    <a href="<%= band.websiteUrl %>" target="_blank" class="btn btn-outline-primary">
+            
+            <!-- Action Buttons -->
+            <div class="mt-4">
+                <% if (band.websiteUrl) { %>
+                    <a href="<%= band.websiteUrl %>" target="_blank" class="btn btn-outline-primary me-2">
                         <i class="bi bi-globe"></i> Visit Website
                     </a>
-                </p>
-            <% } %>
+                <% } %>
+                
+                <!-- Band Member Only Buttons -->
+                <% if (isBandMember) { %>
+                    <a href="/bands/<%= band.id %>/edit#public-page" class="btn btn-warning me-2">
+                        <i class="bi bi-pencil"></i> Edit Page
+                    </a>
+                    <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Band
+                    </a>
+                <% } %>
+            </div>
         </section>
     </div>
-
-    <footer class="bg-dark text-white text-center py-4 mt-5">
-        <p class="mb-0">© <%= new Date().getFullYear() %> <%= band.name %></p>
-        <p class="mb-0">
-            <small>Powered by <a href="/" class="text-white">The Band Plan</a></small>
-        </p>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
 

@@ -1,0 +1,74 @@
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-envelope"></i> Contact <%= musician.username %>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                <% errors.forEach(error => { %>
+                                    <li><%= error.msg %></li>
+                                <% }) %>
+                            </ul>
+                        </div>
+                    <% } %>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>About <%= musician.username %></strong>
+                        <% if (musician.instruments) { %>
+                            <br><small><i class="bi bi-music-note"></i> <%= musician.instruments %></small>
+                        <% } %>
+                        <% if (musician.location) { %>
+                            <br><small><i class="bi bi-geo-alt"></i> <%= musician.location %></small>
+                        <% } %>
+                    </div>
+
+                    <form action="/profile/contact/<%= musician.slug %>" method="POST">
+                        <div class="mb-3">
+                            <label for="subject" class="form-label">Subject *</label>
+                            <input type="text" class="form-control" id="subject" name="subject" 
+                                   value="<%= typeof subject !== 'undefined' ? subject : '' %>"
+                                   placeholder="Gig opportunity, collaboration, etc." required>
+                            <div class="form-text">What is this opportunity about?</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message *</label>
+                            <textarea class="form-control" id="message" name="message" rows="8" 
+                                      placeholder="Introduce yourself and describe the opportunity you'd like to discuss..." 
+                                      required><%= typeof message !== 'undefined' ? message : '' %></textarea>
+                            <div class="form-text">Be specific about dates, venues, pay, or what you're looking for</div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Note:</strong> Your email address (<%= user.email %>) will be shared with <%= musician.username %> 
+                            so they can respond to you directly.
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="/musicians/<%= musician.slug %>" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Send Message
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-3 text-muted small text-center">
+                <i class="bi bi-shield-check"></i> Your email will only be shared with <%= musician.username %> 
+                when you send this message.
+            </div>
+        </div>
+    </div>
+</div>
+

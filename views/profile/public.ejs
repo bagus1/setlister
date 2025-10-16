@@ -1,0 +1,140 @@
+<style>
+    .hero-section {
+        background: #343a40;
+        color: #e9ecef;
+        padding: 60px 0 40px;
+        margin-bottom: 40px;
+    }
+    .profile-photo {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 5px solid white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .section-title {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 30px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+    }
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 40px;
+    }
+    .photo-grid img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    .band-card {
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+        transition: transform 0.2s;
+    }
+    .band-card:hover {
+        transform: translateX(5px);
+    }
+</style>
+
+<!-- Hero Section -->
+<div class="hero-section">
+    <div class="container text-center">
+        <% if (profile.photos && profile.photos.length > 0) { %>
+            <% const primaryPhoto = profile.photos.find(p => p.isPrimary) || profile.photos[0]; %>
+            <img src="<%= primaryPhoto.filePath %>" alt="<%= profile.username %>" class="profile-photo mb-3">
+        <% } %>
+        
+        <% if (profile.instruments) { %>
+            <p class="lead">
+                <i class="bi bi-music-note-beamed"></i> <%= profile.instruments %>
+            </p>
+        <% } %>
+        
+        <% if (profile.location) { %>
+            <p><i class="bi bi-geo-alt"></i> <%= profile.location %></p>
+        <% } %>
+    </div>
+</div>
+
+    <div class="container mb-5">
+        <!-- Bio Section -->
+        <% if (profile.bio) { %>
+        <section class="mb-5">
+            <h2 class="section-title">About</h2>
+            <div class="lead">
+                <%= profile.bio %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Bands Section -->
+        <% if (profile.bands && profile.bands.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Bands</h2>
+            <% profile.bands.forEach(membership => { %>
+                <div class="band-card">
+                    <% if (membership.band.slug && membership.band.isPublic) { %>
+                        <h4>
+                            <a href="/<%= membership.band.slug %>" class="text-decoration-none">
+                                <%= membership.band.name %>
+                            </a>
+                        </h4>
+                    <% } else { %>
+                        <h4><%= membership.band.name %></h4>
+                    <% } %>
+                    
+                    <% if (membership.instrument) { %>
+                        <p class="text-muted mb-0">
+                            <i class="bi bi-music-note"></i> <%= membership.instrument %>
+                        </p>
+                    <% } %>
+                </div>
+            <% }) %>
+        </section>
+        <% } %>
+
+        <!-- Photos Section -->
+        <% if (profile.photos && profile.photos.length > 1) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Photos</h2>
+            <div class="photo-grid">
+                <% profile.photos.forEach(photo => { %>
+                    <div>
+                        <img src="<%= photo.filePath %>" alt="<%= photo.caption || profile.username %>">
+                        <% if (photo.caption) { %>
+                            <p class="mt-2 small"><%= photo.caption %></p>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Contact Section -->
+        <% if (profile.website || (profile.openToOpportunities && loggedIn && currentUserId !== profile.id)) { %>
+        <section class="mb-5 text-center">
+            <h2 class="section-title">Connect</h2>
+            
+            <% if (profile.openToOpportunities && loggedIn && currentUserId !== profile.id) { %>
+                <a href="/musicians/<%= profile.slug %>/contact" class="btn btn-primary btn-lg me-2">
+                    <i class="bi bi-envelope"></i> Contact About Opportunities
+                </a>
+            <% } %>
+            
+            <% if (profile.website) { %>
+                <a href="<%= profile.website %>" target="_blank" class="btn btn-outline-primary btn-lg">
+                    <i class="bi bi-globe"></i> Visit Website
+                </a>
+            <% } %>
+        </section>
+        <% } %>
+    </div>
+

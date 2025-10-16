@@ -1,90 +1,134 @@
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">
-                    <i class="bi bi-pencil"></i> Edit Band: <%= band.name %>
-                </h4>
-            </div>
-            <div class="card-body">
-                <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
-                    <div class="alert alert-danger">
-                        <ul class="mb-0">
-                            <% errors.forEach(error => { %>
-                                <li><%= error.msg %></li>
-                            <% }) %>
-                        </ul>
-                    </div>
-                <% } %>
-
-                <form action="/bands/<%= band.id %>/update" method="POST">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Band Name *</label>
-                        <input type="text" class="form-control" id="name" name="name"
-                            value="<%= typeof name !== 'undefined' ? name : band.name %>" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="3"
-                            placeholder="Describe your band's style, goals, or any other details..."><%= typeof description !== 'undefined' ? description : (band.description || '') %></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="websiteUrl" class="form-label">Website URL</label>
-                        <input type="url" class="form-control" id="websiteUrl" name="websiteUrl"
-                            value="<%= typeof websiteUrl !== 'undefined' ? websiteUrl : (band.websiteUrl || '') %>"
-                            placeholder="https://yourband.com">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="epkUrl" class="form-label">EPK URL</label>
-                        <input type="url" class="form-control" id="epkUrl" name="epkUrl"
-                            value="<%= typeof epkUrl !== 'undefined' ? epkUrl : (band.epkUrl || '') %>"
-                            placeholder="https://yourband.com/epk">
-                        <div class="form-text">Electronic Press Kit - your band's promotional package</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="bookingPitch" class="form-label">Booking Pitch</label>
-                        <textarea class="form-control" id="bookingPitch" name="bookingPitch" rows="4"
-                            placeholder="What makes your band special? What kind of shows do you want to book?"><%= typeof bookingPitch !== 'undefined' ? bookingPitch : (band.bookingPitch || '') %></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="contactName" class="form-label">Contact Name</label>
-                        <input type="text" class="form-control" id="contactName" name="contactName"
-                            value="<%= typeof contactName !== 'undefined' ? contactName : (band.contactName || '') %>"
-                            placeholder="John Smith">
-                        <div class="form-text">Name of the person to contact for booking</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="contactEmail" class="form-label">Contact Email</label>
-                        <input type="email" class="form-control" id="contactEmail" name="contactEmail"
-                            value="<%= typeof contactEmail !== 'undefined' ? contactEmail : (band.contactEmail || '') %>"
-                            placeholder="booking@yourband.com">
-                        <div class="form-text">Email for booking inquiries</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="contactPhone" class="form-label">Contact Phone</label>
-                        <input type="tel" class="form-control" id="contactPhone" name="contactPhone"
-                            value="<%= typeof contactPhone !== 'undefined' ? contactPhone : (band.contactPhone || '') %>"
-                            placeholder="(555) 123-4567">
-                        <div class="form-text">Phone number for booking inquiries</div>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
-                            <i class="bi bi-arrow-left"></i> Cancel
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-pencil"></i> Edit: <%= band.name %></h1>
+                <div>
+                    <% if (band.isPublic && band.slug) { %>
+                        <a href="/<%= band.slug %>" class="btn btn-outline-primary me-2" target="_blank">
+                            <i class="bi bi-eye"></i> View Public Page
                         </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check"></i> Update Band
-                        </button>
+                    <% } %>
+                    <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Band
+                    </a>
+                </div>
+            </div>
+
+            <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        <% errors.forEach(error => { %>
+                            <li><%= error.msg %></li>
+                        <% }) %>
+                    </ul>
+                </div>
+            <% } %>
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-4" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" 
+                            data-bs-target="#basic" type="button" role="tab">
+                        <i class="bi bi-info-circle"></i> Basic Info
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="public-page-tab" data-bs-toggle="tab" 
+                            data-bs-target="#public-page" type="button" role="tab">
+                        <i class="bi bi-globe"></i> Public Page
+                        <% if (!band.isPublic) { %>
+                            <span class="badge bg-secondary ms-1">Private</span>
+                        <% } %>
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Basic Info Tab -->
+                <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Basic Information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form action="/bands/<%= band.id %>/update" method="POST">
+                                        <div class="mb-3">
+                                            <label for="name" class="form-label">Band Name *</label>
+                                            <input type="text" class="form-control" id="name" name="name"
+                                                value="<%= band.name %>" required>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="description" class="form-label">Description</label>
+                                            <textarea class="form-control" id="description" name="description" rows="3"
+                                                placeholder="Describe your band's style, goals, or any other details..."><%= band.description || '' %></textarea>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="websiteUrl" class="form-label">Website URL</label>
+                                            <input type="url" class="form-control" id="websiteUrl" name="websiteUrl"
+                                                value="<%= band.websiteUrl || '' %>" placeholder="https://yourband.com">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="bookingPitch" class="form-label">Booking Pitch</label>
+                                            <textarea class="form-control" id="bookingPitch" name="bookingPitch" rows="4"
+                                                placeholder="What makes your band special? What kind of shows do you want to book?"><%= band.bookingPitch || '' %></textarea>
+                                        </div>
+
+                                        <hr>
+                                        <h6 class="mb-3">Booking Contact</h6>
+
+                                        <div class="mb-3">
+                                            <label for="contactName" class="form-label">Contact Name</label>
+                                            <input type="text" class="form-control" id="contactName" name="contactName"
+                                                value="<%= band.contactName || '' %>" placeholder="John Smith">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="contactEmail" class="form-label">Contact Email</label>
+                                            <input type="email" class="form-control" id="contactEmail" name="contactEmail"
+                                                value="<%= band.contactEmail || '' %>" placeholder="booking@yourband.com">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="contactPhone" class="form-label">Contact Phone</label>
+                                            <input type="tel" class="form-control" id="contactPhone" name="contactPhone"
+                                                value="<%= band.contactPhone || '' %>" placeholder="(555) 123-4567">
+                                        </div>
+
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-check"></i> Update Band
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </form>
+                </div>
+
+                <!-- Public Page Tab -->
+                <div class="tab-pane fade" id="public-page" role="tabpanel">
+                    <%- include('partials/public-page-editor', { band }) %>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Handle hash navigation for tabs
+document.addEventListener('DOMContentLoaded', function() {
+    const hash = window.location.hash;
+    if (hash === '#public-page') {
+        const tab = new bootstrap.Tab(document.getElementById('public-page-tab'));
+        tab.show();
+    }
+});
+</script>

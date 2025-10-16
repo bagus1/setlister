@@ -1,0 +1,212 @@
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Edit Profile</h1>
+                <a href="/profile" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <% if (locals.errors && errors.length > 0) { %>
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                <% errors.forEach(error => { %>
+                    <li><%= error.msg %></li>
+                <% }) %>
+            </ul>
+        </div>
+    <% } %>
+
+    <div class="row">
+        <!-- Profile Form -->
+        <div class="col-md-8 mb-4">
+            <form action="/profile/update" method="POST">
+                <!-- Basic Info -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-person-badge"></i> Basic Information</h5>
+                    </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               value="<%= profile.username %>" required>
+                        <div class="form-text">Your display name on The Band Plan</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bio" class="form-label">Bio</label>
+                        <textarea class="form-control" id="bio" name="bio" rows="4" 
+                                  placeholder="Tell people about yourself, your musical journey, experience, etc."><%= profile.bio || '' %></textarea>
+                        <div class="form-text">Share your story as a musician</div>
+                    </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="instruments" class="form-label">Instruments</label>
+                                <input type="text" class="form-control" id="instruments" name="instruments" 
+                                       value="<%= profile.instruments || '' %>" placeholder="Bass, Vocals, Guitar">
+                                <div class="form-text">Comma-separated</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="location" class="form-label">Location</label>
+                                <input type="text" class="form-control" id="location" name="location" 
+                                       value="<%= profile.location || '' %>" placeholder="Denver, CO">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="website" class="form-label">Website</label>
+                            <input type="url" class="form-control" id="website" name="website" 
+                                   value="<%= profile.website || '' %>" placeholder="https://yourwebsite.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Public Profile Settings -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-globe"></i> Public Profile</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="slug" class="form-label">Your Public URL</label>
+                            <div class="input-group">
+                                <span class="input-group-text">thebandplan.com/musicians/</span>
+                                <input type="text" class="form-control" id="slug" name="slug" 
+                                       value="<%= profile.slug || '' %>" placeholder="your-name">
+                            </div>
+                            <div class="form-text">
+                                Only lowercase letters, numbers, and hyphens. Minimum 3 characters.
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch" 
+                                   id="isPublic" name="isPublic" <%= profile.isPublic ? 'checked' : '' %>>
+                            <label class="form-check-label" for="isPublic">
+                                <strong>Make my profile public</strong>
+                            </label>
+                            <div class="form-text">
+                                When enabled, anyone can view your musician profile at the URL above
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" 
+                                   id="openToOpportunities" name="openToOpportunities" <%= profile.openToOpportunities ? 'checked' : '' %>>
+                            <label class="form-check-label" for="openToOpportunities">
+                                <strong>Open to music opportunities</strong>
+                            </label>
+                            <div class="form-text">
+                                When enabled, logged-in users can contact you about gigs, collaborations, and other music opportunities
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Photo Management -->
+        <div class="col-md-4 mb-4">
+            <!-- Upload New Photo -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-image"></i> Upload Photo</h5>
+                </div>
+                <div class="card-body">
+                    <form action="/profile/photo/upload" method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="photo" class="form-label">Choose Photo</label>
+                            <input class="form-control" type="file" id="photo" name="photo" 
+                                   accept="image/jpeg,image/jpg,image/png,image/webp" required>
+                            <div class="form-text">Max 10MB. JPG, PNG, or WebP</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="caption" class="form-label">Caption (optional)</label>
+                            <input type="text" class="form-control" id="caption" name="caption" 
+                                   placeholder="What's happening in this photo?">
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-upload"></i> Upload Photo
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Existing Photos -->
+            <% if (profile.photos && profile.photos.length > 0) { %>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-images"></i> My Photos</h5>
+                </div>
+                <div class="card-body">
+                    <% profile.photos.forEach(photo => { %>
+                        <div class="card mb-2">
+                            <img src="<%= photo.filePath %>" class="card-img-top" alt="<%= photo.caption || 'Photo' %>"
+                                 style="height: 150px; object-fit: cover;">
+                            <div class="card-body p-2">
+                                <% if (photo.caption) { %>
+                                    <p class="card-text small mb-2"><%= photo.caption %></p>
+                                <% } %>
+                                
+                                <div class="d-flex gap-1">
+                                    <% if (!photo.isPrimary) { %>
+                                        <form action="/profile/photo/<%= photo.id %>/set-primary" method="POST" class="flex-fill">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                                <i class="bi bi-star"></i> Set Primary
+                                            </button>
+                                        </form>
+                                    <% } else { %>
+                                        <button class="btn btn-sm btn-primary w-100" disabled>
+                                            <i class="bi bi-star-fill"></i> Primary
+                                        </button>
+                                    <% } %>
+                                    
+                                    <form action="/profile/photo/<%= photo.id %>/delete" method="POST" 
+                                          onsubmit="return confirm('Delete this photo?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<script>
+// Slug validation
+document.getElementById('slug').addEventListener('blur', function() {
+    const slug = this.value.trim();
+    if (!slug) return;
+
+    // Basic client-side validation
+    const slugRegex = /^[a-z0-9-]+$/;
+    if (!slugRegex.test(slug)) {
+        this.classList.add('is-invalid');
+        return;
+    }
+
+    this.classList.remove('is-invalid');
+    this.classList.add('is-valid');
+});
+</script>
+

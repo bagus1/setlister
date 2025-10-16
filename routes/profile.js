@@ -73,8 +73,27 @@ router.get("/", requireAuth, async (req, res) => {
 
     // Auto-generate slug if user doesn't have one (hybrid approach)
     if (!user.slug) {
-      const { generateUniqueSlug } = require("../utils/slugify");
-      const slug = await generateUniqueSlug(prisma.user, user.username, user.id);
+      const { generateSlug } = require("../utils/slugify");
+      let slug = generateSlug(user.username);
+      let counter = 1;
+      let isUnique = false;
+
+      // Check uniqueness
+      while (!isUnique) {
+        const existingUser = await prisma.user.findFirst({
+          where: {
+            slug,
+            NOT: { id: user.id },
+          },
+        });
+
+        if (!existingUser) {
+          isUnique = true;
+        } else {
+          counter++;
+          slug = `${generateSlug(user.username)}-${counter}`;
+        }
+      }
       
       await prisma.user.update({
         where: { id: user.id },
@@ -132,6 +151,7 @@ router.post(
   "/update",
   requireAuth,
   [
+    body("username").trim().isLength({ min: 3 }).withMessage("Username must be at least 3 characters"),
     body("bio").optional().trim(),
     body("location").optional().trim(),
     body("instruments").optional().trim(),
@@ -151,6 +171,7 @@ router.post(
           title: "Edit Profile",
           profile: user,
           errors: errors.array(),
+          username: req.body.username,
           bio: req.body.bio,
           location: req.body.location,
           instruments: req.body.instruments,
@@ -160,7 +181,26 @@ router.post(
       }
 
       const userId = req.session.user.id;
-      const { bio, location, instruments, website, slug, isPublic } = req.body;
+      const { username, bio, location, instruments, website, slug, isPublic, openToOpportunities } = req.body;
+
+      // Check if username is being changed and if it's unique
+      if (username) {
+        const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+        
+        if (username !== currentUser.username) {
+          const existingUser = await prisma.user.findFirst({
+            where: {
+              username,
+              NOT: { id: userId },
+            },
+          });
+
+          if (existingUser) {
+            req.flash("error", "This username is already taken");
+            return res.redirect("/profile/edit");
+          }
+        }
+      }
 
       // Validate slug if provided
       if (slug) {
@@ -186,17 +226,24 @@ router.post(
         }
       }
 
-      await prisma.user.update({
+      const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
+          username: username || null,
           bio: bio || null,
           location: location || null,
           instruments: instruments || null,
           website: website || null,
           slug: slug || null,
           isPublic: isPublic === 'on', // Checkbox value
+          openToOpportunities: openToOpportunities === 'on', // Checkbox value
         },
       });
+
+      // Update session if username changed
+      if (username && username !== req.session.user.username) {
+        req.session.user.username = username;
+      }
 
       req.flash("success", "Profile updated successfully");
       res.redirect("/profile");

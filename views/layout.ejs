@@ -138,6 +138,11 @@
                                         </li>
                                         <li><hr class="dropdown-divider"></li>
                                     <% } %>
+                                    <li>
+                                        <a class="dropdown-item" href="/profile">
+                                            <i class="bi bi-person-badge"></i> My Profile
+                                        </a>
+                                    </li>
                                     <% if (user && (user.role === 'admin' || user.role === 'moderator')) { %>
                                         <li>
                                             <a class="dropdown-item" href="/admin">

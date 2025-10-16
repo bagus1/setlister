@@ -32,6 +32,8 @@ const googleDocProcessingRoutes =
   require("./routes/google-doc-processing").router;
 const venueRoutes = require("./routes/venues");
 const profileRoutes = require("./routes/profile");
+const bandPageRoutes = require("./routes/band-page");
+const musiciansRoutes = require("./routes/musicians");
 
 const app = express();
 const server = http.createServer(app);
@@ -140,72 +142,9 @@ app.use("/whitelist-request", whitelistRequestRoutes);
 app.use("/google-docs", googleDocProcessingRoutes);
 app.use("/venues", venueRoutes);
 app.use("/profile", profileRoutes);
+app.use("/bands", bandPageRoutes);
+app.use("/musicians", musiciansRoutes);
 app.use("/admin", require("./routes/admin"));
-
-// Public Musician Profile Route
-app.get("/musicians/:slug", async (req, res) => {
-  try {
-    const { slug } = req.params;
-    const { prisma } = require("./lib/prisma");
-
-    const user = await prisma.user.findFirst({
-      where: { 
-        slug,
-        isPublic: true, // Only show if user made profile public
-      },
-      include: {
-        photos: {
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        },
-        bands: {
-          include: {
-            band: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                isPublic: true,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      // User doesn't exist or isn't public
-      return res.status(404).render("error", {
-        title: "Profile Not Found",
-        message: "This musician profile doesn't exist or isn't available yet.",
-      });
-    }
-
-    // Don't show sensitive info on public profile
-    const publicProfile = {
-      ...user,
-      email: undefined,
-      password: undefined,
-      role: undefined,
-    };
-
-    res.render("profile/public", {
-      title: user.username,
-      profile: publicProfile,
-      layout: 'layout',
-    });
-  } catch (error) {
-    console.error("Public musician profile error:", error);
-    res.status(500).render("error", {
-      title: "Error",
-      message: "An error occurred loading this profile.",
-    });
-  }
-});
 
 // Public Band Page Route - MUST BE LAST (catches /:slug at root level)
 app.get("/:slug", async (req, res) => {
@@ -224,6 +163,8 @@ app.get("/:slug", async (req, res) => {
             user: {
               select: {
                 username: true,
+                slug: true,
+                isPublic: true,
               },
             },
           },
@@ -287,10 +228,19 @@ app.get("/:slug", async (req, res) => {
       });
     }
 
+    // Check if current user is a member of this band
+    let isBandMember = false;
+    if (req.session.user) {
+      isBandMember = band.members.some(m => m.userId === req.session.user.id);
+    }
+
     res.render("bands/public-page", {
       title: band.name,
       band,
+      hasBandHeader: true,
       layout: 'layout',
+      isBandMember,
+      loggedIn: !!req.session.user,
     });
   } catch (error) {
     console.error("Public band page error:", error);

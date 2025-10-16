@@ -1,0 +1,601 @@
+<div class="row">
+    <!-- Main Editor Column -->
+    <div class="col-lg-8">
+        <!-- Public Page Settings -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-globe"></i> Public Page Settings</h5>
+            </div>
+            <div class="card-body">
+                <form action="/bands/<%= band.id %>/update-public-info" method="POST" id="publicInfoForm">
+                    <div class="mb-3">
+                        <label for="slug" class="form-label">Your Public URL</label>
+                        <div class="input-group">
+                            <span class="input-group-text">thebandplan.com/</span>
+                            <input type="text" class="form-control auto-save" id="slug" name="slug" 
+                                   value="<%= band.slug || '' %>" placeholder="your-band-name" required
+                                   data-field="slug">
+                        </div>
+                        <div class="form-text">
+                            Only lowercase letters, numbers, and hyphens. Minimum 3 characters.
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mb-4">
+                        <input class="form-check-input auto-save" type="checkbox" role="switch" 
+                               id="isPublic" name="isPublic" <%= band.isPublic ? 'checked' : '' %>
+                               data-field="isPublic">
+                        <label class="form-check-label" for="isPublic">
+                            <strong>Make this band page public</strong>
+                        </label>
+                        <div class="form-text">
+                            When enabled, anyone can view your band page at the URL above
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label for="tagline" class="form-label">Tagline</label>
+                        <input type="text" class="form-control auto-save" id="tagline" name="tagline" 
+                               value="<%= band.tagline || '' %>" 
+                               placeholder="Colorado's Premier Funk & Soul Band" maxlength="255"
+                               data-field="tagline">
+                        <div class="form-text">Short catchy description (appears under band name)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bio" class="form-label">Bio</label>
+                        <textarea class="form-control auto-save" id="bio" name="bio" rows="6"
+                                  placeholder="Tell your band's story, history, musical style, what makes you unique..."
+                                  data-field="bio"><%= band.bio || '' %></textarea>
+                        <div class="form-text">Full band biography for your public page</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="genres" class="form-label">Genres</label>
+                            <input type="text" class="form-control auto-save" id="genres" name="genres" 
+                                   value="<%= band.genres || '' %>" placeholder="Funk, Soul, R&B"
+                                   data-field="genres">
+                            <div class="form-text">Comma-separated</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="hometown" class="form-label">Hometown</label>
+                            <input type="text" class="form-control auto-save" id="hometown" name="hometown" 
+                                   value="<%= band.hometown || '' %>" placeholder="Denver, CO"
+                                   data-field="hometown">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="formedYear" class="form-label">Formed Year</label>
+                        <input type="number" class="form-control auto-save" id="formedYear" name="formedYear" 
+                               value="<%= band.formedYear || '' %>" 
+                               min="1900" max="<%= new Date().getFullYear() %>" placeholder="2005"
+                               data-field="formedYear">
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save"></i> Save Public Page Info
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Photos Section -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-images"></i> Photos</h5>
+            </div>
+            <div class="card-body">
+                <!-- Upload Form -->
+                <form action="/bands/<%= band.id %>/photo/upload" method="POST" enctype="multipart/form-data" class="mb-4">
+                    <input type="hidden" name="fileType" value="photo">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="photo" class="form-label">Choose Photo</label>
+                            <input class="form-control" type="file" id="photo" name="photo" 
+                                   accept="image/*" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="">General</option>
+                                <option value="performance">Performance Photo</option>
+                                <option value="poster">Event Poster</option>
+                                <option value="promo">Promo Shot</option>
+                                <option value="logo">Logo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-upload"></i> Upload
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label for="caption" class="form-label">Caption</label>
+                        <input type="text" class="form-control" id="caption" name="caption" 
+                               placeholder="Describe this photo...">
+                    </div>
+                </form>
+
+                <!-- Existing Photos -->
+                <% if (band.photos && band.photos.length > 0) { %>
+                    <hr>
+                    <h6 class="mb-3">Your Photos & Logos</h6>
+                    <div class="row g-2">
+                        <% band.photos.forEach(photo => { %>
+                            <div class="col-md-4 col-sm-6">
+                                <div class="card <%= photo.category === 'logo' ? 'border-warning' : '' %>">
+                                    <img src="<%= photo.filePath %>" class="card-img-top" 
+                                         style="height: 150px; object-fit: <%= photo.category === 'logo' ? 'contain' : 'cover' %>; <%= photo.category === 'logo' ? 'background: white; padding: 10px;' : '' %>" 
+                                         alt="<%= photo.caption || 'Band photo' %>">
+                                    <div class="card-body p-2">
+                                        <% if (photo.caption) { %>
+                                            <p class="card-text small mb-2"><%= photo.caption %></p>
+                                        <% } %>
+                                        <% if (photo.category) { %>
+                                            <span class="badge <%= photo.category === 'logo' ? 'bg-warning' : 'bg-info' %> mb-2">
+                                                <% if (photo.category === 'logo') { %>
+                                                    <i class="bi bi-award"></i>
+                                                <% } %>
+                                                <%= photo.category %>
+                                            </span>
+                                        <% } %>
+                                        <div class="d-flex gap-1">
+                                            <% if (!photo.isPrimary) { %>
+                                                <form action="/bands/<%= band.id %>/photo/<%= photo.id %>/set-primary" method="POST" class="flex-fill">
+                                                    <button type="submit" class="btn btn-sm btn-outline-primary w-100" 
+                                                            title="<%= photo.category === 'logo' ? 'Set as primary logo (shown in hero)' : 'Set as primary photo' %>">
+                                                        <i class="bi bi-star"></i> Primary
+                                                    </button>
+                                                </form>
+                                            <% } else { %>
+                                                <button class="btn btn-sm btn-primary flex-fill" disabled>
+                                                    <i class="bi bi-star-fill"></i> Primary
+                                                </button>
+                                            <% } %>
+                                            <form action="/bands/<%= band.id %>/photo/<%= photo.id %>/delete" method="POST" 
+                                                  onsubmit="return confirm('Delete this <%= photo.category === 'logo' ? 'logo' : 'photo' %>?');">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted mb-0">No photos uploaded yet. Add photos to showcase your band!</p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Videos Section -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-camera-video"></i> Videos</h5>
+            </div>
+            <div class="card-body">
+                <!-- Add Video Form -->
+                <form action="/bands/<%= band.id %>/video/add" method="POST" class="mb-4">
+                    <div class="mb-3">
+                        <label for="videoTitle" class="form-label">Video Title *</label>
+                        <input type="text" class="form-control" id="videoTitle" name="title" 
+                               placeholder="Live at The Werks" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="youtubeUrl" class="form-label">Video URL *</label>
+                        <input type="url" class="form-control" id="youtubeUrl" name="youtubeUrl" 
+                               placeholder="YouTube, Vimeo, or direct .mov/.mp4 link" required>
+                        <div class="form-text">YouTube, Vimeo, or direct link to .mov/.mp4/.webm video file</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="videoDescription" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="videoDescription" name="description" 
+                               placeholder="Live performance from April 2025">
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-plus-circle"></i> Add Video
+                    </button>
+                </form>
+
+                <!-- Existing Videos -->
+                <% if (band.videos && band.videos.length > 0) { %>
+                    <hr>
+                    <h6 class="mb-3">Your Videos</h6>
+                    <% band.videos.forEach(video => { %>
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1"><%= video.title %></h6>
+                                        <% if (video.description) { %>
+                                            <p class="small text-muted mb-2"><%= video.description %></p>
+                                        <% } %>
+                                        <small class="text-muted">
+                                            <i class="bi bi-youtube"></i> 
+                                            <a href="<%= video.youtubeUrl %>" target="_blank">Watch on YouTube</a>
+                                        </small>
+                                    </div>
+                                    <form action="/bands/<%= band.id %>/video/<%= video.id %>/delete" method="POST"
+                                          onsubmit="return confirm('Delete this video?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <p class="text-muted mb-0">No videos added yet. Link to your YouTube videos!</p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Audio Section -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-music-note-beamed"></i> Audio Samples</h5>
+            </div>
+            <div class="card-body">
+                <!-- Add Audio Form -->
+                <form action="/bands/<%= band.id %>/audio/add" method="POST" class="mb-4">
+                    <div class="mb-3">
+                        <label for="audioTitle" class="form-label">Track Title *</label>
+                        <input type="text" class="form-control" id="audioTitle" name="title" 
+                               placeholder="Colorado (Live)" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="externalUrl" class="form-label">Audio URL *</label>
+                        <input type="url" class="form-control" id="externalUrl" name="externalUrl" 
+                               placeholder="https://open.spotify.com/track/... or SoundCloud URL" required>
+                        <div class="form-text">Spotify, SoundCloud, Bandcamp, or other streaming link</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="audioDescription" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="audioDescription" name="description" 
+                               placeholder="Live recording from June 27, 2025">
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-plus-circle"></i> Add Audio
+                    </button>
+                </form>
+
+                <!-- Existing Audio -->
+                <% if (band.audioSamples && band.audioSamples.length > 0) { %>
+                    <hr>
+                    <h6 class="mb-3">Your Audio Samples</h6>
+                    <% band.audioSamples.forEach(audio => { %>
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1"><%= audio.title %></h6>
+                                        <% if (audio.description) { %>
+                                            <p class="small text-muted mb-2"><%= audio.description %></p>
+                                        <% } %>
+                                        <small class="text-muted">
+                                            <i class="bi bi-link-45deg"></i> 
+                                            <a href="<%= audio.externalUrl %>" target="_blank">Listen</a>
+                                        </small>
+                                    </div>
+                                    <form action="/bands/<%= band.id %>/audio/<%= audio.id %>/delete" method="POST"
+                                          onsubmit="return confirm('Delete this audio?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <p class="text-muted mb-0">No audio samples added yet. Link to your Spotify, SoundCloud, or other audio!</p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Social Links Section -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-share"></i> Social Media Links</h5>
+            </div>
+            <div class="card-body">
+                <!-- Add Social Link Form -->
+                <form action="/bands/<%= band.id %>/social/add" method="POST" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="platform" class="form-label">Platform *</label>
+                            <select class="form-select" id="platform" name="platform" required>
+                                <option value="">Choose...</option>
+                                <option value="facebook">Facebook</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="twitter">Twitter/X</option>
+                                <option value="youtube">YouTube</option>
+                                <option value="spotify">Spotify</option>
+                                <option value="soundcloud">SoundCloud</option>
+                                <option value="bandcamp">Bandcamp</option>
+                                <option value="tiktok">TikTok</option>
+                                <option value="website">Website</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="handle" class="form-label">Handle</label>
+                            <input type="text" class="form-control" id="handle" name="handle" 
+                                   placeholder="@yourband">
+                            <div class="form-text">Optional @username</div>
+                        </div>
+
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-plus-circle"></i> Add
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label for="url" class="form-label">Full URL *</label>
+                        <input type="url" class="form-control" id="url" name="url" 
+                               placeholder="https://facebook.com/yourband" required>
+                    </div>
+                </form>
+
+                <!-- Existing Social Links -->
+                <% if (band.socialLinks && band.socialLinks.length > 0) { %>
+                    <hr>
+                    <h6 class="mb-3">Your Social Links</h6>
+                    <div class="list-group">
+                        <% band.socialLinks.forEach(social => { %>
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong class="text-capitalize">
+                                            <% if (social.platform === 'facebook') { %>
+                                                <i class="bi bi-facebook text-primary"></i>
+                                            <% } else if (social.platform === 'instagram') { %>
+                                                <i class="bi bi-instagram text-danger"></i>
+                                            <% } else if (social.platform === 'twitter') { %>
+                                                <i class="bi bi-twitter text-info"></i>
+                                            <% } else if (social.platform === 'youtube') { %>
+                                                <i class="bi bi-youtube text-danger"></i>
+                                            <% } else if (social.platform === 'spotify') { %>
+                                                <i class="bi bi-spotify text-success"></i>
+                                            <% } else { %>
+                                                <i class="bi bi-link-45deg"></i>
+                                            <% } %>
+                                            <%= social.platform %>
+                                        </strong>
+                                        <% if (social.handle) { %>
+                                            <span class="text-muted small">(<%= social.handle %>)</span>
+                                        <% } %>
+                                        <br>
+                                        <small class="text-muted">
+                                            <a href="<%= social.url %>" target="_blank"><%= social.url %></a>
+                                        </small>
+                                    </div>
+                                    <form action="/bands/<%= band.id %>/social/<%= social.id %>/delete" method="POST"
+                                          onsubmit="return confirm('Delete this social link?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted mb-0">No social links added yet. Add your band's social media profiles!</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Preview Card -->
+        <div class="card mb-3 sticky-top" style="top: 20px;">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-eye"></i> Public Page Preview</h6>
+            </div>
+            <div class="card-body">
+                <% if (band.isPublic && band.slug) { %>
+                    <div class="alert alert-success mb-3">
+                        <i class="bi bi-check-circle"></i> Your page is <strong>PUBLIC</strong>
+                    </div>
+                    <p class="mb-2"><strong>Your URL:</strong></p>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control form-control-sm" 
+                               value="thebandplan.com/<%= band.slug %>" readonly>
+                        <button class="btn btn-sm btn-outline-secondary" 
+                                onclick="navigator.clipboard.writeText('https://thebandplan.com/<%= band.slug %>')">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                    <a href="/<%= band.slug %>" class="btn btn-primary w-100 mb-2" target="_blank">
+                        <i class="bi bi-box-arrow-up-right"></i> View Public Page
+                    </a>
+                <% } else { %>
+                    <div class="alert alert-secondary mb-3">
+                        <i class="bi bi-lock"></i> Your page is <strong>PRIVATE</strong>
+                    </div>
+                    <p class="text-muted small">
+                        Toggle "Make this band page public" above to make your page visible to everyone.
+                    </p>
+                <% } %>
+
+                <hr>
+
+                <h6 class="mb-2">Checklist</h6>
+                <ul class="list-unstyled small">
+                    <li>
+                        <% if (band.slug) { %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        <% } else { %>
+                            <i class="bi bi-circle text-muted"></i>
+                        <% } %>
+                        URL set
+                    </li>
+                    <li>
+                        <% if (band.bio) { %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        <% } else { %>
+                            <i class="bi bi-circle text-muted"></i>
+                        <% } %>
+                        Bio added
+                    </li>
+                    <li>
+                        <% 
+                        const hasLogo = band.photos && band.photos.some(p => p.category === 'logo');
+                        const hasPrimaryLogo = band.photos && band.photos.some(p => p.category === 'logo' && p.isPrimary);
+                        %>
+                        <% if (hasPrimaryLogo) { %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        <% } else if (hasLogo) { %>
+                            <i class="bi bi-exclamation-circle-fill text-warning"></i>
+                        <% } else { %>
+                            <i class="bi bi-circle text-muted"></i>
+                        <% } %>
+                        Logo <%= hasPrimaryLogo ? '(primary set)' : hasLogo ? '(set one as primary)' : 'uploaded' %>
+                    </li>
+                    <li>
+                        <% 
+                        const hasPhotos = band.photos && band.photos.some(p => p.category !== 'logo');
+                        %>
+                        <% if (hasPhotos) { %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        <% } else { %>
+                            <i class="bi bi-circle text-muted"></i>
+                        <% } %>
+                        Photos uploaded
+                    </li>
+                    <li>
+                        <% if (band.videos && band.videos.length > 0) { %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        <% } else { %>
+                            <i class="bi bi-circle text-muted"></i>
+                        <% } %>
+                        Videos added
+                    </li>
+                    <li>
+                        <% if (band.audioSamples && band.audioSamples.length > 0) { %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        <% } else { %>
+                            <i class="bi bi-circle text-muted"></i>
+                        <% } %>
+                        Audio samples added
+                    </li>
+                    <li>
+                        <% if (band.socialLinks && band.socialLinks.length > 0) { %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        <% } else { %>
+                            <i class="bi bi-circle text-muted"></i>
+                        <% } %>
+                        Social links added
+                    </li>
+                    <li>
+                        <% if (band.contactEmail) { %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        <% } else { %>
+                            <i class="bi bi-circle text-muted"></i>
+                        <% } %>
+                        Contact info
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-save form data to localStorage
+(function() {
+    const STORAGE_KEY = 'band_<%= band.id %>_public_info';
+    const form = document.getElementById('publicInfoForm');
+    
+    if (!form) return;
+
+    // Restore saved data on page load
+    function restoreSavedData() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                
+                // Restore each field
+                document.querySelectorAll('.auto-save').forEach(field => {
+                    const fieldName = field.dataset.field;
+                    if (data[fieldName] !== undefined) {
+                        if (field.type === 'checkbox') {
+                            field.checked = data[fieldName];
+                        } else {
+                            field.value = data[fieldName];
+                        }
+                    }
+                });
+
+                // Show indicator that data was restored
+                const notice = document.createElement('div');
+                notice.className = 'alert alert-info alert-dismissible fade show';
+                notice.innerHTML = `
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>Draft restored!</strong> Your unsaved changes were recovered.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                form.insertBefore(notice, form.firstChild);
+            } catch (e) {
+                console.error('Error restoring saved data:', e);
+            }
+        }
+    }
+
+    // Save data as user types
+    function saveToLocalStorage() {
+        const data = {};
+        
+        document.querySelectorAll('.auto-save').forEach(field => {
+            const fieldName = field.dataset.field;
+            if (field.type === 'checkbox') {
+                data[fieldName] = field.checked;
+            } else {
+                data[fieldName] = field.value;
+            }
+        });
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    // Add event listeners
+    document.querySelectorAll('.auto-save').forEach(field => {
+        if (field.type === 'checkbox') {
+            field.addEventListener('change', saveToLocalStorage);
+        } else {
+            field.addEventListener('input', saveToLocalStorage);
+        }
+    });
+
+    // Clear localStorage on successful form submit
+    form.addEventListener('submit', function() {
+        localStorage.removeItem(STORAGE_KEY);
+    });
+
+    // Restore on page load
+    restoreSavedData();
+})();
+</script>

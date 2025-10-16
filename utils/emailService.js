@@ -25,6 +25,11 @@ const sendEmail = async (to, subject, content, options = {}) => {
     }
   };
 
+  // Add reply-to if provided
+  if (options.replyTo) {
+    msg.replyTo = options.replyTo;
+  }
+
   try {
     await sgMail.send(msg);
     console.log(`Email sent to ${to}`);

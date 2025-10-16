@@ -133,25 +133,31 @@
         <% } else { %>
             <!-- Logged out view -->
 
-            <!-- Bands List (unlinked) -->
+            <!-- Bands List (linked to public pages) -->
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="bi bi-people"></i> Recent Bands
+                            <i class="bi bi-people"></i> Amazing Bands
                         </h5>
-                        <small class="text-muted">Bands using the platform</small>
+                        <small class="text-muted">Check out these bands!</small>
                     </div>
                     <div class="card-body">
                         <% if (bands && bands.length> 0) { %>
                             <% bands.forEach(band=> { %>
                                 <div class="py-1">
-                                    <%= band.name %>
-                                        <% if (band.description) { %>
-                                            <br><small class="text-muted">
-                                                <%= band.description %>
-                                            </small>
-                                            <% } %>
+                                    <% if (band.slug && band.isPublic) { %>
+                                        <a href="/<%= band.slug %>" class="text-decoration-none">
+                                            <strong><%= band.name %></strong>
+                                        </a>
+                                    <% } else { %>
+                                        <%= band.name %>
+                                    <% } %>
+                                    <% if (band.description) { %>
+                                        <br><small class="text-muted">
+                                            <%= band.description %>
+                                        </small>
+                                    <% } %>
                                 </div>
                                 <% }) %>
                                     <% } else { %>

@@ -16,8 +16,19 @@ model User {
   password       String           @db.VarChar(255)
   role           String           @default("user") @db.VarChar(50) // user, moderator, admin
   canMakePrivate Boolean          @default(true) @map("can_make_private")
+  
+  // Profile Fields
+  slug           String?          @unique @db.VarChar(100)
+  isPublic       Boolean          @default(false) @map("is_public")
+  bio            String?          @db.Text
+  location       String?          @db.VarChar(255)
+  instruments    String?          @db.VarChar(500) // "Bass, Vocals, Guitar"
+  website        String?          @db.VarChar(500)
+  
   createdAt      DateTime         @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relationships
   invitations    BandInvitation[] @relation("Inviter")
   bands          BandMember[]
   createdBands   Band[]           @relation("BandCreator")
@@ -32,8 +43,11 @@ model User {
   venueChangesSuggested VenueChange[] @relation("VenueChangeSuggestedBy")
   venueChangesReviewed VenueChange[] @relation("VenueChangeReviewedBy")
   recordings     Recording[]      @relation("RecordingCreator")
+  photos         UserPhoto[]
 
   @@map("users")
+  @@index([slug])
+  @@index([isPublic])
 }
 
 model Vocalist {
@@ -943,5 +957,24 @@ model BandSocialLink {
   @@map("band_social_links")
   @@index([bandId])
   @@index([platform])
+}
+
+// User Profile Photos
+model UserPhoto {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  filePath    String   @db.VarChar(500) @map("file_path")
+  caption     String?  @db.VarChar(500)
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  sortOrder   Int      @default(0) @map("sort_order")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@map("user_photos")
+  @@index([userId])
+  @@index([isPrimary])
 }
 

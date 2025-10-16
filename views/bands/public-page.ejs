@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= band.name %> | The Band Plan</title>
+    <meta name="description" content="<%= band.bio ? band.bio.substring(0, 160) : band.description || band.name %>">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 0 60px;
+            margin-bottom: 40px;
+        }
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .hero-section .tagline {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+        .section-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .photo-card img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .member-card {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .member-card img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px;
+        }
+        .press-quote {
+            background: #f8f9fa;
+            padding: 30px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .press-quote blockquote {
+            font-size: 1.1rem;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        .social-links a {
+            font-size: 2rem;
+            margin: 0 15px;
+            color: #667eea;
+            transition: color 0.3s;
+        }
+        .social-links a:hover {
+            color: #764ba2;
+        }
+        .gig-card {
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container text-center">
+            <h1><%= band.name %></h1>
+            <% if (band.tagline) { %>
+                <p class="tagline"><%= band.tagline %></p>
+            <% } %>
+            <% if (band.hometown) { %>
+                <p><i class="bi bi-geo-alt"></i> <%= band.hometown %></p>
+            <% } %>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <!-- Bio Section -->
+        <% if (band.bio || band.description) { %>
+        <section class="mb-5">
+            <h2 class="section-title">About <%= band.name %></h2>
+            <div class="lead">
+                <%= band.bio || band.description %>
+            </div>
+            <% if (band.genres) { %>
+                <p class="mt-3">
+                    <strong>Genre:</strong> <%= band.genres %>
+                </p>
+            <% } %>
+            <% if (band.formedYear) { %>
+                <p>
+                    <strong>Formed:</strong> <%= band.formedYear %>
+                </p>
+            <% } %>
+        </section>
+        <% } %>
+
+        <!-- Members Section -->
+        <% if (band.showMembers && band.members && band.members.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Band Members</h2>
+            <div class="row">
+                <% band.members.forEach(member => { %>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="member-card">
+                            <% if (member.photoUrl) { %>
+                                <img src="<%= member.photoUrl %>" alt="<%= member.displayName || member.user.username %>">
+                            <% } else { %>
+                                <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 15px;">
+                                    <i class="bi bi-person-fill" style="font-size: 4rem;"></i>
+                                </div>
+                            <% } %>
+                            <h5><%= member.displayName || member.user.username %></h5>
+                            <% if (member.instrument) { %>
+                                <p class="text-muted"><%= member.instrument %></p>
+                            <% } %>
+                            <% if (member.isFeatured) { %>
+                                <span class="badge bg-warning">Featured Artist</span>
+                            <% } %>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Photos Section -->
+        <% if (band.photos && band.photos.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Photos</h2>
+            <div class="photo-grid">
+                <% band.photos.forEach(photo => { %>
+                    <div class="photo-card">
+                        <img src="<%= photo.filePath %>" alt="<%= photo.caption || band.name %>">
+                        <% if (photo.caption) { %>
+                            <p class="mt-2"><%= photo.caption %></p>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Videos Section -->
+        <% if (band.videos && band.videos.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Videos</h2>
+            <div class="row">
+                <% band.videos.forEach(video => { %>
+                    <div class="col-md-6 mb-4">
+                        <h5><%= video.title %></h5>
+                        <% if (video.youtubeUrl) { %>
+                            <div class="ratio ratio-16x9">
+                                <iframe src="<%= video.youtubeUrl.replace('watch?v=', 'embed/') %>" allowfullscreen></iframe>
+                            </div>
+                        <% } else if (video.filePath) { %>
+                            <video controls class="w-100">
+                                <source src="<%= video.filePath %>">
+                            </video>
+                        <% } %>
+                        <% if (video.description) { %>
+                            <p class="mt-2"><%= video.description %></p>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Audio Section -->
+        <% if (band.audioSamples && band.audioSamples.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Audio Samples</h2>
+            <% band.audioSamples.forEach(audio => { %>
+                <div class="mb-3">
+                    <h5><%= audio.title %></h5>
+                    <% if (audio.filePath) { %>
+                        <audio controls class="w-100">
+                            <source src="<%= audio.filePath %>">
+                        </audio>
+                    <% } else if (audio.externalUrl) { %>
+                        <p><a href="<%= audio.externalUrl %>" target="_blank" class="btn btn-primary">
+                            <i class="bi bi-music-note"></i> Listen
+                        </a></p>
+                    <% } %>
+                    <% if (audio.description) { %>
+                        <p class="text-muted"><%= audio.description %></p>
+                    <% } %>
+                </div>
+            <% }) %>
+        </section>
+        <% } %>
+
+        <!-- Press Quotes Section -->
+        <% if (band.pressQuotes && band.pressQuotes.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Press & Reviews</h2>
+            <% band.pressQuotes.forEach(quote => { %>
+                <div class="press-quote">
+                    <blockquote>"<%= quote.quote %>"</blockquote>
+                    <p class="mb-0"><strong><%= quote.attribution %></strong></p>
+                    <% if (quote.source) { %>
+                        <p class="text-muted mb-0"><%= quote.source %></p>
+                    <% } %>
+                </div>
+            <% }) %>
+        </section>
+        <% } %>
+
+        <!-- Upcoming Gigs Section -->
+        <% if (band.showGigs && band.gigs && band.gigs.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Upcoming Shows</h2>
+            <% band.gigs.forEach(gig => { %>
+                <div class="gig-card">
+                    <h5><%= gig.name %></h5>
+                    <p class="mb-1">
+                        <i class="bi bi-calendar"></i> 
+                        <%= new Date(gig.gigDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %>
+                    </p>
+                    <% if (gig.venue) { %>
+                        <p class="mb-1">
+                            <i class="bi bi-geo-alt"></i> <%= gig.venue.name %>
+                            <% if (gig.venue.city) { %>, <%= gig.venue.city %><% } %>
+                        </p>
+                    <% } %>
+                    <% if (gig.ticketLink) { %>
+                        <a href="<%= gig.ticketLink %>" target="_blank" class="btn btn-sm btn-primary">Get Tickets</a>
+                    <% } %>
+                </div>
+            <% }) %>
+        </section>
+        <% } %>
+
+        <!-- Contact & Social Section -->
+        <section class="mb-5 text-center">
+            <h2 class="section-title">Connect</h2>
+            
+            <!-- Social Links -->
+            <% if (band.socialLinks && band.socialLinks.length > 0) { %>
+                <div class="social-links mb-4">
+                    <% band.socialLinks.forEach(social => { %>
+                        <a href="<%= social.url %>" target="_blank" title="<%= social.platform %>">
+                            <% if (social.platform === 'facebook') { %>
+                                <i class="bi bi-facebook"></i>
+                            <% } else if (social.platform === 'instagram') { %>
+                                <i class="bi bi-instagram"></i>
+                            <% } else if (social.platform === 'twitter') { %>
+                                <i class="bi bi-twitter"></i>
+                            <% } else if (social.platform === 'youtube') { %>
+                                <i class="bi bi-youtube"></i>
+                            <% } else if (social.platform === 'spotify') { %>
+                                <i class="bi bi-spotify"></i>
+                            <% } else { %>
+                                <i class="bi bi-link-45deg"></i>
+                            <% } %>
+                        </a>
+                    <% }) %>
+                </div>
+            <% } %>
+
+            <!-- Booking Contact -->
+            <% if (band.contactEmail) { %>
+                <p class="mb-2">
+                    <strong>Booking:</strong> 
+                    <a href="mailto:<%= band.contactEmail %>"><%= band.contactEmail %></a>
+                </p>
+            <% } %>
+            <% if (band.contactPhone) { %>
+                <p class="mb-2">
+                    <strong>Phone:</strong> <%= band.contactPhone %>
+                </p>
+            <% } %>
+            <% if (band.websiteUrl) { %>
+                <p class="mb-2">
+                    <a href="<%= band.websiteUrl %>" target="_blank" class="btn btn-outline-primary">
+                        <i class="bi bi-globe"></i> Visit Website
+                    </a>
+                </p>
+            <% } %>
+        </section>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-4 mt-5">
+        <p class="mb-0">© <%= new Date().getFullYear() %> <%= band.name %></p>
+        <p class="mb-0">
+            <small>Powered by <a href="/" class="text-white">The Band Plan</a></small>
+        </p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

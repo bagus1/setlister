@@ -109,6 +109,14 @@ router.get("/", async (req, res) => {
     } else {
       // Logged out dashboard
       const bands = await prisma.band.findMany({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          slug: true,
+          isPublic: true,
+          updatedAt: true,
+        },
         take: 10,
         orderBy: { updatedAt: "desc" },
       });

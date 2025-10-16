@@ -2170,6 +2170,41 @@ router.get("/new", (req, res) => {
   res.render("bands/new", { title: "Create Band" });
 });
 
+// Check slug availability (for EPK builder)
+router.get("/:id/slug/check", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const { slug } = req.query;
+    const { validateSlug, isReservedSlug } = require("../utils/slugify");
+
+    // Validate format
+    const validation = validateSlug(slug);
+    if (!validation.valid) {
+      return res.json({ available: false, error: validation.error });
+    }
+
+    // Check if already in use by another band
+    const existingBand = await prisma.band.findFirst({
+      where: {
+        slug,
+        NOT: { id: bandId },
+      },
+    });
+
+    if (existingBand) {
+      return res.json({ 
+        available: false, 
+        error: 'This slug is already taken by another band' 
+      });
+    }
+
+    res.json({ available: true });
+  } catch (error) {
+    console.error("Error checking slug:", error);
+    res.status(500).json({ available: false, error: "Server error" });
+  }
+});
+
 // POST /bands - Create a new band
 router.post(
   "/",
@@ -2194,13 +2229,19 @@ router.post(
 
       const { name, description } = req.body;
       const userId = req.session.user.id;
+      const { generateUniqueSlug } = require("../utils/slugify");
 
       // Create band and add creator as owner in a transaction
       const result = await prisma.$transaction(async (tx) => {
+        // Auto-generate slug from band name
+        const slug = await generateUniqueSlug(tx, name);
+
         const band = await tx.band.create({
           data: {
             name,
             description,
+            slug, // Auto-generated
+            isPublic: false, // Private by default
             createdById: userId,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -2444,6 +2485,19 @@ router.get("/:id/edit", async (req, res) => {
     if (!isMember) {
       req.flash("error", "You are not a member of this band");
       return res.redirect("/bands");
+    }
+
+    // Auto-generate slug if band doesn't have one (hybrid approach)
+    if (!band.slug) {
+      const { generateUniqueSlug } = require("../utils/slugify");
+      const slug = await generateUniqueSlug(prisma, band.name, band.id);
+      
+      await prisma.band.update({
+        where: { id: band.id },
+        data: { slug },
+      });
+      
+      band.slug = slug; // Update the object for rendering
     }
 
     res.render("bands/edit", {

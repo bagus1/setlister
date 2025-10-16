@@ -67,6 +67,12 @@
                                 <i class="bi bi-lock"></i> Private Profile
                             </span>
                         <% } %>
+                        
+                        <% if (profile.openToOpportunities) { %>
+                            <span class="badge bg-info">
+                                <i class="bi bi-envelope-check"></i> Open to Opportunities
+                            </span>
+                        <% } %>
                     </div>
 
                     <% if (profile.slug) { %>

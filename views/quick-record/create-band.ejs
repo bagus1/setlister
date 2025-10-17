@@ -1,0 +1,48 @@
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-record-circle"></i> Quick Record - Create Your Band
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                <% errors.forEach(error => { %>
+                                    <li><%= error.msg %></li>
+                                <% }) %>
+                            </ul>
+                        </div>
+                    <% } %>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>First time recording?</strong> 
+                        We need to create your first band before we can start recording.
+                    </div>
+
+                    <form action="/quick-record/create-band" method="POST">
+                        <div class="mb-3">
+                            <label for="bandName" class="form-label">Band Name *</label>
+                            <input type="text" class="form-control form-control-lg" id="bandName" name="bandName" 
+                                   value="<%= typeof bandName !== 'undefined' ? bandName : '' %>"
+                                   placeholder="Enter your band name" required autofocus>
+                            <div class="form-text">Don't worry, you can change this later</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="bi bi-arrow-right-circle"></i> Create Band & Continue
+                            </button>
+                            <a href="/" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

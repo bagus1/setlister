@@ -39,6 +39,13 @@
         object-fit: cover;
         margin-bottom: 15px;
     }
+    .member-card a img {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .member-card a:hover img {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
     .press-quote {
         background: #f8f9fa;
         padding: 30px;
@@ -213,22 +220,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 <% band.members.forEach(member => { %>
                     <div class="col-md-3 col-sm-6">
                         <div class="member-card">
-                            <% if (member.photoUrl) { %>
-                                <img src="<%= member.photoUrl %>" alt="<%= member.displayName || member.user.username %>">
+                            <% 
+                            // Priority: band-specific photo > user profile photo > default avatar
+                            const memberPhoto = member.photoUrl || (member.user && member.user.photos && member.user.photos.length > 0 ? member.user.photos[0].filePath : null);
+                            const userSlug = member.user && member.user.slug;
+                            const userIsPublic = member.user && member.user.isPublic;
+                            const displayName = member.displayName || (member.user && member.user.username);
+                            %>
+                            
+                            <% if (userSlug && userIsPublic) { %>
+                                <!-- Photo is clickable if user has public profile -->
+                                <a href="/musicians/<%= userSlug %>">
+                                    <% if (memberPhoto) { %>
+                                        <img src="<%= memberPhoto %>" alt="<%= displayName %>">
+                                    <% } else { %>
+                                        <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 15px;">
+                                            <i class="bi bi-person-fill" style="font-size: 4rem;"></i>
+                                        </div>
+                                    <% } %>
+                                </a>
                             <% } else { %>
-                                <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 15px;">
-                                    <i class="bi bi-person-fill" style="font-size: 4rem;"></i>
-                                </div>
+                                <!-- No link if no public profile -->
+                                <% if (memberPhoto) { %>
+                                    <img src="<%= memberPhoto %>" alt="<%= displayName %>">
+                                <% } else { %>
+                                    <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 15px;">
+                                        <i class="bi bi-person-fill" style="font-size: 4rem;"></i>
+                                    </div>
+                                <% } %>
                             <% } %>
                             
-                            <% if (member.user.slug && member.user.isPublic) { %>
+                            <% if (userSlug && userIsPublic) { %>
                                 <h5>
-                                    <a href="/musicians/<%= member.user.slug %>" class="text-decoration-none">
-                                        <%= member.displayName || member.user.username %>
+                                    <a href="/musicians/<%= userSlug %>" class="text-decoration-none">
+                                        <%= displayName %>
                                     </a>
                                 </h5>
                             <% } else { %>
-                                <h5><%= member.displayName || member.user.username %></h5>
+                                <h5><%= displayName %></h5>
                             <% } %>
                             
                             <% if (member.instrument) { %>

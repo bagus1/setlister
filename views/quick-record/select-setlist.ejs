@@ -1,0 +1,70 @@
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-record-circle"></i> Quick Record - <%= band.name %>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form action="/quick-record/band/<%= band.id %>" method="POST">
+                        <p class="lead mb-4">Record to an existing setlist or create a new one?</p>
+
+                        <!-- Create New Setlist -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">Create New Rehearsal</h6>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="action" value="new" 
+                                       id="newSetlist" <%= (!band.setlists || band.setlists.length === 0) ? 'checked' : '' %>>
+                                <label class="form-check-label" for="newSetlist">
+                                    <strong>New Rehearsal</strong>
+                                </label>
+                            </div>
+                            
+                            <div class="ms-4">
+                                <label for="setlistTitle" class="form-label">Setlist Title</label>
+                                <input type="text" class="form-control" id="setlistTitle" name="setlistTitle" 
+                                       value="Rehearsal - <%= new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) %>"
+                                       placeholder="Rehearsal - October 17, 2025">
+                                <div class="form-text">You can change this later</div>
+                            </div>
+                        </div>
+
+                        <!-- Existing Setlists -->
+                        <% if (band.setlists && band.setlists.length > 0) { %>
+                            <hr>
+                            <div class="mb-4">
+                                <h6 class="mb-3">Or Use Recent Setlist</h6>
+                                <% band.setlists.forEach(setlist => { %>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="action" value="existing" 
+                                               id="setlist<%= setlist.id %>"
+                                               onclick="document.getElementById('setlistId').value = '<%= setlist.id %>'">
+                                        <label class="form-check-label" for="setlist<%= setlist.id %>">
+                                            <strong><%= setlist.title %></strong>
+                                            <small class="text-muted d-block">
+                                                <%= new Date(setlist.updatedAt).toLocaleDateString() %>
+                                            </small>
+                                        </label>
+                                    </div>
+                                <% }) %>
+                                <input type="hidden" name="setlistId" id="setlistId">
+                            </div>
+                        <% } %>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="bi bi-record-circle"></i> Continue to Recording
+                            </button>
+                            <a href="/quick-record" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

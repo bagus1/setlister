@@ -5,6 +5,59 @@ const { requireAuth } = require("./auth");
 
 const router = express.Router();
 
+// GET /musicians - List all public musicians
+router.get("/", async (req, res) => {
+  try {
+    const musicians = await prisma.user.findMany({
+      where: {
+        isPublic: true,
+        slug: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+        username: true,
+        slug: true,
+        bio: true,
+        location: true,
+        instruments: true,
+        openToOpportunities: true,
+        photos: {
+          where: {
+            isPrimary: true,
+          },
+          take: 1,
+        },
+        bands: {
+          include: {
+            band: {
+              select: {
+                name: true,
+                slug: true,
+                isPublic: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        username: 'asc',
+      },
+    });
+
+    res.render("musicians/index", {
+      title: "Musicians",
+      pageTitle: "Musicians on The Band Plan",
+      musicians,
+    });
+  } catch (error) {
+    console.error("Musicians list error:", error);
+    req.flash("error", "An error occurred loading musicians");
+    res.redirect("/");
+  }
+});
+
 // GET /musicians/:slug/contact - Contact form for musician
 router.get("/:slug/contact", requireAuth, async (req, res) => {
   try {

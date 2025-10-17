@@ -7,6 +7,13 @@
                 </h4>
             </div>
             <div class="card-body">
+                <% if (typeof intent !== 'undefined' && intent === 'record') { %>
+                    <div class="alert alert-info">
+                        <i class="bi bi-record-circle"></i>
+                        <strong>Almost there!</strong> Create your account to start recording your rehearsals.
+                    </div>
+                <% } %>
+
                 <% if (typeof errors !=='undefined' && errors.length> 0) { %>
                     <div class="alert alert-danger">
                         <ul class="mb-0">
@@ -20,6 +27,9 @@
                     <% } %>
 
                         <form action="/auth/register" method="POST" id="registerForm">
+                            <% if (typeof intent !== 'undefined' && intent) { %>
+                                <input type="hidden" name="intent" value="<%= intent %>">
+                            <% } %>
                             <div class="mb-3">
                                 <label for="username" class="form-label">Username</label>
                                 <input type="text" class="form-control" id="username" name="username"
@@ -44,7 +54,22 @@
                                     required>
                             </div>
 
-                            <button type="submit" class="btn btn-primary w-100" id="registerBtn">Register</button>
+                            <% if (typeof intent !== 'undefined' && intent === 'record') { %>
+                                <div class="mb-3">
+                                    <label for="bandName" class="form-label">Band Name</label>
+                                    <input type="text" class="form-control" id="bandName" name="bandName"
+                                        value="<%= typeof bandName !== 'undefined' ? bandName : '' %>" required>
+                                    <div class="form-text">We'll create your first band to get you recording quickly</div>
+                                </div>
+                            <% } %>
+
+                            <button type="submit" class="btn btn-primary w-100" id="registerBtn">
+                                <% if (typeof intent !== 'undefined' && intent === 'record') { %>
+                                    <i class="bi bi-record-circle"></i> Register & Start Recording
+                                <% } else { %>
+                                    Register
+                                <% } %>
+                            </button>
                         </form>
 
                         <script>

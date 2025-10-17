@@ -34,6 +34,7 @@ const venueRoutes = require("./routes/venues");
 const profileRoutes = require("./routes/profile");
 const bandPageRoutes = require("./routes/band-page");
 const musiciansRoutes = require("./routes/musicians");
+const quickRecordRoutes = require("./routes/quick-record");
 
 const app = express();
 const server = http.createServer(app);
@@ -102,7 +103,12 @@ app.get("/all-bands", async (req, res) => {
   try {
     const { prisma } = require("./lib/prisma");
     const bands = await prisma.band.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        slug: true,
+        isPublic: true,
         _count: {
           select: {
             songs: true,
@@ -144,6 +150,7 @@ app.use("/venues", venueRoutes);
 app.use("/profile", profileRoutes);
 app.use("/bands", bandPageRoutes);
 app.use("/musicians", musiciansRoutes);
+app.use("/quick-record", quickRecordRoutes);
 app.use("/admin", require("./routes/admin"));
 
 // Public Band Page Route - MUST BE LAST (catches /:slug at root level)
@@ -165,6 +172,15 @@ app.get("/:slug", async (req, res) => {
                 username: true,
                 slug: true,
                 isPublic: true,
+                photos: {
+                  select: {
+                    filePath: true,
+                  },
+                  where: {
+                    isPrimary: true,
+                  },
+                  take: 1,
+                },
               },
             },
           },

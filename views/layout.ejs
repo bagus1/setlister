@@ -102,8 +102,22 @@
                         </li>
                     </ul>
 
-                    <!-- Profile dropdown - far right -->
+                    <!-- Record Button & Profile dropdown - far right -->
                     <ul class="navbar-nav">
+                        <% if (user) { %>
+                            <li class="nav-item me-2">
+                                <a class="nav-link btn btn-danger text-white" href="/quick-record" style="padding: 8px 16px; border-radius: 5px;">
+                                    <i class="bi bi-record-circle"></i> Record
+                                </a>
+                            </li>
+                        <% } else { %>
+                            <li class="nav-item me-2">
+                                <a class="nav-link btn btn-danger text-white" href="/auth/register?intent=record" style="padding: 8px 16px; border-radius: 5px;">
+                                    <i class="bi bi-record-circle"></i> Record
+                                </a>
+                            </li>
+                        <% } %>
+                        
                         <% if (user) { %>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
@@ -216,7 +230,7 @@
     <!-- Footer -->
     <footer class="bg-dark text-light mt-5 py-4">
         <div class="container text-center">
-            <p>&copy; 2024 The Band Plan. Built for musicians, by musicians.</p>
+            <p>&copy; 2025 The Band Plan. Built for <a href="/musicians" class="text-light text-decoration-none">musicians</a>, by musicians.</p>
             <div class="mt-2">
                 <small class="text-muted">
                     <a href="/help" class="text-muted text-decoration-none">Help</a> |

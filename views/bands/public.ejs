@@ -8,20 +8,34 @@
             <div class="row">
                 <% bands.forEach(band => { %>
                     <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card h-100">
+                        <div class="card h-100" style="background: #343a40; color: #e9ecef;">
                             <div class="card-body">
                                 <h5 class="card-title">
                                     <i class="bi bi-music-note-list text-primary me-2"></i>
-                                    <%= band.name %>
+                                    <% if (band.slug && band.isPublic) { %>
+                                        <a href="/<%= band.slug %>" class="text-decoration-none" style="color: #74b9ff;">
+                                            <%= band.name %>
+                                        </a>
+                                        <span class="badge bg-success ms-2">Public</span>
+                                    <% } else { %>
+                                        <%= band.name %>
+                                    <% } %>
                                 </h5>
                                 <p class="card-text text-muted">
                                     <i class="bi bi-music-note me-1"></i>
                                     <%= band._count.songs %> songs
                                 </p>
                                 <% if (band.description) { %>
-                                    <p class="card-text">
+                                    <p class="card-text" style="color: #adb5bd;">
                                         <%= band.description %>
                                     </p>
+                                <% } %>
+                                <% if (band.slug && band.isPublic) { %>
+                                    <div class="mt-2">
+                                        <a href="/<%= band.slug %>" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> View Public Page
+                                        </a>
+                                    </div>
                                 <% } %>
                             </div>
                         </div>

@@ -16,6 +16,20 @@
 
 <div class="row">
     <% if (loggedIn) { %>
+        <!-- Quick Record CTA -->
+        <div class="col-md-12 mb-3">
+            <a href="/quick-record" class="text-decoration-none">
+                <div class="card text-white" style="background: linear-gradient(135deg, #dc3545 0%, #bb2d3b 100%); cursor: pointer;">
+                    <div class="card-body d-flex align-items-center justify-content-between py-2">
+                        <span style="color: #efefef !important;"><i class="bi bi-record-circle"></i> Record your rehearsal</span>
+                        <span class="btn btn-sm text-white" style="background-color: #94242f; pointer-events: none;">
+                            <i class="bi bi-record-circle-fill"></i> Record
+                        </span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
         <!-- Bands Card -->
         <div class="col-md-4 mb-4">
             <div class="card h-100">
@@ -132,6 +146,26 @@
 
         <% } else { %>
             <!-- Logged out view -->
+
+            <!-- Quick Record CTA for Logged-Out Users -->
+            <div class="col-md-12 mb-4">
+                <div class="card border-danger">
+                    <div class="card-body text-center py-4" style="background: linear-gradient(135deg, #dc3545 0%, #bb2d3b 100%);">
+                        <h3 class="text-white mb-3">
+                            <i class="bi bi-record-circle"></i> Record Your Rehearsals
+                        </h3>
+                        <p class="text-white mb-4">
+                            Start recording your band's rehearsals in seconds. Split recordings into individual songs and share with your bandmates!
+                        </p>
+                        <a href="/auth/register?intent=record" class="btn btn-light btn-lg">
+                            <i class="bi bi-record-circle-fill"></i> Start Recording Now
+                        </a>
+                        <p class="text-white-50 mt-3 mb-0 small">
+                            Free account • No credit card required • Set up in under 2 minutes
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             <!-- Bands List (linked to public pages) -->
             <div class="col-md-4 mb-4">

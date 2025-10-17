@@ -42,7 +42,11 @@ const redirectIfLoggedIn = (req, res, next) => {
 
 // GET /auth/register - Show registration form
 router.get("/register", redirectIfLoggedIn, (req, res) => {
-  res.render("auth/register", { title: "Register" });
+  const intent = req.query.intent; // 'record' if coming from quick record button
+  res.render("auth/register", { 
+    title: "Register",
+    intent,
+  });
 });
 
 // POST /auth/register - Handle registration
@@ -62,6 +66,7 @@ router.post(
       }
       return true;
     }),
+    body("bandName").if(body("intent").equals("record")).trim().isLength({ min: 1 }).withMessage("Band name is required"),
   ],
   async (req, res) => {
     try {
@@ -72,6 +77,8 @@ router.post(
           errors: errors.array(),
           username: req.body.username,
           email: req.body.email,
+          intent: req.body.intent,
+          bandName: req.body.bandName,
         });
       }
 
@@ -91,6 +98,8 @@ router.post(
           errors: [{ msg: "User with this email or username already exists" }],
           username,
           email,
+          intent: req.body.intent,
+          bandName: req.body.bandName,
         });
       }
 
@@ -166,6 +175,43 @@ router.post(
 
       // Log successful registration
       logger.logAuthEvent("registration successful", user.id);
+
+      // Handle quick-record intent
+      const { intent, bandName } = req.body;
+      if (intent === 'record' && bandName) {
+        const { generateUniqueSlug } = require("../utils/slugify");
+        
+        // Create band in transaction
+        const band = await prisma.$transaction(async (tx) => {
+          const slug = await generateUniqueSlug(tx, bandName);
+
+          const newBand = await tx.band.create({
+            data: {
+              name: bandName,
+              slug,
+              isPublic: false,
+              createdById: user.id,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+
+          await tx.bandMember.create({
+            data: {
+              bandId: newBand.id,
+              userId: user.id,
+              role: "owner",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+
+          return newBand;
+        });
+
+        req.flash("success", "Account created! Let's get your rehearsal recorded.");
+        return res.redirect(`/quick-record/band/${band.id}`);
+      }
 
       if (pendingInvitations.length > 0) {
         req.flash(

@@ -2717,8 +2717,20 @@ router.post(
 
       const setlist = result;
 
+      // Check if band has any songs
+      const bandSongCount = await prisma.bandSong.count({
+        where: { bandId: parseInt(bandId) }
+      });
+
       req.flash("success", "Setlist created successfully!");
-      res.redirect(`/bands/${bandId}/setlists/${setlist.id}/edit`);
+      
+      // If no songs, redirect to show view (for recording)
+      // If has songs, redirect to edit view (for building setlist)
+      if (bandSongCount === 0) {
+        res.redirect(`/bands/${bandId}/setlists/${setlist.id}`);
+      } else {
+        res.redirect(`/bands/${bandId}/setlists/${setlist.id}/edit`);
+      }
     } catch (error) {
       console.error("Create setlist error:", error);
       req.flash("error", "An error occurred creating the setlist");

@@ -276,9 +276,8 @@
                     <small class="text-muted">Organized song lists for performances and rehearsals</small>
                 </div>
                 <button type="button" class="btn btn-primary btn-sm" 
-                    data-bs-toggle="<%= (!bandSongs || bandSongs.length === 0) ? 'tooltip' : 'modal' %>"
-                    data-bs-target="<%= (!bandSongs || bandSongs.length === 0) ? '' : '#newSetlistModal' %>"
-                    <%= (!bandSongs || bandSongs.length === 0) ? 'disabled data-bs-placement="top" title="You need to add songs to your band before you can create setlists this way."' : '' %>>
+                    data-bs-toggle="modal"
+                    data-bs-target="#newSetlistModal">
                     <i class="bi bi-plus"></i> New Setlist
                 </button>
             </div>

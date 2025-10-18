@@ -7,7 +7,6 @@
  */
 
 const { prisma } = require('../lib/prisma');
-const { Prisma } = require('@prisma/client');
 const { generateShareTokens } = require('../utils/shareTokens');
 
 async function generateTokensForExistingSetlists() {

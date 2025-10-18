@@ -7,6 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const ffmpeg = require("fluent-ffmpeg");
+const { generateShareTokens } = require("../utils/shareTokens");
 
 // Configure multer for audio file uploads
 const storage = multer.diskStorage({
@@ -1583,6 +1584,7 @@ router.post(
           bandId: originalSetlist.bandId,
           date: date ? new Date(date) : null,
           isFinalized: false,
+          shareTokens: generateShareTokens(),
           createdAt: new Date(),
           updatedAt: new Date(),
         },

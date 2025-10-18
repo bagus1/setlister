@@ -1,0 +1,251 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><%= setlist.band.name %></h1>
+                    <h2 class="h5 text-muted"><%= setlist.title %></h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <% 
+            // Collect all splits with audio files from all recordings
+            const allSplits = [];
+            recordings.forEach(recording => {
+                if (recording.splits && recording.splits.length > 0) {
+                    recording.splits.forEach(split => {
+                        // Only include splits that have both a file path and an associated song
+                        if (split.filePath && split.song) {
+                            allSplits.push({
+                                ...split,
+                                recordingDate: recording.createdAt,
+                                recordingId: recording.id
+                            });
+                        }
+                    });
+                }
+            });
+            
+            // Sort by recording date (oldest first), then by split ID
+            allSplits.sort((a, b) => {
+                const dateCompare = new Date(a.recordingDate) - new Date(b.recordingDate);
+                if (dateCompare !== 0) return dateCompare;
+                return a.id - b.id;
+            });
+            %>
+            
+            <% if (allSplits.length > 0) { %>
+                <!-- Master Player for All Splits -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-play-circle"></i> Playlist
+                        </h5>
+                        <div class="mt-2">
+                            <span class="badge bg-info">
+                                <i class="bi bi-music-note-list"></i> <%= allSplits.length %> song<%= allSplits.length !== 1 ? 's' : '' %>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body text-center">
+                        <audio id="audioPlayer" controls class="w-100">
+                            <source src="" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                        
+                        <div class="mt-3">
+                            <button id="prevBtn" class="btn btn-outline-primary me-2" disabled>
+                                <i class="bi bi-skip-backward-fill"></i> Previous
+                            </button>
+                            <button id="restartBtn" class="btn btn-outline-warning me-2" disabled>
+                                <i class="bi bi-arrow-repeat"></i> Restart
+                            </button>
+                            <button id="nextBtn" class="btn btn-outline-primary" disabled>
+                                <i class="bi bi-skip-forward-fill"></i> Next
+                            </button>
+                        </div>
+                        
+                        <!-- Mini Playlist -->
+                        <div class="mt-3 text-start">
+                            <small class="text-muted d-block mb-2">Now Playing:</small>
+                            <ul id="miniPlaylist" class="list-group list-group-flush">
+                                <% allSplits.forEach((split, index) => { %>
+                                    <li class="list-group-item mini-playlist-item py-2" 
+                                        data-index="<%= index %>"
+                                        data-url="<%= split.filePath %>"
+                                        data-title="<%= split.song.title %>">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-light text-dark me-2" style="width: 30px;">
+                                                <%= index + 1 %>
+                                            </span>
+                                            <div class="flex-grow-1 song-name-clickable" style="cursor: pointer;" onclick="loadTrackFromElement(this)">
+                                                <small class="song-title"><%= split.song.title %></small>
+                                            </div>
+                                        </div>
+                                    </li>
+                                <% }) %>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            <% } else { %>
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: #6c757d;"></i>
+                        <h4 class="mt-3">No Recordings Available</h4>
+                        <p class="text-muted">
+                            No recordings have been made for this setlist yet
+                        </p>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<style>
+.mini-playlist-item {
+    transition: background 0.2s, color 0.2s;
+}
+
+.song-name-clickable:hover {
+    text-decoration: underline;
+}
+
+.mini-playlist-item:hover {
+    background: #343a40 !important;
+    color: white !important;
+}
+
+.mini-playlist-item:hover .song-title {
+    color: white !important;
+}
+
+.mini-playlist-item:hover .badge {
+    background: #495057 !important;
+    color: white !important;
+}
+
+.mini-playlist-item.active {
+    background: #212529 !important;
+    color: white !important;
+}
+
+.mini-playlist-item.active .song-title {
+    color: white !important;
+}
+
+.mini-playlist-item.active .badge {
+    background: #0d6efd !important;
+    color: white !important;
+}
+</style>
+
+<script>
+let currentTrackIndex = 0;
+let playlist = [];
+const audioPlayer = document.getElementById('audioPlayer');
+const prevBtn = document.getElementById('prevBtn');
+const restartBtn = document.getElementById('restartBtn');
+const nextBtn = document.getElementById('nextBtn');
+
+// Initialize playlist from DOM
+document.addEventListener('DOMContentLoaded', function() {
+    const playlistItems = document.querySelectorAll('.mini-playlist-item');
+    playlist = Array.from(playlistItems).map(item => ({
+        url: item.dataset.url,
+        title: item.dataset.title
+    }));
+    
+    if (playlist.length > 0 && audioPlayer) {
+        updateButtons();
+        loadTrack(0);
+    }
+});
+
+// Load and play a track
+function loadTrack(index) {
+    if (index < 0 || index >= playlist.length || !audioPlayer) return;
+    
+    currentTrackIndex = index;
+    const track = playlist[index];
+    
+    // Update audio source
+    audioPlayer.src = track.url;
+    
+    // Update active state in playlist
+    document.querySelectorAll('.mini-playlist-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+    });
+    
+    // Update buttons
+    updateButtons();
+    
+    // Try to auto-play
+    const playPromise = audioPlayer.play();
+    
+    if (playPromise !== undefined) {
+        playPromise
+            .then(() => {
+                console.log('Auto-play started successfully');
+            })
+            .catch(error => {
+                console.log('Auto-play blocked, user must click play:', error);
+            });
+    }
+}
+
+// Update button states
+function updateButtons() {
+    if (prevBtn) prevBtn.disabled = currentTrackIndex === 0;
+    if (nextBtn) nextBtn.disabled = currentTrackIndex === playlist.length - 1;
+    if (restartBtn) restartBtn.disabled = false;
+}
+
+// Event listeners
+if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+        if (currentTrackIndex > 0) {
+            loadTrack(currentTrackIndex - 1);
+        }
+    });
+}
+
+if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+        audioPlayer.currentTime = 0;
+        audioPlayer.play().catch(e => console.log('Play prevented:', e));
+    });
+}
+
+if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+        if (currentTrackIndex < playlist.length - 1) {
+            loadTrack(currentTrackIndex + 1);
+        }
+    });
+}
+
+// Auto-advance to next track
+if (audioPlayer) {
+    audioPlayer.addEventListener('ended', () => {
+        if (currentTrackIndex < playlist.length - 1) {
+            loadTrack(currentTrackIndex + 1);
+        }
+    });
+}
+
+// Click on playlist item to play
+function loadTrackFromElement(element) {
+    const playlistItem = element.closest('.mini-playlist-item');
+    if (playlistItem) {
+        const index = parseInt(playlistItem.dataset.index);
+        loadTrack(index);
+    }
+}
+</script>
+

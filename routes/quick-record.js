@@ -2,6 +2,7 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
+const { generateShareTokens } = require("../utils/shareTokens");
 
 const router = express.Router();
 
@@ -179,6 +180,7 @@ router.post("/band/:bandId", requireAuth, [
           bandId,
           createdById: userId,
           isFinalized: false,
+          shareTokens: generateShareTokens(),
           createdAt: new Date(),
           updatedAt: new Date(),
         },

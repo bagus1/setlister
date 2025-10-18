@@ -248,6 +248,7 @@ model Setlist {
   date          DateTime?    @db.Timestamptz(6)
   isFinalized   Boolean?     @default(false) @map("is_finalized")
   recordingsUrl String?      @map("recordings_url")
+  shareTokens   Json?        @map("share_tokens")
   createdAt     DateTime     @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   sets          SetlistSet[]

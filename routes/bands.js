@@ -8,6 +8,26 @@ const {
 const { v4: uuidv4 } = require("uuid");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
+const { generateShareTokens, getViewTypeFromToken } = require("../utils/shareTokens");
+
+// Helper function to validate token for public route access
+async function validatePublicToken(setlistId, token, expectedViewType) {
+  if (!token) {
+    return false;
+  }
+  
+  const setlist = await prisma.setlist.findUnique({
+    where: { id: setlistId },
+    select: { shareTokens: true },
+  });
+  
+  if (!setlist) {
+    return false;
+  }
+  
+  const viewType = getViewTypeFromToken(setlist.shareTokens, token);
+  return viewType === expectedViewType;
+}
 
 // Helper function to capture complete setlist state
 async function captureSetlistState(setlistId) {
@@ -315,6 +335,13 @@ router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
+    const token = req.query.t;
+
+    // Validate token for public access
+    const isValidToken = await validatePublicToken(setlistId, token, 'rehearsal');
+    if (!isValidToken) {
+      return res.status(403).send("Access denied. Valid token required.");
+    }
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
@@ -418,7 +445,13 @@ router.get("/:bandId/setlists/:setlistId/listen", async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
-    const { url } = req.query;
+    const { url, t: token } = req.query;
+
+    // Validate token for public access
+    const isValidToken = await validatePublicToken(setlistId, token, 'listen');
+    if (!isValidToken) {
+      return res.status(403).send("Access denied. Valid token required.");
+    }
 
     if (!url) {
       return res.status(400).send("URL parameter is required");
@@ -571,6 +604,13 @@ router.get("/:bandId/setlists/:setlistId/print", async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
+    const token = req.query.t;
+
+    // Validate token for public access
+    const isValidToken = await validatePublicToken(setlistId, token, 'print');
+    if (!isValidToken) {
+      return res.status(403).send("Access denied. Valid token required.");
+    }
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
@@ -628,6 +668,13 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
+    const token = req.query.t;
+
+    // Validate token for public access
+    const isValidToken = await validatePublicToken(setlistId, token, 'gig-view');
+    if (!isValidToken) {
+      return res.status(403).send("Access denied. Valid token required.");
+    }
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
@@ -886,6 +933,13 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
+    const token = req.query.t;
+
+    // Validate token for public access
+    const isValidToken = await validatePublicToken(setlistId, token, 'playlist');
+    if (!isValidToken) {
+      return res.status(403).send("Access denied. Valid token required.");
+    }
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
@@ -1184,6 +1238,13 @@ router.get(
     try {
       const bandId = parseInt(req.params.bandId);
       const setlistId = parseInt(req.params.setlistId);
+      const token = req.query.t;
+
+      // Validate token for public access
+      const isValidToken = await validatePublicToken(setlistId, token, 'youtube-playlist');
+      if (!isValidToken) {
+        return res.status(403).send("Access denied. Valid token required.");
+      }
 
       const setlist = await prisma.setlist.findUnique({
         where: { id: setlistId },
@@ -1334,6 +1395,13 @@ router.get("/:bandId/setlists/:setlistId/midi", async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
+    const token = req.query.t;
+
+    // Validate token for public access
+    const isValidToken = await validatePublicToken(setlistId, token, 'midi');
+    if (!isValidToken) {
+      return res.status(403).send("Access denied. Valid token required.");
+    }
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
@@ -1473,6 +1541,13 @@ router.get("/:bandId/setlists/:setlistId/leadsheets", async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
+    const token = req.query.t;
+
+    // Validate token for public access
+    const isValidToken = await validatePublicToken(setlistId, token, 'leadsheets');
+    if (!isValidToken) {
+      return res.status(403).send("Access denied. Valid token required.");
+    }
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
@@ -2693,6 +2768,7 @@ router.post(
             bandId: parseInt(bandId),
             createdById: req.session.user.id,
             date: date ? new Date(date) : null,
+            shareTokens: generateShareTokens(),
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -3664,6 +3740,7 @@ router.post(
           bandId: bandId,
           createdById: req.session.user.id,
           date: currentDate,
+          shareTokens: generateShareTokens(),
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -4380,6 +4457,7 @@ router.post("/:id/quick-set/create", async (req, res) => {
           date: setlistDate ? new Date(setlistDate) : new Date(),
           bandId: bandId,
           createdById: req.session.user.id,
+          shareTokens: generateShareTokens(),
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -5974,6 +6052,7 @@ router.post("/:id/new-list", async (req, res) => {
           bandId: bandId,
           createdById: userId,
           isFinalized: false,
+          shareTokens: generateShareTokens(),
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -6300,6 +6379,7 @@ router.post("/:id/google-doc-to-quickset", async (req, res) => {
         title: setlistTitle,
         date: new Date(),
         bandId: bandId,
+        shareTokens: generateShareTokens(),
         createdAt: new Date(),
         updatedAt: new Date(),
       },

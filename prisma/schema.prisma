@@ -37,6 +37,7 @@ model User {
   createdSongs   Song[]           @relation("SongCreator")
   createdLinks   Link[]           @relation("LinkCreator")
   createdSetlists Setlist[]       @relation("SetlistCreator")
+  createdAlbums  Album[]          @relation("AlbumCreator")
   createdVenues  Venue[]          @relation("VenueCreator")
   setlistVersions SetlistVersion[]
   interactions   Interaction[]
@@ -127,6 +128,7 @@ model Band {
   venues       BandVenue[]
   creator      User             @relation("BandCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   setlists     Setlist[]
+  albums       Album[]
   opportunities Opportunity[]
   gigs         Gig[]
   photos       BandPhoto[]
@@ -193,6 +195,7 @@ model Song {
   links          Link[]
   medleySongs    MedleySong[]
   setlistSongs   SetlistSong[]
+  albumTracks    AlbumTrack[]
   artists        SongArtist[]
   vocalist       Vocalist?       @relation(fields: [vocalistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   creator        User?           @relation("SongCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -285,6 +288,47 @@ model SetlistSong {
   song         Song       @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("setlist_songs")
+}
+
+model Album {
+  id            Int          @id @default(autoincrement())
+  title         String       @db.VarChar(255)
+  slug          String?      @unique @db.VarChar(100)
+  bandId        Int          @map("band_id")
+  createdById   Int?         @map("created_by_id")
+  releaseDate   DateTime?    @map("release_date") @db.Timestamptz(6)
+  artwork       String?      @db.VarChar(500)
+  description   String?      @db.Text
+  credits       String?      @db.Text
+  purchaseLinks Json?        @map("purchase_links")
+  isPublished   Boolean      @default(false) @map("is_published")
+  shareTokens   Json?        @map("share_tokens")
+  createdAt     DateTime     @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tracks        AlbumTrack[]
+  band          Band         @relation(fields: [bandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator       User?        @relation("AlbumCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("albums")
+  @@index([slug])
+  @@index([isPublished])
+}
+
+model AlbumTrack {
+  id         Int      @id @default(autoincrement())
+  albumId    Int      @map("album_id")
+  songId     Int      @map("song_id")
+  order      Int
+  audioUrl   String?  @db.VarChar(500) @map("audio_url")
+  duration   Int?
+  trackNotes String?  @db.Text @map("track_notes")
+  createdAt  DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  album      Album    @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  song       Song     @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([albumId, songId])
+  @@map("album_tracks")
 }
 
 model Medley {

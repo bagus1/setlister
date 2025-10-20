@@ -251,19 +251,6 @@
             </div>
         <% } %>
 
-        <!-- Booking Contact -->
-        <% if (album.band.contactEmail) { %>
-            <p class="mb-2">
-                <strong>Booking:</strong> 
-                <a href="mailto:<%= album.band.contactEmail %>"><%= album.band.contactEmail %></a>
-            </p>
-        <% } %>
-        <% if (album.band.contactPhone) { %>
-            <p class="mb-2">
-                <strong>Phone:</strong> <%= album.band.contactPhone %>
-            </p>
-        <% } %>
-        
         <!-- Action Buttons -->
         <div class="mt-4">
             <a href="/<%= album.band.slug %>" class="btn btn-primary me-2">
@@ -272,6 +259,11 @@
             <% if (album.band.websiteUrl) { %>
                 <a href="<%= album.band.websiteUrl %>" target="_blank" class="btn btn-outline-primary me-2">
                     <i class="bi bi-globe"></i> Visit Website
+                </a>
+            <% } %>
+            <% if (album.band.contactEmail) { %>
+                <a href="mailto:<%= album.band.contactEmail %>" class="btn btn-outline-success">
+                    <i class="bi bi-envelope"></i> Contact for Booking
                 </a>
             <% } %>
         </div>

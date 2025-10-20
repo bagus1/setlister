@@ -74,17 +74,17 @@
                      style="min-height: 200px;">
                     <% if (album.tracks && album.tracks.length > 0) { %>
                         <% album.tracks.forEach((track, index) => { %>
-                            <div class="track-item p-3 mb-2 border rounded bg-light" 
+                            <div class="track-item p-3 mb-2 border border-secondary rounded bg-dark text-white" 
                                  data-track-id="<%= track.id %>"
                                  data-song-id="<%= track.songId %>"
                                  draggable="true"
                                  ondragstart="dragStart(event)">
                                 <div class="d-flex align-items-center">
-                                    <span class="badge bg-secondary me-3"><%= index + 1 %></span>
+                                    <span class="badge bg-primary me-3"><%= index + 1 %></span>
                                     <div class="flex-grow-1">
                                         <strong><%= track.song.title %></strong>
                                         <% if (track.song.artists && track.song.artists.length > 0) { %>
-                                            <br><small class="text-muted">
+                                            <br><small class="text-light opacity-75">
                                                 <%= track.song.artists.map(sa => sa.artist.name).join(', ') %>
                                             </small>
                                         <% } %>

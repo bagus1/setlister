@@ -40,7 +40,8 @@
                     <% if (album.releaseDate) { %>
                         <p class="text-muted">
                             <i class="bi bi-calendar"></i>
-                            <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                            <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %> 
+                            at <%= new Date(album.releaseDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %>
                         </p>
                     <% } %>
                     <% if (album.description) { %>
@@ -181,6 +182,130 @@
         </div>
     </div>
 </div>
+
+<!-- Hero Section -->
+<div class="hero-section mt-5">
+    <% 
+    // Find primary logo
+    const primaryLogo = album.band.photos && album.band.photos.find(p => p.category === 'logo' && p.isPrimary);
+    %>
+    
+    <div class="container" id="heroContainer">
+        <% if (primaryLogo) { %>
+            <!-- Logo will be positioned by JS based on aspect ratio -->
+            <div id="logoContainer" class="mb-3">
+                <img id="primaryLogo" src="<%= primaryLogo.filePath %>" alt="<%= album.band.name %> Logo" 
+                     style="max-width: 250px; max-height: 200px;" 
+                     onload="positionLogo(this)">
+            </div>
+        <% } %>
+        
+        <div id="heroText" class="<%= primaryLogo ? '' : 'text-center' %>" style="<%= primaryLogo ? 'overflow: auto;' : '' %>">
+            <% if (album.band.tagline) { %>
+                <p class="tagline mb-3"><%= album.band.tagline %></p>
+            <% } %>
+            <% if (album.band.hometown) { %>
+                <p class="mb-2"><i class="bi bi-geo-alt"></i> <%= album.band.hometown %></p>
+            <% } %>
+            <% if (album.band.genres) { %>
+                <p class="mb-0"><i class="bi bi-music-note-beamed"></i> <%= album.band.genres %></p>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Connect Section -->
+<div class="container mt-5 mb-5">
+    <section class="text-center">
+        <h2 class="section-title">Connect with <%= album.band.name %></h2>
+        
+        <!-- Social Links -->
+        <% if (album.band.socialLinks && album.band.socialLinks.length > 0) { %>
+            <div class="social-links mb-4">
+                <% album.band.socialLinks.forEach(social => { %>
+                    <a href="<%= social.url %>" target="_blank" 
+                       title="<%= social.platform.charAt(0).toUpperCase() + social.platform.slice(1) %><%= social.handle ? ' - ' + social.handle : '' %>">
+                        <% if (social.platform === 'facebook') { %>
+                            <i class="bi bi-facebook"></i>
+                        <% } else if (social.platform === 'instagram') { %>
+                            <i class="bi bi-instagram"></i>
+                        <% } else if (social.platform === 'twitter') { %>
+                            <i class="bi bi-twitter"></i>
+                        <% } else if (social.platform === 'youtube') { %>
+                            <i class="bi bi-youtube"></i>
+                        <% } else if (social.platform === 'spotify') { %>
+                            <i class="bi bi-spotify"></i>
+                        <% } else if (social.platform === 'soundcloud') { %>
+                            <i class="bi bi-cloud"></i>
+                        <% } else if (social.platform === 'bandcamp') { %>
+                            <i class="bi bi-vinyl"></i>
+                        <% } else if (social.platform === 'tiktok') { %>
+                            <i class="bi bi-tiktok"></i>
+                        <% } else if (social.platform === 'website') { %>
+                            <i class="bi bi-globe"></i>
+                        <% } else { %>
+                            <i class="bi bi-link-45deg"></i>
+                        <% } %>
+                    </a>
+                <% }) %>
+            </div>
+        <% } %>
+
+        <!-- Booking Contact -->
+        <% if (album.band.contactEmail) { %>
+            <p class="mb-2">
+                <strong>Booking:</strong> 
+                <a href="mailto:<%= album.band.contactEmail %>"><%= album.band.contactEmail %></a>
+            </p>
+        <% } %>
+        <% if (album.band.contactPhone) { %>
+            <p class="mb-2">
+                <strong>Phone:</strong> <%= album.band.contactPhone %>
+            </p>
+        <% } %>
+        
+        <!-- Action Buttons -->
+        <div class="mt-4">
+            <a href="/<%= album.band.slug %>" class="btn btn-primary me-2">
+                <i class="bi bi-arrow-left"></i> Back to <%= album.band.name %>
+            </a>
+            <% if (album.band.websiteUrl) { %>
+                <a href="<%= album.band.websiteUrl %>" target="_blank" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-globe"></i> Visit Website
+                </a>
+            <% } %>
+        </div>
+    </section>
+</div>
+
+<style>
+    .hero-section {
+        background: #343a40;
+        color: #e9ecef;
+        padding: 30px 30px 30px 30px;
+        margin-bottom: 40px;
+    }
+    .hero-section .tagline {
+        font-size: 1.25rem;
+        opacity: 0.9;
+    }
+    .section-title {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 30px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+    }
+    .social-links a {
+        font-size: 2rem;
+        margin: 0 15px;
+        color: #667eea;
+        transition: color 0.3s;
+    }
+    .social-links a:hover {
+        color: #764ba2;
+    }
+</style>
 
 <style>
 .track-list-item {
@@ -325,5 +450,70 @@ function loadTrackFromElement(element) {
         loadTrack(index);
     }
 }
+
+// Position hero logo based on aspect ratio
+function positionLogo(img) {
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
+    const aspectRatio = width / height;
+    
+    const heroContainer = document.getElementById('heroContainer');
+    const logoContainer = document.getElementById('logoContainer');
+    const heroText = document.getElementById('heroText');
+    const heroSection = document.querySelector('.hero-section');
+    
+    if (!heroContainer || !logoContainer || !heroText || !heroSection) return;
+    
+    let maxWidth, maxHeight;
+    
+    // Banner logo (wide) - aspect ratio > 2.5
+    if (aspectRatio > 2.5) {
+        // Center horizontally, full width
+        heroContainer.className = 'container';
+        logoContainer.className = 'text-center mb-4';
+        logoContainer.style.float = 'none';
+        maxWidth = 800;
+        maxHeight = 150;
+        img.style.maxWidth = maxWidth + 'px';
+        img.style.maxHeight = maxHeight + 'px';
+        img.style.margin = '0 auto';
+        heroText.className = 'text-center';
+    } 
+    // Square or portrait logo - aspect ratio <= 2.5
+    else {
+        // Create side-by-side layout on larger screens
+        heroContainer.className = 'container';
+        logoContainer.className = 'float-start me-4 mb-3';
+        maxWidth = 250;
+        maxHeight = 200;
+        img.style.maxWidth = maxWidth + 'px';
+        img.style.maxHeight = maxHeight + 'px';
+        heroText.className = '';
+        
+        // On mobile, stack vertically
+        if (window.innerWidth < 768) {
+            logoContainer.className = 'text-center mb-3';
+            logoContainer.style.float = 'none';
+            heroText.className = 'text-center';
+        }
+    }
+    
+    // Calculate displayed size based on constraints
+    const scale = Math.min(1, maxWidth / width, maxHeight / height);
+    const displayedWidth = width * scale;
+    const displayedHeight = height * scale;
+    
+    // Set hero section min-height based on displayed logo height
+    const minHeight = displayedHeight + 60; // logo + padding
+    heroSection.style.minHeight = minHeight + 'px';
+}
+
+// Handle window resize for responsive layout
+window.addEventListener('resize', function() {
+    const logo = document.getElementById('primaryLogo');
+    if (logo && logo.complete) {
+        positionLogo(logo);
+    }
+});
 </script>
 

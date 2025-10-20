@@ -77,6 +77,14 @@
         transform: scale(1.05);
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
+    .album-card-clickable {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .album-card-clickable:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.3) !important;
+    }
 </style>
 
 <!-- Hero Section -->
@@ -217,37 +225,81 @@ document.addEventListener('DOMContentLoaded', function() {
         <section class="mb-5">
             <h2 class="section-title">Albums</h2>
             <div class="row">
-                <% band.albums.forEach(album => { %>
+                <% band.albums.forEach(album => { 
+                    const now = new Date();
+                    const releaseDate = album.releaseDate ? new Date(album.releaseDate) : null;
+                    const isReleased = !releaseDate || releaseDate <= now;
+                %>
                     <div class="col-md-4 col-sm-6 mb-4">
-                        <div class="card h-100 shadow-sm">
-                            <% if (album.artwork) { %>
-                                <img src="<%= album.artwork %>" class="card-img-top" alt="<%= album.title %>">
-                            <% } else { %>
-                                <div class="bg-secondary d-flex align-items-center justify-content-center" style="height: 250px;">
-                                    <i class="bi bi-disc display-1 text-white"></i>
+                        <% if (isReleased) { %>
+                            <a href="/<%= band.slug %>/<%= album.slug %>" class="text-decoration-none">
+                                <div class="card h-100 shadow-sm album-card-clickable">
+                                    <!-- Released - Show normal artwork -->
+                                    <% if (album.artwork) { %>
+                                        <img src="<%= album.artwork %>" class="card-img-top" alt="<%= album.title %>">
+                                    <% } else { %>
+                                        <div class="bg-secondary d-flex align-items-center justify-content-center" style="height: 250px;">
+                                            <i class="bi bi-disc display-1 text-white"></i>
+                                        </div>
+                                    <% } %>
+                                    <div class="card-body">
+                                        <h5 class="card-title text-dark"><%= album.title %></h5>
+                                        <% if (album.releaseDate) { %>
+                                            <p class="card-text text-muted small">
+                                                <i class="bi bi-calendar"></i>
+                                                <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                                            </p>
+                                        <% } %>
+                                        <% if (album.description) { %>
+                                            <p class="card-text text-secondary"><%= album.description.substring(0, 100) %><%= album.description.length > 100 ? '...' : '' %></p>
+                                        <% } %>
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                <i class="bi bi-music-note-list"></i> <%= album.tracks.length %> track<%= album.tracks.length !== 1 ? 's' : '' %>
+                                            </small>
+                                        </p>
+                                        <div class="btn btn-primary w-100">
+                                            <i class="bi bi-play-circle"></i> Listen Now
+                                        </div>
+                                    </div>
                                 </div>
-                            <% } %>
-                            <div class="card-body">
-                                <h5 class="card-title"><%= album.title %></h5>
-                                <% if (album.releaseDate) { %>
-                                    <p class="card-text text-muted small">
-                                        <i class="bi bi-calendar"></i>
-                                        <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                            </a>
+                        <% } else { %>
+                            <div class="card h-100 shadow-sm album-coming-soon">
+                                <!-- Coming Soon - No artwork or placeholder -->
+                                <div class="bg-dark d-flex align-items-center justify-content-center position-relative" style="height: 250px;">
+                                    <% if (album.artwork) { %>
+                                        <img src="<%= album.artwork %>" class="card-img-top position-absolute" 
+                                             style="filter: blur(10px) brightness(0.3); width: 100%; height: 100%; object-fit: cover;" 
+                                             alt="<%= album.title %>">
+                                    <% } %>
+                                    <div class="position-relative text-center text-white">
+                                        <i class="bi bi-clock-history display-1"></i>
+                                        <h5 class="mt-2">Coming Soon</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title"><%= album.title %></h5>
+                                    <% if (releaseDate) { %>
+                                        <!-- Countdown for unreleased albums -->
+                                        <div class="alert alert-info mb-2">
+                                            <div class="countdown-timer" data-release-date="<%= releaseDate.toISOString() %>">
+                                                <small><strong>Releases in:</strong></small>
+                                                <div class="countdown-display fw-bold"></div>
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="bi bi-music-note-list"></i> <%= album.tracks.length %> track<%= album.tracks.length !== 1 ? 's' : '' %>
+                                        </small>
                                     </p>
-                                <% } %>
-                                <% if (album.description) { %>
-                                    <p class="card-text"><%= album.description.substring(0, 100) %><%= album.description.length > 100 ? '...' : '' %></p>
-                                <% } %>
-                                <p class="card-text">
-                                    <small class="text-muted">
-                                        <i class="bi bi-music-note-list"></i> <%= album.tracks.length %> track<%= album.tracks.length !== 1 ? 's' : '' %>
-                                    </small>
-                                </p>
-                                <a href="/<%= band.slug %>/<%= album.slug %>" class="btn btn-primary w-100">
-                                    <i class="bi bi-play-circle"></i> Listen Now
-                                </a>
+                                    <button class="btn btn-secondary w-100" disabled>
+                                        <i class="bi bi-lock"></i> Not Yet Released
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        <% } %>
                     </div>
                 <% }) %>
             </div>
@@ -550,7 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         <!-- Contact & Social Section -->
         <section class="mb-5 text-center">
-            <h2 class="section-title">Connect</h2>
+            <h2 class="section-title">Connect with <%= band.name %></h2>
             
             <!-- Social Links -->
             <% if (band.socialLinks && band.socialLinks.length > 0) { %>
@@ -617,4 +669,51 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </section>
     </div>
+
+<script>
+// Album Release Countdown Timer
+function updateCountdowns() {
+    const countdownTimers = document.querySelectorAll('.countdown-timer');
+    
+    countdownTimers.forEach(timer => {
+        const releaseDate = new Date(timer.dataset.releaseDate);
+        const now = new Date();
+        const diff = releaseDate - now;
+        
+        if (diff <= 0) {
+            timer.querySelector('.countdown-display').innerHTML = '<span class="text-success">Released! 🎉</span>';
+            // Reload page to show album properly
+            setTimeout(() => location.reload(), 2000);
+            return;
+        }
+        
+        // Calculate time units
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        // Build countdown string
+        let countdownText = '';
+        if (days > 0) {
+            countdownText += `${days} Day${days !== 1 ? 's' : ''}, `;
+        }
+        if (days > 0 || hours > 0) {
+            countdownText += `${hours} Hour${hours !== 1 ? 's' : ''}, `;
+        }
+        if (days > 0 || hours > 0 || minutes > 0) {
+            countdownText += `${minutes} Minute${minutes !== 1 ? 's' : ''}, `;
+        }
+        countdownText += `${seconds} Second${seconds !== 1 ? 's' : ''}`;
+        
+        timer.querySelector('.countdown-display').textContent = countdownText;
+    });
+}
+
+// Update immediately and then every second
+if (document.querySelectorAll('.countdown-timer').length > 0) {
+    updateCountdowns();
+    setInterval(updateCountdowns, 1000);
+}
+</script>
 

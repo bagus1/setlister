@@ -117,9 +117,10 @@
                         <input type="text" class="form-control" name="title" value="<%= album.title %>" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Release Date</label>
-                        <input type="date" class="form-control" name="releaseDate" 
-                               value="<%= album.releaseDate ? new Date(album.releaseDate).toISOString().split('T')[0] : '' %>">
+                        <label class="form-label">Release Date & Time</label>
+                        <input type="datetime-local" class="form-control" name="releaseDate" 
+                               value="<%= album.releaseDate ? new Date(album.releaseDate).toISOString().slice(0, 16) : '' %>">
+                        <small class="text-muted">Set the exact date and time when this album should be released</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Description</label>

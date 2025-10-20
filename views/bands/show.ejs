@@ -351,14 +351,26 @@
                                 <a href="/bands/<%= band.id %>/albums/<%= album.id %>" class="text-decoration-none">
                                     <strong><%= album.title %></strong>
                                 </a>
-                                <% if (album.releaseDate) { %>
+                                <% 
+                                    let isScheduled = false;
+                                    if (album.releaseDate) { 
+                                        const now = new Date();
+                                        const releaseDate = new Date(album.releaseDate);
+                                        isScheduled = releaseDate > now;
+                                %>
                                     <br><small class="text-muted">
                                         <i class="bi bi-calendar"></i>
-                                        <%= new Date(album.releaseDate).toLocaleDateString() %>
+                                        <%= releaseDate.toLocaleDateString() %>
                                     </small>
                                 <% } %>
                                 <% if (album.isPublished) { %>
-                                    <span class="badge bg-success ms-2">Published</span>
+                                    <% if (isScheduled) { %>
+                                        <span class="badge bg-warning text-dark ms-2">
+                                            <i class="bi bi-clock"></i> Scheduled
+                                        </span>
+                                    <% } else { %>
+                                        <span class="badge bg-success ms-2">Published</span>
+                                    <% } %>
                                 <% } else { %>
                                     <span class="badge bg-secondary ms-2">Draft</span>
                                 <% } %>
@@ -945,8 +957,8 @@ Set 4:
                         <input type="text" class="form-control" id="albumTitle" name="title" required>
                     </div>
                     <div class="mb-3">
-                        <label for="releaseDate" class="form-label">Release Date (optional)</label>
-                        <input type="date" class="form-control" id="releaseDate" name="releaseDate">
+                        <label for="releaseDate" class="form-label">Release Date & Time (optional)</label>
+                        <input type="datetime-local" class="form-control" id="releaseDate" name="releaseDate">
                     </div>
                 </div>
                 <div class="modal-footer">

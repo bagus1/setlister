@@ -179,6 +179,7 @@ app.get("/:bandSlug/:albumSlug", async (req, res) => {
                 sortOrder: 'asc',
               },
             },
+            socialLinks: true,
           },
         },
         tracks: {
@@ -201,7 +202,44 @@ app.get("/:bandSlug/:albumSlug", async (req, res) => {
     });
 
     if (album) {
-      // Found an album - render the player
+      // Check if album has been released yet
+      if (album.releaseDate) {
+        const now = new Date();
+        const releaseDate = new Date(album.releaseDate);
+        if (releaseDate > now) {
+          const timeDiff = releaseDate - now;
+          const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          
+          return res.status(403).send(`
+            <html>
+              <head>
+                <title>Album Not Yet Released</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+              </head>
+              <body class="bg-dark text-white d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+                <div class="text-center">
+                  <i class="bi bi-clock-history display-1"></i>
+                  <h1 class="mt-4">Album Not Yet Released</h1>
+                  <p class="lead">${album.title} by ${album.band.name}</p>
+                  <p class="text-muted">
+                    This album will be released on<br>
+                    <strong>${releaseDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} 
+                    at ${releaseDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</strong>
+                  </p>
+                  <p class="text-info">
+                    ${days > 0 ? `${days} day${days !== 1 ? 's' : ''}, ` : ''}${hours} hour${hours !== 1 ? 's' : ''} remaining
+                  </p>
+                  <a href="/${album.band.slug}" class="btn btn-primary mt-3">Back to Band Page</a>
+                </div>
+              </body>
+            </html>
+          `);
+        }
+      }
+      
+      // Found an album and it's released - render the player
       return res.render("albums/player", {
         title: `${album.title} - ${album.band.name}`,
         marqueeTitle: album.band.name,

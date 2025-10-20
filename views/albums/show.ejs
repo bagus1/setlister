@@ -7,7 +7,8 @@
                 <% if (album.releaseDate) { %>
                     <p class="text-muted">
                         <i class="bi bi-calendar"></i>
-                        Release Date: <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                        Release: <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %> 
+                        at <%= new Date(album.releaseDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %>
                     </p>
                 <% } %>
             </div>

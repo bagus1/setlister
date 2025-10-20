@@ -1,0 +1,328 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1><%= album.title %></h1>
+                <h2 class="h4 text-muted"><%= album.band.name %></h2>
+                <% if (album.releaseDate) { %>
+                    <p class="text-muted">
+                        <i class="bi bi-calendar"></i>
+                        Release Date: <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                    </p>
+                <% } %>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/bands/<%= album.bandId %>/albums/<%= album.id %>/edit" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Edit Album
+                </a>
+                <% 
+                const shareTokens = album.shareTokens || {};
+                let playerToken = null;
+                for (const [token, view] of Object.entries(shareTokens)) {
+                    if (view === 'player') playerToken = token;
+                }
+                %>
+                <% if (playerToken) { %>
+                    <a href="/bands/<%= album.bandId %>/albums/<%= album.id %>/player?t=<%= playerToken %>" 
+                       class="btn btn-success" target="_blank">
+                        <i class="bi bi-play-circle"></i> View Player
+                    </a>
+                <% } %>
+                <a href="/bands/<%= album.bandId %>" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Back to Band
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Album Tracks -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-music-note-list"></i> Tracks
+                </h5>
+            </div>
+            <div class="card-body">
+                <% if (album.tracks && album.tracks.length > 0) { %>
+                    <div class="list-group">
+                        <% album.tracks.forEach((track, index) => { %>
+                            <div class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-secondary me-3"><%= index + 1 %></span>
+                                    <div class="flex-grow-1">
+                                        <strong><%= track.song.title %></strong>
+                                        <% if (track.song.artists && track.song.artists.length > 0) { %>
+                                            <br><small class="text-muted">
+                                                by <%= track.song.artists.map(sa => sa.artist.name).join(', ') %>
+                                            </small>
+                                        <% } %>
+                                        <% if (track.duration) { %>
+                                            <br><small class="text-muted">
+                                                <i class="bi bi-clock"></i> <%= Math.floor(track.duration / 60) %>:<%= (track.duration % 60).toString().padStart(2, '0') %>
+                                            </small>
+                                        <% } %>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <!-- Audio Source Selector -->
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                                    type="button"
+                                                    data-bs-toggle="dropdown"
+                                                    id="audioDropdown<%= track.id %>">
+                                                <% if (track.audioUrl) { %>
+                                                    <i class="bi bi-check-circle text-success"></i> Audio Set
+                                                <% } else { %>
+                                                    <i class="bi bi-music-note"></i> Select Audio
+                                                <% } %>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <!-- Recording Splits -->
+                                                <% if (track.song.recordingSplits && track.song.recordingSplits.length > 0) { %>
+                                                    <li><h6 class="dropdown-header">Recording Splits</h6></li>
+                                                    <% track.song.recordingSplits.forEach(split => { %>
+                                                        <li>
+                                                            <a class="dropdown-item <%= track.audioUrl === split.filePath ? 'active' : '' %>" 
+                                                               href="#"
+                                                               onclick="updateTrackAudioUrl(<%= track.id %>, '<%= split.filePath %>')">
+                                                                <i class="bi bi-file-music"></i>
+                                                                Recording <%= new Date(split.recording.createdAt).toLocaleDateString() %>
+                                                                <% if (track.audioUrl === split.filePath) { %>
+                                                                    <i class="bi bi-check text-success ms-2"></i>
+                                                                <% } %>
+                                                            </a>
+                                                        </li>
+                                                    <% }) %>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                <% } %>
+                                                
+                                                <!-- Audio Links -->
+                                                <% if (track.song.links && track.song.links.length > 0) { %>
+                                                    <li><h6 class="dropdown-header">Audio Links</h6></li>
+                                                    <% track.song.links.forEach(link => { %>
+                                                        <li>
+                                                            <a class="dropdown-item <%= track.audioUrl === link.url ? 'active' : '' %>" 
+                                                               href="#"
+                                                               onclick="updateTrackAudioUrl(<%= track.id %>, '<%= link.url %>')">
+                                                                <i class="bi bi-link-45deg"></i>
+                                                                <%= link.description || link.url.split('/').pop() || 'Audio Link' %>
+                                                                <% if (track.audioUrl === link.url) { %>
+                                                                    <i class="bi bi-check text-success ms-2"></i>
+                                                                <% } %>
+                                                            </a>
+                                                        </li>
+                                                    <% }) %>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                <% } %>
+                                                
+                                                <!-- Custom URL -->
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       onclick="showUrlInput(<%= track.id %>)">
+                                                        <i class="bi bi-link"></i> Enter URL
+                                                    </a>
+                                                </li>
+                                                
+                                                <!-- Upload File -->
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       onclick="showUploadModal(<%= track.id %>, '<%= track.song.title.replace(/'/g, "\\'") %>')">
+                                                        <i class="bi bi-upload"></i> Upload File
+                                                    </a>
+                                                </li>
+                                                
+                                                <% if (track.audioUrl) { %>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           onclick="updateTrackAudioUrl(<%= track.id %>, '')">
+                                                            <i class="bi bi-x-circle"></i> Clear Audio
+                                                        </a>
+                                                    </li>
+                                                <% } %>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No tracks yet. Add tracks using the Edit Album page.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Album Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Album Info</h6>
+            </div>
+            <div class="card-body">
+                <% if (album.artwork) { %>
+                    <img src="<%= album.artwork %>" alt="<%= album.title %>" class="img-fluid mb-3 rounded">
+                <% } %>
+                
+                <% if (album.description) { %>
+                    <p><%= album.description %></p>
+                <% } %>
+                
+                <% if (album.credits) { %>
+                    <hr>
+                    <h6>Credits</h6>
+                    <p class="small"><%= album.credits %></p>
+                <% } %>
+                
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <span>Status:</span>
+                    <% if (album.isPublished) { %>
+                        <span class="badge bg-success">Published</span>
+                    <% } else { %>
+                        <span class="badge bg-secondary">Draft</span>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- URL Input Modal -->
+<div class="modal fade" id="urlInputModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Enter Audio URL</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="url" class="form-control" id="audioUrlInput" 
+                       placeholder="https://example.com/track.mp3">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveAudioUrl()">Save URL</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload File Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Audio File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Upload audio for: <strong id="uploadSongTitle"></strong></p>
+                <input type="file" class="form-control" id="audioFileInput" accept="audio/*">
+                <div id="uploadProgress" class="mt-3" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="uploadAudioFile()">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentTrackId = null;
+
+async function updateTrackAudioUrl(trackId, audioUrl) {
+    try {
+        const response = await fetch(`/bands/<%= album.bandId %>/albums/<%= album.id %>/tracks/${trackId}/audio`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ audioUrl }),
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Failed to update track audio');
+        }
+    } catch (error) {
+        console.error('Error updating track audio:', error);
+        alert('Error updating track audio');
+    }
+}
+
+function showUrlInput(trackId) {
+    currentTrackId = trackId;
+    const modal = new bootstrap.Modal(document.getElementById('urlInputModal'));
+    modal.show();
+}
+
+function saveAudioUrl() {
+    const url = document.getElementById('audioUrlInput').value;
+    if (url) {
+        updateTrackAudioUrl(currentTrackId, url);
+    }
+}
+
+function showUploadModal(trackId, songTitle) {
+    currentTrackId = trackId;
+    document.getElementById('uploadSongTitle').textContent = songTitle;
+    const modal = new bootstrap.Modal(document.getElementById('uploadModal'));
+    modal.show();
+}
+
+async function uploadAudioFile() {
+    const fileInput = document.getElementById('audioFileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Please select a file');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('audioFile', file);
+    
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = uploadProgress.querySelector('.progress-bar');
+    uploadProgress.style.display = 'block';
+    
+    try {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percent = (e.loaded / e.total) * 100;
+                progressBar.style.width = percent + '%';
+            }
+        });
+        
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                updateTrackAudioUrl(currentTrackId, response.audioUrl);
+            } else {
+                alert('Upload failed');
+                uploadProgress.style.display = 'none';
+            }
+        });
+        
+        xhr.open('POST', `/bands/<%= album.bandId %>/albums/<%= album.id %>/tracks/${currentTrackId}/upload`);
+        xhr.send(formData);
+    } catch (error) {
+        console.error('Upload error:', error);
+        alert('Upload failed');
+        uploadProgress.style.display = 'none';
+    }
+}
+</script>
+

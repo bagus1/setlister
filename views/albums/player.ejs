@@ -1,0 +1,329 @@
+<!-- Header Image -->
+<% if (album.headerImage) { %>
+    <div class="mb-4" style="width: 100%; overflow: hidden; border-radius: 8px;">
+        <img src="<%= album.headerImage %>" alt="<%= album.title %>" 
+             style="width: 100%; height: auto;">
+    </div>
+<% } else { %>
+    <div class="text-center mb-4">
+        <h1 class="display-4"><%= album.title %></h1>
+    </div>
+<% } %>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-5">
+            <!-- Album Artwork -->
+            <div class="card shadow-lg">
+                <% 
+                // Fallback logic: album artwork → band photo (logo category)
+                let artworkSrc = album.artwork;
+                if (!artworkSrc && album.band.photos && album.band.photos.length > 0) {
+                    // Try to find a logo category photo, or use primary photo
+                    const logoPhoto = album.band.photos.find(p => p.category === 'logo');
+                    const primaryPhoto = album.band.photos.find(p => p.isPrimary);
+                    artworkSrc = logoPhoto?.filePath || primaryPhoto?.filePath || album.band.photos[0].filePath;
+                }
+                %>
+                <% if (artworkSrc) { %>
+                    <img src="<%= artworkSrc %>" alt="<%= album.title %>" class="card-img-top">
+                <% } else { %>
+                    <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 400px;">
+                        <i class="bi bi-disc display-1 text-white"></i>
+                    </div>
+                <% } %>
+                <div class="card-body">
+                    <h2 class="card-title"><%= album.title %></h2>
+                    <h5 class="card-subtitle mb-3 text-muted">
+                        <a href="/<%= album.band.slug %>" class="text-decoration-none"><%= album.band.name %></a>
+                    </h5>
+                    <% if (album.releaseDate) { %>
+                        <p class="text-muted">
+                            <i class="bi bi-calendar"></i>
+                            <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                        </p>
+                    <% } %>
+                    <% if (album.description) { %>
+                        <p class="mt-3"><%= album.description %></p>
+                    <% } %>
+                    
+                    <% if (album.purchaseLinks && Object.keys(album.purchaseLinks).length > 0) { %>
+                        <hr>
+                        <h6>Listen & Purchase</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <% if (album.purchaseLinks.bandcamp) { %>
+                                <a href="<%= album.purchaseLinks.bandcamp %>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-music-note"></i> Bandcamp
+                                </a>
+                            <% } %>
+                            <% if (album.purchaseLinks.spotify) { %>
+                                <a href="<%= album.purchaseLinks.spotify %>" target="_blank" class="btn btn-sm btn-outline-success">
+                                    <i class="bi bi-spotify"></i> Spotify
+                                </a>
+                            <% } %>
+                            <% if (album.purchaseLinks.appleMusic) { %>
+                                <a href="<%= album.purchaseLinks.appleMusic %>" target="_blank" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-apple"></i> Apple Music
+                                </a>
+                            <% } %>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <!-- Audio Player -->
+            <% 
+            const tracksWithAudio = album.tracks.filter(t => t.audioUrl);
+            %>
+            
+            <% if (tracksWithAudio.length > 0) { %>
+                <div class="card shadow mb-4">
+                    <div class="card-body text-center">
+                        <audio id="audioPlayer" controls class="w-100">
+                            <source src="" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                        
+                        <div class="mt-3">
+                            <button id="prevBtn" class="btn btn-outline-primary me-2" disabled>
+                                <i class="bi bi-skip-backward-fill"></i> Previous
+                            </button>
+                            <button id="restartBtn" class="btn btn-outline-warning me-2" disabled>
+                                <i class="bi bi-arrow-repeat"></i> Restart
+                            </button>
+                            <button id="nextBtn" class="btn btn-outline-primary" disabled>
+                                <i class="bi bi-skip-forward-fill"></i> Next
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>Now Playing:</h6>
+                            <p id="nowPlaying" class="text-muted">Select a track to begin</p>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+
+            <!-- Track List -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#tracks" role="tab">
+                                <i class="bi bi-music-note-list"></i> Tracks
+                            </a>
+                        </li>
+                        <% if (album.credits) { %>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#credits" role="tab">
+                                    <i class="bi bi-award"></i> Credits
+                                </a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content">
+                        <!-- Tracks Tab -->
+                        <div class="tab-pane fade show active" id="tracks" role="tabpanel">
+                            <div class="list-group list-group-flush">
+                                <% album.tracks.forEach((track, index) => { %>
+                                    <div class="list-group-item track-list-item" 
+                                         data-index="<%= index %>"
+                                         data-url="<%= track.audioUrl || '' %>"
+                                         data-title="<%= track.song.title %>"
+                                         data-artist="<%= track.song.artists && track.song.artists.length > 0 ? track.song.artists.map(sa => sa.artist.name).join(', ') : '' %>"
+                                         <%= track.audioUrl ? 'style="cursor: pointer;" onclick="loadTrackFromElement(this)"' : '' %>>
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-light text-dark me-3" style="width: 35px;">
+                                                <%= index + 1 %>
+                                            </span>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold song-title"><%= track.song.title %></div>
+                                                <% if (track.song.artists && track.song.artists.length > 0) { %>
+                                                    <small class="text-muted">
+                                                        <%= track.song.artists.map(sa => sa.artist.name).join(', ') %>
+                                                    </small>
+                                                <% } %>
+                                                <% if (track.trackNotes) { %>
+                                                    <br><small class="text-muted fst-italic"><%= track.trackNotes %></small>
+                                                <% } %>
+                                            </div>
+                                            <% if (track.duration) { %>
+                                                <span class="text-muted">
+                                                    <%= Math.floor(track.duration / 60) %>:<%= (track.duration % 60).toString().padStart(2, '0') %>
+                                                </span>
+                                            <% } %>
+                                            <% if (!track.audioUrl) { %>
+                                                <span class="badge bg-secondary ms-2">No Audio</span>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                            </div>
+                            
+                            <% if (album.tracks.length === 0) { %>
+                                <p class="text-center text-muted py-5">No tracks available</p>
+                            <% } %>
+                        </div>
+
+                        <!-- Credits Tab -->
+                        <% if (album.credits) { %>
+                            <div class="tab-pane fade" id="credits" role="tabpanel">
+                                <div class="p-3" style="white-space: pre-wrap;"><%= album.credits %></div>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.track-list-item {
+    transition: background 0.2s, color 0.2s;
+}
+
+.track-list-item[style*="cursor: pointer"]:hover {
+    background: #343a40 !important;
+    color: white !important;
+}
+
+.track-list-item:hover .song-title {
+    color: white !important;
+}
+
+.track-list-item:hover .badge {
+    background: #495057 !important;
+    color: white !important;
+}
+
+.track-list-item.active {
+    background: #212529 !important;
+    color: white !important;
+}
+
+.track-list-item.active .song-title,
+.track-list-item.active .text-muted {
+    color: white !important;
+}
+
+.track-list-item.active .badge {
+    background: #0d6efd !important;
+    color: white !important;
+}
+</style>
+
+<script>
+let currentTrackIndex = 0;
+let playlist = [];
+const audioPlayer = document.getElementById('audioPlayer');
+const prevBtn = document.getElementById('prevBtn');
+const restartBtn = document.getElementById('restartBtn');
+const nextBtn = document.getElementById('nextBtn');
+
+// Initialize playlist from DOM
+document.addEventListener('DOMContentLoaded', function() {
+    const trackItems = document.querySelectorAll('.track-list-item[data-url]');
+    playlist = Array.from(trackItems)
+        .filter(item => item.dataset.url)
+        .map(item => ({
+            url: item.dataset.url,
+            title: item.dataset.title,
+            artist: item.dataset.artist
+        }));
+    
+    if (playlist.length > 0 && audioPlayer) {
+        updateButtons();
+        loadTrack(0);
+    }
+});
+
+// Load and play a track
+function loadTrack(index) {
+    if (index < 0 || index >= playlist.length || !audioPlayer) return;
+    
+    currentTrackIndex = index;
+    const track = playlist[index];
+    
+    // Update audio source
+    audioPlayer.src = track.url;
+    
+    // Update active state in tracklist
+    document.querySelectorAll('.track-list-item').forEach((item, i) => {
+        if (item.dataset.url) {
+            const playlistIndex = playlist.findIndex(p => p.url === item.dataset.url);
+            item.classList.toggle('active', playlistIndex === index);
+        }
+    });
+    
+    // Update now playing info
+    const nowPlaying = document.getElementById('nowPlaying');
+    const artistText = track.artist ? ` - ${track.artist}` : '';
+    nowPlaying.textContent = `${track.title}${artistText}`;
+    
+    // Update buttons
+    updateButtons();
+    
+    // Try to auto-play
+    const playPromise = audioPlayer.play();
+    if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            console.log('Auto-play blocked, user must click play:', error);
+        });
+    }
+}
+
+// Update button states
+function updateButtons() {
+    if (prevBtn) prevBtn.disabled = currentTrackIndex === 0;
+    if (nextBtn) nextBtn.disabled = currentTrackIndex === playlist.length - 1;
+    if (restartBtn) restartBtn.disabled = false;
+}
+
+// Event listeners
+if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+        if (currentTrackIndex > 0) {
+            loadTrack(currentTrackIndex - 1);
+        }
+    });
+}
+
+if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+        audioPlayer.currentTime = 0;
+        audioPlayer.play().catch(e => console.log('Play prevented:', e));
+    });
+}
+
+if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+        if (currentTrackIndex < playlist.length - 1) {
+            loadTrack(currentTrackIndex + 1);
+        }
+    });
+}
+
+// Auto-advance to next track
+if (audioPlayer) {
+    audioPlayer.addEventListener('ended', () => {
+        if (currentTrackIndex < playlist.length - 1) {
+            loadTrack(currentTrackIndex + 1);
+        }
+    });
+}
+
+// Click on track to play
+function loadTrackFromElement(element) {
+    const trackItems = Array.from(document.querySelectorAll('.track-list-item[data-url]')).filter(i => i.dataset.url);
+    const index = trackItems.indexOf(element);
+    if (index >= 0) {
+        loadTrack(index);
+    }
+}
+</script>
+

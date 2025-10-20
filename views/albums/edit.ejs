@@ -1,0 +1,419 @@
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Edit Album: <%= album.title %></h1>
+                <p class="text-muted"><%= album.band.name %></p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/bands/<%= album.bandId %>/albums/<%= album.id %>" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Back to Album
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Available Songs -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-music-note-list"></i> Available Songs
+                </h6>
+                <small>Drag songs to add them to the album</small>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                <input type="text" id="searchSongs" class="form-control form-control-sm mb-3" placeholder="Search songs...">
+                
+                <div id="availableSongs">
+                    <% bandSongs.forEach(bandSong => { %>
+                        <% const song = bandSong.song; %>
+                        <% const isInAlbum = album.tracks.some(t => t.songId === song.id); %>
+                        <% if (!isInAlbum) { %>
+                            <div class="song-item p-2 mb-2 border rounded" 
+                                 data-song-id="<%= song.id %>"
+                                 draggable="true"
+                                 ondragstart="dragStart(event)">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong><%= song.title %></strong>
+                                        <% if (song.artists && song.artists.length > 0) { %>
+                                            <br><small class="text-muted">
+                                                <%= song.artists.map(sa => sa.artist.name).join(', ') %>
+                                            </small>
+                                        <% } %>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="addSongToAlbum(<%= song.id %>, '<%= song.title.replace(/'/g, "\\'") %>')">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <% } %>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Album Tracks -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-disc"></i> Album Tracks
+                </h6>
+                <small>Drag to reorder</small>
+            </div>
+            <div class="card-body">
+                <div id="albumTracks" 
+                     ondrop="drop(event)" 
+                     ondragover="allowDrop(event)"
+                     style="min-height: 200px;">
+                    <% if (album.tracks && album.tracks.length > 0) { %>
+                        <% album.tracks.forEach((track, index) => { %>
+                            <div class="track-item p-3 mb-2 border rounded bg-light" 
+                                 data-track-id="<%= track.id %>"
+                                 data-song-id="<%= track.songId %>"
+                                 draggable="true"
+                                 ondragstart="dragStart(event)">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-secondary me-3"><%= index + 1 %></span>
+                                    <div class="flex-grow-1">
+                                        <strong><%= track.song.title %></strong>
+                                        <% if (track.song.artists && track.song.artists.length > 0) { %>
+                                            <br><small class="text-muted">
+                                                <%= track.song.artists.map(sa => sa.artist.name).join(', ') %>
+                                            </small>
+                                        <% } %>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="removeTrack(<%= track.id %>)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <p class="text-muted text-center py-5">
+                            No tracks yet. Drag songs from the left to add them to your album.
+                        </p>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Album Metadata -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">Album Metadata</h6>
+            </div>
+            <div class="card-body">
+                <form id="albumMetadataForm">
+                    <div class="mb-3">
+                        <label class="form-label">Album Title</label>
+                        <input type="text" class="form-control" name="title" value="<%= album.title %>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Release Date</label>
+                        <input type="date" class="form-control" name="releaseDate" 
+                               value="<%= album.releaseDate ? new Date(album.releaseDate).toISOString().split('T')[0] : '' %>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3"><%= album.description || '' %></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Credits</label>
+                        <textarea class="form-control" name="credits" rows="3" 
+                                  placeholder="Producer, Engineer, Musicians, etc."><%= album.credits || '' %></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Album Artwork</label>
+                        <% if (album.artwork) { %>
+                            <div class="mb-2">
+                                <img src="<%= album.artwork %>" alt="Current artwork" class="img-thumbnail" style="max-width: 200px;">
+                            </div>
+                        <% } %>
+                        <input type="url" class="form-control mb-2" id="artworkUrl" name="artwork" value="<%= album.artwork || '' %>"
+                               placeholder="https://example.com/album-cover.jpg">
+                        <small class="text-muted">Or upload file:</small>
+                        <input type="file" class="form-control" id="artworkFile" accept="image/*">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Header Image (banner at top of player)</label>
+                        <% if (album.headerImage) { %>
+                            <div class="mb-2">
+                                <img src="<%= album.headerImage %>" alt="Current header" class="img-thumbnail" style="max-width: 300px;">
+                            </div>
+                        <% } %>
+                        <input type="url" class="form-control mb-2" id="headerUrl" name="headerImage" value="<%= album.headerImage || '' %>"
+                               placeholder="https://example.com/header-image.jpg">
+                        <small class="text-muted">Or upload file:</small>
+                        <input type="file" class="form-control" id="headerFile" accept="image/*">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" name="isPublished" id="isPublished"
+                               <%= album.isPublished ? 'checked' : '' %>
+                               onchange="toggleRightsConfirmation()">
+                        <label class="form-check-label" for="isPublished">
+                            Publish this album (make it visible on your public band page)
+                        </label>
+                    </div>
+                    
+                    <div id="rightsConfirmationSection" class="mb-3" style="display: <%= album.isPublished ? 'block' : 'none' %>;">
+                        <div class="alert alert-warning">
+                            <div class="form-check mb-0">
+                                <input type="checkbox" class="form-check-input" name="rightsConfirmed" id="rightsConfirmed"
+                                       <%= album.rightsConfirmedAt ? 'checked' : '' %>>
+                                <label class="form-check-label" for="rightsConfirmed">
+                                    <strong>Legal Confirmation:</strong> I understand that publishing copyrighted material without permission may violate intellectual property laws. I confirm I have all necessary rights and permissions for this album.
+                                </label>
+                            </div>
+                            <% if (album.rightsConfirmedAt) { %>
+                                <small class="text-muted d-block mt-2">
+                                    Rights confirmed on <%= new Date(album.rightsConfirmedAt).toLocaleString() %>
+                                </small>
+                            <% } %>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Album Info
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleRightsConfirmation() {
+    const isPublished = document.getElementById('isPublished').checked;
+    const rightsSection = document.getElementById('rightsConfirmationSection');
+    rightsSection.style.display = isPublished ? 'block' : 'none';
+    if (!isPublished) {
+        document.getElementById('rightsConfirmed').checked = false;
+    }
+}
+
+let draggedElement = null;
+
+function dragStart(event) {
+    draggedElement = event.target;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/html', event.target.innerHTML);
+}
+
+function allowDrop(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+}
+
+function drop(event) {
+    event.preventDefault();
+    
+    if (!draggedElement) return;
+    
+    const dropTarget = event.target.closest('.track-item');
+    
+    if (draggedElement.classList.contains('song-item')) {
+        // Adding new song from available songs
+        const songId = draggedElement.dataset.songId;
+        const songTitle = draggedElement.querySelector('strong').textContent;
+        addSongToAlbum(songId, songTitle);
+    } else if (dropTarget && draggedElement.classList.contains('track-item') && draggedElement !== dropTarget) {
+        // Reorder tracks
+        const container = document.getElementById('albumTracks');
+        const allTracks = Array.from(container.querySelectorAll('.track-item'));
+        const draggedIndex = allTracks.indexOf(draggedElement);
+        const dropIndex = allTracks.indexOf(dropTarget);
+        
+        if (draggedIndex < dropIndex) {
+            dropTarget.parentNode.insertBefore(draggedElement, dropTarget.nextSibling);
+        } else {
+            dropTarget.parentNode.insertBefore(draggedElement, dropTarget);
+        }
+        
+        updateTrackOrder();
+    }
+    
+    draggedElement = null;
+}
+
+async function addSongToAlbum(songId, songTitle) {
+    try {
+        const response = await fetch(`/bands/<%= album.bandId %>/albums/<%= album.id %>/tracks`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ songId }),
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Failed to add track');
+        }
+    } catch (error) {
+        console.error('Error adding track:', error);
+        alert('Error adding track');
+    }
+}
+
+async function removeTrack(trackId) {
+    if (!confirm('Remove this track from the album?')) return;
+    
+    try {
+        const response = await fetch(`/bands/<%= album.bandId %>/albums/<%= album.id %>/tracks/${trackId}`, {
+            method: 'DELETE',
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Failed to remove track');
+        }
+    } catch (error) {
+        console.error('Error removing track:', error);
+        alert('Error removing track');
+    }
+}
+
+async function updateTrackOrder() {
+    const tracks = Array.from(document.querySelectorAll('.track-item'));
+    const trackOrder = tracks.map((track, index) => ({
+        trackId: parseInt(track.dataset.trackId),
+        order: index + 1,
+    }));
+    
+    try {
+        const response = await fetch(`/bands/<%= album.bandId %>/albums/<%= album.id %>/tracks/reorder`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ trackOrder }),
+        });
+        
+        if (!response.ok) {
+            alert('Failed to update track order');
+        }
+    } catch (error) {
+        console.error('Error updating track order:', error);
+    }
+}
+
+// Album metadata form submission
+document.getElementById('albumMetadataForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const isPublished = formData.get('isPublished') === 'on';
+    const rightsConfirmed = formData.get('rightsConfirmed') === 'on';
+    
+    // Validate rights confirmation if publishing
+    if (isPublished && !rightsConfirmed) {
+        alert('You must confirm that you have the legal rights to publish this album.');
+        return;
+    }
+    
+    const artworkFile = document.getElementById('artworkFile').files[0];
+    const headerFile = document.getElementById('headerFile').files[0];
+    
+    // Build data object
+    const data = {
+        title: formData.get('title'),
+        releaseDate: formData.get('releaseDate') || null,
+        description: formData.get('description') || null,
+        credits: formData.get('credits') || null,
+        artwork: formData.get('artwork') || null,
+        headerImage: formData.get('headerImage') || null,
+        isPublished: formData.get('isPublished') === 'on',
+        rightsConfirmed: rightsConfirmed,
+    };
+    
+    // If files are selected, upload them first and use those URLs
+    if (artworkFile || headerFile) {
+        const uploadFormData = new FormData();
+        if (artworkFile) uploadFormData.append('artwork', artworkFile);
+        if (headerFile) uploadFormData.append('headerImage', headerFile);
+        
+        try {
+            const uploadResponse = await fetch(`/bands/<%= album.bandId %>/albums/<%= album.id %>/images`, {
+                method: 'POST',
+                body: uploadFormData,
+            });
+            
+            if (!uploadResponse.ok) {
+                alert('Failed to upload images');
+                return;
+            }
+            
+            const uploadResult = await uploadResponse.json();
+            // Override URLs with uploaded file paths
+            if (uploadResult.artwork) data.artwork = uploadResult.artwork;
+            if (uploadResult.headerImage) data.headerImage = uploadResult.headerImage;
+        } catch (error) {
+            console.error('Error uploading images:', error);
+            alert('Error uploading images');
+            return;
+        }
+    }
+    
+    try {
+        const response = await fetch(`/bands/<%= album.bandId %>/albums/<%= album.id %>`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+        
+        if (response.ok) {
+            window.location.href = `/bands/<%= album.bandId %>/albums/<%= album.id %>`;
+        } else {
+            alert('Failed to save album info');
+        }
+    } catch (error) {
+        console.error('Error saving album info:', error);
+        alert('Error saving album info');
+    }
+});
+
+// Search functionality
+document.getElementById('searchSongs').addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const songs = document.querySelectorAll('.song-item');
+    
+    songs.forEach(song => {
+        const title = song.querySelector('strong').textContent.toLowerCase();
+        if (title.includes(searchTerm)) {
+            song.style.display = 'block';
+        } else {
+            song.style.display = 'none';
+        }
+    });
+});
+</script>
+
+<style>
+.song-item, .track-item {
+    cursor: move;
+    transition: all 0.2s;
+}
+
+.song-item:hover, .track-item:hover {
+    background-color: #f8f9fa !important;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.track-item {
+    background-color: #f8f9fa;
+}
+</style>
+

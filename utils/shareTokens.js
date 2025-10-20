@@ -49,7 +49,8 @@ function generateShareTokens() {
     'playlist',
     'youtube-playlist',
     'midi',
-    'leadsheets'
+    'leadsheets',
+    'player' // For albums
   ];
   
   const tokens = {};

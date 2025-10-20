@@ -102,33 +102,37 @@ function validateSlug(slug) {
 }
 
 /**
- * Generate a unique slug for a band, handling conflicts
- * @param {object} prisma - Prisma client
- * @param {string} bandName - Band name
- * @param {number} excludeBandId - Band ID to exclude from uniqueness check (for updates)
+ * Generate a unique slug for a band or album, handling conflicts
+ * @param {object} prisma - Prisma client (or transaction)
+ * @param {string} name - Band or album name
+ * @param {string} type - 'band' or 'album' (default: 'band')
+ * @param {number} excludeId - ID to exclude from uniqueness check (for updates)
  * @returns {Promise<string>} - Unique slug
  */
-async function generateUniqueSlug(prisma, bandName, excludeBandId = null) {
-  let slug = generateSlug(bandName);
+async function generateUniqueSlug(prisma, name, type = 'band', excludeId = null) {
+  let slug = generateSlug(name);
   let counter = 1;
   let isUnique = false;
 
   while (!isUnique) {
     const whereClause = { slug };
-    if (excludeBandId) {
-      whereClause.NOT = { id: excludeBandId };
+    if (excludeId) {
+      whereClause.NOT = { id: excludeId };
     }
 
-    const existingBand = await prisma.band.findFirst({
-      where: whereClause,
-    });
+    let existing;
+    if (type === 'album') {
+      existing = await prisma.album.findFirst({ where: whereClause });
+    } else {
+      existing = await prisma.band.findFirst({ where: whereClause });
+    }
 
-    if (!existingBand) {
+    if (!existing) {
       isUnique = true;
     } else {
       // Add number suffix: krewe-de-groove-2
       counter++;
-      slug = `${generateSlug(bandName)}-${counter}`;
+      slug = `${generateSlug(name)}-${counter}`;
     }
   }
 

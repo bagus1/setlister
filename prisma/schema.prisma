@@ -298,10 +298,12 @@ model Album {
   createdById   Int?         @map("created_by_id")
   releaseDate   DateTime?    @map("release_date") @db.Timestamptz(6)
   artwork       String?      @db.VarChar(500)
+  headerImage   String?      @db.VarChar(500) @map("header_image")
   description   String?      @db.Text
   credits       String?      @db.Text
   purchaseLinks Json?        @map("purchase_links")
   isPublished   Boolean      @default(false) @map("is_published")
+  rightsConfirmedAt DateTime? @map("rights_confirmed_at") @db.Timestamptz(6)
   shareTokens   Json?        @map("share_tokens")
   createdAt     DateTime     @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)

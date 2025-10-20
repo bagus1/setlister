@@ -212,6 +212,48 @@ document.addEventListener('DOMContentLoaded', function() {
         </section>
         <% } %>
 
+        <!-- Albums Section -->
+        <% if (band.albums && band.albums.length > 0) { %>
+        <section class="mb-5">
+            <h2 class="section-title">Albums</h2>
+            <div class="row">
+                <% band.albums.forEach(album => { %>
+                    <div class="col-md-4 col-sm-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <% if (album.artwork) { %>
+                                <img src="<%= album.artwork %>" class="card-img-top" alt="<%= album.title %>">
+                            <% } else { %>
+                                <div class="bg-secondary d-flex align-items-center justify-content-center" style="height: 250px;">
+                                    <i class="bi bi-disc display-1 text-white"></i>
+                                </div>
+                            <% } %>
+                            <div class="card-body">
+                                <h5 class="card-title"><%= album.title %></h5>
+                                <% if (album.releaseDate) { %>
+                                    <p class="card-text text-muted small">
+                                        <i class="bi bi-calendar"></i>
+                                        <%= new Date(album.releaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                                    </p>
+                                <% } %>
+                                <% if (album.description) { %>
+                                    <p class="card-text"><%= album.description.substring(0, 100) %><%= album.description.length > 100 ? '...' : '' %></p>
+                                <% } %>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-music-note-list"></i> <%= album.tracks.length %> track<%= album.tracks.length !== 1 ? 's' : '' %>
+                                    </small>
+                                </p>
+                                <a href="/<%= band.slug %>/<%= album.slug %>" class="btn btn-primary w-100">
+                                    <i class="bi bi-play-circle"></i> Listen Now
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+        <% } %>
+
         <!-- Members Section -->
         <% if (band.showMembers && band.members && band.members.length > 0) { %>
         <section class="mb-5">

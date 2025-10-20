@@ -48,9 +48,11 @@
                             <a href="/bands/<%= band.id %>" class="btn btn-outline-primary btn-sm flex-fill">
                                 <i class="bi bi-eye"></i> View
                             </a>
-                            <a href="/bands/<%= band.id %>/songs" class="btn btn-outline-secondary btn-sm flex-fill">
-                                <i class="bi bi-music-note-list"></i> Songs
-                            </a>
+                            <% if (band.slug && band.isPublic) { %>
+                                <a href="/<%= band.slug %>" class="btn btn-outline-success btn-sm flex-fill" target="_blank">
+                                    <i class="bi bi-globe"></i> Public Page
+                                </a>
+                            <% } %>
                         </div>
                     </div>
                 </div>

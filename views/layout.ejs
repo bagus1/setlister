@@ -197,18 +197,27 @@
             <div class="card-body text-center py-3">
                 <div class="text-center">
                     <% if (typeof hasBandHeader !== 'undefined' && hasBandHeader && band) { %>
-                        <h2 class="h5 mb-0 text-dark fw-bold"><%= band.name %></h2>
+                        <h2 class="h5 mb-0 text-dark fw-bold marquee-title"><%= band.name %></h2>
                     <% } else if (typeof marqueeTitle !== 'undefined' && marqueeTitle) { %>
-                        <h2 class="h5 mb-0 text-dark fw-bold"><%= marqueeTitle %></h2>
+                        <h2 class="h5 mb-0 text-dark fw-bold marquee-title"><%= marqueeTitle %></h2>
                     <% } else if (typeof pageTitle !== 'undefined' && pageTitle) { %>
-                        <h2 class="h5 mb-0 text-dark fw-bold"><%= pageTitle %></h2>
+                        <h2 class="h5 mb-0 text-dark fw-bold marquee-title"><%= pageTitle %></h2>
                     <% } else { %>
-                        <h2 class="h5 mb-0 text-dark fw-bold">The Band Plan</h2>
+                        <h2 class="h5 mb-0 text-dark fw-bold marquee-title">The Band Plan</h2>
                     <% } %>
                 </div>
             </div>
         </div>
     </div>
+    
+    <style>
+        /* Responsive marquee text - smaller on mobile portrait */
+        @media (max-width: 576px) {
+            .marquee-title {
+                font-size: 1.7rem !important;
+            }
+        }
+    </style>
 
     <!-- Flash Messages -->
     <% if (typeof success !=='undefined' && success && success.length> 0) { %>

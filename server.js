@@ -18,6 +18,7 @@ require("dotenv").config();
 const { router: authRoutes } = require("./routes/auth");
 const dashboardRoutes = require("./routes/dashboard");
 const bandRoutes = require("./routes/bands");
+const albumRoutes = require("./routes/albums");
 const songRoutes = require("./routes/songs");
 const artistRoutes = require("./routes/artists");
 const medleyRoutes = require("./routes/medleys");
@@ -134,6 +135,7 @@ app.get("/all-bands", async (req, res) => {
 
 app.use("/", dashboardRoutes);
 app.use("/bands", bandRoutes);
+app.use("/bands", albumRoutes);
 app.use("/artists", artistRoutes);
 app.use("/medleys", medleyRoutes);
 app.use("/setlists", setlistRoutes);
@@ -152,6 +154,75 @@ app.use("/bands", bandPageRoutes);
 app.use("/musicians", musiciansRoutes);
 app.use("/quick-record", quickRecordRoutes);
 app.use("/admin", require("./routes/admin"));
+
+// Public Album Page Route - Check for /:bandSlug/:albumSlug pattern
+app.get("/:bandSlug/:albumSlug", async (req, res) => {
+  try {
+    const { bandSlug, albumSlug } = req.params;
+    const { prisma } = require("./lib/prisma");
+
+    // Try to find a published album with this slug
+    const album = await prisma.album.findFirst({
+      where: {
+        slug: albumSlug,
+        isPublished: true,
+        band: {
+          slug: bandSlug,
+          isPublic: true,
+        },
+      },
+      include: {
+        band: {
+          include: {
+            photos: {
+              orderBy: {
+                sortOrder: 'asc',
+              },
+            },
+          },
+        },
+        tracks: {
+          include: {
+            song: {
+              include: {
+                artists: {
+                  include: {
+                    artist: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            order: 'asc',
+          },
+        },
+      },
+    });
+
+    if (album) {
+      // Found an album - render the player
+      return res.render("albums/player", {
+        title: `${album.title} - ${album.band.name}`,
+        marqueeTitle: album.band.name,
+        album,
+        layout: 'layout',
+      });
+    }
+
+    // Not an album, continue to next route handler
+    return res.status(404).render("error", {
+      title: "Page Not Found",
+      message: "This page doesn't exist or isn't available yet.",
+    });
+  } catch (error) {
+    console.error("Public album page error:", error);
+    res.status(500).render("error", {
+      title: "Error",
+      message: "An error occurred loading this page.",
+    });
+  }
+});
 
 // Public Band Page Route - MUST BE LAST (catches /:slug at root level)
 app.get("/:slug", async (req, res) => {
@@ -216,6 +287,21 @@ app.get("/:slug", async (req, res) => {
         socialLinks: {
           orderBy: {
             sortOrder: 'asc',
+          },
+        },
+        albums: {
+          where: {
+            isPublished: true,
+          },
+          include: {
+            tracks: {
+              include: {
+                song: true,
+              },
+            },
+          },
+          orderBy: {
+            releaseDate: 'desc',
           },
         },
         gigs: {

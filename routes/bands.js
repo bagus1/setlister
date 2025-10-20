@@ -2210,7 +2210,13 @@ router.get("/", async (req, res) => {
           },
         },
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        slug: true,
+        isPublic: true,
+        updatedAt: true,
         members: {
           where: {
             userId: userId,
@@ -2509,11 +2515,20 @@ router.get("/:id", async (req, res) => {
       );
     }
 
+    // Get albums for this band
+    const albums = await prisma.album.findMany({
+      where: { bandId: parseInt(bandId) },
+      orderBy: {
+        releaseDate: "desc",
+      },
+    });
+
     res.render("bands/show", {
       title: band.name,
       hasBandHeader: true,
       band,
       setlists,
+      albums,
       bandSongs,
       bandVenues,
       upcomingGigs,

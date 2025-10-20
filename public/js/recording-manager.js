@@ -16,6 +16,7 @@ class RecordingManager {
     this.animationId = null;
     this.db = null;
     this.chunkCounter = 0;
+    this.isProcessing = false;
 
     // Initialize IndexedDB
     this.initIndexedDB().then(() => {
@@ -464,6 +465,13 @@ class RecordingManager {
       }
     }
 
+    // Show processing modal
+    this.showProcessingModal();
+    
+    // Add beforeunload warning
+    this.isProcessing = true;
+    window.addEventListener('beforeunload', this.beforeUnloadHandler);
+
     return new Promise((resolve) => {
       this.mediaRecorder.onstop = async () => {
         try {
@@ -484,6 +492,9 @@ class RecordingManager {
           // Calculate actual duration from the audio blob
           // We'll get the real duration from the audio file itself
           const duration = await this.getAudioDuration(audioBlob);
+          
+          // Save to IndexedDB as backup before upload
+          await this.saveRecordingToIndexedDB(audioBlob, recordingData.setlistId, duration);
 
           // Stop timer and animation (but keep localStorage for now)
           this.cleanupResources();
@@ -498,7 +509,10 @@ class RecordingManager {
           resolve();
         } catch (error) {
           console.error("Error processing recording:", error);
-          alert("Failed to process recording. Please try again.");
+          this.hideProcessingModal();
+          this.isProcessing = false;
+          window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+          alert("Failed to process recording. Your recording has been saved locally and you can try uploading again.");
           this.cleanup();
           resolve();
         }
@@ -548,14 +562,27 @@ class RecordingManager {
 
       // Clear IndexedDB chunks
       await this.clearChunksFromIndexedDB(setlistId);
+      
+      // Clear backup recording from IndexedDB
+      await this.clearRecordingBackup(setlistId);
 
       // Clear state
       localStorage.removeItem("activeRecording");
+      
+      // Remove beforeunload warning
+      this.isProcessing = false;
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+      
+      // Hide processing modal
+      this.hideProcessingModal();
 
       // Redirect to split page
       window.location.href = `/setlists/${setlistId}/recordings/${result.recordingId}/split`;
     } catch (error) {
       console.error("Upload failed:", error);
+      this.hideProcessingModal();
+      this.isProcessing = false;
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
       throw error;
     }
   }
@@ -639,6 +666,137 @@ class RecordingManager {
       if (body) body.style.display = "block";
       if (minimized) minimized.style.display = "none";
     }
+  }
+  
+  /**
+   * Show processing modal overlay
+   */
+  showProcessingModal() {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('recordingProcessingModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'recordingProcessingModal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+      `;
+      modal.innerHTML = `
+        <div style="background: white; padding: 40px; border-radius: 10px; text-align: center; max-width: 500px;">
+          <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <h4 class="mb-3">Processing Your Recording...</h4>
+          <p class="text-muted mb-2">Please don't close this window or navigate away.</p>
+          <p class="text-muted"><small>Processing may take up to 5 minutes for long recordings.</small></p>
+          <div class="alert alert-warning mt-3 mb-0">
+            <i class="bi bi-exclamation-triangle"></i> Your recording will be lost if you leave this page!
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    } else {
+      modal.style.display = 'flex';
+    }
+  }
+  
+  /**
+   * Hide processing modal
+   */
+  hideProcessingModal() {
+    const modal = document.getElementById('recordingProcessingModal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+  
+  /**
+   * Browser beforeunload handler
+   */
+  beforeUnloadHandler = (e) => {
+    if (this.isProcessing) {
+      e.preventDefault();
+      e.returnValue = 'Your recording is still processing and will be lost if you leave!';
+      return e.returnValue;
+    }
+  }
+  
+  /**
+   * Save recording blob to IndexedDB as backup
+   */
+  async saveRecordingToIndexedDB(audioBlob, setlistId, duration) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('RecordingBackups', 1);
+      
+      request.onerror = () => reject(request.error);
+      
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('backups')) {
+          db.createObjectStore('backups', { keyPath: 'setlistId' });
+        }
+      };
+      
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction(['backups'], 'readwrite');
+        const store = transaction.objectStore('backups');
+        
+        store.put({
+          setlistId: setlistId,
+          audioBlob: audioBlob,
+          duration: duration,
+          timestamp: Date.now()
+        });
+        
+        transaction.oncomplete = () => {
+          console.log('Recording backup saved to IndexedDB');
+          resolve();
+        };
+        
+        transaction.onerror = () => reject(transaction.error);
+      };
+    });
+  }
+  
+  /**
+   * Clear recording backup from IndexedDB
+   */
+  async clearRecordingBackup(setlistId) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('RecordingBackups', 1);
+      
+      request.onerror = () => {
+        console.warn('Could not open IndexedDB to clear backup');
+        resolve(); // Don't fail if we can't clear
+      };
+      
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction(['backups'], 'readwrite');
+        const store = transaction.objectStore('backups');
+        
+        store.delete(setlistId);
+        
+        transaction.oncomplete = () => {
+          console.log('Recording backup cleared from IndexedDB');
+          resolve();
+        };
+        
+        transaction.onerror = () => {
+          console.warn('Could not clear recording backup');
+          resolve(); // Don't fail if we can't clear
+        };
+      };
+    });
   }
 }
 

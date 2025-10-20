@@ -5,7 +5,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <% if (band.slug && band.isPublic) { %>
-                    <a href="/<%= band.slug %>" class="btn btn-success me-2" target="_blank">
+                    <a href="/<%= band.slug %>" class="btn btn-success me-2">
                         <i class="bi bi-eye"></i> View Public Page
                     </a>
                 <% } %>
@@ -376,7 +376,7 @@
                                 %>
                                     <% if (playerToken) { %>
                                         <a href="/bands/<%= band.id %>/albums/<%= album.id %>/player?t=<%= playerToken %>" 
-                                           class="btn btn-outline-success btn-sm" target="_blank">
+                                           class="btn btn-outline-success btn-sm">
                                             <i class="bi bi-play-circle"></i> Player
                                         </a>
                                     <% } %>

@@ -761,11 +761,9 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       return res.redirect("/songs");
     }
 
-    // Get current user's permissions
-    const currentUser = await prisma.user.findUnique({
-      where: { id: req.session.user.id },
-      select: { id: true, canMakePrivate: true },
-    });
+    // Check if user can create private songs (subscription-based)
+    const { canCreatePrivateSongs } = require("../utils/subscriptionHelper");
+    const privateCheck = await canCreatePrivateSongs(req.session.user.id);
 
     const artists = await prisma.artist.findMany({
       orderBy: { name: "asc" },
@@ -781,7 +779,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       song,
       artists,
       vocalists,
-      currentUser,
+      canMakePrivate: privateCheck.allowed,
       fromAdmin: req.query.fromAdmin === "true",
     });
   } catch (error) {
@@ -833,11 +831,9 @@ router.post(
           },
         });
 
-        // Get current user's permissions
-        const currentUser = await prisma.user.findUnique({
-          where: { id: req.session.user.id },
-          select: { canMakePrivate: true },
-        });
+        // Check if user can create private songs (subscription-based)
+        const { canCreatePrivateSongs } = require("../utils/subscriptionHelper");
+        const privateCheck = await canCreatePrivateSongs(req.session.user.id);
 
         const artists = await prisma.artist.findMany({
           orderBy: { name: "asc" },
@@ -853,7 +849,7 @@ router.post(
           song,
           artists,
           vocalists,
-          currentUser,
+          canMakePrivate: privateCheck.allowed,
           errors: errors.array(),
           formData: req.body,
           fromAdmin: req.body.fromAdmin === "true",

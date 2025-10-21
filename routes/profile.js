@@ -414,5 +414,140 @@ router.post("/photo/:photoId/delete", requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * GET /profile/subscription - View and manage subscription
+ */
+router.get("/subscription", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { calculateUserStorageUsage } = require("../utils/storageCalculator");
+
+    // Get user's subscription
+    const subscription = await prisma.userSubscription.findUnique({
+      where: { userId },
+      include: {
+        plan: true,
+      },
+    });
+
+    // Get all available plans
+    const allPlans = await prisma.subscriptionPlan.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    // Calculate storage usage
+    const storageInfo = await calculateUserStorageUsage(userId);
+
+    res.render("profile/subscription", {
+      title: "My Subscription",
+      user: req.session.user,
+      subscription,
+      currentPlan: subscription?.plan || null,
+      allPlans,
+      storageInfo,
+    });
+  } catch (error) {
+    console.error("Subscription page error:", error);
+    req.flash("error", "Failed to load subscription information");
+    res.redirect("/profile");
+  }
+});
+
+/**
+ * POST /profile/subscription/change - Change subscription plan
+ * NOTE: This is a placeholder until Stripe is integrated
+ */
+router.post("/subscription/change", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { planId } = req.body;
+
+    if (!planId) {
+      req.flash("error", "Please select a plan");
+      return res.redirect("/profile/subscription");
+    }
+
+    const newPlan = await prisma.subscriptionPlan.findUnique({
+      where: { id: parseInt(planId) },
+    });
+
+    if (!newPlan) {
+      req.flash("error", "Invalid plan selected");
+      return res.redirect("/profile/subscription");
+    }
+
+    // Check if user has existing subscription
+    const existingSubscription = await prisma.userSubscription.findUnique({
+      where: { userId },
+    });
+
+    if (existingSubscription) {
+      // Update existing
+      await prisma.userSubscription.update({
+        where: { userId },
+        data: {
+          planId: newPlan.id,
+          status: 'active',
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      // Create new
+      await prisma.userSubscription.create({
+        data: {
+          userId,
+          planId: newPlan.id,
+          status: 'active',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    req.flash("success", `Successfully switched to ${newPlan.name} plan!`);
+    res.redirect("/profile/subscription");
+  } catch (error) {
+    console.error("Change plan error:", error);
+    req.flash("error", "Failed to change plan");
+    res.redirect("/profile/subscription");
+  }
+});
+
+/**
+ * POST /profile/subscription/cancel - Cancel subscription
+ */
+router.post("/subscription/cancel", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+
+    const subscription = await prisma.userSubscription.findUnique({
+      where: { userId },
+    });
+
+    if (!subscription) {
+      req.flash("error", "You don't have an active subscription");
+      return res.redirect("/profile/subscription");
+    }
+
+    await prisma.userSubscription.update({
+      where: { userId },
+      data: {
+        status: 'canceled',
+        canceledAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    req.flash("success", "Subscription canceled. You'll keep access until the end of your billing period.");
+    res.redirect("/profile/subscription");
+  } catch (error) {
+    console.error("Cancel subscription error:", error);
+    req.flash("error", "Failed to cancel subscription");
+    res.redirect("/profile/subscription");
+  }
+});
+
 module.exports = router;
 

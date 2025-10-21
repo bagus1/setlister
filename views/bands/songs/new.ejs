@@ -98,7 +98,7 @@
             </div>
 
             <!-- Privacy setting -->
-            <% if (currentUser && currentUser.canMakePrivate) { %>
+            <% if (typeof canMakePrivate !== 'undefined' && canMakePrivate) { %>
               <div class="mb-4">
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" id="makePrivate" name="makePrivate" value="true">

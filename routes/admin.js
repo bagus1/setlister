@@ -84,7 +84,6 @@ router.get("/users", async (req, res) => {
         username: true,
         email: true,
         role: true,
-        canMakePrivate: true,
         createdAt: true,
         _count: {
           select: {
@@ -144,41 +143,6 @@ router.post("/users/:id/role", async (req, res) => {
   } catch (error) {
     console.error("Error updating user role:", error);
     req.flash("error", "Failed to update user role");
-    res.redirect("/admin/users");
-  }
-});
-
-/**
- * POST /admin/users/:id/toggle-private - Toggle canMakePrivate permission
- */
-router.post("/users/:id/toggle-private", async (req, res) => {
-  try {
-    const userId = parseInt(req.params.id);
-
-    // Get current user state
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, username: true, canMakePrivate: true },
-    });
-
-    if (!user) {
-      req.flash("error", "User not found");
-      return res.redirect("/admin/users");
-    }
-
-    // Toggle the canMakePrivate setting
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { canMakePrivate: !user.canMakePrivate },
-      select: { id: true, username: true, canMakePrivate: true },
-    });
-
-    const status = updatedUser.canMakePrivate ? "enabled" : "disabled";
-    req.flash("success", `Private song creation ${status} for ${updatedUser.username}`);
-    res.redirect("/admin/users");
-  } catch (error) {
-    console.error("Error toggling private song permission:", error);
-    req.flash("error", "Failed to update permission");
     res.redirect("/admin/users");
   }
 });
@@ -529,6 +493,330 @@ router.get("/whitelist-requests", async (req, res) => {
       error: "Error loading whitelist requests",
       user: req.user,
     });
+  }
+});
+
+/**
+ * GET /admin/subscriptions - View all user subscriptions and system stats
+ */
+router.get("/subscriptions", async (req, res) => {
+  try {
+    const { calculateUserStorageUsage, formatBytes } = require("../utils/storageCalculator");
+    
+    // Get all users with their subscriptions
+    const users = await prisma.user.findMany({
+      include: {
+        subscription: {
+          include: {
+            plan: true,
+          },
+        },
+        bands: {
+          include: {
+            band: {
+              select: {
+                id: true,
+                name: true,
+                storageUsedBytes: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { subscription: { plan: { storageQuotaGB: 'desc' } } },
+        { createdAt: 'desc' },
+      ],
+    });
+
+    // Calculate storage usage for each user
+    const usersWithStorage = await Promise.all(
+      users.map(async (user) => {
+        let storageInfo = null;
+        try {
+          storageInfo = await calculateUserStorageUsage(user.id);
+        } catch (error) {
+          console.error(`Error calculating storage for user ${user.id}:`, error.message);
+        }
+
+        return {
+          ...user,
+          storageInfo,
+          planName: user.subscription?.plan?.name || 'Free',
+          planPrice: user.subscription?.plan?.priceMonthly || 0,
+          status: user.subscription?.status || 'none',
+        };
+      })
+    );
+
+    // Calculate system-wide statistics
+    const totalUsers = users.length;
+    const activeSubscriptions = users.filter(u => u.subscription?.status === 'active').length;
+    const freeUsers = users.filter(u => !u.subscription || u.subscription.plan.storageQuotaGB === 8).length;
+    const proUsers = users.filter(u => u.subscription?.plan?.storageQuotaGB === 20).length;
+    const premiumUsers = users.filter(u => u.subscription?.plan?.storageQuotaGB === 100).length;
+
+    // Calculate monthly recurring revenue (MRR)
+    const mrr = users
+      .filter(u => u.subscription?.status === 'active')
+      .reduce((sum, u) => sum + (u.subscription?.plan?.priceMonthly || 0), 0) / 100;
+
+    // Calculate total storage usage
+    const totalStorageBytes = users.reduce((sum, user) => {
+      return sum + (user.storageInfo?.usedGB || 0);
+    }, 0);
+
+    // Get all subscription plans for the dropdown
+    const plans = await prisma.subscriptionPlan.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    res.render("admin/subscriptions", {
+      title: "Subscription Management",
+      user: req.user,
+      users: usersWithStorage,
+      plans,
+      stats: {
+        totalUsers,
+        activeSubscriptions,
+        freeUsers,
+        proUsers,
+        premiumUsers,
+        mrr,
+        totalStorageGB: totalStorageBytes.toFixed(2),
+      },
+    });
+  } catch (error) {
+    console.error("Admin subscriptions error:", error);
+    req.flash("error", "Failed to load subscriptions");
+    res.redirect("/admin");
+  }
+});
+
+/**
+ * POST /admin/subscriptions/:userId/change - Manually change a user's subscription
+ */
+router.post("/subscriptions/:userId/change", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const { planId } = req.body;
+
+    if (!planId) {
+      req.flash("error", "Plan ID is required");
+      return res.redirect("/admin/subscriptions");
+    }
+
+    const planIdInt = parseInt(planId);
+
+    // Check if plan exists
+    const plan = await prisma.subscriptionPlan.findUnique({
+      where: { id: planIdInt },
+    });
+
+    if (!plan) {
+      req.flash("error", "Invalid plan selected");
+      return res.redirect("/admin/subscriptions");
+    }
+
+    // Check if user has a subscription
+    const existingSubscription = await prisma.userSubscription.findUnique({
+      where: { userId },
+    });
+
+    if (existingSubscription) {
+      // Update existing subscription
+      await prisma.userSubscription.update({
+        where: { userId },
+        data: {
+          planId: planIdInt,
+          status: 'active',
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      // Create new subscription
+      await prisma.userSubscription.create({
+        data: {
+          userId,
+          planId: planIdInt,
+          status: 'active',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    req.flash("success", `User subscription updated to ${plan.name} plan`);
+    res.redirect("/admin/subscriptions");
+  } catch (error) {
+    console.error("Change subscription error:", error);
+    req.flash("error", "Failed to change subscription");
+    res.redirect("/admin/subscriptions");
+  }
+});
+
+/**
+ * POST /admin/subscriptions/:userId/cancel - Cancel a user's subscription
+ */
+router.post("/subscriptions/:userId/cancel", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+
+    const subscription = await prisma.userSubscription.findUnique({
+      where: { userId },
+    });
+
+    if (!subscription) {
+      req.flash("error", "User has no active subscription");
+      return res.redirect("/admin/subscriptions");
+    }
+
+    // Update subscription status to canceled
+    await prisma.userSubscription.update({
+      where: { userId },
+      data: {
+        status: 'canceled',
+        canceledAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    req.flash("success", "User subscription canceled");
+    res.redirect("/admin/subscriptions");
+  } catch (error) {
+    console.error("Cancel subscription error:", error);
+    req.flash("error", "Failed to cancel subscription");
+    res.redirect("/admin/subscriptions");
+  }
+});
+
+/**
+ * GET /admin/subscription-plans - View and edit subscription plans
+ */
+router.get("/subscription-plans", async (req, res) => {
+  try {
+    // Get all subscription plans
+    const plans = await prisma.subscriptionPlan.findMany({
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    // Calculate active users per plan
+    const plansWithStats = await Promise.all(
+      plans.map(async (plan) => {
+        const activeUsers = await prisma.userSubscription.count({
+          where: {
+            planId: plan.id,
+            status: 'active',
+          },
+        });
+
+        return {
+          ...plan,
+          activeUsers,
+          priceMonthlyDollars: plan.priceMonthly / 100,
+          priceYearlyDollars: plan.priceYearly ? plan.priceYearly / 100 : null,
+        };
+      })
+    );
+
+    res.render("admin/subscription-plans", {
+      title: "Manage Subscription Plans",
+      user: req.user,
+      plans: plansWithStats,
+    });
+  } catch (error) {
+    console.error("Admin subscription plans error:", error);
+    req.flash("error", "Failed to load subscription plans");
+    res.redirect("/admin");
+  }
+});
+
+/**
+ * POST /admin/subscription-plans/:planId - Update a subscription plan
+ */
+router.post("/subscription-plans/:planId", async (req, res) => {
+  try {
+    const planId = parseInt(req.params.planId);
+    const {
+      name,
+      slug,
+      storageQuotaGB,
+      bandwidthQuotaGB,
+      maxBands,
+      maxPublishedAlbums,
+      priceMonthly,
+      priceYearly,
+      isActive,
+      displayOrder,
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !slug || !storageQuotaGB || !priceMonthly) {
+      req.flash("error", "Name, slug, storage quota, and monthly price are required");
+      return res.redirect("/admin/subscription-plans");
+    }
+
+    // Convert prices from dollars to cents
+    const priceMonthlyInt = Math.round(parseFloat(priceMonthly) * 100);
+    const priceYearlyInt = priceYearly ? Math.round(parseFloat(priceYearly) * 100) : null;
+
+    // Update the plan
+    await prisma.subscriptionPlan.update({
+      where: { id: planId },
+      data: {
+        name,
+        slug,
+        storageQuotaGB: parseInt(storageQuotaGB),
+        bandwidthQuotaGB: parseInt(bandwidthQuotaGB || 0),
+        maxBands: maxBands ? parseInt(maxBands) : null,
+        maxPublishedAlbums: maxPublishedAlbums ? parseInt(maxPublishedAlbums) : null,
+        priceMonthly: priceMonthlyInt,
+        priceYearly: priceYearlyInt,
+        isActive: isActive === 'on',
+        displayOrder: parseInt(displayOrder || 0),
+        updatedAt: new Date(),
+      },
+    });
+
+    req.flash("success", `Subscription plan "${name}" updated successfully`);
+    res.redirect("/admin/subscription-plans");
+  } catch (error) {
+    console.error("Update subscription plan error:", error);
+    req.flash("error", "Failed to update subscription plan");
+    res.redirect("/admin/subscription-plans");
+  }
+});
+
+/**
+ * POST /admin/subscription-plans/:planId/features - Update plan features (JSON)
+ */
+router.post("/subscription-plans/:planId/features", async (req, res) => {
+  try {
+    const planId = parseInt(req.params.planId);
+    const { features } = req.body;
+
+    // Parse features if it's a string
+    let featuresJson;
+    try {
+      featuresJson = typeof features === 'string' ? JSON.parse(features) : features;
+    } catch (e) {
+      return res.status(400).json({ error: "Invalid JSON format for features" });
+    }
+
+    await prisma.subscriptionPlan.update({
+      where: { id: planId },
+      data: {
+        features: featuresJson,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true, message: "Features updated successfully" });
+  } catch (error) {
+    console.error("Update plan features error:", error);
+    res.status(500).json({ error: "Failed to update features" });
   }
 });
 

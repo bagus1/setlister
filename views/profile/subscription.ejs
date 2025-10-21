@@ -1,0 +1,348 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="marquee-title mb-0">
+                    <i class="bi bi-credit-card"></i> My Subscription
+                </h2>
+                <a href="/profile" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Profile
+                </a>
+            </div>
+
+            <!-- Flash Messages -->
+            <% if (typeof success !== 'undefined' && success.length > 0) { %>
+                <div class="alert alert-success alert-dismissible fade show">
+                    <%= success %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+            <% if (typeof error !== 'undefined' && error.length > 0) { %>
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <%= error %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+
+            <div class="row">
+                <!-- Left Column: Current Plan -->
+                <div class="col-lg-8">
+                    <!-- Current Plan Card -->
+                    <div class="card mb-4">
+                        <div class="card-header <%= currentPlan && currentPlan.slug === 'premium' ? 'bg-warning' : currentPlan && currentPlan.slug === 'pro' ? 'bg-primary text-white' : 'bg-secondary text-white' %>">
+                            <h5 class="mb-0">
+                                <% if (currentPlan) { %>
+                                    <% if (currentPlan.slug === 'premium') { %>
+                                        <i class="bi bi-gem"></i>
+                                    <% } else if (currentPlan.slug === 'pro') { %>
+                                        <i class="bi bi-star-fill"></i>
+                                    <% } else { %>
+                                        <i class="bi bi-gift"></i>
+                                    <% } %>
+                                    <%= currentPlan.name %> Plan
+                                <% } else { %>
+                                    <i class="bi bi-gift"></i> Free Plan
+                                <% } %>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <% if (currentPlan && currentPlan.slug !== 'free') { %>
+                                <!-- Paid Plan Details -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <h4 class="mb-0">
+                                            $<%= (currentPlan.priceMonthly / 100).toFixed(2) %>
+                                            <small class="text-muted">/month</small>
+                                        </h4>
+                                        <% if (subscription && subscription.billingInterval === 'yearly') { %>
+                                            <small class="text-muted">Billed annually</small>
+                                        <% } %>
+                                    </div>
+                                    <div class="col-md-6 text-md-end">
+                                        <span class="badge <%= subscription && subscription.status === 'active' ? 'bg-success' : subscription && subscription.status === 'canceled' ? 'bg-danger' : 'bg-warning' %> px-3 py-2">
+                                            <%= subscription ? subscription.status.toUpperCase() : 'ACTIVE' %>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <% if (subscription && subscription.currentPeriodEnd) { %>
+                                    <p class="mb-3">
+                                        <i class="bi bi-calendar-check"></i>
+                                        <% if (subscription.status === 'canceled') { %>
+                                            Access ends: <strong><%= new Date(subscription.currentPeriodEnd).toLocaleDateString() %></strong>
+                                        <% } else { %>
+                                            Next billing: <strong><%= new Date(subscription.currentPeriodEnd).toLocaleDateString() %></strong>
+                                        <% } %>
+                                    </p>
+                                <% } %>
+                            <% } else { %>
+                                <!-- Free Plan -->
+                                <div class="alert alert-info mb-3">
+                                    <i class="bi bi-info-circle"></i>
+                                    You're currently on the <strong>Free plan</strong>. Upgrade anytime to unlock more storage, bands, and albums!
+                                </div>
+                            <% } %>
+
+                            <!-- Plan Features -->
+                            <h6 class="mb-3">Your Plan Includes:</h6>
+                            <ul class="list-unstyled mb-0">
+                                <% if (currentPlan && currentPlan.features && Array.isArray(currentPlan.features)) { %>
+                                    <% currentPlan.features.forEach((feature, idx) => { %>
+                                        <li class="mb-2 <%= idx === 0 && feature.includes('Everything') ? 'text-muted fst-italic' : '' %>">
+                                            <% if (idx === 0 && feature.includes('Everything')) { %>
+                                                <%= feature %>
+                                            <% } else { %>
+                                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                                <%= feature %>
+                                            <% } %>
+                                        </li>
+                                    <% }) %>
+                                <% } else { %>
+                                    <!-- Fallback for plans without features array -->
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        All core features included
+                                    </li>
+                                <% } %>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Storage Usage Card -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-hdd"></i> Storage Usage</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Overall Usage -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Total Usage</span>
+                                    <strong><%= storageInfo.usedGB.toFixed(2) %> GB / <%= storageInfo.totalQuotaGB %> GB</strong>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    <% 
+                                    const usedPercent = Math.max(0.5, Math.min(100, storageInfo.usedPercent));
+                                    const displayPercent = storageInfo.usedPercent < 0.1 ? '< 0.1' : storageInfo.usedPercent.toFixed(1);
+                                    %>
+                                    <div class="progress-bar <%= storageInfo.usedPercent > 90 ? 'bg-danger' : storageInfo.usedPercent > 75 ? 'bg-warning' : 'bg-success' %>" 
+                                         style="width: <%= usedPercent %>%">
+                                        <%= displayPercent %>%
+                                    </div>
+                                </div>
+                                <% if (storageInfo.remainingHours && storageInfo.remainingHours.description) { %>
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> Remaining: <%= storageInfo.remainingHours.description %>
+                                    </small>
+                                <% } %>
+                            </div>
+
+                            <!-- Breakdown by Band -->
+                            <% if (storageInfo.breakdown && storageInfo.breakdown.length > 0) { %>
+                                <h6 class="mb-3">Storage by Band</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Band</th>
+                                                <th class="text-end">Your Share</th>
+                                                <th class="text-end">Band Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% storageInfo.breakdown.forEach(band => { %>
+                                                <tr>
+                                                    <td>
+                                                        <%= band.bandName %>
+                                                        <% if (band.proMembersCount > 0) { %>
+                                                            <small class="badge bg-primary"><%= band.proMembersCount %> Pro</small>
+                                                        <% } %>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <%= band.userShareGB.toFixed(2) %> GB
+                                                    </td>
+                                                    <td class="text-end text-muted">
+                                                        <%= band.bandTotalGB.toFixed(2) %> GB
+                                                    </td>
+                                                </tr>
+                                            <% }) %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Change Plan Section -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-arrow-repeat"></i> Change Plan</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 mb-4">
+                                <% allPlans.forEach(plan => { %>
+                                    <div class="col-md-4">
+                                        <div class="card h-100 <%= currentPlan && currentPlan.id === plan.id ? 'border-success' : '' %>">
+                                            <div class="card-body text-center">
+                                                <% if (plan.slug === 'premium') { %>
+                                                    <i class="bi bi-gem text-warning fs-1"></i>
+                                                <% } else if (plan.slug === 'pro') { %>
+                                                    <i class="bi bi-star-fill text-primary fs-1"></i>
+                                                <% } else { %>
+                                                    <i class="bi bi-gift text-secondary fs-1"></i>
+                                                <% } %>
+                                                <h5 class="mt-2"><%= plan.name %></h5>
+                                                <h4 class="mb-2">
+                                                    <% if (plan.priceMonthly === 0) { %>
+                                                        Free
+                                                    <% } else { %>
+                                                        $<%= (plan.priceMonthly / 100).toFixed(0) %><small class="text-muted">/mo</small>
+                                                    <% } %>
+                                                </h4>
+                                                <p class="small text-muted mb-3">
+                                                    <%= plan.storageQuotaGB %> GB storage<br>
+                                                    <%= plan.maxBands ? plan.maxBands + ' bands' : 'Unlimited bands' %>
+                                                </p>
+                                                
+                                                <% if (currentPlan && currentPlan.id === plan.id) { %>
+                                                    <button class="btn btn-success w-100" disabled>
+                                                        <i class="bi bi-check-circle"></i> Current Plan
+                                                    </button>
+                                                <% } else { %>
+                                                    <form method="POST" action="/profile/subscription/change">
+                                                        <input type="hidden" name="planId" value="<%= plan.id %>">
+                                                        <button type="submit" class="btn <%= plan.slug === 'premium' ? 'btn-warning' : plan.slug === 'pro' ? 'btn-primary' : 'btn-outline-secondary' %> w-100"
+                                                                onclick="return confirm('Switch to <%= plan.name %> plan?');">
+                                                            <% if (!currentPlan || currentPlan.slug === 'free') { %>
+                                                                <% if (plan.slug !== 'free') { %>
+                                                                    <i class="bi bi-arrow-up-circle"></i> Upgrade
+                                                                <% } %>
+                                                            <% } else if (plan.storageQuotaGB > currentPlan.storageQuotaGB) { %>
+                                                                <i class="bi bi-arrow-up-circle"></i> Upgrade
+                                                            <% } else if (plan.storageQuotaGB < currentPlan.storageQuotaGB) { %>
+                                                                <i class="bi bi-arrow-down-circle"></i> Downgrade
+                                                            <% } else { %>
+                                                                Switch Plan
+                                                            <% } %>
+                                                        </button>
+                                                    </form>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                            </div>
+
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <strong>Note:</strong> This is a manual plan switch for testing. 
+                                In production, upgrades will require payment through Stripe.
+                            </div>
+
+                            <% if (currentPlan && currentPlan.slug !== 'free' && subscription && subscription.status === 'active') { %>
+                                <hr>
+                                <h6 class="text-danger mb-3">Cancel Subscription</h6>
+                                <p class="text-muted small mb-3">
+                                    Canceling will move you to the Free plan at the end of your billing period. 
+                                    You'll keep access to <%= currentPlan.name %> features until then.
+                                </p>
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                    <i class="bi bi-x-circle"></i> Cancel Subscription
+                                </button>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Quick Info -->
+                <div class="col-lg-4">
+                    <!-- Quick Stats Card -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-speedometer"></i> Quick Stats</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <small class="text-muted d-block">Storage Used</small>
+                                <strong><%= storageInfo.usedGB.toFixed(2) %> GB</strong>
+                                <span class="text-muted">/ <%= storageInfo.totalQuotaGB %> GB</span>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted d-block">Storage Remaining</small>
+                                <strong class="<%= storageInfo.remainingGB < 1 ? 'text-danger' : storageInfo.remainingGB < 2 ? 'text-warning' : 'text-success' %>">
+                                    <%= storageInfo.remainingGB.toFixed(2) %> GB
+                                </strong>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted d-block">Your Bands</small>
+                                <strong><%= storageInfo.breakdown.length %></strong>
+                                <% if (currentPlan && currentPlan.maxBands) { %>
+                                    <span class="text-muted">/ <%= currentPlan.maxBands %></span>
+                                <% } %>
+                            </div>
+                            <% if (currentPlan && currentPlan.slug !== 'free') { %>
+                                <div class="mb-0">
+                                    <small class="text-muted d-block">Monthly Cost</small>
+                                    <strong>$<%= (currentPlan.priceMonthly / 100).toFixed(2) %></strong>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Help Card -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="mb-3"><i class="bi bi-question-circle"></i> Need Help?</h6>
+                            <p class="small mb-3">
+                                Have questions about your subscription or billing?
+                            </p>
+                            <a href="/help" class="btn btn-sm btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-book"></i> View Help Center
+                            </a>
+                            <a href="/pricing" class="btn btn-sm btn-outline-secondary w-100">
+                                <i class="bi bi-card-list"></i> Compare Plans
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Subscription Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Cancel Subscription
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel your <strong><%= currentPlan ? currentPlan.name : '' %></strong> subscription?</p>
+                <div class="alert alert-warning">
+                    <strong>What happens when you cancel:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>You'll keep <%= currentPlan ? currentPlan.name : '' %> features until <%= subscription && subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'the end of your billing period' %></li>
+                        <li>After that, you'll move to the Free plan</li>
+                        <li>Your data stays safe - just manage storage within 8GB</li>
+                        <li>You can reactivate anytime!</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Keep My Subscription
+                </button>
+                <form method="POST" action="/profile/subscription/cancel" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle"></i> Yes, Cancel Subscription
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+

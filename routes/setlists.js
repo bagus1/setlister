@@ -8,6 +8,8 @@ const path = require("path");
 const fs = require("fs");
 const ffmpeg = require("fluent-ffmpeg");
 const { generateShareTokens } = require("../utils/shareTokens");
+const { checkStorageQuota } = require("../middleware/checkStorageQuota");
+const { updateBandStorageUsage } = require("../utils/storageCalculator");
 
 // Configure multer for audio file uploads
 const storage = multer.diskStorage({
@@ -2661,6 +2663,7 @@ router.get("/:id/recordings", requireAuth, async (req, res) => {
 router.post(
   "/:id/recordings",
   requireAuth,
+  checkStorageQuota,
   upload.single("audio"),
   async (req, res) => {
     try {
@@ -2716,6 +2719,9 @@ router.post(
         },
       });
 
+      // Recalculate band storage after successful upload
+      await updateBandStorageUsage(setlist.bandId);
+
       res.json({
         success: true,
         recordingId: recording.id,
@@ -2732,6 +2738,7 @@ router.post(
 router.post(
   "/:id/recordings/upload",
   requireAuth,
+  checkStorageQuota,
   upload.single("audioFile"),
   async (req, res) => {
     try {
@@ -2794,6 +2801,9 @@ router.post(
           isProcessed: false,
         },
       });
+
+      // Recalculate band storage after successful upload
+      await updateBandStorageUsage(setlist.bandId);
 
       console.log(`Recording uploaded: ${req.file.filename} (${(fileSize / 1024 / 1024).toFixed(2)}MB, ${duration}s) - ID: ${recording.id}`);
       

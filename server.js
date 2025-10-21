@@ -36,6 +36,7 @@ const profileRoutes = require("./routes/profile");
 const bandPageRoutes = require("./routes/band-page");
 const musiciansRoutes = require("./routes/musicians");
 const quickRecordRoutes = require("./routes/quick-record");
+const pricingRoutes = require("./routes/pricing");
 
 const app = express();
 const server = http.createServer(app);
@@ -153,6 +154,7 @@ app.use("/profile", profileRoutes);
 app.use("/bands", bandPageRoutes);
 app.use("/musicians", musiciansRoutes);
 app.use("/quick-record", quickRecordRoutes);
+app.use("/pricing", pricingRoutes);
 app.use("/admin", require("./routes/admin"));
 
 // Public Album Page Route - Check for /:bandSlug/:albumSlug pattern

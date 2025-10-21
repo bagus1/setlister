@@ -263,6 +263,98 @@
                                             <% } %>
             </div>
         </div>
+
+        <!-- Your Storage Widget -->
+        <% if (userStorageInfo) { %>
+        <div class="card mb-4 border-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-person-circle"></i> Your Storage
+                    </h6>
+                    <span class="badge bg-<%= userStorageInfo.usedPercent > 90 ? 'danger' : userStorageInfo.usedPercent > 75 ? 'warning' : 'primary' %>">
+                        <%= userStorageInfo.totalQuotaGB %> GB
+                    </span>
+                </div>
+                
+                <div class="progress mb-2" style="height: 20px;">
+                    <% 
+                    // Show at least 2% width if there's any usage, for visibility
+                    const userDisplayPercent = userStorageInfo.usedPercent > 0 && userStorageInfo.usedPercent < 2 ? 2 : userStorageInfo.usedPercent;
+                    %>
+                    <div class="progress-bar bg-<%= userStorageInfo.usedPercent > 90 ? 'danger' : userStorageInfo.usedPercent > 75 ? 'warning' : 'primary' %>" 
+                         role="progressbar" 
+                         style="width: <%= Math.min(userDisplayPercent, 100) %>%">
+                        <small><%= userStorageInfo.usedPercent < 0.1 ? '< 0.1' : userStorageInfo.usedPercent %>%</small>
+                    </div>
+                </div>
+                
+                <small class="text-muted d-block">
+                    <%= userStorageInfo.usedGB %> GB used across <%= userStorageInfo.breakdown.length %> band<%= userStorageInfo.breakdown.length !== 1 ? 's' : '' %>
+                </small>
+                
+                <% if (userStorageInfo.remainingHours && userStorageInfo.remainingHours.description) { %>
+                <div class="alert alert-info mt-2 mb-2 py-2">
+                    <small>
+                        <strong>Can upload:</strong><br>
+                        <%= userStorageInfo.remainingHours.description %>
+                    </small>
+                </div>
+                <% } else { %>
+                <small class="text-muted d-block mt-2">
+                    <%= userStorageInfo.remainingGB %> GB available
+                </small>
+                <% } %>
+                
+                <a href="/pricing" class="btn btn-sm btn-primary w-100">
+                    <i class="bi bi-arrow-up-circle"></i> Upgrade Your Storage
+                </a>
+            </div>
+        </div>
+        <% } %>
+        
+        <!-- Band Storage Widget (Pooled) -->
+        <% if (bandStorageInfo) { %>
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-hdd"></i> This Band
+                    </h6>
+                    <span class="badge bg-secondary">
+                        <%= bandStorageInfo.quotaGB %> GB pool
+                    </span>
+                </div>
+                
+                <div class="progress mb-2" style="height: 20px;">
+                    <% 
+                    // Show at least 2% width if there's any usage, for visibility
+                    const displayPercent = bandStorageInfo.usedPercent > 0 && bandStorageInfo.usedPercent < 2 ? 2 : bandStorageInfo.usedPercent;
+                    %>
+                    <div class="progress-bar bg-<%= bandStorageInfo.usedPercent > 90 ? 'danger' : bandStorageInfo.usedPercent > 75 ? 'warning' : 'info' %>" 
+                         role="progressbar" 
+                         style="width: <%= Math.min(displayPercent, 100) %>%">
+                        <small><%= bandStorageInfo.usedPercent < 0.1 ? '< 0.1' : bandStorageInfo.usedPercent %>%</small>
+                    </div>
+                </div>
+                
+                <small class="text-muted d-block mb-2">
+                    <%= bandStorageInfo.formatted %> used
+                </small>
+                
+                <% if (bandStorageInfo.proMembers.length > 0) { %>
+                    <small class="text-success d-block">
+                        <i class="bi bi-people-fill"></i> 
+                        <%= bandStorageInfo.proMembers.length %> Pro member<%= bandStorageInfo.proMembers.length !== 1 ? 's' : '' %> pooling <%= bandStorageInfo.quotaGB %>GB
+                    </small>
+                <% } else { %>
+                    <small class="text-muted d-block">
+                        <i class="bi bi-info-circle"></i> Free tier - upgrade to add storage!
+                    </small>
+                <% } %>
+            </div>
+        </div>
+        <% } %>
     </div>
 
     <!-- Middle Column: Setlists -->
@@ -337,11 +429,17 @@
                     </h5>
                     <small class="text-muted">Published recordings and releases</small>
                 </div>
-                <button type="button" class="btn btn-success btn-sm" 
-                    data-bs-toggle="modal"
-                    data-bs-target="#newAlbumModal">
-                    <i class="bi bi-plus"></i> New Album
-                </button>
+                <% if (albumLimitInfo && albumLimitInfo.allowed) { %>
+                    <button type="button" class="btn btn-success btn-sm" 
+                        data-bs-toggle="modal"
+                        data-bs-target="#newAlbumModal">
+                        <i class="bi bi-plus"></i> New Album
+                    </button>
+                <% } else if (albumLimitInfo) { %>
+                    <span class="badge bg-warning">
+                        Limit Reached (<%= albumLimitInfo.currentCount %>/<%= albumLimitInfo.limit %>)
+                    </span>
+                <% } %>
             </div>
             <div class="card-body">
                 <% if (albums && albums.length > 0) { %>
@@ -398,6 +496,22 @@
                     <% }) %>
                 <% } else { %>
                     <p class="text-muted">No albums yet. Create your first album to showcase your band's recordings!</p>
+                <% } %>
+                
+                <!-- Album limit info / upgrade prompt -->
+                <% if (albumLimitInfo && !albumLimitInfo.allowed) { %>
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        <strong><%= albumLimitInfo.message %></strong>
+                        <a href="/pricing" class="alert-link">View Plans →</a>
+                    </div>
+                <% } else if (albumLimitInfo && albumLimitInfo.limit) { %>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-disc"></i> 
+                            <%= albumLimitInfo.currentCount %> of <%= albumLimitInfo.limit %> published albums used
+                        </small>
+                    </div>
                 <% } %>
             </div>
         </div>

@@ -1,0 +1,270 @@
+<div class="container mt-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="marquee-title mb-3">
+                <i class="bi bi-card-list"></i> Manage Subscription Plans
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/admin">Admin</a></li>
+                    <li class="breadcrumb-item"><a href="/admin/subscriptions">Subscriptions</a></li>
+                    <li class="breadcrumb-item active">Plans</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    <% if (typeof success !== 'undefined' && success.length > 0) { %>
+        <div class="alert alert-success alert-dismissible fade show">
+            <%= success %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error.length > 0) { %>
+        <div class="alert alert-danger alert-dismissible fade show">
+            <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+
+    <!-- Instructions -->
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        <strong>Instructions:</strong> Edit subscription plan details below. Changes will affect new subscriptions immediately. Existing subscriptions will retain their current plan details until renewed.
+    </div>
+
+    <!-- Subscription Plans -->
+    <div class="row">
+        <% plans.forEach((plan, index) => { %>
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100 <%= plan.slug === 'pro' ? 'border-primary' : plan.slug === 'premium' ? 'border-warning' : '' %>">
+                    <div class="card-header <%= plan.slug === 'pro' ? 'bg-primary text-white' : plan.slug === 'premium' ? 'bg-warning' : 'bg-secondary text-white' %>">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <% if (plan.slug === 'premium') { %>
+                                    <i class="bi bi-gem"></i>
+                                <% } else if (plan.slug === 'pro') { %>
+                                    <i class="bi bi-star"></i>
+                                <% } else { %>
+                                    <i class="bi bi-gift"></i>
+                                <% } %>
+                                <%= plan.name %>
+                            </h5>
+                            <span class="badge <%= plan.isActive ? 'bg-success' : 'bg-danger' %>">
+                                <%= plan.isActive ? 'Active' : 'Inactive' %>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Quick Stats -->
+                        <div class="mb-3 pb-3 border-bottom">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Active Users:</span>
+                                <strong><%= plan.activeUsers %></strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Current Price:</span>
+                                <strong>$<%= plan.priceMonthlyDollars.toFixed(2) %>/mo</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Storage:</span>
+                                <strong><%= plan.storageQuotaGB %> GB</strong>
+                            </div>
+                        </div>
+
+                        <!-- Edit Form -->
+                        <button class="btn btn-outline-primary w-100 mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#editForm<%= plan.id %>">
+                            <i class="bi bi-pencil"></i> Edit Plan Details
+                        </button>
+
+                        <div class="collapse" id="editForm<%= plan.id %>">
+                            <form method="POST" action="/admin/subscription-plans/<%= plan.id %>" class="needs-validation" novalidate>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Plan Name</label>
+                                    <input type="text" class="form-control" name="name" value="<%= plan.name %>" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Slug</label>
+                                    <input type="text" class="form-control" name="slug" value="<%= plan.slug %>" required pattern="[a-z0-9-]+">
+                                    <small class="text-muted">URL-friendly identifier (lowercase, hyphens only)</small>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Storage Quota (GB)</label>
+                                        <input type="number" class="form-control" name="storageQuotaGB" value="<%= plan.storageQuotaGB %>" required min="1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Bandwidth (GB/mo)</label>
+                                        <input type="number" class="form-control" name="bandwidthQuotaGB" value="<%= plan.bandwidthQuotaGB %>" min="0">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Max Bands</label>
+                                        <input type="number" class="form-control" name="maxBands" value="<%= plan.maxBands || '' %>" min="1" placeholder="Unlimited">
+                                        <small class="text-muted">Leave empty for unlimited</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Max Albums</label>
+                                        <input type="number" class="form-control" name="maxPublishedAlbums" value="<%= plan.maxPublishedAlbums || '' %>" min="1" placeholder="Unlimited">
+                                        <small class="text-muted">Leave empty for unlimited</small>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Monthly Price ($)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" name="priceMonthly" value="<%= plan.priceMonthlyDollars.toFixed(2) %>" required min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Yearly Price ($)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" name="priceYearly" value="<%= plan.priceYearlyDollars ? plan.priceYearlyDollars.toFixed(2) : '' %>" min="0" step="0.01" placeholder="Optional">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Display Order</label>
+                                    <input type="number" class="form-control" name="displayOrder" value="<%= plan.displayOrder %>" required min="0">
+                                    <small class="text-muted">Lower numbers appear first</small>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" name="isActive" id="isActive<%= plan.id %>" <%= plan.isActive ? 'checked' : '' %>>
+                                    <label class="form-check-label fw-bold" for="isActive<%= plan.id %>">
+                                        Plan is Active
+                                    </label>
+                                </div>
+
+                                <!-- Features Section -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Features</label>
+                                    <div class="border rounded p-2 bg-light">
+                                        <% if (plan.features && typeof plan.features === 'object') { %>
+                                            <% if (Array.isArray(plan.features)) { %>
+                                                <% plan.features.forEach(feature => { %>
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                                        <small><%= feature %></small>
+                                                    </div>
+                                                <% }) %>
+                                            <% } else { %>
+                                                <% Object.entries(plan.features).forEach(([key, value]) => { %>
+                                                    <div class="d-flex justify-content-between mb-1">
+                                                        <small class="text-muted"><%= key %>:</small>
+                                                        <small class="fw-bold"><%= value %></small>
+                                                    </div>
+                                                <% }) %>
+                                            <% } %>
+                                        <% } else { %>
+                                            <small class="text-muted">No features defined</small>
+                                        <% } %>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-bs-toggle="modal" data-bs-target="#featuresModal<%= plan.id %>">
+                                        <i class="bi bi-pencil"></i> Edit Features JSON
+                                    </button>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-save"></i> Save Changes
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#editForm<%= plan.id %>">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Features JSON Modal -->
+                <div class="modal fade" id="featuresModal<%= plan.id %>" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Features for <%= plan.name %></h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    Edit the JSON below to change plan features. Use an array for bullet points or an object for key-value pairs.
+                                </div>
+                                <textarea class="form-control font-monospace" id="featuresJson<%= plan.id %>" rows="10"><%= JSON.stringify(plan.features, null, 2) %></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" onclick="saveFeatures(<%= plan.id %>)">
+                                    <i class="bi bi-save"></i> Save Features
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+</div>
+
+<script>
+    // Form validation
+    (function() {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+
+    // Save features JSON
+    async function saveFeatures(planId) {
+        const textarea = document.getElementById(`featuresJson${planId}`);
+        const featuresText = textarea.value;
+
+        try {
+            // Validate JSON
+            const features = JSON.parse(featuresText);
+
+            // Send to server
+            const response = await fetch(`/admin/subscription-plans/${planId}/features`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ features }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Close modal and reload page
+                const modal = bootstrap.Modal.getInstance(document.getElementById(`featuresModal${planId}`));
+                modal.hide();
+                window.location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Invalid JSON format. Please check your syntax.');
+            console.error('JSON parse error:', error);
+        }
+    }
+</script>
+

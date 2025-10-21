@@ -2,6 +2,8 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const { prisma } = require("../lib/prisma");
 const { requireAuth } = require("./auth");
+const { checkStorageQuota } = require("../middleware/checkStorageQuota");
+const { updateBandStorageUsage } = require("../utils/storageCalculator");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs").promises;
@@ -69,7 +71,7 @@ async function isBandMember(req, res, next) {
 }
 
 // POST /:bandId/photo/upload - Upload band photo
-router.post("/:bandId/photo/upload", requireAuth, isBandMember, upload.single("photo"), async (req, res) => {
+router.post("/:bandId/photo/upload", requireAuth, isBandMember, checkStorageQuota, upload.single("photo"), async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     
@@ -94,6 +96,9 @@ router.post("/:bandId/photo/upload", requireAuth, isBandMember, upload.single("p
         sortOrder: photoCount,
       },
     });
+
+    // Recalculate band storage after successful upload
+    await updateBandStorageUsage(bandId);
 
     req.flash("success", "Photo uploaded successfully");
     res.redirect(`/bands/${bandId}/edit#public-page`);

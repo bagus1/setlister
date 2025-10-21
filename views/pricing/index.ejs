@@ -1,0 +1,461 @@
+<div class="container mt-5 mb-5">
+    <!-- Hero Section -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold mb-3">
+            Choose Your Plan
+        </h1>
+        <p class="lead text-muted mb-4">
+            Start free, upgrade when you need more power. All plans include our core collaboration features.
+        </p>
+    </div>
+
+    <!-- Pricing Cards -->
+    <div class="row g-4 mb-5">
+        <% plans.forEach((plan, index) => { %>
+            <div class="col-lg-4">
+                <div class="card h-100 <%= plan.slug === 'pro' ? 'border-primary shadow-lg' : plan.slug === 'premium' ? 'border-warning' : '' %> <%= currentPlan === plan.slug ? 'bg-light' : '' %>">
+                    
+                    <!-- Popular Badge -->
+                    <% if (plan.slug === 'pro') { %>
+                        <div class="position-absolute top-0 start-50 translate-middle">
+                            <span class="badge bg-primary px-3 py-2">
+                                <i class="bi bi-star-fill"></i> Most Popular
+                            </span>
+                        </div>
+                    <% } %>
+
+                    <!-- Current Plan Badge -->
+                    <% if (currentPlan === plan.slug) { %>
+                        <div class="position-absolute top-0 end-0 m-3">
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle-fill"></i> Current Plan
+                            </span>
+                        </div>
+                    <% } %>
+
+                    <div class="card-body d-flex flex-column">
+                        <!-- Plan Header -->
+                        <div class="text-center mb-4 <%= plan.slug === 'pro' ? 'mt-4' : '' %>">
+                            <h3 class="card-title mb-3">
+                                <% if (plan.slug === 'premium') { %>
+                                    <i class="bi bi-gem text-warning fs-2"></i>
+                                <% } else if (plan.slug === 'pro') { %>
+                                    <i class="bi bi-star-fill text-primary fs-2"></i>
+                                <% } else { %>
+                                    <i class="bi bi-gift text-secondary fs-2"></i>
+                                <% } %>
+                                <div class="mt-2"><%= plan.name %></div>
+                            </h3>
+                            
+                            <!-- Pricing -->
+                            <div class="mb-3">
+                                <h2 class="display-5 fw-bold mb-0">
+                                    <% if (plan.priceMonthlyDollars === 0) { %>
+                                        Free
+                                    <% } else { %>
+                                        $<%= plan.priceMonthlyDollars.toFixed(0) %>
+                                        <small class="text-muted fs-6 fw-normal">/month</small>
+                                    <% } %>
+                                </h2>
+                                <% if (plan.priceYearly) { %>
+                                    <small class="text-muted">
+                                        or $<%= plan.yearlyMonthlyEquivalent.toFixed(2) %>/mo billed yearly
+                                        <span class="badge bg-success">Save <%= plan.yearlySavings %>%</span>
+                                    </small>
+                                <% } %>
+                            </div>
+
+                            <!-- Storage Highlight -->
+                            <div class="alert <%= plan.slug === 'premium' ? 'alert-warning' : plan.slug === 'pro' ? 'alert-primary' : 'alert-secondary' %> py-2 mb-2">
+                                <i class="bi bi-hdd"></i> <strong><%= plan.storageQuotaGB %> GB</strong> 
+                                <% if (plan.storageQuotaGB > 8) { %>
+                                    pooled storage
+                                    <i class="bi bi-info-circle" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-title="Storage stacks! If 2 <%= plan.name %> members are in the same band, that band gets <%= plan.storageQuotaGB * 2 %>GB total!"
+                                       style="cursor: help;"></i>
+                                <% } else { %>
+                                    per user
+                                    <i class="bi bi-info-circle" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-title="Each user gets 8GB across all their bands. Bands with all free members are capped at 8GB total."
+                                       style="cursor: help;"></i>
+                                <% } %>
+                            </div>
+                            
+                            <!-- Recording Hours -->
+                            <div class="text-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-clock"></i>
+                                    <%
+                                    const totalBytes = plan.storageQuotaGB * 1024 * 1024 * 1024;
+                                    const mp3Hours = Math.floor(totalBytes / (1024 * 1024 * 60));
+                                    const wavHours = Math.floor(totalBytes / (1024 * 1024 * 600));
+                                    %>
+                                    ~<%= mp3Hours %> hours MP3 or ~<%= wavHours %> hours WAV
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Features List -->
+                        <div class="flex-grow-1 mb-4">
+                            <ul class="list-unstyled">
+                                <% if (plan.features && Array.isArray(plan.features)) { %>
+                                    <% plan.features.forEach((feature, idx) => { %>
+                                        <%
+                                        // Dynamically replace storage values in features
+                                        let displayFeature = feature;
+                                        if (feature.includes('GB storage')) {
+                                            if (plan.storageQuotaGB <= 8) {
+                                                displayFeature = `${plan.storageQuotaGB}GB storage per user (bands capped at ${plan.storageQuotaGB}GB)`;
+                                            } else {
+                                                displayFeature = `${plan.storageQuotaGB}GB pooled storage`;
+                                            }
+                                        }
+                                        %>
+                                        <li class="mb-2 <%= idx === 0 && feature.includes('Everything') ? 'text-muted fst-italic' : '' %>">
+                                            <% if (idx === 0 && feature.includes('Everything')) { %>
+                                                <%= displayFeature %>
+                                            <% } else { %>
+                                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                                <%= displayFeature %>
+                                            <% } %>
+                                        </li>
+                                    <% }) %>
+                                <% } %>
+                            </ul>
+                        </div>
+
+                        <!-- CTA Button -->
+                        <div class="d-grid">
+                            <% if (currentPlan === plan.slug) { %>
+                                <button class="btn btn-outline-secondary" disabled>
+                                    <i class="bi bi-check-circle"></i> Your Current Plan
+                                </button>
+                            <% } else if (!user && plan.slug === 'free') { %>
+                                <a href="/auth/register" class="btn btn-lg btn-outline-primary">
+                                    Get Started Free
+                                </a>
+                            <% } else if (!user) { %>
+                                <a href="/auth/register" class="btn btn-lg <%= plan.slug === 'pro' ? 'btn-primary' : plan.slug === 'premium' ? 'btn-warning' : 'btn-outline-secondary' %>">
+                                    Start Free Trial
+                                </a>
+                            <% } else if (plan.slug === 'free' && currentPlan) { %>
+                                <a href="/profile/subscription" class="btn btn-outline-secondary">
+                                    Downgrade to Free
+                                </a>
+                            <% } else { %>
+                                <a href="/profile/subscription" class="btn btn-lg <%= plan.slug === 'pro' ? 'btn-primary' : plan.slug === 'premium' ? 'btn-warning' : 'btn-outline-secondary' %>">
+                                    <% if (currentPlan) { %>
+                                        <% if ((currentPlan === 'free' && plan.slug !== 'free') || (currentPlan === 'pro' && plan.slug === 'premium')) { %>
+                                            <i class="bi bi-arrow-up-circle"></i> Upgrade
+                                        <% } else { %>
+                                            <i class="bi bi-arrow-down-circle"></i> Switch Plan
+                                        <% } %>
+                                    <% } else { %>
+                                        <i class="bi bi-cart"></i> Get <%= plan.name %>
+                                    <% } %>
+                                </a>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+
+    <!-- Feature Comparison Table (Desktop) -->
+    <div class="card mb-5 d-none d-lg-block">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="bi bi-table"></i> Feature Comparison</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th class="w-50">Feature</th>
+                            <% plans.forEach(plan => { %>
+                                <th class="text-center">
+                                    <%= plan.name %>
+                                    <% if (currentPlan === plan.slug) { %>
+                                        <br><small class="badge bg-success">Current</small>
+                                    <% } %>
+                                </th>
+                            <% }) %>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Storage -->
+                        <tr>
+                            <td>
+                                <strong>Storage</strong>
+                                <br><small class="text-muted">Pro/Premium pools across band members</small>
+                            </td>
+                            <% plans.forEach(plan => { %>
+                                <td class="text-center">
+                                    <span class="badge bg-info"><%= plan.storageQuotaGB %> GB</span>
+                                    <% if (plan.storageQuotaGB <= 8) { %>
+                                        <br><small class="text-muted">per user</small>
+                                    <% } else { %>
+                                        <br><small class="text-success">pooled</small>
+                                    <% } %>
+                                </td>
+                            <% }) %>
+                        </tr>
+                        
+                        <!-- Max Bands -->
+                        <tr>
+                            <td><strong>Max Bands</strong></td>
+                            <% plans.forEach(plan => { %>
+                                <td class="text-center">
+                                    <%= plan.maxBands || 'Unlimited' %>
+                                </td>
+                            <% }) %>
+                        </tr>
+                        
+                        <!-- Published Albums -->
+                        <tr>
+                            <td><strong>Published Albums (per band)</strong></td>
+                            <% plans.forEach(plan => { %>
+                                <td class="text-center">
+                                    <%= plan.maxPublishedAlbums || 'Unlimited' %>
+                                </td>
+                            <% }) %>
+                        </tr>
+
+                        <!-- Setlists -->
+                        <tr>
+                            <td><strong>Setlists</strong></td>
+                            <% plans.forEach(plan => { %>
+                                <td class="text-center">
+                                    <i class="bi bi-check-circle-fill text-success"></i> Unlimited
+                                </td>
+                            <% }) %>
+                        </tr>
+
+                        <!-- Community Features -->
+                        <tr>
+                            <td><strong>Community Song Library</strong></td>
+                            <% plans.forEach(plan => { %>
+                                <td class="text-center">
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                </td>
+                            <% }) %>
+                        </tr>
+
+                        <!-- Private Songs -->
+                        <tr>
+                            <td><strong>Private Songs</strong></td>
+                            <% plans.forEach(plan => { %>
+                                <td class="text-center">
+                                    <% if (plan.storageQuotaGB > 8) { %>
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    <% } else { %>
+                                        <i class="bi bi-x-circle text-muted"></i>
+                                    <% } %>
+                                </td>
+                            <% }) %>
+                        </tr>
+
+                        <!-- Support -->
+                        <tr>
+                            <td><strong>Support</strong></td>
+                            <% plans.forEach(plan => { %>
+                                <td class="text-center">
+                                    <% if (plan.slug === 'premium') { %>
+                                        Dedicated
+                                    <% } else if (plan.slug === 'pro') { %>
+                                        Priority
+                                    <% } else { %>
+                                        Community
+                                    <% } %>
+                                </td>
+                            <% }) %>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ Section -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <h2 class="text-center mb-4">Frequently Asked Questions</h2>
+            
+            <div class="accordion" id="pricingFAQ">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                            How does pooled storage work?
+                        </button>
+                    </h2>
+                    <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            <p><strong>Free tier:</strong> Each user gets 8GB across all their bands. Bands with all free members are capped at 8GB total (non-pooled).</p>
+                            <p><strong>Pro/Premium:</strong> Your storage quota spreads across all your bands. When multiple paid members are in the same band, 
+                            their quotas stack! For example, if two Pro members (20GB each) are in a band together, 
+                            that band gets 40GB total.</p>
+                            <p class="mb-0"><strong>It's collaborative!</strong> One Pro member in your band upgrades the whole band's storage and album limits.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                            What happens if I cancel my subscription?
+                        </button>
+                    </h2>
+                    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            You'll keep access to Pro/Premium features until the end of your billing period. 
+                            After that, you'll move to the Free plan. Your data stays safe - 
+                            you'll just need to manage storage within the 8GB free limit.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                            Can I upgrade or downgrade anytime?
+                        </button>
+                    </h2>
+                    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            Yes! You can upgrade or downgrade your plan anytime from your profile page. 
+                            Upgrades take effect immediately. Downgrades take effect at the end of your current billing period.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                            What's the difference between bands and albums?
+                        </button>
+                    </h2>
+                    <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            <strong>Bands</strong> are your groups - you can have up to 3 on the Free plan. 
+                            <strong>Albums</strong> are published music releases for your fans. Free tier gets 3 published albums 
+                            per band, Pro gets 10 per band, and Premium gets unlimited!
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                            Do all band members need to pay?
+                        </button>
+                    </h2>
+                    <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            No! If even one band member has Pro, the entire band gets Pro features for that band 
+                            (10 albums, pooled storage). Pro members can be in multiple bands and their quota 
+                            spreads across all their bands. It's designed for collaboration!
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                            Is there a free trial?
+                        </button>
+                    </h2>
+                    <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            The Free plan is generous and includes most features! You can start free and upgrade 
+                            anytime. We may offer trials for paid plans in the future.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq7">
+                            Do I really need a paid subscription?
+                        </button>
+                    </h2>
+                    <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                        <div class="accordion-body">
+                            <p>TheBandPlan was originally made to help create setlists for your band. That feature and some others will always be unlimited and free. And it's an awesome feature that you can use every week in rehearsal and on stage to create your setlists and then have the Music Stand Documents you can follow along with your lyrics and chords for all the songs in your set, the Youtube playlist for your set, the audio file playlist and more.</p>
+                            <p>If you don't need to record using our site and don't need to have us host your recordings and aren't using us to host a bunch of Albums, you can get by for free.</p>
+                            <p class="mb-0"><strong>That said, we really do appreciate your choice to upgrade your account.</strong> Your support helps us keep the free tier generous for everyone and continue building great features for the music community!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="text-center py-5 bg-light rounded-3">
+        <h2 class="mb-3">Ready to Get Started?</h2>
+        <p class="lead text-muted mb-4">
+            Join bands already using The Band Plan to stay organized and professional.
+        </p>
+        <% if (!user) { %>
+            <a href="/auth/register" class="btn btn-primary btn-lg me-2">
+                <i class="bi bi-person-plus"></i> Sign Up Free
+            </a>
+            <a href="/auth/login" class="btn btn-outline-secondary btn-lg">
+                <i class="bi bi-box-arrow-in-right"></i> Log In
+            </a>
+        <% } else if (!currentPlan || currentPlan === 'free') { %>
+            <a href="/profile/subscription" class="btn btn-primary btn-lg">
+                <i class="bi bi-arrow-up-circle"></i> Upgrade Now
+            </a>
+        <% } else { %>
+            <a href="/dashboard" class="btn btn-primary btn-lg">
+                <i class="bi bi-speedometer2"></i> Go to Dashboard
+            </a>
+        <% } %>
+    </div>
+
+    <!-- Trust Indicators -->
+    <div class="row mt-5 text-center text-muted">
+        <div class="col-md-4">
+            <i class="bi bi-shield-check display-6"></i>
+            <p class="mt-2 mb-0"><strong>Secure</strong><br>Your data is safe</p>
+        </div>
+        <div class="col-md-4">
+            <i class="bi bi-arrow-repeat display-6"></i>
+            <p class="mt-2 mb-0"><strong>Flexible</strong><br>Cancel anytime</p>
+        </div>
+        <div class="col-md-4">
+            <i class="bi bi-people display-6"></i>
+            <p class="mt-2 mb-0"><strong>Collaborative</strong><br>Benefits pool across bands</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Pricing page specific styles */
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .border-primary.shadow-lg {
+        box-shadow: 0 0 30px rgba(13, 110, 253, 0.3) !important;
+    }
+</style>
+
+<script>
+    // Initialize Bootstrap tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+

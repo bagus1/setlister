@@ -5,6 +5,9 @@ const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
 const { generateShareTokens, getViewTypeFromToken } = require("../utils/shareTokens");
 const { generateUniqueSlug } = require("../utils/slugify");
+const { deleteFile, deleteAlbumFiles } = require("../utils/fileCleanup");
+const { updateBandStorageUsage } = require("../utils/storageCalculator");
+const { checkStorageQuota } = require("../middleware/checkStorageQuota");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -100,6 +103,15 @@ router.post(
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         req.flash("error", errors.array()[0].msg);
+        return res.redirect(`/bands/${bandId}`);
+      }
+
+      // Check if user can create more albums (based on published limit)
+      const { canPublishAlbum } = require("../utils/subscriptionHelper");
+      const albumCheck = await canPublishAlbum(userId, bandId);
+      
+      if (!albumCheck.allowed) {
+        req.flash("error", albumCheck.message + ' <a href="/pricing">View Plans</a>');
         return res.redirect(`/bands/${bandId}`);
       }
 
@@ -331,6 +343,22 @@ router.put("/:bandId/albums/:albumId", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Rights confirmation required to publish album" });
     }
 
+    // Check album publishing limits if publishing (and wasn't published before)
+    if (isPublished && !album.isPublished) {
+      const { canPublishAlbum } = require("../utils/subscriptionHelper");
+      const publishCheck = await canPublishAlbum(userId, bandId);
+      
+      if (!publishCheck.allowed) {
+        return res.status(403).json({ 
+          error: publishCheck.message,
+          upgradeRequired: true,
+          upgradeUrl: '/pricing',
+          currentCount: publishCheck.currentCount,
+          limit: publishCheck.limit,
+        });
+      }
+    }
+
     // Generate new slug if title changed
     let updateData = {
       title,
@@ -430,9 +458,24 @@ router.delete("/:bandId/albums/:albumId/tracks/:trackId", requireAuth, async (re
       return res.status(403).json({ error: "Access denied" });
     }
 
+    // Get track audio file before deleting
+    const track = await prisma.albumTrack.findUnique({
+      where: { id: trackId },
+      select: { audioUrl: true },
+    });
+
+    // Delete from database
     await prisma.albumTrack.delete({
       where: { id: trackId },
     });
+
+    // Delete audio file if it exists
+    if (track?.audioUrl) {
+      await deleteFile(track.audioUrl);
+    }
+
+    // Recalculate band storage
+    await updateBandStorageUsage(bandId);
 
     res.json({ success: true });
   } catch (error) {
@@ -515,7 +558,7 @@ router.post("/:bandId/albums/:albumId/tracks/:trackId/audio", requireAuth, async
 });
 
 // POST /bands/:bandId/albums/:albumId/images - Upload album images (artwork and/or header)
-router.post("/:bandId/albums/:albumId/images", requireAuth, upload.fields([
+router.post("/:bandId/albums/:albumId/images", requireAuth, checkStorageQuota, upload.fields([
   { name: 'artwork', maxCount: 1 },
   { name: 'headerImage', maxCount: 1 }
 ]), async (req, res) => {
@@ -553,6 +596,9 @@ router.post("/:bandId/albums/:albumId/images", requireAuth, upload.fields([
         where: { id: albumId },
         data: updateData,
       });
+
+      // Recalculate band storage after successful upload
+      await updateBandStorageUsage(bandId);
     }
 
     res.json({ success: true, ...updateData });
@@ -563,7 +609,7 @@ router.post("/:bandId/albums/:albumId/images", requireAuth, upload.fields([
 });
 
 // POST /bands/:bandId/albums/:albumId/tracks/:trackId/upload - Upload audio file for track
-router.post("/:bandId/albums/:albumId/tracks/:trackId/upload", requireAuth, upload.single('audioFile'), async (req, res) => {
+router.post("/:bandId/albums/:albumId/tracks/:trackId/upload", requireAuth, checkStorageQuota, upload.single('audioFile'), async (req, res) => {
   try {
     const bandId = parseInt(req.params.bandId);
     const albumId = parseInt(req.params.albumId);
@@ -595,6 +641,9 @@ router.post("/:bandId/albums/:albumId/tracks/:trackId/upload", requireAuth, uplo
         updatedAt: new Date(),
       },
     });
+
+    // Recalculate band storage after successful upload
+    await updateBandStorageUsage(bandId);
 
     res.json({ success: true, audioUrl });
   } catch (error) {
@@ -701,6 +750,44 @@ router.get("/:bandId/albums/:albumId/player", async (req, res) => {
   } catch (error) {
     logger.logError("Album player error", error);
     res.status(500).send("Error loading album");
+  }
+});
+
+// DELETE /bands/:bandId/albums/:albumId - Delete an album
+router.delete("/:bandId/albums/:albumId", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const albumId = parseInt(req.params.albumId);
+    const userId = req.session.user.id;
+
+    // Verify access
+    const album = await prisma.album.findUnique({
+      where: { id: albumId },
+      include: {
+        band: { include: { members: { where: { userId } } } },
+      },
+    });
+
+    if (!album || album.bandId !== bandId || album.band.members.length === 0) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Delete all album files first
+    const { deleted, errors } = await deleteAlbumFiles(albumId);
+    console.log(`Deleted ${deleted} files for album ${albumId}, ${errors} errors`);
+
+    // Delete from database (cascade deletes tracks)
+    await prisma.album.delete({
+      where: { id: albumId },
+    });
+
+    // Recalculate band storage
+    await updateBandStorageUsage(bandId);
+
+    res.json({ success: true, filesDeleted: deleted });
+  } catch (error) {
+    logger.logError("Delete album error", error);
+    res.status(500).json({ error: "Failed to delete album" });
   }
 });
 

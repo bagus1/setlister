@@ -9,6 +9,8 @@ const { v4: uuidv4 } = require("uuid");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
 const { generateShareTokens, getViewTypeFromToken } = require("../utils/shareTokens");
+const { checkBandLimit } = require("../middleware/checkBandLimit");
+const { deleteBandFiles } = require("../utils/fileCleanup");
 
 // Helper function to validate token for public route access
 async function validatePublicToken(setlistId, token, expectedViewType) {
@@ -2289,6 +2291,8 @@ router.get("/:id/slug/check", requireAuth, async (req, res) => {
 // POST /bands - Create a new band
 router.post(
   "/",
+  requireAuth,
+  checkBandLimit,
   [
     body("name")
       .trim()
@@ -2523,6 +2527,19 @@ router.get("/:id", async (req, res) => {
       },
     });
 
+    // Get storage info for this band (pooled from all Pro members)
+    const {
+      getBandStorageInfo,
+      calculateUserStorageUsage,
+    } = require("../utils/storageCalculator");
+
+    const bandStorageInfo = await getBandStorageInfo(parseInt(bandId));
+    const userStorageInfo = await calculateUserStorageUsage(userId);
+
+    // Check if user can create more albums
+    const { canPublishAlbum } = require("../utils/subscriptionHelper");
+    const albumLimitInfo = await canPublishAlbum(userId, parseInt(bandId));
+
     res.render("bands/show", {
       title: band.name,
       hasBandHeader: true,
@@ -2535,6 +2552,9 @@ router.get("/:id", async (req, res) => {
       openOpportunities,
       pendingInvitations,
       userId,
+      bandStorageInfo,
+      userStorageInfo,
+      albumLimitInfo,
     });
   } catch (error) {
     console.error("Show band error:", error);
@@ -2593,19 +2613,6 @@ router.get("/:id/edit", async (req, res) => {
     if (!isMember) {
       req.flash("error", "You are not a member of this band");
       return res.redirect("/bands");
-    }
-
-    // Auto-generate slug if band doesn't have one (hybrid approach)
-    if (!band.slug) {
-      const { generateUniqueSlug } = require("../utils/slugify");
-      const slug = await generateUniqueSlug(prisma, band.name, band.id);
-      
-      await prisma.band.update({
-        where: { id: band.id },
-        data: { slug },
-      });
-      
-      band.slug = slug; // Update the object for rendering
     }
 
     res.render("bands/edit", {
@@ -3361,14 +3368,11 @@ router.post("/:id/songs/new", async (req, res) => {
         (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0);
       const bpmValue = bpm && bpm.trim() ? parseInt(bpm) : null;
 
-      // Check if user can make private songs
-      const currentUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { canMakePrivate: true },
-      });
+      // Check if user can make private songs (subscription-based)
+      const { canCreatePrivateSongs } = require("../utils/subscriptionHelper");
+      const privateCheck = await canCreatePrivateSongs(userId);
 
-      const isPrivate =
-        currentUser && currentUser.canMakePrivate && makePrivate === "true";
+      const isPrivate = privateCheck.allowed && makePrivate === "true";
 
       song = await prisma.song.create({
         data: {
@@ -5105,10 +5109,9 @@ router.get("/:id/songs/:songId/edit", requireAuth, async (req, res) => {
       return res.redirect(`/bands/${bandId}`);
     }
 
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, canMakePrivate: true },
-    });
+    // Check if user can create private songs (subscription-based)
+    const { canCreatePrivateSongs } = require("../utils/subscriptionHelper");
+    const privateCheck = await canCreatePrivateSongs(userId);
 
     const artists = await prisma.artist.findMany({
       orderBy: { name: "asc" },
@@ -5126,7 +5129,7 @@ router.get("/:id/songs/:songId/edit", requireAuth, async (req, res) => {
       song,
       artists,
       vocalists,
-      currentUser,
+      canMakePrivate: privateCheck.allowed,
       hasBandHeader: false,
     });
   } catch (error) {
@@ -6216,11 +6219,9 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       })
     );
 
-    // Get current user's permissions
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { canMakePrivate: true },
-    });
+    // Check if user can create private songs (subscription-based)
+    const { canCreatePrivateSongs } = require("../utils/subscriptionHelper");
+    const privateCheck = await canCreatePrivateSongs(userId);
 
     // Calculate summary stats
     const matchedSongs = songMatches.filter(
@@ -6244,7 +6245,7 @@ router.get("/:id/quick-set/confirm", async (req, res) => {
       isGoogleDocImport: req.session.quickSetData.isGoogleDocImport || false,
       isNewList: req.session.quickSetData.isNewList || false,
       createSetlist: req.session.quickSetData.createSetlist !== false, // Default to true for existing quickset flow
-      currentUser,
+      canMakePrivate: privateCheck.allowed,
     });
   } catch (error) {
     console.error("Quick set confirm error:", error);
@@ -9829,6 +9830,51 @@ router.post("/:id/notify-meeting", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Notify meeting error:", error);
     res.status(500).json({ error: "Failed to send notifications" });
+  }
+});
+
+// DELETE /bands/:id - Delete a band
+router.delete("/:id", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Get band and verify ownership
+    const band = await prisma.band.findUnique({
+      where: { id: bandId },
+      include: {
+        members: true,
+      },
+    });
+
+    if (!band) {
+      return res.status(404).json({ error: "Band not found" });
+    }
+
+    // Only band owner can delete
+    const isOwner = band.members.some(
+      (m) => m.userId === userId && m.role === "owner"
+    );
+
+    if (!isOwner) {
+      return res.status(403).json({ error: "Only the band owner can delete the band" });
+    }
+
+    // Delete all associated files first
+    console.log(`Deleting files for band ${band.name}...`);
+    const { deleted, errors, total } = await deleteBandFiles(bandId);
+    console.log(`Deleted ${deleted}/${total} files, ${errors} errors`);
+
+    // Delete band from database (cascades to setlists, albums, etc.)
+    await prisma.band.delete({
+      where: { id: bandId },
+    });
+
+    req.flash("success", `Band "${band.name}" and all associated files have been deleted`);
+    res.json({ success: true, filesDeleted: deleted });
+  } catch (error) {
+    logger.logError("Delete band error", error);
+    res.status(500).json({ error: "Failed to delete band" });
   }
 });
 

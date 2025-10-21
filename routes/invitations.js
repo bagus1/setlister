@@ -138,7 +138,6 @@ router.post(
             username,
             email: invitation.email.toLowerCase(),
             password: hashedPassword,
-            canMakePrivate: true,
             createdAt: new Date(),
             updatedAt: new Date(),
           },

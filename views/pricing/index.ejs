@@ -105,7 +105,7 @@
                                         <%
                                         // Dynamically replace storage values in features
                                         let displayFeature = feature;
-                                        if (feature.includes('GB storage')) {
+                                        if (feature.includes('GB') && feature.includes('storage')) {
                                             if (plan.storageQuotaGB <= 8) {
                                                 displayFeature = `${plan.storageQuotaGB}GB storage per user (bands capped at ${plan.storageQuotaGB}GB)`;
                                             } else {

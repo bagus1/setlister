@@ -5130,6 +5130,7 @@ router.get("/:id/songs/:songId/edit", requireAuth, async (req, res) => {
       artists,
       vocalists,
       canMakePrivate: privateCheck.allowed,
+      currentUser: req.session.user,
       hasBandHeader: false,
     });
   } catch (error) {

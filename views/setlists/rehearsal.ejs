@@ -114,7 +114,7 @@
                                 <div class="song-number"><%= index + 1 %></div>
                                 <div class="flex-grow-1">
                                     <div class="song-title">
-                                        <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>" 
+                                        <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>?from=rehearsal&setlistId=<%= setlist.id %>&token=<%= token %>" 
                                            class="text-decoration-none text-dark">
                                             <%= setlistSong.song.title %>
                                         </a>

@@ -92,12 +92,12 @@ function getTokenForView(viewType) {
                                                     <div>
                                                         <strong>
                                                             <% if (setlist.band && setlist.band.id) { %>
-                                                                <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>"
+                                                                <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>?from=setlist&setlistId=<%= setlist.id %>"
                                                                     class="text-decoration-none">
                                                                     <%= setlistSong.song.title %>
                                                                 </a>
                                                             <% } else { %>
-                                                                <a href="/songs/<%= setlistSong.song.id %>"
+                                                                <a href="/songs/<%= setlistSong.song.id %>?from=setlist&setlistId=<%= setlist.id %>"
                                                                     class="text-decoration-none">
                                                                     <%= setlistSong.song.title %>
                                                                 </a>

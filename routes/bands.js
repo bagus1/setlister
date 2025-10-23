@@ -339,6 +339,10 @@ router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
     const setlistId = parseInt(req.params.setlistId);
     const token = req.query.t;
 
+    // Clear navigation context when viewing rehearsal (navigation complete)
+    const { clearNavigationContext } = require('../middleware/navigationContext');
+    clearNavigationContext(req);
+
     // Validate token for public access
     const isValidToken = await validatePublicToken(setlistId, token, 'rehearsal');
     if (!isValidToken) {
@@ -432,6 +436,7 @@ router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
       band: setlist.band,
       hasBandHeader: true,
       user: req.session.user || null, // Pass user if logged in, null if not
+      token: token || '',
       getLinkIcon,
       getLinkDisplayText,
       getTypeDisplayName,
@@ -4885,6 +4890,18 @@ router.get("/:id/songs/:songId", async (req, res) => {
     const songId = parseInt(req.params.songId);
     const userId = req.session.user.id;
 
+    // Handle navigation context from query parameters
+    const { from, setlistId, token } = req.query;
+    const { setNavigationContext, clearNavigationContext } = require('../middleware/navigationContext');
+    
+    if (from && setlistId) {
+      // Set new navigation context when coming from setlist/rehearsal
+      setNavigationContext(req, from, parseInt(setlistId), bandId, token);
+    } else {
+      // Clear old navigation context if visiting song directly (not from setlist)
+      clearNavigationContext(req);
+    }
+
     // Check band membership
     const band = await prisma.band.findFirst({
       where: {
@@ -5044,6 +5061,10 @@ router.get("/:id/songs/:songId", async (req, res) => {
       pageTitle = `${song.title} by ${song.artists[0].artist.name}`;
     }
 
+    // Get navigation back button
+    const { getBackToSetlistButton } = require('../middleware/navigationContext');
+    const backButton = getBackToSetlistButton(req);
+
     res.render("bands/songs/show", {
       title: song.title,
       pageTitle,
@@ -5058,6 +5079,7 @@ router.get("/:id/songs/:songId", async (req, res) => {
       getTypeIcon,
       getTypeDisplayName,
       currentUrl: req.originalUrl,
+      backToSetlistButton: backButton,
     });
   } catch (error) {
     logger.logError("Band song show error", error);
@@ -9114,6 +9136,10 @@ router.get("/:bandId/setlists/:setlistId", requireAuth, async (req, res) => {
     const bandId = parseInt(req.params.bandId);
     const setlistId = parseInt(req.params.setlistId);
     const userId = req.session.user.id;
+
+    // Clear navigation context when viewing setlist (navigation complete)
+    const { clearNavigationContext } = require('../middleware/navigationContext');
+    clearNavigationContext(req);
 
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },

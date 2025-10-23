@@ -15,15 +15,22 @@
                                     <% } %>
                                 </p>
                             </div>
-                            <% if (typeof band !== 'undefined' && band) { %>
-                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>" class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-left"></i> Back to Song
-                                </a>
-                            <% } else { %>
-                                <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-left"></i> Back to Song
-                                </a>
-                            <% } %>
+                            <div>
+                                <% if (typeof band !== 'undefined' && band) { %>
+                                    <a href="/bands/<%= band.id %>/songs/<%= song.id %>" class="btn btn-outline-secondary me-2">
+                                        <i class="bi bi-arrow-left"></i> Back to Song
+                                    </a>
+                                <% } else { %>
+                                    <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary me-2">
+                                        <i class="bi bi-arrow-left"></i> Back to Song
+                                    </a>
+                                <% } %>
+                                <% if (typeof backToSetlistButton !== 'undefined' && backToSetlistButton) { %>
+                                    <a href="<%= backToSetlistButton.url %>" class="btn btn-outline-primary">
+                                        <i class="bi bi-arrow-left"></i> <%= backToSetlistButton.label %>
+                                    </a>
+                                <% } %>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body text-center">
@@ -42,15 +49,22 @@
                                     <% } %>
                                 </p>
                             </div>
-                            <% if (typeof band !== 'undefined' && band) { %>
-                                <a href="/bands/<%= band.id %>/songs/<%= song.id %>" class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-left"></i> Back to Song
-                                </a>
-                            <% } else { %>
-                                <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-left"></i> Back to Song
-                                </a>
-                            <% } %>
+                            <div>
+                                <% if (typeof band !== 'undefined' && band) { %>
+                                    <a href="/bands/<%= band.id %>/songs/<%= song.id %>" class="btn btn-outline-secondary me-2">
+                                        <i class="bi bi-arrow-left"></i> Back to Song
+                                    </a>
+                                <% } else { %>
+                                    <a href="/songs/<%= song.id %>" class="btn btn-outline-secondary me-2">
+                                        <i class="bi bi-arrow-left"></i> Back to Song
+                                    </a>
+                                <% } %>
+                                <% if (typeof backToSetlistButton !== 'undefined' && backToSetlistButton) { %>
+                                    <a href="<%= backToSetlistButton.url %>" class="btn btn-outline-primary">
+                                        <i class="bi bi-arrow-left"></i> <%= backToSetlistButton.label %>
+                                    </a>
+                                <% } %>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body text-center">

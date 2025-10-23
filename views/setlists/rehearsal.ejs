@@ -203,7 +203,7 @@
                                     <% if (hasDocs) { %>
                                         <div class="list-group">
                                             <% setlistSong.song.gigDocuments.forEach(doc => { %>
-                                                <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>?from=rehearsal&setlistId=<%= setlist.id %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                                <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>?from=rehearsal&setlistId=<%= setlist.id %>&token=<%= token %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
                                                     <div>
                                                         <i class="bi bi-file-earmark-text text-success"></i>
                                                         <%= getTypeDisplayName(doc.type) %> - v<%= doc.version %>

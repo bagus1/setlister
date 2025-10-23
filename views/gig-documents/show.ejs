@@ -4,21 +4,9 @@
                 <%= getTypeDisplayName(gigDocument.type) %> - v<%= gigDocument.version %>
             </h1>
             <div class="btn-group">
-                <% 
-                    // Build print URL preserving from/setlistId params
-                    let printUrl = '?print=true';
-                    if (typeof fromRehearsal !== 'undefined' && fromRehearsal && typeof setlistId !== 'undefined' && setlistId) {
-                        printUrl += '&from=rehearsal&setlistId=' + setlistId;
-                    }
-                %>
-                <a href="<%= printUrl %>" class="btn btn-primary">
+                <a href="?print=true" class="btn btn-primary">
                     <i class="bi bi-printer"></i> Print
                 </a>
-                <% if (typeof fromRehearsal !== 'undefined' && fromRehearsal && typeof setlistId !== 'undefined' && setlistId) { %>
-                    <a href="/bands/<%= band.id %>/setlists/<%= setlistId %>/rehearsal" class="btn btn-success">
-                        <i class="bi bi-arrow-left"></i> Back to Rehearsal
-                    </a>
-                <% } %>
                 <% if (typeof band !== 'undefined' && band) { %>
                     <a href="/bands/<%= band.id %>/songs/<%= gigDocument.song.id %>" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left"></i> Back to Song
@@ -26,6 +14,11 @@
                 <% } else { %>
                     <a href="/songs/<%= gigDocument.song.id %>" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left"></i> Back to Song
+                    </a>
+                <% } %>
+                <% if (typeof backToSetlistButton !== 'undefined' && backToSetlistButton) { %>
+                    <a href="<%= backToSetlistButton.url %>" class="btn btn-success">
+                        <i class="bi bi-arrow-left"></i> <%= backToSetlistButton.label %>
                     </a>
                 <% } %>
             </div>

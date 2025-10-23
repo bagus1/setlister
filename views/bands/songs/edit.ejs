@@ -1,5 +1,17 @@
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
+        <!-- Navigation buttons -->
+        <div class="mb-3">
+            <a href="/bands/<%= band.id %>/songs/<%= song.id %>" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left"></i> Back to Song
+            </a>
+            <% if (typeof backToSetlistButton !== 'undefined' && backToSetlistButton) { %>
+                <a href="<%= backToSetlistButton.url %>" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> <%= backToSetlistButton.label %>
+                </a>
+            <% } %>
+        </div>
+        
         <div class="card">
             <div class="card-header">
                 <h4 class="mb-0">

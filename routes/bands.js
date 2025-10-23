@@ -4892,15 +4892,13 @@ router.get("/:id/songs/:songId", async (req, res) => {
 
     // Handle navigation context from query parameters
     const { from, setlistId, token } = req.query;
-    const { setNavigationContext, clearNavigationContext } = require('../middleware/navigationContext');
+    const { setNavigationContext } = require('../middleware/navigationContext');
     
     if (from && setlistId) {
-      // Set new navigation context when coming from setlist/rehearsal
+      // Set/update navigation context when coming from setlist/rehearsal
       setNavigationContext(req, from, parseInt(setlistId), bandId, token);
-    } else {
-      // Clear old navigation context if visiting song directly (not from setlist)
-      clearNavigationContext(req);
     }
+    // Note: We don't clear context when no query params - it persists in session
 
     // Check band membership
     const band = await prisma.band.findFirst({
@@ -5108,6 +5106,10 @@ router.get("/:id/songs/:songId/edit", requireAuth, async (req, res) => {
     const songId = parseInt(req.params.songId);
     const userId = req.session.user.id;
 
+    // Navigation context persists from session (no query params needed)
+    const { getBackToSetlistButton } = require('../middleware/navigationContext');
+    const backButton = getBackToSetlistButton(req);
+
     const band = await verifyBandAccess(bandId, userId);
     if (!band) {
       req.flash("error", "Band not found or you don't have permission");
@@ -5154,6 +5156,7 @@ router.get("/:id/songs/:songId/edit", requireAuth, async (req, res) => {
       canMakePrivate: privateCheck.allowed,
       currentUser: req.session.user,
       hasBandHeader: false,
+      backToSetlistButton: backButton,
     });
   } catch (error) {
     logger.logError("Band song edit form error", error);
@@ -5320,6 +5323,10 @@ router.get("/:id/songs/:songId/links/:linkId", async (req, res) => {
     const songId = parseInt(req.params.songId);
     const linkId = parseInt(req.params.linkId);
 
+    // Navigation context persists from session
+    const { getBackToSetlistButton } = require('../middleware/navigationContext');
+    const backButton = getBackToSetlistButton(req);
+
     // Get band (no membership required for viewing)
     const band = await prisma.band.findUnique({
       where: { id: bandId },
@@ -5459,6 +5466,7 @@ router.get("/:id/songs/:songId/links/:linkId", async (req, res) => {
       extractSpotifyTrackId,
       extractYouTubeVideoId,
       hasBandHeader: false,
+      backToSetlistButton: backButton,
     });
   } catch (error) {
     logger.logError("Band song link viewer error:", error);
@@ -5643,6 +5651,15 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
     const docId = parseInt(req.params.docId);
     const userId = req.session?.user?.id;
 
+    // Handle navigation context from query parameters
+    const { from, setlistId, token } = req.query;
+    const { setNavigationContext, clearNavigationContext } = require('../middleware/navigationContext');
+    
+    if (from && setlistId) {
+      // Set new navigation context when coming from setlist/rehearsal
+      setNavigationContext(req, from, parseInt(setlistId), bandId, token);
+    }
+
     // Get band - don't require membership for viewing
     const band = await prisma.band.findUnique({
       where: { id: bandId },
@@ -5690,11 +5707,9 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
     // Check if this is a print request
     const isPrintRequest = req.query.print === "true";
 
-    // Check if user came from rehearsal view
-    const fromRehearsal = req.query.from === "rehearsal";
-    const setlistId = req.query.setlistId
-      ? parseInt(req.query.setlistId)
-      : null;
+    // Get navigation back button from session context
+    const { getBackToSetlistButton } = require('../middleware/navigationContext');
+    const backButton = getBackToSetlistButton(req);
 
     const getTypeIcon = (type) => {
       const icons = {
@@ -5813,8 +5828,7 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
         layout: false,
         getTypeIcon,
         getTypeDisplayName,
-        fromRehearsal,
-        setlistId,
+        backToSetlistButton: backButton,
       });
     } else {
       // For normal viewing, render with layout
@@ -5834,8 +5848,7 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
         extractSpotifyTrackId,
         extractYouTubeVideoId,
         hasBandHeader: false,
-        fromRehearsal,
-        setlistId,
+        backToSetlistButton: backButton,
       });
     }
   } catch (error) {

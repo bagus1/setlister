@@ -2861,12 +2861,11 @@ router.post(
       const recording = await prisma.recording.create({
         data: {
           setlistId: setlistId,
-          filename: path.basename(finalPath),
-          originalFilename: originalFileName,
           filePath: finalPath,
-          fileSize: stats.size,
+          fileSize: BigInt(stats.size),
           duration: 0, // Will be calculated later
-          uploadedBy: req.session.user.id
+          format: path.extname(originalFileName).substring(1) || 'mp3',
+          createdById: req.session.user.id
         }
       });
       

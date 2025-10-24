@@ -607,9 +607,24 @@ class RecordingManager {
   }
 
   /**
-   * Upload recording to server
+   * Upload recording to server (with chunked upload for large files)
    */
   async uploadRecording(audioBlob, setlistId, duration) {
+    // Check if file is large enough to use chunked upload (>100MB)
+    const CHUNK_THRESHOLD = 100 * 1024 * 1024; // 100MB
+    
+    if (audioBlob.size > CHUNK_THRESHOLD) {
+      console.log("Large file detected, using chunked upload...");
+      return await this.uploadRecordingChunked(audioBlob, setlistId, duration);
+    } else {
+      return await this.uploadRecordingRegular(audioBlob, setlistId, duration);
+    }
+  }
+
+  /**
+   * Regular upload for smaller files
+   */
+  async uploadRecordingRegular(audioBlob, setlistId, duration) {
     const formData = new FormData();
     formData.append("audio", audioBlob, `recording-${Date.now()}.webm`);
     formData.append("duration", duration);
@@ -1098,6 +1113,26 @@ class RecordingManager {
         };
       };
     });
+  }
+
+  /**
+   * Chunked upload for large files
+   */
+  async uploadRecordingChunked(audioBlob, setlistId, duration) {
+    try {
+      // Create a file-like object for the ChunkedUploader
+      const file = new File([audioBlob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
+      const uploader = new ChunkedUploader(file);
+      
+      const result = await uploader.uploadChunks(setlistId, (progress) => {
+        this.updateProcessingStatus(`Uploading chunks... ${progress.percentage}% (${progress.loaded}/${progress.total} chunks)`);
+      });
+      
+      console.log("Chunked upload successful:", result);
+      return result;
+    } catch (error) {
+      throw new Error(`Chunked upload failed: ${error.message}`);
+    }
   }
 }
 

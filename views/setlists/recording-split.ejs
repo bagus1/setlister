@@ -41,6 +41,12 @@
                         <div id="loadingStatus" class="mt-1">
                             <small class="text-muted">Preparing waveform...</small>
                         </div>
+                        <div id="loadingNote" class="mt-2" style="display: none;">
+                            <small class="text-info">
+                                <i class="bi bi-info-circle"></i> 
+                                Large files may take 30+ seconds to process. Please be patient.
+                            </small>
+                        </div>
                     </div>
                     
                     <!-- Waveform Container -->
@@ -240,22 +246,33 @@ const loadingBar = document.getElementById('loadingBar');
 const loadingStatus = document.getElementById('loadingStatus');
 const loadingProgressDiv = document.getElementById('loadingProgress');
 const waveformDiv = document.getElementById('waveform');
+const loadingNote = document.getElementById('loadingNote');
 
-// Simulate loading progress
+// Show patience note after 5 seconds
+setTimeout(() => {
+    if (loadingProgressDiv.style.display !== 'none') {
+        loadingNote.style.display = 'block';
+    }
+}, 5000);
+
+// Simulate loading progress (more realistic for large files)
 const progressInterval = setInterval(() => {
-    if (loadingProgress < 90) {
-        loadingProgress += Math.random() * 10;
-        loadingBar.style.width = Math.min(loadingProgress, 90) + '%';
+    if (loadingProgress < 85) {
+        // Slower, more realistic progress
+        loadingProgress += Math.random() * 3;
+        loadingBar.style.width = Math.min(loadingProgress, 85) + '%';
         
-        if (loadingProgress < 30) {
+        if (loadingProgress < 20) {
             loadingStatus.textContent = 'Downloading audio file...';
-        } else if (loadingProgress < 60) {
+        } else if (loadingProgress < 40) {
             loadingStatus.textContent = 'Processing audio data...';
-        } else if (loadingProgress < 90) {
+        } else if (loadingProgress < 60) {
+            loadingStatus.textContent = 'Analyzing audio...';
+        } else if (loadingProgress < 85) {
             loadingStatus.textContent = 'Generating waveform...';
         }
     }
-}, 200);
+}, 500); // Slower updates
 
 // Load audio file
 wavesurfer.load('<%= recording.path %>');

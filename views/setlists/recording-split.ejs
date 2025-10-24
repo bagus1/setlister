@@ -307,6 +307,16 @@ wavesurfer.on('error', function(error) {
     loadingBar.classList.remove('progress-bar-animated');
     loadingBar.classList.add('bg-danger');
     console.error('WaveSurfer error:', error);
+    
+    // Show more detailed error info
+    const errorDetails = document.createElement('div');
+    errorDetails.className = 'mt-2 text-danger small';
+    errorDetails.innerHTML = `
+        <strong>Error Details:</strong><br>
+        ${error.message || 'Unknown error'}<br>
+        <small>File: <%= recording.path %></small>
+    `;
+    loadingProgressDiv.appendChild(errorDetails);
 });
 
 wavesurfer.on('audioprocess', function() {

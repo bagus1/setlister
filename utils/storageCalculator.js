@@ -186,6 +186,7 @@ async function getBandProMembers(bandId) {
     if (
       member.user.subscription &&
       member.user.subscription.status === "active" &&
+      member.user.subscription.plan &&
       member.user.subscription.plan.storageQuotaGB > 0
     ) {
       proMembers.push({
@@ -254,7 +255,7 @@ async function calculateUserStorageUsage(userId) {
   }
 
   // Get user's quota (default to free tier if no subscription)
-  const userQuotaGB = user.subscription?.plan.storageQuotaGB || 8;
+  const userQuotaGB = user.subscription?.plan?.storageQuotaGB || 8;
   const totalQuotaBytes = BigInt(userQuotaGB) * BigInt(1024 ** 3);
 
   let totalUserShareBytes = BigInt(0);

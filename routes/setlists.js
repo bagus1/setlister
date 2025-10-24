@@ -2663,7 +2663,7 @@ router.get("/:id/recordings", requireAuth, async (req, res) => {
 router.post(
   "/:id/recordings",
   requireAuth,
-  // checkStorageQuota, // Temporarily disabled due to quota check error
+  checkStorageQuota, // Re-enabled after fixing null subscription bug
   upload.single("audio"),
   async (req, res) => {
     try {
@@ -2738,7 +2738,7 @@ router.post(
 router.post(
   "/:id/recordings/upload",
   requireAuth,
-  // checkStorageQuota, // Temporarily disabled due to quota check error
+  checkStorageQuota, // Re-enabled after fixing null subscription bug
   upload.single("audioFile"),
   async (req, res) => {
     try {

@@ -274,8 +274,26 @@ const progressInterval = setInterval(() => {
     }
 }, 500); // Slower updates
 
-// Load audio file
-wavesurfer.load('<%= recording.path %>');
+    // Load audio file
+    console.log('Attempting to load audio file:', '<%= recording.path %>');
+    console.log('File size:', '<%= recording.duration %> seconds');
+    
+    // Test if the file is accessible first
+    fetch('<%= recording.path %>', { method: 'HEAD' })
+        .then(response => {
+            console.log('File accessibility test:', response.status, response.statusText);
+            if (response.ok) {
+                console.log('File is accessible, loading with WaveSurfer...');
+                wavesurfer.load('<%= recording.path %>');
+            } else {
+                throw new Error(`File not accessible: ${response.status} ${response.statusText}`);
+            }
+        })
+        .catch(error => {
+            console.error('File accessibility test failed:', error);
+            loadingStatus.textContent = 'File not accessible: ' + error.message;
+            loadingBar.classList.add('bg-danger');
+        });
 
 // Update time display
 let lastDisplayedTime = -1;

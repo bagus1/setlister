@@ -46,16 +46,22 @@ class ChunkedUploader {
     formData.append('originalFileName', this.file.name);
     formData.append('originalFileSize', this.file.size);
 
+    console.log(`Uploading chunk ${chunkIndex + 1}/${this.totalChunks} (${chunk.size} bytes)`);
+
     const response = await fetch(`/setlists/${setlistId}/recordings/upload-chunk`, {
       method: 'POST',
       body: formData
     });
 
     if (!response.ok) {
-      throw new Error(`Chunk ${chunkIndex} upload failed: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`Chunk ${chunkIndex} failed:`, response.status, errorText);
+      throw new Error(`Chunk ${chunkIndex} upload failed: ${response.status} ${errorText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log(`Chunk ${chunkIndex} uploaded successfully:`, result);
+    return result;
   }
 
   async reassembleChunks(setlistId) {

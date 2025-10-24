@@ -50,6 +50,31 @@ const upload = multer({
   },
 });
 
+// Configure multer for chunk uploads (no file filter)
+const chunkStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, "../uploads/temp");
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename for chunk
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, "chunk-" + uniqueSuffix);
+  },
+});
+
+const chunkUpload = multer({
+  storage: chunkStorage,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit for chunks
+  },
+  // No fileFilter - allow any file type for chunks
+});
+
 // Helper function to capture complete setlist state
 async function captureSetlistState(setlistId) {
   const setlist = await prisma.setlist.findUnique({
@@ -2738,14 +2763,32 @@ router.post(
 router.post(
   "/:id/recordings/upload-chunk",
   requireAuth,
-  upload.single("chunk"),
+  (req, res, next) => {
+    logger.logInfo(`Chunk upload request started for setlist ${req.params.id} by user ${req.session.user.id}`);
+    logger.logInfo(`Chunk request headers: ${JSON.stringify(req.headers)}`);
+    next();
+  },
+  chunkUpload.single("chunk"),
+  (err, req, res, next) => {
+    if (err) {
+      logger.logError("Chunk multer error:", err);
+      return res.status(400).json({ error: "Chunk upload error", details: err.message });
+    }
+    logger.logInfo("Chunk multer processing completed successfully");
+    next();
+  },
   async (req, res) => {
     try {
       const { chunkIndex, totalChunks, originalFileName, originalFileSize } = req.body;
       
+      logger.logInfo(`Processing chunk ${chunkIndex}/${totalChunks} for file ${originalFileName}`);
+      
       if (!req.file) {
+        logger.logError("No chunk file uploaded");
         return res.status(400).json({ error: "No chunk uploaded" });
       }
+
+      logger.logInfo(`Chunk file received: ${req.file.filename}, size: ${req.file.size} bytes`);
 
       // Store chunk info in session or temporary storage
       const chunkKey = `chunk_${req.params.id}_${originalFileName}_${chunkIndex}`;
@@ -2759,6 +2802,8 @@ router.post(
       const chunkPath = path.join(tempDir, `${chunkKey}.tmp`);
       fs.renameSync(req.file.path, chunkPath);
       
+      logger.logInfo(`Chunk ${chunkIndex} saved to: ${chunkPath}`);
+      
       res.json({ 
         success: true, 
         chunkIndex: parseInt(chunkIndex),
@@ -2766,7 +2811,7 @@ router.post(
       });
     } catch (error) {
       logger.logError("Chunk upload error", error);
-      res.status(500).json({ error: "Failed to upload chunk" });
+      res.status(500).json({ error: "Failed to upload chunk", details: error.message });
     }
   }
 );

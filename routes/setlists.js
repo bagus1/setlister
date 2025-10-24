@@ -2738,10 +2738,35 @@ router.post(
 router.post(
   "/:id/recordings/upload",
   requireAuth,
+  (req, res, next) => {
+    logger.logInfo(`Upload request started for setlist ${req.params.id} by user ${req.session.user.id}`);
+    logger.logInfo(`Request headers: ${JSON.stringify(req.headers)}`);
+    next();
+  },
   upload.single("audioFile"),
+  (err, req, res, next) => {
+    if (err) {
+      logger.logError("Multer error:", err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: "File too large", maxSize: "500MB" });
+      }
+      return res.status(400).json({ error: "File upload error", details: err.message });
+    }
+    next();
+  },
+  (req, res, next) => {
+    if (req.file) {
+      logger.logInfo(`File uploaded successfully: ${req.file.filename}, size: ${req.file.size} bytes`);
+    } else {
+      logger.logError("No file uploaded - multer failed to process file");
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    next();
+  },
   checkStorageQuota, // Re-enabled after fixing null subscription bug
   async (req, res) => {
     try {
+      logger.logInfo(`Starting upload processing for setlist ${req.params.id}`);
       const setlistId = parseInt(req.params.id);
       const userId = req.session.user.id;
 
@@ -2814,7 +2839,12 @@ router.post(
       });
     } catch (error) {
       logger.logError("File upload error", error);
-      res.status(500).json({ error: "Failed to upload file" });
+      logger.logError(`Upload error details: ${error.message}`);
+      logger.logError(`Upload error stack: ${error.stack}`);
+      res.status(500).json({ 
+        error: "Failed to upload file",
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 );

@@ -17,11 +17,13 @@ const requireAuth = (req, res, next) => {
       username: "testuser",
       email: "test@test.com",
     };
+    req.user = req.session.user; // Set req.user for other middleware
     req.session.currentBandId = 1;
     return next();
   }
 
   if (req.session.user) {
+    req.user = req.session.user; // Set req.user for other middleware
     next();
   } else {
     req.flash("error", "Please log in to access this page");

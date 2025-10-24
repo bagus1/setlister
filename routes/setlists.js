@@ -2738,8 +2738,8 @@ router.post(
 router.post(
   "/:id/recordings/upload",
   requireAuth,
-  checkStorageQuota, // Re-enabled after fixing null subscription bug
   upload.single("audioFile"),
+  checkStorageQuota, // Re-enabled after fixing null subscription bug
   async (req, res) => {
     try {
       const setlistId = parseInt(req.params.id);

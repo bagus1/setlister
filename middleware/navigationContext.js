@@ -10,13 +10,15 @@
  * @param {number} setlistId - ID of the setlist
  * @param {number} bandId - ID of the band
  * @param {string} token - Token for public views (optional)
+ * @param {number} songId - Optional song ID to scroll to on return
  */
-function setNavigationContext(req, type, setlistId, bandId, token = null) {
+function setNavigationContext(req, type, setlistId, bandId, token = null, songId = null) {
   req.session.navigationContext = {
     type,
     setlistId,
     bandId,
     token,
+    songId,
     timestamp: Date.now()
   };
 }

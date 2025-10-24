@@ -339,8 +339,12 @@ router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
     const setlistId = parseInt(req.params.setlistId);
     const token = req.query.t;
 
+    // Check for songId in navigation context before clearing
+    const { getNavigationContext, clearNavigationContext } = require('../middleware/navigationContext');
+    const navContext = getNavigationContext(req);
+    const songIdToScroll = navContext?.songId || null;
+    
     // Clear navigation context when viewing rehearsal (navigation complete)
-    const { clearNavigationContext } = require('../middleware/navigationContext');
     clearNavigationContext(req);
 
     // Validate token for public access
@@ -437,6 +441,7 @@ router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
       hasBandHeader: true,
       user: req.session.user || null, // Pass user if logged in, null if not
       token: token || '',
+      songIdToScroll, // Pass songId for scrolling
       getLinkIcon,
       getLinkDisplayText,
       getTypeDisplayName,
@@ -4891,12 +4896,12 @@ router.get("/:id/songs/:songId", async (req, res) => {
     const userId = req.session.user.id;
 
     // Handle navigation context from query parameters
-    const { from, setlistId, token } = req.query;
+    const { from, setlistId, token, songId } = req.query;
     const { setNavigationContext } = require('../middleware/navigationContext');
     
     if (from && setlistId) {
       // Set/update navigation context when coming from setlist/rehearsal
-      setNavigationContext(req, from, parseInt(setlistId), bandId, token);
+      setNavigationContext(req, from, parseInt(setlistId), bandId, token, songId ? parseInt(songId) : null);
     }
     // Note: We don't clear context when no query params - it persists in session
 
@@ -5652,12 +5657,12 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
     const userId = req.session?.user?.id;
 
     // Handle navigation context from query parameters
-    const { from, setlistId, token } = req.query;
+    const { from, setlistId, token, songId } = req.query;
     const { setNavigationContext, clearNavigationContext } = require('../middleware/navigationContext');
     
     if (from && setlistId) {
       // Set new navigation context when coming from setlist/rehearsal
-      setNavigationContext(req, from, parseInt(setlistId), bandId, token);
+      setNavigationContext(req, from, parseInt(setlistId), bandId, token, songId ? parseInt(songId) : null);
     }
 
     // Get band - don't require membership for viewing

@@ -109,12 +109,12 @@
                     </h3>
 
                     <% set.songs.sort((a, b) => a.order - b.order).forEach((setlistSong, index) => { %>
-                        <div class="song-card">
+                        <div class="song-card" data-song-id="<%= setlistSong.song.id %>">
                             <div class="song-header">
                                 <div class="song-number"><%= index + 1 %></div>
                                 <div class="flex-grow-1">
                                     <div class="song-title">
-                                        <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>?from=rehearsal&setlistId=<%= setlist.id %>&token=<%= token %>" 
+                                        <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>?from=rehearsal&setlistId=<%= setlist.id %>&token=<%= token %>&songId=<%= setlistSong.song.id %>" 
                                            class="text-decoration-none text-dark">
                                             <%= setlistSong.song.title %>
                                         </a>
@@ -203,7 +203,7 @@
                                     <% if (hasDocs) { %>
                                         <div class="list-group">
                                             <% setlistSong.song.gigDocuments.forEach(doc => { %>
-                                                <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>?from=rehearsal&setlistId=<%= setlist.id %>&token=<%= token %>" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
+                                                <a href="/bands/<%= setlist.band.id %>/songs/<%= setlistSong.song.id %>/docs/<%= doc.id %>?from=rehearsal&setlistId=<%= setlist.id %>&token=<%= token %>&songId=<%= setlistSong.song.id %>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-decoration-none">
                                                     <div>
                                                         <i class="bi bi-file-earmark-text text-success"></i>
                                                         <%= getTypeDisplayName(doc.type) %> - v<%= doc.version %>
@@ -231,3 +231,29 @@
         </div>
     <% } %>
 </div>
+
+<script>
+// Scroll to specific song if returning from navigation
+<% if (typeof songIdToScroll !== 'undefined' && songIdToScroll) { %>
+document.addEventListener('DOMContentLoaded', function() {
+    // Find the song card with the matching song ID
+    const songCard = document.querySelector(`[data-song-id="<%= songIdToScroll %>"]`);
+    if (songCard) {
+        // Scroll to the song with smooth behavior and some offset
+        songCard.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+        });
+        
+        // Add a subtle highlight effect
+        songCard.style.transition = 'box-shadow 0.3s ease';
+        songCard.style.boxShadow = '0 0 20px rgba(0, 123, 255, 0.3)';
+        
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+            songCard.style.boxShadow = '';
+        }, 3000);
+    }
+});
+<% } %>
+</script>

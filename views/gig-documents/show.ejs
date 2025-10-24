@@ -25,147 +25,125 @@
         </div>
 
 
-        <div class="row">
-            <!-- Listen While Reading Panel - Shows first on mobile -->
-            <div class="col-md-4 order-md-2 order-1">
-                <!-- Media Player Section - Above Document Info -->
-                <% if (gigDocument.song.links && gigDocument.song.links.length > 0) { %>
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="bi bi-music-note-beamed"></i> Listen While Reading
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <!-- Link Selection Menu -->
-                            <div class="mb-3">
-                                <label class="form-label small">Choose Audio/Video:</label>
-                                <select class="form-select form-select-sm" id="mediaSelect" onchange="loadMediaPlayer()">
-                                    <option value="">Select a link...</option>
-                                    <% 
-                                        let firstAudioLink = null;
-                                        gigDocument.song.links.forEach((link, index) => { 
-                                            if (['audio', 'spotify', 'youtube'].includes(link.type) && !firstAudioLink) {
-                                                firstAudioLink = link;
-                                            }
-                                    %>
-                                        <% if (['audio', 'spotify', 'youtube'].includes(link.type)) { %>
-                                            <% 
-                                                let mediaId = null;
-                                                if (link.type === 'spotify') {
-                                                    mediaId = extractSpotifyTrackId(link.url);
-                                                } else if (link.type === 'youtube') {
-                                                    mediaId = extractYouTubeVideoId(link.url);
-                                                }
-                                            %>
-                                            <option value="<%= link.id %>" 
-                                                    data-type="<%= link.type %>" 
-                                                    data-url="<%= link.url %>"
-                                                    data-media-id="<%= mediaId || '' %>"
-                                                    <%= link.id === firstAudioLink?.id ? 'selected' : '' %>>
-                                                <%= getLinkDisplayText(link) %>
-                                            </option>
-                                        <% } %>
-                                    <% }) %>
-                                </select>
-                            </div>
-                            
-                            <!-- Media Player Container -->
-                            <div id="mediaPlayerContainer" style="display: none;">
-                                <div id="audioPlayer" style="display: none;">
-                                    <audio controls style="width: 100%; height: 40px;">
-                                        <source src="" type="audio/mpeg">
-                                        <source src="" type="audio/wav">
-                                        <source src="" type="audio/ogg">
-                                        Your browser does not support the audio element.
-                                    </audio>
-                                </div>
-                                
-                                <div id="spotifyPlayer" style="display: none;">
-                                    <iframe 
-                                        src="" 
-                                        width="100%" 
-                                        height="152" 
-                                        frameborder="0" 
-                                        allowtransparency="true" 
-                                        allow="encrypted-media"
-                                        title="Spotify Player">
-                                    </iframe>
-                                </div>
-                                
-                                <div id="youtubePlayer" style="display: none;">
-                                    <iframe 
-                                        src="" 
-                                        width="100%" 
-                                        height="200" 
-                                        frameborder="0" 
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                        allowfullscreen
-                                        title="YouTube Player">
-                                    </iframe>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                <% } %>
-            </div>
-
-            <!-- Main Document Content -->
-            <div class="col-md-8 order-md-1 order-2">
-                <div class="card">
+        <!-- ============================================ -->
+        <!-- MOBILE LAYOUT - Stacked in desired order -->
+        <!-- ============================================ -->
+        <div class="d-md-none">
+            <!-- 1. Listen While Reading (mobile first) -->
+            <% if (gigDocument.song.links && gigDocument.song.links.length > 0) { %>
+                <div class="card mb-3">
                     <div class="card-header">
-                        <div class="row align-items-center">
-                            <div class="col">
-                                <h5 class="mb-0">
-                                    <%= gigDocument.song.title %>
-                                    <% if (gigDocument.song.artists && gigDocument.song.artists.length > 0) { %>
-                                        - <%= gigDocument.song.artists.map(a => a.artist.name).join(', ') %>
-                                    <% } %>
-                                </h5>
-                                <small class="text-muted">
-                                    <% if (gigDocument.song.vocalist) { %>
-                                        Vocalist: <%= gigDocument.song.vocalist.name %> •
-                                    <% } %>
-                                    <% if (gigDocument.song.key) { %>
-                                        Key: <%= gigDocument.song.key %> •
-                                    <% } %>
-                                    <% if (gigDocument.song.duration) { %>
-                                        Duration: <%= gigDocument.song.duration %>
-                                    <% } %>
-                                </small>
-                            </div>
-                            <div class="col-auto">
-                                <span class="badge bg-primary">
-                                    <%= getTypeDisplayName(gigDocument.type) %>
-                                </span>
-                                <span class="badge bg-secondary">v<%= gigDocument.version %></span>
-                            </div>
-                        </div>
+                        <h6 class="mb-0">
+                            <i class="bi bi-music-note-beamed"></i> Listen While Reading
+                        </h6>
                     </div>
                     <div class="card-body">
-                        <% if (gigDocument.content && gigDocument.content.trim()) { %>
-                            <div class="gig-document-content">
-                                <%- gigDocument.content %>
+                        <div class="mb-3">
+                            <label class="form-label small">Choose Audio/Video:</label>
+                            <select class="form-select form-select-sm" id="mediaSelectMobile" onchange="loadMediaPlayerMobile()">
+                                <option value="">Select a link...</option>
+                                <% 
+                                    let firstAudioLink = null;
+                                    gigDocument.song.links.forEach((link, index) => { 
+                                        if (['audio', 'spotify', 'youtube'].includes(link.type) && !firstAudioLink) {
+                                            firstAudioLink = link;
+                                        }
+                                %>
+                                    <% if (['audio', 'spotify', 'youtube'].includes(link.type)) { %>
+                                        <% 
+                                            let mediaId = null;
+                                            if (link.type === 'spotify') {
+                                                mediaId = extractSpotifyTrackId(link.url);
+                                            } else if (link.type === 'youtube') {
+                                                mediaId = extractYouTubeVideoId(link.url);
+                                            }
+                                        %>
+                                        <option value="<%= link.id %>" 
+                                                data-type="<%= link.type %>" 
+                                                data-url="<%= link.url %>"
+                                                data-media-id="<%= mediaId || '' %>"
+                                                <%= link.id === firstAudioLink?.id ? 'selected' : '' %>>
+                                            <%= getLinkDisplayText(link) %>
+                                        </option>
+                                    <% } %>
+                                <% }) %>
+                            </select>
+                        </div>
+                        
+                        <div id="mediaPlayerContainerMobile" style="display: none;">
+                            <div id="audioPlayerMobile" style="display: none;">
+                                <audio controls style="width: 100%; height: 40px;">
+                                    <source src="" type="audio/mpeg">
+                                    <source src="" type="audio/wav">
+                                    <source src="" type="audio/ogg">
+                                    Your browser does not support the audio element.
+                                </audio>
                             </div>
-                        <% } else { %>
-                            <div class="alert alert-warning">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                This gig document doesn't have any content yet.
-                                <% if (typeof band !== 'undefined' && band) { %>
-                                    <a href="/bands/<%= band.id %>/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit">Add content</a> to make it useful for gigs.
-                                <% } else { %>
-                                    <a href="/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit">Add content</a> to make it useful for gigs.
-                                <% } %>
+                            
+                            <div id="spotifyPlayerMobile" style="display: none;">
+                                <iframe src="" width="100%" height="152" frameborder="0" allowtransparency="true" allow="encrypted-media" title="Spotify Player"></iframe>
                             </div>
-                        <% } %>
+                            
+                            <div id="youtubePlayerMobile" style="display: none;">
+                                <iframe src="" width="100%" height="200" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="YouTube Player"></iframe>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            <% } %>
+            
+            <!-- 2. Document Content (mobile second) -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">
+                                <%= gigDocument.song.title %>
+                                <% if (gigDocument.song.artists && gigDocument.song.artists.length > 0) { %>
+                                    - <%= gigDocument.song.artists.map(a => a.artist.name).join(', ') %>
+                                <% } %>
+                            </h5>
+                            <small class="text-muted">
+                                <% if (gigDocument.song.vocalist) { %>
+                                    Vocalist: <%= gigDocument.song.vocalist.name %> •
+                                <% } %>
+                                <% if (gigDocument.song.key) { %>
+                                    Key: <%= gigDocument.song.key %> •
+                                <% } %>
+                                <% if (gigDocument.song.duration) { %>
+                                    Duration: <%= gigDocument.song.duration %>
+                                <% } %>
+                            </small>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge bg-primary">
+                                <%= getTypeDisplayName(gigDocument.type) %>
+                            </span>
+                            <span class="badge bg-secondary">v<%= gigDocument.version %></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <% if (gigDocument.content && gigDocument.content.trim()) { %>
+                        <div class="gig-document-content">
+                            <%- gigDocument.content %>
+                        </div>
+                    <% } else { %>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            This gig document doesn't have any content yet.
+                            <% if (typeof band !== 'undefined' && band) { %>
+                                <a href="/bands/<%= band.id %>/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit">Add content</a> to make it useful for gigs.
+                            <% } else { %>
+                                <a href="/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit">Add content</a> to make it useful for gigs.
+                            <% } %>
+                        </div>
+                    <% } %>
+                </div>
             </div>
-
-            <!-- Other Panels - Show below on mobile -->
-            <div class="col-md-4 order-md-3 order-3">
-
-            <div class="card">
+            
+            <!-- 3. Document Info (mobile third) -->
+            <div class="card mb-3">
                 <div class="card-header">
                     <h6 class="mb-0">Document Info</h6>
                 </div>
@@ -183,8 +161,9 @@
                     </p>
                 </div>
             </div>
-
-            <div class="card mt-3">
+            
+            <!-- 4. Quick Actions (mobile fourth) -->
+            <div class="card mb-3">
                 <div class="card-header">
                     <h6 class="mb-0">Quick Actions</h6>
                 </div>
@@ -226,8 +205,194 @@
                 </div>
             </div>
         </div>
-                    </div> <!-- Close left column -->
-                </div> <!-- Close row -->
+
+        <!-- ============================================ -->
+        <!-- DESKTOP LAYOUT - 2 column layout -->
+        <!-- ============================================ -->
+        <div class="d-none d-md-block">
+            <div class="row">
+                <!-- Main Document Content (left, 8 cols) -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <h5 class="mb-0">
+                                        <%= gigDocument.song.title %>
+                                        <% if (gigDocument.song.artists && gigDocument.song.artists.length > 0) { %>
+                                            - <%= gigDocument.song.artists.map(a => a.artist.name).join(', ') %>
+                                        <% } %>
+                                    </h5>
+                                    <small class="text-muted">
+                                        <% if (gigDocument.song.vocalist) { %>
+                                            Vocalist: <%= gigDocument.song.vocalist.name %> •
+                                        <% } %>
+                                        <% if (gigDocument.song.key) { %>
+                                            Key: <%= gigDocument.song.key %> •
+                                        <% } %>
+                                        <% if (gigDocument.song.duration) { %>
+                                            Duration: <%= gigDocument.song.duration %>
+                                        <% } %>
+                                    </small>
+                                </div>
+                                <div class="col-auto">
+                                    <span class="badge bg-primary">
+                                        <%= getTypeDisplayName(gigDocument.type) %>
+                                    </span>
+                                    <span class="badge bg-secondary">v<%= gigDocument.version %></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <% if (gigDocument.content && gigDocument.content.trim()) { %>
+                                <div class="gig-document-content">
+                                    <%- gigDocument.content %>
+                                </div>
+                            <% } else { %>
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    This gig document doesn't have any content yet.
+                                    <% if (typeof band !== 'undefined' && band) { %>
+                                        <a href="/bands/<%= band.id %>/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit">Add content</a> to make it useful for gigs.
+                                    <% } else { %>
+                                        <a href="/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit">Add content</a> to make it useful for gigs.
+                                    <% } %>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Sidebar (4 cols) -->
+                <div class="col-md-4">
+                    <!-- Listen While Reading -->
+                    <% if (gigDocument.song.links && gigDocument.song.links.length > 0) { %>
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-music-note-beamed"></i> Listen While Reading
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label small">Choose Audio/Video:</label>
+                                    <select class="form-select form-select-sm" id="mediaSelect" onchange="loadMediaPlayer()">
+                                        <option value="">Select a link...</option>
+                                        <% 
+                                            let firstAudioLink2 = null;
+                                            gigDocument.song.links.forEach((link, index) => { 
+                                                if (['audio', 'spotify', 'youtube'].includes(link.type) && !firstAudioLink2) {
+                                                    firstAudioLink2 = link;
+                                                }
+                                        %>
+                                            <% if (['audio', 'spotify', 'youtube'].includes(link.type)) { %>
+                                                <% 
+                                                    let mediaId = null;
+                                                    if (link.type === 'spotify') {
+                                                        mediaId = extractSpotifyTrackId(link.url);
+                                                    } else if (link.type === 'youtube') {
+                                                        mediaId = extractYouTubeVideoId(link.url);
+                                                    }
+                                                %>
+                                                <option value="<%= link.id %>" 
+                                                        data-type="<%= link.type %>" 
+                                                        data-url="<%= link.url %>"
+                                                        data-media-id="<%= mediaId || '' %>"
+                                                        <%= link.id === firstAudioLink2?.id ? 'selected' : '' %>>
+                                                    <%= getLinkDisplayText(link) %>
+                                                </option>
+                                            <% } %>
+                                        <% }) %>
+                                    </select>
+                                </div>
+                                
+                                <div id="mediaPlayerContainer" style="display: none;">
+                                    <div id="audioPlayer" style="display: none;">
+                                        <audio controls style="width: 100%; height: 40px;">
+                                            <source src="" type="audio/mpeg">
+                                            <source src="" type="audio/wav">
+                                            <source src="" type="audio/ogg">
+                                            Your browser does not support the audio element.
+                                        </audio>
+                                    </div>
+                                    
+                                    <div id="spotifyPlayer" style="display: none;">
+                                        <iframe src="" width="100%" height="152" frameborder="0" allowtransparency="true" allow="encrypted-media" title="Spotify Player"></iframe>
+                                    </div>
+                                    
+                                    <div id="youtubePlayer" style="display: none;">
+                                        <iframe src="" width="100%" height="200" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="YouTube Player"></iframe>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+                    
+                    <!-- Document Info -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Document Info</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Type:</strong> <%= getTypeDisplayName(gigDocument.type) %></p>
+                            <p><strong>Version:</strong> <%= gigDocument.version %></p>
+                            <p><strong>Created:</strong> <%= new Date(gigDocument.createdAt).toLocaleDateString() %></p>
+                            <p><strong>Updated:</strong> <%= new Date(gigDocument.updatedAt).toLocaleDateString() %></p>
+                            <p><strong>Status:</strong>
+                                <% if (gigDocument.isActive) { %>
+                                    <span class="badge bg-success">Active</span>
+                                <% } else { %>
+                                    <span class="badge bg-secondary">Inactive</span>
+                                <% } %>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Quick Actions</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <% if (loggedIn) { %>
+                                    <% if (gigDocument.createdById === user.id) { %>
+                                        <% if (typeof band !== 'undefined' && band) { %>
+                                            <a href="/bands/<%= band.id %>/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-pencil"></i> Edit Content
+                                            </a>
+                                        <% } else { %>
+                                            <a href="/songs/<%= gigDocument.song.id %>/docs/<%= gigDocument.id %>/edit" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-pencil"></i> Edit Content
+                                            </a>
+                                        <% } %>
+                                    <% } else { %>
+                                        <% if (typeof band !== 'undefined' && band) { %>
+                                            <a href="/bands/<%= band.id %>/songs/<%= gigDocument.song.id %>/docs/new" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-plus-circle"></i> Create Your Own
+                                            </a>
+                                        <% } else { %>
+                                            <a href="/songs/<%= gigDocument.song.id %>/docs/new" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-plus-circle"></i> Create Your Own
+                                            </a>
+                                        <% } %>
+                                    <% } %>
+                                <% } %>
+                                <% if (typeof band !== 'undefined' && band) { %>
+                                    <a href="/bands/<%= band.id %>/songs/<%= gigDocument.song.id %>" class="btn btn-outline-info btn-sm">
+                                        <i class="bi bi-music-note"></i> View Song
+                                    </a>
+                                <% } else { %>
+                                    <a href="/songs/<%= gigDocument.song.id %>" class="btn btn-outline-info btn-sm">
+                                        <i class="bi bi-music-note"></i> View Song
+                                    </a>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- Close right sidebar -->
+            </div> <!-- Close row -->
+        </div> <!-- Close desktop layout -->
     </div>
 </div>
 
@@ -422,14 +587,25 @@
     });
 
     // Media Player Functions
+    // Desktop media player
     function loadMediaPlayer() {
-        const select = document.getElementById('mediaSelect');
-        const container = document.getElementById('mediaPlayerContainer');
+        loadMediaPlayerWithIds('mediaSelect', 'mediaPlayerContainer', 'audioPlayer', 'spotifyPlayer', 'youtubePlayer');
+    }
+    
+    // Mobile media player
+    function loadMediaPlayerMobile() {
+        loadMediaPlayerWithIds('mediaSelectMobile', 'mediaPlayerContainerMobile', 'audioPlayerMobile', 'spotifyPlayerMobile', 'youtubePlayerMobile');
+    }
+    
+    // Shared function for both desktop and mobile
+    function loadMediaPlayerWithIds(selectId, containerId, audioId, spotifyId, youtubeId) {
+        const select = document.getElementById(selectId);
+        const container = document.getElementById(containerId);
         
         // Hide all players first
-        document.getElementById('audioPlayer').style.display = 'none';
-        document.getElementById('spotifyPlayer').style.display = 'none';
-        document.getElementById('youtubePlayer').style.display = 'none';
+        document.getElementById(audioId).style.display = 'none';
+        document.getElementById(spotifyId).style.display = 'none';
+        document.getElementById(youtubeId).style.display = 'none';
         
         if (select.value) {
             const option = select.options[select.selectedIndex];
@@ -440,19 +616,19 @@
             container.style.display = 'block';
             
             if (type === 'audio') {
-                const audioPlayer = document.getElementById('audioPlayer');
+                const audioPlayer = document.getElementById(audioId);
                 const audio = audioPlayer.querySelector('audio');
                 audio.src = url;
                 audioPlayer.style.display = 'block';
                 
             } else if (type === 'spotify' && mediaId) {
-                const spotifyPlayer = document.getElementById('spotifyPlayer');
+                const spotifyPlayer = document.getElementById(spotifyId);
                 const iframe = spotifyPlayer.querySelector('iframe');
                 iframe.src = `https://open.spotify.com/embed/track/${mediaId}`;
                 spotifyPlayer.style.display = 'block';
                 
             } else if (type === 'youtube' && mediaId) {
-                const youtubePlayer = document.getElementById('youtubePlayer');
+                const youtubePlayer = document.getElementById(youtubeId);
                 const iframe = youtubePlayer.querySelector('iframe');
                 iframe.src = `https://www.youtube.com/embed/${mediaId}`;
                 youtubePlayer.style.display = 'block';

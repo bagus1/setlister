@@ -2848,6 +2848,12 @@ router.post(
       
       writeStream.end();
       
+      // Wait for the write stream to finish before processing
+      await new Promise((resolve, reject) => {
+        writeStream.on('finish', resolve);
+        writeStream.on('error', reject);
+      });
+      
       // Now process the reassembled file as a normal recording
       const stats = fs.statSync(finalPath);
       

@@ -316,7 +316,7 @@ wavesurfer.on('audioprocess', function() {
     
     // Only update display if the tenths value changed
     if (roundedTime !== lastDisplayedTime) {
-        document.getElementById('currentTime').textContent = formatTime(roundedTime);
+        document.getElementById('currentTime').textContent = formatTimeWithTenths(roundedTime);
         lastDisplayedTime = roundedTime;
     }
 });
@@ -701,6 +701,14 @@ if (unlistedInput) {
 
 // Helper function to format time
 function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Helper function to format time with tenths (for current time)
+function formatTimeWithTenths(seconds) {
     if (!seconds || isNaN(seconds)) return '0:00.0';
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);

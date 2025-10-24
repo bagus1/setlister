@@ -22,7 +22,7 @@
                 </div>
                 <div class="d-flex gap-2">
                     <% if (!recording.isProcessed) { %>
-                        <a href="/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
+                        <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
                            class="btn btn-primary">
                             <i class="bi bi-scissors"></i> Split into Songs
                         </a>
@@ -131,7 +131,7 @@
                             <i class="bi bi-info-circle"></i>
                             <strong>This recording hasn't been split into individual songs yet.</strong>
                             <p class="mb-2 mt-2">You can split it to create playable tracks for each song.</p>
-                            <a href="/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
+                            <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
                                class="btn btn-primary">
                                 <i class="bi bi-scissors"></i> Split into Songs
                             </a>
@@ -206,7 +206,7 @@
                 </div>
                 <div class="card-body d-grid gap-2">
                     <% if (!recording.isProcessed) { %>
-                        <a href="/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
+                        <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
                            class="btn btn-primary">
                             <i class="bi bi-scissors"></i> Split into Songs
                         </a>

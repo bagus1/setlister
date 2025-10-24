@@ -336,6 +336,97 @@ router.get(
   }
 );
 
+// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/split - Show split page
+router.get(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/split",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get setlist with all songs
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: true,
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.bandId !== bandId) {
+        req.flash("error", "Setlist does not belong to this band");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.band.members.length === 0) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      // Get recording from database
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording) {
+        req.flash("error", "Recording not found");
+        return res.redirect(`/bands/${bandId}/setlists/${setlistId}/recordings`);
+      }
+
+      if (recording.setlistId !== setlistId) {
+        req.flash("error", "Recording does not belong to this setlist");
+        return res.redirect(`/bands/${bandId}/setlists/${setlistId}/recordings`);
+      }
+
+      res.render("setlists/recording-split", {
+        title: `Split Recording - ${setlist.title}`,
+        pageTitle: `Split Recording`,
+        marqueeTitle: setlist.title,
+        setlist,
+        recording: {
+          id: recording.id,
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
+          duration: recording.duration,
+        },
+        hasBandHeader: true,
+        band: setlist.band,
+      });
+    } catch (error) {
+      logger.logError("Recording split page error", error);
+      req.flash("error", "Error loading split page");
+      res.redirect("/bands");
+    }
+  }
+);
+
 // GET /bands/:bandId/setlists/:setlistId/rehearsal - Public rehearsal view
 router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
   try {

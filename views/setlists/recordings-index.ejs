@@ -607,7 +607,7 @@ async function uploadFileRegular(file, uploadBtn, uploadProgress, progressBar) {
                     const response = JSON.parse(xhr.responseText);
                     console.log('Parsed response:', response);
                     // Redirect to split page
-                    window.location.href = `/setlists/<%= setlist.id %>/recordings/${response.recordingId}/split`;
+                    window.location.href = `/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/${response.recordingId}/split`;
                 } catch (parseError) {
                     console.error('Failed to parse response:', parseError);
                     alert('Upload succeeded but failed to process response. Please refresh the page.');
@@ -654,7 +654,7 @@ async function uploadFileChunked(file, uploadBtn, uploadProgress, progressBar) {
         console.log('Chunked upload successful:', result);
         
         // Redirect to split page
-        window.location.href = `/setlists/<%= setlist.id %>/recordings/${result.recordingId}/split`;
+        window.location.href = `/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/${result.recordingId}/split`;
         
     } catch (error) {
         console.error('Chunked upload failed:', error);

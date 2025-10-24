@@ -275,16 +275,16 @@ const progressInterval = setInterval(() => {
 }, 500); // Slower updates
 
     // Load audio file
-    console.log('Attempting to load audio file:', '<%= recording.path %>');
+    console.log('Attempting to load audio file:', '<%= recording.filePath %>');
     console.log('File size:', '<%= recording.duration %> seconds');
     
     // Test if the file is accessible first
-    fetch('<%= recording.path %>', { method: 'HEAD' })
+    fetch('<%= recording.filePath %>', { method: 'HEAD' })
         .then(response => {
             console.log('File accessibility test:', response.status, response.statusText);
             if (response.ok) {
                 console.log('File is accessible, loading with WaveSurfer...');
-                wavesurfer.load('<%= recording.path %>');
+                wavesurfer.load('<%= recording.filePath %>');
             } else {
                 throw new Error(`File not accessible: ${response.status} ${response.statusText}`);
             }
@@ -332,7 +332,7 @@ wavesurfer.on('error', function(error) {
     errorDetails.innerHTML = `
         <strong>Error Details:</strong><br>
         ${error.message || 'Unknown error'}<br>
-        <small>File: <%= recording.path %></small>
+        <small>File: <%= recording.filePath %></small>
     `;
     loadingProgressDiv.appendChild(errorDetails);
 });

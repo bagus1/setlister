@@ -57,9 +57,12 @@ async function checkStorageQuota(req, res, next) {
     next();
   } catch (error) {
     console.error("Storage quota check error:", error);
-    res.status(500).json({ 
-      error: "Failed to check storage quota",
-      message: "Please try again or contact support if the issue persists."
+    
+    // Return user-friendly error message
+    return res.status(500).json({
+      error: "Unable to check storage quota",
+      message: "There was a problem checking your storage quota. Please try again or contact support if the issue persists.",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 }

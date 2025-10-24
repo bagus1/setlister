@@ -171,10 +171,69 @@ class RecordingManager {
   }
 
   /**
+   * Check available memory before starting recording
+   */
+  async checkMemoryBeforeRecording() {
+    // Check if we have memory API available
+    if ('memory' in performance) {
+      const memory = performance.memory;
+      const usedMB = memory.usedJSHeapSize / 1024 / 1024;
+      const totalMB = memory.totalJSHeapSize / 1024 / 1024;
+      const limitMB = memory.jsHeapSizeLimit / 1024 / 1024;
+      
+      console.log('Memory status:', {
+        used: `${usedMB.toFixed(1)}MB`,
+        total: `${totalMB.toFixed(1)}MB`,
+        limit: `${limitMB.toFixed(1)}MB`,
+        available: `${(limitMB - usedMB).toFixed(1)}MB`
+      });
+      
+      // Warn if memory usage is high (>80% of limit)
+      const usagePercent = (usedMB / limitMB) * 100;
+      if (usagePercent > 80) {
+        const availableMB = limitMB - usedMB;
+        return {
+          warning: true,
+          message: `Low memory available (${availableMB.toFixed(1)}MB). Long recordings may fail. Consider closing other tabs.`,
+          availableMB: availableMB,
+          usagePercent: usagePercent
+        };
+      }
+      
+      return {
+        warning: false,
+        availableMB: limitMB - usedMB,
+        usagePercent: usagePercent
+      };
+    }
+    
+    // Fallback: Check if we can create a test blob
+    try {
+      const testBlob = new Blob([new ArrayBuffer(10 * 1024 * 1024)]); // 10MB test
+      return { warning: false, availableMB: 'unknown' };
+    } catch (error) {
+      return {
+        warning: true,
+        message: "Unable to allocate memory for recording. Please close other tabs and try again.",
+        availableMB: 0
+      };
+    }
+  }
+
+  /**
    * Start a new recording
    */
   async startRecording(setlistId, setlistTitle) {
     try {
+      // Check memory before starting
+      const memoryCheck = await this.checkMemoryBeforeRecording();
+      if (memoryCheck.warning) {
+        const proceed = confirm(`${memoryCheck.message}\n\nDo you want to continue anyway?`);
+        if (!proceed) {
+          return;
+        }
+      }
+
       // Clear any old chunks from previous recordings of this setlist
       await this.clearChunksFromIndexedDB(setlistId);
       this.chunkCounter = 0;
@@ -484,20 +543,41 @@ class RecordingManager {
             throw new Error("Recording data not found");
           }
 
+          this.updateProcessingStatus("Creating audio file from recording...");
+
           // Create blob from collected chunks
           const audioBlob = new Blob(this.audioChunks, {
             type: this.mediaRecorder.mimeType || "audio/webm",
           });
 
+          this.updateProcessingStatus("Calculating recording duration...");
+
           // Calculate actual duration from the audio blob
           // We'll get the real duration from the audio file itself
           const duration = await this.getAudioDuration(audioBlob);
           
+          // Show length warning for recordings over 1 hour
+          if (duration > 3600) { // 1 hour in seconds
+            const warningElement = document.getElementById('recordingLengthWarning');
+            if (warningElement) {
+              const hours = Math.floor(duration / 3600);
+              const minutes = Math.floor((duration % 3600) / 60);
+              warningElement.innerHTML = `<i class="bi bi-info-circle"></i> <strong>Long Recording:</strong> This recording is ${hours}h ${minutes}m. Processing may take several minutes.`;
+              warningElement.style.display = 'block';
+            }
+          }
+          
+          this.updateProcessingStatus("Saving backup copy...");
+
           // Save to IndexedDB as backup before upload
           await this.saveRecordingToIndexedDB(audioBlob, recordingData.setlistId, duration);
 
+          this.updateProcessingStatus("Preparing for upload...");
+
           // Stop timer and animation (but keep localStorage for now)
           this.cleanupResources();
+
+          this.updateProcessingStatus("Uploading to server...");
 
           // Upload to server
           await this.uploadRecording(
@@ -506,14 +586,18 @@ class RecordingManager {
             duration
           );
 
+          this.updateProcessingStatus("Upload complete! Redirecting...");
+
           resolve();
         } catch (error) {
           console.error("Error processing recording:", error);
           this.hideProcessingModal();
           this.isProcessing = false;
           window.removeEventListener('beforeunload', this.beforeUnloadHandler);
-          alert("Failed to process recording. Your recording has been saved locally and you can try uploading again.");
-          this.cleanup();
+          
+          // Show retry modal instead of cleaning up
+          this.showRetryModal(error.message || "Failed to process recording. Your recording has been saved locally.");
+          
           resolve();
         }
       };
@@ -539,9 +623,38 @@ class RecordingManager {
     });
 
     try {
-      const response = await fetch(`/setlists/${setlistId}/recordings`, {
-        method: "POST",
-        body: formData,
+      // Use XMLHttpRequest for progress tracking
+      const xhr = new XMLHttpRequest();
+      
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          this.updateProcessingStatus(`Uploading to server... ${Math.round(percentComplete)}%`);
+        }
+      });
+      
+      // Handle completion
+      const response = await new Promise((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve({
+              ok: true,
+              status: xhr.status,
+              statusText: xhr.statusText,
+              json: () => Promise.resolve(JSON.parse(xhr.responseText)),
+              text: () => Promise.resolve(xhr.responseText)
+            });
+          } else {
+            reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+          }
+        };
+        
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.ontimeout = () => reject(new Error('Upload timeout'));
+        
+        xhr.open('POST', `/setlists/${setlistId}/recordings`);
+        xhr.send(formData);
       });
 
       console.log(
@@ -552,9 +665,27 @@ class RecordingManager {
 
       if (!response.ok) {
         // Try to get error message from response
-        const errorText = await response.text();
-        console.error("Upload error response:", errorText);
-        throw new Error(`Upload failed: ${response.statusText} - ${errorText}`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { message: await response.text() };
+        }
+        
+        console.error("Upload error response:", errorData);
+        
+        // Show user-friendly error message
+        let userMessage = "Upload failed. Please try again.";
+        
+        if (response.status === 413) {
+          userMessage = errorData.message || "Your storage quota has been exceeded. Please upgrade your plan or delete old recordings.";
+        } else if (response.status === 500) {
+          userMessage = errorData.message || "There was a server error. Please try again or contact support.";
+        } else if (errorData.message) {
+          userMessage = errorData.message;
+        }
+        
+        throw new Error(userMessage);
       }
 
       const result = await response.json();
@@ -695,6 +826,12 @@ class RecordingManager {
             <span class="visually-hidden">Loading...</span>
           </div>
           <h4 class="mb-3">Processing Your Recording...</h4>
+          <div id="processingStatus" class="mb-3">
+            <p class="text-muted mb-2">Preparing recording for upload...</p>
+          </div>
+          <div id="recordingLengthWarning" class="alert alert-info mt-3 mb-3" style="display: none;">
+            <i class="bi bi-info-circle"></i> <strong>Long Recording:</strong> This recording is over 1 hour. Processing may take several minutes.
+          </div>
           <p class="text-muted mb-2">Please don't close this window or navigate away.</p>
           <p class="text-muted"><small>Processing may take up to 5 minutes for long recordings.</small></p>
           <div class="alert alert-warning mt-3 mb-0">
@@ -708,6 +845,170 @@ class RecordingManager {
     }
   }
   
+  /**
+   * Update processing status message
+   */
+  updateProcessingStatus(message) {
+    const statusElement = document.getElementById('processingStatus');
+    if (statusElement) {
+      statusElement.innerHTML = `<p class="text-muted mb-2">${message}</p>`;
+    }
+  }
+
+  /**
+   * Show retry modal when upload fails
+   */
+  showRetryModal(errorMessage) {
+    // Remove existing retry modal if it exists
+    const existingModal = document.getElementById('recordingRetryModal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'recordingRetryModal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+      <div style="background: white; padding: 40px; border-radius: 10px; text-align: center; max-width: 500px;">
+        <div class="text-danger mb-3" style="font-size: 3rem;">
+          <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <h4 class="mb-3 text-danger">Upload Failed</h4>
+        <div class="alert alert-danger mb-3">
+          ${errorMessage}
+        </div>
+        <p class="text-muted mb-4">Your recording has been saved locally and can be retried.</p>
+        <div class="d-flex gap-2 justify-content-center">
+          <button id="retryUploadBtn" class="btn btn-primary">
+            <i class="bi bi-arrow-clockwise"></i> Try Again
+          </button>
+          <button id="cancelRetryBtn" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle"></i> Cancel
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add event listeners
+    document.getElementById('retryUploadBtn').addEventListener('click', () => {
+      this.retryUpload();
+    });
+    
+    document.getElementById('cancelRetryBtn').addEventListener('click', () => {
+      this.cancelRetry();
+    });
+  }
+
+  /**
+   * Hide retry modal
+   */
+  hideRetryModal() {
+    const modal = document.getElementById('recordingRetryModal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+
+  /**
+   * Retry the upload
+   */
+  async retryUpload() {
+    this.hideRetryModal();
+    
+    // Get the recording data from localStorage
+    const recordingData = JSON.parse(localStorage.getItem("activeRecording"));
+    if (!recordingData) {
+      alert("Recording data not found. Please try recording again.");
+      return;
+    }
+    
+    // Get the backup from IndexedDB
+    try {
+      const backupData = await this.getRecordingBackup(recordingData.setlistId);
+      if (!backupData) {
+        alert("Recording backup not found. Please try recording again.");
+        return;
+      }
+      
+      // Show processing modal again
+      this.showProcessingModal();
+      this.isProcessing = true;
+      window.addEventListener('beforeunload', this.beforeUnloadHandler);
+      
+      this.updateProcessingStatus("Retrying upload...");
+      
+      // Retry the upload
+      await this.uploadRecording(
+        backupData.audioBlob,
+        recordingData.setlistId,
+        backupData.duration
+      );
+      
+      this.updateProcessingStatus("Upload complete! Redirecting...");
+      
+      // Clear everything on success
+      await this.clearRecordingBackup(recordingData.setlistId);
+      localStorage.removeItem("activeRecording");
+      this.isProcessing = false;
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+      
+      // Redirect to split page
+      window.location.href = `/setlists/${recordingData.setlistId}/recordings/${recordingData.setlistId}/split`;
+      
+    } catch (error) {
+      console.error("Retry upload failed:", error);
+      this.hideProcessingModal();
+      this.isProcessing = false;
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+      
+      // Show retry modal again
+      this.showRetryModal(error.message || "Retry failed. Please try again or contact support.");
+    }
+  }
+
+  /**
+   * Cancel retry and clean up
+   */
+  cancelRetry() {
+    this.hideRetryModal();
+    this.cleanup();
+  }
+
+  /**
+   * Get recording backup from IndexedDB
+   */
+  async getRecordingBackup(setlistId) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('RecordingBackups', 1);
+      
+      request.onerror = () => reject(request.error);
+      
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction(['backups'], 'readonly');
+        const store = transaction.objectStore('backups');
+        const getRequest = store.get(setlistId);
+        
+        getRequest.onsuccess = () => resolve(getRequest.result);
+        getRequest.onerror = () => reject(getRequest.error);
+      };
+    });
+  }
+
   /**
    * Hide processing modal
    */

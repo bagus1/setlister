@@ -274,26 +274,12 @@ const progressInterval = setInterval(() => {
     }
 }, 500); // Slower updates
 
-    // Load audio file
+    // Load audio file directly with WaveSurfer
     console.log('Attempting to load audio file:', '<%= recording.filePath %>');
     console.log('File size:', '<%= recording.duration %> seconds');
     
-    // Test if the file is accessible first
-    fetch('<%= recording.filePath %>', { method: 'HEAD' })
-        .then(response => {
-            console.log('File accessibility test:', response.status, response.statusText);
-            if (response.ok) {
-                console.log('File is accessible, loading with WaveSurfer...');
-                wavesurfer.load('<%= recording.filePath %>');
-            } else {
-                throw new Error(`File not accessible: ${response.status} ${response.statusText}`);
-            }
-        })
-        .catch(error => {
-            console.error('File accessibility test failed:', error);
-            loadingStatus.textContent = 'File not accessible: ' + error.message;
-            loadingBar.classList.add('bg-danger');
-        });
+    // Load directly - WaveSurfer handles the fetch internally
+    wavesurfer.load('<%= recording.filePath %>');
 
 // Update time display
 let lastDisplayedTime = -1;
@@ -325,16 +311,31 @@ wavesurfer.on('error', function(error) {
     loadingBar.classList.remove('progress-bar-animated');
     loadingBar.classList.add('bg-danger');
     console.error('WaveSurfer error:', error);
+    console.error('Error type:', typeof error);
+    console.error('Error properties:', Object.keys(error));
     
     // Show more detailed error info
     const errorDetails = document.createElement('div');
     errorDetails.className = 'mt-2 text-danger small';
     errorDetails.innerHTML = `
         <strong>Error Details:</strong><br>
-        ${error.message || 'Unknown error'}<br>
-        <small>File: <%= recording.filePath %></small>
+        Message: ${error.message || error.toString()}<br>
+        Type: ${error.name || 'Unknown'}<br>
+        File: <%= recording.filePath %><br>
+        <small>Check browser console for more details</small>
     `;
     loadingProgressDiv.appendChild(errorDetails);
+    
+    // Add a test link to verify the file is accessible
+    const testLink = document.createElement('div');
+    testLink.className = 'mt-2';
+    testLink.innerHTML = `
+        <a href="<%= recording.filePath %>" target="_blank" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-download"></i> Test File Access
+        </a>
+        <small class="text-muted ms-2">Click to test if the file downloads</small>
+    `;
+    loadingProgressDiv.appendChild(testLink);
 });
 
 wavesurfer.on('audioprocess', function() {

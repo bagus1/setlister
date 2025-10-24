@@ -2857,13 +2857,32 @@ router.post(
       // Now process the reassembled file as a normal recording
       const stats = fs.statSync(finalPath);
       
+      // Calculate duration using ffmpeg
+      let duration = 0;
+      try {
+        const ffprobe = require('fluent-ffmpeg');
+        duration = await new Promise((resolve, reject) => {
+          ffprobe.ffprobe(finalPath, (err, metadata) => {
+            if (err) {
+              console.error('Error getting duration:', err);
+              resolve(0);
+            } else {
+              resolve(Math.floor(metadata.format.duration || 0));
+            }
+          });
+        });
+      } catch (error) {
+        console.error('Error calculating duration:', error);
+        duration = 0;
+      }
+      
       // Create recording record
       const recording = await prisma.recording.create({
         data: {
           setlistId: setlistId,
           filePath: finalPath,
           fileSize: BigInt(stats.size),
-          duration: 0, // Will be calculated later
+          duration: duration,
           format: path.extname(originalFileName).substring(1) || 'mp3',
           createdById: req.session.user.id
         }

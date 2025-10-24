@@ -320,7 +320,10 @@ router.get(
         pageTitle: `Recording`,
         marqueeTitle: setlist.title,
         setlist,
-        recording,
+        recording: {
+          ...recording,
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`
+        },
         hasBandHeader: true,
         band: setlist.band,
       });

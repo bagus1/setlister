@@ -2863,6 +2863,7 @@ router.post(
           setlistId: setlistId,
           filename: path.basename(finalPath),
           originalFilename: originalFileName,
+          filePath: finalPath,
           fileSize: stats.size,
           duration: 0, // Will be calculated later
           uploadedBy: req.session.user.id

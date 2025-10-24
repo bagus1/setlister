@@ -2749,11 +2749,14 @@ router.post(
   (err, req, res, next) => {
     if (err) {
       logger.logError("Multer error:", err);
+      logger.logError("Multer error code:", err.code);
+      logger.logError("Multer error message:", err.message);
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(413).json({ error: "File too large", maxSize: "500MB" });
       }
       return res.status(400).json({ error: "File upload error", details: err.message });
     }
+    logger.logInfo("Multer processing completed successfully");
     next();
   },
   (req, res, next) => {
@@ -2769,6 +2772,7 @@ router.post(
   async (req, res) => {
     try {
       logger.logInfo(`Starting upload processing for setlist ${req.params.id}`);
+      logger.logInfo(`Storage quota check passed for file size: ${req.file.size} bytes`);
       const setlistId = parseInt(req.params.id);
       const userId = req.session.user.id;
 

@@ -3073,7 +3073,7 @@ router.get(
         setlist,
         recording: {
           id: recording.id,
-          path: recording.filePath,
+          path: `/uploads/recordings/${path.basename(recording.filePath)}`,
           duration: recording.duration,
         },
         hasBandHeader: true,

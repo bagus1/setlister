@@ -291,7 +291,7 @@ wavesurfer.on('ready', function() {
         waveformDiv.style.display = 'block';
     }, 500);
     
-    document.getElementById('totalTime').textContent = formatTime(wavesurfer.getDuration());
+    document.getElementById('totalTime').textContent = formatTime(Math.floor(wavesurfer.getDuration()));
     
     // Enable drag to create regions
     wsRegions.enableDragSelection({

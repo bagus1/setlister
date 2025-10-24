@@ -1,6 +1,7 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
 const { prisma } = require("../lib/prisma");
+const path = require("path");
 const {
   sendBandInvitation,
   sendBandInvitationNotification,

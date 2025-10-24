@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chunked Upload Test</title>
+</head>
+<body>
+    <h1>Chunked Upload Test</h1>
+    <input type="file" id="fileInput" accept="audio/*">
+    <button onclick="uploadFile()">Upload File</button>
+    <div id="progress"></div>
+    <div id="result"></div>
+
+    <script src="/js/chunked-upload.js"></script>
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+            
+            const progressDiv = document.getElementById('progress');
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const uploader = new ChunkedUploader(file);
+                
+                const result = await uploader.uploadChunks(67, (progress) => {
+                    progressDiv.innerHTML = `Upload progress: ${progress.percentage}% (${progress.loaded}/${progress.total} chunks)`;
+                });
+                
+                resultDiv.innerHTML = `<p style="color: green;">Upload complete! Recording ID: ${result.recordingId}</p>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Upload failed: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

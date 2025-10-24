@@ -2734,6 +2734,102 @@ router.post(
   }
 );
 
+// POST /setlists/:id/recordings/upload-chunk - Upload a file chunk
+router.post(
+  "/:id/recordings/upload-chunk",
+  requireAuth,
+  upload.single("chunk"),
+  async (req, res) => {
+    try {
+      const { chunkIndex, totalChunks, originalFileName, originalFileSize } = req.body;
+      
+      if (!req.file) {
+        return res.status(400).json({ error: "No chunk uploaded" });
+      }
+
+      // Store chunk info in session or temporary storage
+      const chunkKey = `chunk_${req.params.id}_${originalFileName}_${chunkIndex}`;
+      
+      // Move chunk to temporary directory
+      const tempDir = path.join(__dirname, '../uploads/temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      const chunkPath = path.join(tempDir, `${chunkKey}.tmp`);
+      fs.renameSync(req.file.path, chunkPath);
+      
+      res.json({ 
+        success: true, 
+        chunkIndex: parseInt(chunkIndex),
+        message: `Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully`
+      });
+    } catch (error) {
+      logger.logError("Chunk upload error", error);
+      res.status(500).json({ error: "Failed to upload chunk" });
+    }
+  }
+);
+
+// POST /setlists/:id/recordings/reassemble - Reassemble chunks into final file
+router.post(
+  "/:id/recordings/reassemble",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { originalFileName, originalFileSize, totalChunks } = req.body;
+      const setlistId = parseInt(req.params.id);
+      
+      // Reassemble chunks
+      const tempDir = path.join(__dirname, '../uploads/temp');
+      const finalPath = path.join(__dirname, '../uploads/recordings', `${Date.now()}_${originalFileName}`);
+      
+      const writeStream = fs.createWriteStream(finalPath);
+      
+      for (let i = 0; i < totalChunks; i++) {
+        const chunkKey = `chunk_${setlistId}_${originalFileName}_${i}`;
+        const chunkPath = path.join(tempDir, `${chunkKey}.tmp`);
+        
+        if (!fs.existsSync(chunkPath)) {
+          throw new Error(`Chunk ${i} not found`);
+        }
+        
+        const chunkData = fs.readFileSync(chunkPath);
+        writeStream.write(chunkData);
+        
+        // Clean up chunk file
+        fs.unlinkSync(chunkPath);
+      }
+      
+      writeStream.end();
+      
+      // Now process the reassembled file as a normal recording
+      const stats = fs.statSync(finalPath);
+      
+      // Create recording record
+      const recording = await prisma.recording.create({
+        data: {
+          setlistId: setlistId,
+          filename: path.basename(finalPath),
+          originalFilename: originalFileName,
+          fileSize: stats.size,
+          duration: 0, // Will be calculated later
+          uploadedBy: req.session.user.id
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        recordingId: recording.id,
+        message: "File reassembled and uploaded successfully"
+      });
+    } catch (error) {
+      logger.logError("Reassembly error", error);
+      res.status(500).json({ error: "Failed to reassemble file" });
+    }
+  }
+);
+
 // POST /setlists/:id/recordings/upload - Upload existing recording file
 router.post(
   "/:id/recordings/upload",

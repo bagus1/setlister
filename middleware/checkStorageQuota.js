@@ -1,4 +1,5 @@
 const { checkUserStorageQuota } = require("../utils/storageCalculator");
+const { prisma } = require("../lib/prisma");
 
 /**
  * Middleware to check if user has enough storage quota for a file upload
@@ -8,7 +9,17 @@ const { checkUserStorageQuota } = require("../utils/storageCalculator");
 async function checkStorageQuota(req, res, next) {
   try {
     const userId = req.user.id;
-    const bandId = req.params.bandId || req.body.bandId;
+    let bandId = req.params.bandId || req.body.bandId;
+    
+    // For setlist routes, we need to get bandId from the setlist
+    if (!bandId && req.params.id) {
+      // This is likely a setlist route, get bandId from setlist
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: parseInt(req.params.id) },
+        select: { bandId: true }
+      });
+      bandId = setlist?.bandId;
+    }
     
     if (!bandId) {
       return res.status(400).json({ 

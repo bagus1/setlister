@@ -273,7 +273,7 @@ document.getElementById('zoom').addEventListener('input', function(e) {
 
 // Region event handlers
 wsRegions.on('region-created', (region) => {
-    console.log('Region created:', region.start, '-', region.end);
+    console.log('Region created:', formatTime(region.start), '-', formatTime(region.end));
     
     // Track in creation order
     regionCreationOrder.push(region);

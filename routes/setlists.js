@@ -2741,6 +2741,8 @@ router.post(
   (req, res, next) => {
     logger.logInfo(`Upload request started for setlist ${req.params.id} by user ${req.session.user.id}`);
     logger.logInfo(`Request headers: ${JSON.stringify(req.headers)}`);
+    logger.logInfo(`Content-Length: ${req.headers['content-length']}`);
+    logger.logInfo(`Content-Type: ${req.headers['content-type']}`);
     next();
   },
   upload.single("audioFile"),

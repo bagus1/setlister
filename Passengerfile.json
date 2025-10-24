@@ -3,6 +3,8 @@
     "startup_file": "server.js",
     "environment": "production",
     "port": 3000,
+    "max_request_body_size": 536870912,
+    "request_timeout": 300,
     "environment_variables": {
         "NODE_ENV": "production",
         "BASE_URL": "https://thebandplan.com",

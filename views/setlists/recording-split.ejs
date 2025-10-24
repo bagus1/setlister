@@ -26,8 +26,25 @@
                     </a>
                 </div>
                 <div class="card-body">
+                    <!-- Loading Progress -->
+                    <div id="loadingProgress" class="text-center mb-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">Loading audio file...</small>
+                        </div>
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div id="loadingBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="loadingStatus" class="mt-1">
+                            <small class="text-muted">Preparing waveform...</small>
+                        </div>
+                    </div>
+                    
                     <!-- Waveform Container -->
-                    <div id="waveform" style="min-height: 200px;"></div>
+                    <div id="waveform" style="min-height: 200px; display: none;"></div>
                     
                     <!-- Regions Timeline -->
                     <div id="wave-timeline" style="min-height: 20px; margin-top: 10px;"></div>
@@ -217,6 +234,29 @@ let selectedRegion = null;
 const regionSongMap = {};
 const regionCreationOrder = []; // Track regions in order of creation
 
+// Loading progress tracking
+let loadingProgress = 0;
+const loadingBar = document.getElementById('loadingBar');
+const loadingStatus = document.getElementById('loadingStatus');
+const loadingProgressDiv = document.getElementById('loadingProgress');
+const waveformDiv = document.getElementById('waveform');
+
+// Simulate loading progress
+const progressInterval = setInterval(() => {
+    if (loadingProgress < 90) {
+        loadingProgress += Math.random() * 10;
+        loadingBar.style.width = Math.min(loadingProgress, 90) + '%';
+        
+        if (loadingProgress < 30) {
+            loadingStatus.textContent = 'Downloading audio file...';
+        } else if (loadingProgress < 60) {
+            loadingStatus.textContent = 'Processing audio data...';
+        } else if (loadingProgress < 90) {
+            loadingStatus.textContent = 'Generating waveform...';
+        }
+    }
+}, 200);
+
 // Load audio file
 wavesurfer.load('<%= recording.path %>');
 
@@ -224,6 +264,16 @@ wavesurfer.load('<%= recording.path %>');
 let lastDisplayedTime = -1;
 
 wavesurfer.on('ready', function() {
+    // Complete the loading progress
+    clearInterval(progressInterval);
+    loadingBar.style.width = '100%';
+    loadingStatus.textContent = 'Ready!';
+    
+    setTimeout(() => {
+        loadingProgressDiv.style.display = 'none';
+        waveformDiv.style.display = 'block';
+    }, 500);
+    
     document.getElementById('totalTime').textContent = formatTime(wavesurfer.getDuration());
     
     // Enable drag to create regions
@@ -232,6 +282,14 @@ wavesurfer.on('ready', function() {
     });
     
     console.log('WaveSurfer ready - you can now drag on the waveform to create regions');
+});
+
+wavesurfer.on('error', function(error) {
+    clearInterval(progressInterval);
+    loadingStatus.textContent = 'Error loading audio file';
+    loadingBar.classList.remove('progress-bar-animated');
+    loadingBar.classList.add('bg-danger');
+    console.error('WaveSurfer error:', error);
 });
 
 wavesurfer.on('audioprocess', function() {

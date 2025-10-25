@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peaks.js Recording Split - Prototype</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-light">
+    <div class="container-fluid py-4">
+      <div class="row">
+        <div class="col-12">
+          <h2 class="mb-4">Peaks.js Recording Split Prototype</h2>
+
+          <!-- Audio Controls -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h5><i class="bi bi-music-note"></i> Audio Controls</h5>
+            </div>
+            <div class="card-body">
+              <div class="d-flex align-items-center gap-3">
+                <button id="playPauseBtn" class="btn btn-primary">
+                  <i class="bi bi-play-fill"></i> Play
+                </button>
+                <button id="stopBtn" class="btn btn-outline-danger">
+                  <i class="bi bi-stop-fill"></i> Stop
+                </button>
+                <div class="mx-3" style="width: 180px; text-align: center">
+                  <span id="currentTime">0:00</span> /
+                  <span id="totalTime">0:00</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <label for="zoom" class="mb-0">Zoom:</label>
+                  <input
+                    type="range"
+                    id="zoom"
+                    min="1"
+                    max="100"
+                    value="1"
+                    class="form-range"
+                    style="width: 150px"
+                  />
+                  <button
+                    id="resetZoomBtn"
+                    class="btn btn-sm btn-outline-secondary"
+                  >
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Waveform Container -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h5><i class="bi bi-graph-up"></i> Waveform Editor</h5>
+            </div>
+            <div class="card-body">
+              <!-- Overview Waveform -->
+              <div class="mb-3">
+                <h6>Overview</h6>
+                <div
+                  id="overview-container"
+                  style="
+                    height: 100px;
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    background: #f8f9fa;
+                  "
+                ></div>
+              </div>
+
+              <!-- Zoomed Waveform -->
+              <div>
+                <h6>Zoomed View</h6>
+                <div
+                  id="zoomview-container"
+                  style="
+                    height: 200px;
+                    border: 2px solid #dee2e6;
+                    border-radius: 8px;
+                    background: #f8f9fa;
+                  "
+                ></div>
+              </div>
+
+              <!-- Instructions -->
+              <div class="mt-3 alert alert-info">
+                <strong><i class="bi bi-info-circle"></i> Instructions:</strong>
+                <ul class="mb-0 mt-2">
+                  <li>Drag on the waveform to create segments</li>
+                  <li>Use zoom controls to focus on specific areas</li>
+                  <li>Click segments to select them</li>
+                  <li>Assign songs to segments using the panel below</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Song Assignment Panel -->
+          <div class="card">
+            <div class="card-header">
+              <h5><i class="bi bi-list-music"></i> Song Assignment</h5>
+            </div>
+            <div class="card-body">
+              <div id="segmentsList" class="mb-3">
+                <p class="text-muted">
+                  No segments created yet. Drag on the waveform to create
+                  segments.
+                </p>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <h6>Available Songs:</h6>
+                  <div id="songsList" class="list-group">
+                    <!-- Songs will be populated here -->
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <h6>Selected Segment:</h6>
+                  <div id="selectedSegmentInfo" class="alert alert-light">
+                    <p class="mb-0 text-muted">No segment selected</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audio Element (hidden) -->
+    <audio id="audio" preload="metadata" style="display: none">
+      <!-- Audio source will be set dynamically -->
+    </audio>
+
+    <!-- Dependencies - Local files -->
+    <script src="/js/konva.min.js"></script>
+    <script src="/js/waveform-data.min.js"></script>
+    <script src="/js/peaks.min.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        console.log("=== PEAKS.JS PROTOTYPE STARTING ===");
+
+        let peaks = null;
+        let selectedSegment = null;
+        const segmentSongMap = {};
+
+        // Real songs from your setlist (using mock data for now to avoid EJS issues)
+        const realSongs = [
+          { id: 1, title: "Song 1", artist: "Artist 1" },
+          { id: 2, title: "Song 2", artist: "Artist 2" },
+          { id: 3, title: "Song 3", artist: "Artist 3" },
+        ];
+
+        // Use the actual recording file from the server
+        const audioUrl = window.location.origin + "<%= recording.filePath %>";
+        const audioElement = document.getElementById("audio");
+
+        console.log("Audio URL:", audioUrl);
+        console.log("Audio element:", audioElement);
+
+        audioElement.src = audioUrl;
+        console.log("Audio element src set to:", audioElement.src);
+
+        // Populate songs list
+        const songsList = document.getElementById("songsList");
+        realSongs.forEach((song) => {
+          const li = document.createElement("a");
+          li.href = "#";
+          li.className = "list-group-item list-group-item-action";
+          li.innerHTML = `${song.title} <span class="text-muted">by ${song.artist}</span>`;
+          li.onclick = (e) => {
+            e.preventDefault();
+            if (selectedSegment) {
+              segmentSongMap[selectedSegment.id] = song.id;
+              updateSegmentList();
+            }
+          };
+          songsList.appendChild(li);
+        });
+
+        // Initialize Peaks.js
+        async function initPeaks() {
+          const overviewContainer =
+            document.getElementById("overview-container");
+          const zoomviewContainer =
+            document.getElementById("zoomview-container");
+
+          // The core fix: Wait for audio metadata to load before initializing Peaks.js
+          audioElement.addEventListener("canplay", () => {
+            console.log(
+              "Audio can play - readyState:",
+              audioElement.readyState
+            );
+            console.log("Audio duration:", audioElement.duration);
+            console.log("Audio src:", audioElement.src);
+
+            const options = {
+              containers: {
+                overview: overviewContainer,
+                zoomview: zoomviewContainer,
+              },
+              mediaElement: audioElement,
+              // Fix for previous error: Provide waveform data source
+              // Option 1: Web Audio (for short files)
+              webAudio: {
+                audioContext: new (window.AudioContext ||
+                  window.webkitAudioContext)(),
+              },
+              // Option 2 (better for long files): Data URI from pre-generated peaks
+              // dataUri: {
+              //   arraybuffer: '/peaks/sample.dat' // Update with your generated file
+              // },
+              segments: [], // Fix for previous error: Needs to be an array
+            };
+
+            console.log("Initializing Peaks.js with options:", options);
+            console.log("Peaks library available:", typeof Peaks);
+
+            Peaks.init(options, (err, p) => {
+              if (err) {
+                console.error("Failed to initialize Peaks.js:", err);
+                return;
+              }
+              peaks = p;
+              console.log("Peaks.js initialized successfully:", peaks);
+              setupControls();
+              setupSegmentEvents();
+            });
+          });
+
+          // Also listen for error events
+          audioElement.addEventListener("error", (e) => {
+            console.error("Audio loading error:", e);
+            console.error("Audio error details:", audioElement.error);
+          });
+
+          // Listen for loadstart to see if audio starts loading
+          audioElement.addEventListener("loadstart", () => {
+            console.log("Audio load started");
+          });
+        }
+
+        // Setup UI controls
+        function setupControls() {
+          // ... (Existing code for play/pause, stop, zoom)
+        }
+
+        // Setup Peaks.js segment events
+        function setupSegmentEvents() {
+          peaks.on("segments.dragend", (segment, oldSegment) => {
+            if (segment.id) {
+              console.log("Segment dragged:", segment.id);
+            }
+          });
+
+          peaks.on("segments.click", (segment) => {
+            if (selectedSegment) {
+              selectedSegment.deselect();
+            }
+            selectedSegment = segment;
+            selectedSegment.select();
+            updateSelectedSegmentInfo(segment);
+          });
+        }
+
+        // Update the list of segments in the UI
+        function updateSegmentList() {
+          const segmentsList = document.getElementById("segmentsList");
+          segmentsList.innerHTML = "";
+          const segments = peaks.segments.getSegments();
+          segments.forEach((segment) => {
+            const songId = segmentSongMap[segment.id];
+            const song = realSongs.find((s) => s.id === songId);
+            const songTitle = song ? song.title : "No song assigned";
+            const li = document.createElement("li");
+            li.className =
+              "list-group-item d-flex justify-content-between align-items-center";
+            li.innerHTML = `
+                Segment: ${segment.startTime.toFixed(2)}s - ${segment.endTime.toFixed(2)}s
+                <span class="badge bg-secondary">${songTitle}</span>
+            `;
+            segmentsList.appendChild(li);
+          });
+        }
+
+        // Update info panel for the selected segment
+        function updateSelectedSegmentInfo(segment) {
+          const infoDiv = document.getElementById("selectedSegmentInfo");
+          const songId = segmentSongMap[segment.id];
+          const song = realSongs.find((s) => s.id === songId);
+          const songTitle = song ? song.title : "No song assigned";
+          infoDiv.innerHTML = `
+              <p><strong>Time:</strong> ${segment.startTime.toFixed(2)}s - ${segment.endTime.toFixed(2)}s</p>
+              <p><strong>Assigned Song:</strong> ${songTitle}</p>
+          `;
+        }
+
+        // Start the initialization process
+        initPeaks();
+      });
+    </script>
+  </body>
+</html>

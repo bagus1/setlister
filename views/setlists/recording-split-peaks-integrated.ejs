@@ -1,0 +1,720 @@
+<div class="container mt-4" data-total-songs="<%= totalSongs %>">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1>Split Recording (Peaks.js)</h1>
+          <h2 class="h5 text-muted"><%= setlist.title %></h2>
+        </div>
+        <a
+          href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>"
+          class="btn btn-outline-secondary"
+        >
+          <i class="bi bi-arrow-left"></i> Back to Setlist
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Main Waveform Editor -->
+    <div class="col-lg-9">
+      <div class="card">
+        <div
+          class="card-header d-flex justify-content-between align-items-center"
+        >
+          <h5 class="mb-0">
+            <i class="bi bi-scissors"></i> Mark Song Boundaries
+          </h5>
+          <div class="d-flex gap-2">
+            <div class="btn-group" role="group">
+              <a
+                href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split"
+                class="btn btn-sm btn-outline-primary"
+              >
+                <i class="bi bi-graph-up"></i> WaveSurfer
+              </a>
+              <button class="btn btn-sm btn-primary" disabled>
+                <i class="bi bi-graph-up-arrow"></i> Peaks.js
+              </button>
+            </div>
+            <a
+              href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings"
+              class="btn btn-sm btn-outline-secondary"
+            >
+              <i class="bi bi-arrow-left"></i> Back to Recordings
+            </a>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Loading Progress -->
+          <div id="loadingProgress" class="text-center mb-3">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="mt-2">
+              <small class="text-muted">Loading audio file...</small>
+            </div>
+            <div class="progress mt-2" style="height: 6px">
+              <div
+                id="loadingBar"
+                class="progress-bar progress-bar-striped progress-bar-animated"
+                role="progressbar"
+                style="width: 0%"
+              ></div>
+            </div>
+            <div id="loadingStatus" class="mt-1">
+              <small class="text-muted">Preparing waveform...</small>
+            </div>
+            <div id="loadingNote" class="mt-2" style="display: none">
+              <small class="text-info">
+                <i class="bi bi-info-circle"></i>
+                Large files may take 30+ seconds to process. Please be patient.
+              </small>
+            </div>
+          </div>
+
+          <!-- Peaks.js Waveform Containers -->
+          <div
+            id="overview-container"
+            style="
+              height: 100px;
+              border: 1px solid #dee2e6;
+              border-radius: 4px;
+              background: #f8f9fa;
+              display: none;
+            "
+          ></div>
+          <div
+            id="zoomview-container"
+            style="
+              height: 200px;
+              border: 2px solid #dee2e6;
+              border-radius: 8px;
+              background: #f8f9fa;
+              display: none;
+            "
+          ></div>
+
+          <!-- Playback Controls -->
+          <div
+            class="mt-3 d-flex justify-content-center gap-2 align-items-center"
+          >
+            <button
+              id="playPauseBtn"
+              class="btn btn-primary"
+              style="width: 100px"
+            >
+              <i class="bi bi-play-fill"></i> Play
+            </button>
+            <button id="stopBtn" class="btn btn-secondary">
+              <i class="bi bi-stop-fill"></i> Restart
+            </button>
+            <div class="mx-3" style="width: 180px; text-align: center">
+              <span id="currentTime">0:00</span> /
+              <span id="totalTime">0:00</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <label for="zoom" class="mb-0">Zoom:</label>
+              <input
+                type="range"
+                id="zoom"
+                min="0"
+                max="100"
+                value="0"
+                step="1"
+                class="form-range"
+                style="width: 150px"
+              />
+              <button
+                id="resetZoomBtn"
+                class="btn btn-sm btn-outline-secondary"
+              >
+                <i class="bi bi-arrow-clockwise"></i> Reset
+              </button>
+            </div>
+          </div>
+
+          <!-- Instructions -->
+          <div class="mt-3 alert alert-info">
+            <strong><i class="bi bi-info-circle"></i> Instructions:</strong>
+            <ul class="mb-0 mt-2">
+              <li>Drag on the waveform to create segments</li>
+              <li>Use zoom controls to focus on specific areas</li>
+              <li>Click segments to select them</li>
+              <li>Assign songs to segments using the panel on the right</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Song Assignment Panel -->
+    <div class="col-lg-3">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-list-music"></i> Song Assignment</h5>
+        </div>
+        <div class="card-body">
+          <div id="segmentsList" class="mb-3">
+            <p class="text-muted">
+              No segments created yet. Drag on the waveform to create segments.
+            </p>
+          </div>
+
+          <div class="mb-3">
+            <h6>Available Songs:</h6>
+            <div id="songsList" class="list-group">
+              <!-- Songs will be populated here -->
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <h6>Selected Segment:</h6>
+            <div id="selectedSegmentInfo" class="alert alert-light">
+              <p class="mb-0 text-muted">No segment selected</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden Audio Element -->
+<audio id="audio" preload="metadata" style="display: none">
+  <!-- Audio source will be set dynamically -->
+</audio>
+
+<!-- Peaks.js Dependencies -->
+<script src="/js/konva.min.js"></script>
+<script src="/js/waveform-data.min.js"></script>
+<script src="/js/peaks.min.js"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("=== PEAKS.JS SPLIT PAGE STARTING ===");
+
+    // Add visual debugging instead of console logs
+    const debugDiv = document.createElement("div");
+    debugDiv.style.cssText =
+      "position: fixed; top: 10px; right: 10px; background: #000; color: #fff; padding: 10px; z-index: 9999; font-family: monospace; font-size: 12px; max-width: 300px; max-height: 400px; overflow-y: auto; border: 1px solid #333;";
+    debugDiv.innerHTML = "<div>JavaScript loaded</div>";
+    document.body.appendChild(debugDiv);
+
+    function addDebugLog(message) {
+      const logDiv = document.createElement("div");
+      logDiv.textContent = new Date().toLocaleTimeString() + ": " + message;
+      debugDiv.appendChild(logDiv);
+      console.log(message); // Still try console
+    }
+
+    // Check if libraries are loaded
+    addDebugLog("Checking libraries...");
+    addDebugLog("Peaks available: " + typeof Peaks);
+    addDebugLog("window.peaks available: " + typeof window.peaks);
+
+    let peaks = null;
+    let selectedSegment = null;
+    const segmentSongMap = {};
+
+    // Real songs from your setlist (using mock data for now to avoid EJS issues)
+    const realSongs = [
+      { id: 1, title: "Song 1", artist: "Artist 1" },
+      { id: 2, title: "Song 2", artist: "Artist 2" },
+      { id: 3, title: "Song 3", artist: "Artist 3" },
+    ];
+
+    // Load the actual recording file
+    const audioElement = document.getElementById("audio");
+    const recordingPath = window.location.origin + "<%= recording.filePath %>";
+
+    addDebugLog("Loading recording: " + recordingPath);
+    addDebugLog("Audio element found: " + (audioElement ? "Yes" : "No"));
+    audioElement.src = recordingPath;
+
+    // Add audio event listeners for debugging
+    audioElement.addEventListener("canplay", () => {
+      addDebugLog("Audio can play - duration: " + audioElement.duration);
+    });
+    audioElement.addEventListener("error", (e) => {
+      addDebugLog("Audio error: " + e.message);
+    });
+
+    // Populate songs list
+    const songsList = document.getElementById("songsList");
+    realSongs.forEach((song) => {
+      const li = document.createElement("a");
+      li.href = "#";
+      li.className = "list-group-item list-group-item-action";
+      li.innerHTML = `${song.title} <span class="text-muted">by ${song.artist}</span>`;
+      li.onclick = (e) => {
+        e.preventDefault();
+        if (selectedSegment) {
+          segmentSongMap[selectedSegment.id] = song.id;
+          updateSegmentList();
+          updateSelectedSegmentInfo();
+        }
+      };
+      songsList.appendChild(li);
+    });
+
+    // Initialize Peaks.js - fix race condition
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () {
+        initPeaks();
+      });
+    } else {
+      // DOM is already ready
+      initPeaks();
+    }
+
+    function initPeaks() {
+      const overviewContainer = document.getElementById("overview-container");
+      const zoomviewContainer = document.getElementById("zoomview-container");
+
+      console.log("Initializing Peaks.js...");
+      console.log("Overview container:", overviewContainer);
+      console.log("Zoomview container:", zoomviewContainer);
+      console.log("Audio element:", audioElement);
+      console.log("Peaks available:", typeof Peaks);
+
+      addDebugLog("Initializing Peaks.js...");
+
+      // Check if audio is already ready, or wait for it
+      if (audioElement.readyState >= 3) {
+        // HAVE_FUTURE_DATA or higher
+        addDebugLog("Audio already ready, initializing Peaks immediately");
+        initializePeaksWithAudio();
+      } else {
+        addDebugLog("Audio not ready, waiting for canplay event");
+        audioElement.addEventListener("canplay", () => {
+          addDebugLog(
+            "Audio can play event fired - readyState: " +
+              audioElement.readyState
+          );
+          addDebugLog("Audio duration: " + audioElement.duration);
+          initializePeaksWithAudio();
+        });
+      }
+    }
+
+    function initializePeaksWithAudio() {
+      addDebugLog("Starting Peaks.js initialization...");
+
+      const overviewContainer = document.getElementById("overview-container");
+      const zoomviewContainer = document.getElementById("zoomview-container");
+
+      //   const options = {
+      //     containers: {
+      //       overview: overviewContainer,
+      //       zoomview: zoomviewContainer,
+      //     },
+      //     mediaElement: audioElement,
+      //     webAudio: {
+      //       audioContext: new (window.AudioContext ||
+      //         window.webkitAudioContext)(),
+      //     },
+      //     segments: [],
+      //   };o
+
+      addDebugLog("Calling Peaks.init()...");
+      //   const PeaksLib = window.peaks || window.Peaks;
+      //   addDebugLog("Using PeaksLib: " + typeof PeaksLib);
+
+      // Debug container elements
+      addDebugLog(
+        "Overview container type: " + overviewContainer.constructor.name
+      );
+      addDebugLog("Overview container tagName: " + overviewContainer.tagName);
+      addDebugLog(
+        "Zoomview container type: " + zoomviewContainer.constructor.name
+      );
+      addDebugLog("Zoomview container tagName: " + zoomviewContainer.tagName);
+      addDebugLog("Audio element type: " + audioElement.constructor.name);
+
+      // Show the actual HTML content of containers
+      addDebugLog(
+        "Overview container HTML: " +
+          overviewContainer.outerHTML.substring(0, 100) +
+          "..."
+      );
+      addDebugLog(
+        "Zoomview container HTML: " +
+          zoomviewContainer.outerHTML.substring(0, 100) +
+          "..."
+      );
+      addDebugLog(
+        "Audio element HTML: " +
+          audioElement.outerHTML.substring(0, 100) +
+          "..."
+      );
+
+      // Show container dimensions and visibility
+      addDebugLog(
+        "Overview dimensions: " +
+          overviewContainer.offsetWidth +
+          "x" +
+          overviewContainer.offsetHeight
+      );
+      addDebugLog(
+        "Zoomview dimensions: " +
+          zoomviewContainer.offsetWidth +
+          "x" +
+          zoomviewContainer.offsetHeight
+      );
+      addDebugLog(
+        "Overview visible: " +
+          (overviewContainer.offsetWidth > 0 &&
+            overviewContainer.offsetHeight > 0)
+      );
+      addDebugLog(
+        "Zoomview visible: " +
+          (zoomviewContainer.offsetWidth > 0 &&
+            zoomviewContainer.offsetHeight > 0)
+      );
+
+      // Fix container dimensions - ensure they have width and are visible
+      addDebugLog("Fixing container dimensions...");
+      overviewContainer.style.width = "100%";
+      overviewContainer.style.minHeight = "100px";
+      overviewContainer.style.display = "block";
+      zoomviewContainer.style.width = "100%";
+      zoomviewContainer.style.minHeight = "200px";
+      zoomviewContainer.style.display = "block";
+
+      // Check dimensions again after fixing
+      addDebugLog(
+        "After fix - Overview dimensions: " +
+          overviewContainer.offsetWidth +
+          "x" +
+          overviewContainer.offsetHeight
+      );
+      addDebugLog(
+        "After fix - Zoomview dimensions: " +
+          zoomviewContainer.offsetWidth +
+          "x" +
+          zoomviewContainer.offsetHeight
+      );
+
+      // Call Peaks.js immediately - no setTimeout delay
+      addDebugLog("Attempting Peaks.js initialization...");
+
+      // Use the working approach from prototype2
+      const PeaksLib = window.peaks || window.Peaks;
+      addDebugLog("Using PeaksLib: " + typeof PeaksLib);
+
+      const options = {
+        overview: {
+          container: overviewContainer,
+        },
+        zoomview: {
+          container: zoomviewContainer,
+        },
+        mediaElement: audioElement,
+        // Use pre-computed waveform data for long files (56+ minutes)
+        dataUri: {
+          arraybuffer: "/uploads/recordings/1761414671545_first.dat",
+        },
+        segments: [],
+      };
+
+      PeaksLib.init(options, (err, p) => {
+        if (err) {
+          console.error("Failed to initialize Peaks.js:", err);
+          addDebugLog("Peaks.js init error: " + err.message);
+          addDebugLog("Full error: " + JSON.stringify(err));
+          addDebugLog("Error stack: " + err.stack);
+          addDebugLog("Options used: " + JSON.stringify(options));
+          showError("Failed to initialize waveform editor: " + err.message);
+          return;
+        }
+
+        peaks = p;
+        console.log("Peaks.js initialized successfully");
+        addDebugLog("Peaks.js initialized successfully!");
+        addDebugLog("Peaks instance: " + typeof peaks);
+        addDebugLog("Peaks player: " + typeof peaks.player);
+        addDebugLog("Peaks zoom: " + typeof peaks.zoom);
+
+        // Debug audio duration
+        addDebugLog("Audio element duration: " + audioElement.duration);
+        addDebugLog("Peaks player duration: " + peaks.player.getDuration());
+        addDebugLog(
+          "Using pre-computed waveform data: /uploads/recordings/1761414671545_first.dat"
+        );
+
+        // Try to get zoom levels safely
+        try {
+          addDebugLog(
+            "Peaks zoom levels - min: " +
+              peaks.zoom.getMinZoom() +
+              ", max: " +
+              peaks.zoom.getMaxZoom()
+          );
+        } catch (error) {
+          addDebugLog("Error getting zoom levels: " + error.message);
+        }
+
+        addDebugLog("About to hide loading progress...");
+
+        // Hide loading progress and show waveform
+        document.getElementById("loadingProgress").style.display = "none";
+        overviewContainer.style.display = "block";
+        zoomviewContainer.style.display = "block";
+        addDebugLog("Waveform containers shown");
+
+        // Set up controls
+        addDebugLog("About to call setupControls()");
+        setupControls();
+        addDebugLog("setupControls() completed");
+        setupSegmentEvents();
+
+        // Set initial zoom to show whole file
+        const zoomview = peaks.views.getView("zoomview");
+        zoomview.setZoom({ seconds: "auto" });
+        document.getElementById("zoom").value = 0; // Slider at left = auto
+        addDebugLog(
+          "Set initial zoom to auto (fit entire waveform to container width)"
+        );
+
+        // Update total time
+        document.getElementById("totalTime").textContent = formatTime(
+          Math.floor(audioElement.duration)
+        );
+        addDebugLog("Setup complete!");
+      });
+    }
+
+    // Handle audio errors
+    audioElement.addEventListener("error", (e) => {
+      console.error("Audio loading error:", e);
+      addDebugLog("Audio error: " + e.message);
+      showError("Failed to load audio file: " + recordingPath);
+    });
+
+    // Setup UI controls
+    function setupControls() {
+      addDebugLog("Setting up controls...");
+
+      // Check if play button exists
+      const playBtn = document.getElementById("playPauseBtn");
+      addDebugLog("Play button found: " + (playBtn ? "Yes" : "No"));
+
+      if (playBtn) {
+        // Play/Pause button
+        playBtn.addEventListener("click", () => {
+          addDebugLog("Play/Pause button clicked");
+          addDebugLog("peaks.player.isPlaying(): " + peaks.player.isPlaying());
+
+          // Force button text update immediately
+          if (playBtn.innerHTML.includes("Play")) {
+            playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+            addDebugLog("Button changed to Pause");
+            peaks.player.play();
+            addDebugLog("Started playing audio");
+          } else {
+            playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+            addDebugLog("Button changed to Play");
+            peaks.player.pause();
+            addDebugLog("Paused audio");
+          }
+        });
+        addDebugLog("Play button event listener attached");
+      } else {
+        addDebugLog("ERROR: Play button not found!");
+      }
+
+      // Stop button
+      const stopBtn = document.getElementById("stopBtn");
+      addDebugLog("Stop button found: " + (stopBtn ? "Yes" : "No"));
+      if (stopBtn) {
+        stopBtn.addEventListener("click", () => {
+          addDebugLog("Stop button clicked");
+          peaks.player.pause();
+          peaks.player.seek(0);
+          addDebugLog("Audio stopped and reset to beginning");
+        });
+        addDebugLog("Stop button event listener attached");
+      } else {
+        addDebugLog("ERROR: Stop button not found!");
+      }
+
+      // Zoom control
+      const zoomSlider = document.getElementById("zoom");
+      addDebugLog("Zoom slider found: " + (zoomSlider ? "Yes" : "No"));
+      if (zoomSlider) {
+        zoomSlider.addEventListener("input", (e) => {
+          const sliderValue = Number(e.target.value);
+          const zoomview = peaks.views.getView("zoomview");
+
+          if (sliderValue === 0) {
+            // Slider at left = auto (show whole file)
+            zoomview.setZoom({ seconds: "auto" });
+            addDebugLog("Zoom slider at 0 - set to auto (show whole file)");
+          } else {
+            // Slider at right = show fewer seconds (more zoomed in)
+            // Map slider value to seconds: 1-100 maps to totalDuration-1
+            const totalDuration = audioElement.duration;
+            const secondsToShow =
+              totalDuration - (sliderValue / 100) * (totalDuration - 1);
+            zoomview.setZoom({ seconds: secondsToShow });
+            addDebugLog(
+              "Zoom slider at " +
+                sliderValue +
+                " - showing " +
+                secondsToShow.toFixed(1) +
+                " seconds"
+            );
+          }
+        });
+        addDebugLog("Zoom slider event listener attached");
+      } else {
+        addDebugLog("ERROR: Zoom slider not found!");
+      }
+
+      // Reset zoom
+      document.getElementById("resetZoomBtn").addEventListener("click", () => {
+        addDebugLog("Reset zoom button clicked");
+        const zoomview = peaks.views.getView("zoomview");
+        zoomview.setZoom({ seconds: "auto" });
+        document.getElementById("zoom").value = 0; // Slider at left = auto
+        addDebugLog("Reset zoom to auto (fit entire waveform)");
+      });
+    }
+
+    // Setup Peaks.js segment events
+    function setupSegmentEvents() {
+      peaks.on("segments.dragend", (segment, oldSegment) => {
+        console.log("Segment dragged:", segment.id);
+        updateSegmentList();
+      });
+
+      peaks.on("segments.click", (segment) => {
+        if (selectedSegment) {
+          selectedSegment.deselect();
+        }
+        selectedSegment = segment;
+        selectedSegment.select();
+        updateSelectedSegmentInfo();
+      });
+
+      peaks.on("player.play", () => {
+        addDebugLog("Peaks player.play event fired - changing button to Pause");
+        document.getElementById("playPauseBtn").innerHTML =
+          '<i class="bi bi-pause-fill"></i> Pause';
+      });
+
+      peaks.on("player.pause", () => {
+        addDebugLog("Peaks player.pause event fired - changing button to Play");
+        document.getElementById("playPauseBtn").innerHTML =
+          '<i class="bi bi-play-fill"></i> Play';
+      });
+
+      peaks.on("player.timeupdate", (time) => {
+        document.getElementById("currentTime").textContent = formatTime(time);
+      });
+    }
+
+    // Update the list of segments in the UI
+    function updateSegmentList() {
+      const segmentsList = document.getElementById("segmentsList");
+      const segments = peaks.segments.getSegments();
+
+      if (segments.length === 0) {
+        segmentsList.innerHTML =
+          '<p class="text-muted">No segments created yet. Drag on the waveform to create segments.</p>';
+        return;
+      }
+
+      let html = '<div class="list-group">';
+      segments.forEach((segment, index) => {
+        const songId = segmentSongMap[segment.id];
+        const song = realSongs.find((s) => s.id === songId);
+        const songTitle = song ? song.title : "No song assigned";
+
+        html += `
+                  <div class="list-group-item d-flex justify-content-between align-items-center ${selectedSegment?.id === segment.id ? "active" : ""}">
+                      <div>
+                          <strong>Segment ${index + 1}</strong><br>
+                          <small class="text-muted">${formatTime(segment.startTime)} - ${formatTime(segment.endTime)}</small><br>
+                          <small class="text-info">${songTitle}</small>
+                      </div>
+                      <button class="btn btn-sm btn-outline-danger" onclick="deleteSegment('${segment.id}')">
+                          <i class="bi bi-trash"></i>
+                      </button>
+                  </div>
+              `;
+      });
+      html += "</div>";
+
+      segmentsList.innerHTML = html;
+    }
+
+    // Update info panel for the selected segment
+    function updateSelectedSegmentInfo() {
+      const infoDiv = document.getElementById("selectedSegmentInfo");
+
+      if (!selectedSegment) {
+        infoDiv.innerHTML =
+          '<p class="mb-0 text-muted">No segment selected</p>';
+        return;
+      }
+
+      const songId = segmentSongMap[selectedSegment.id];
+      const song = realSongs.find((s) => s.id === songId);
+      const songTitle = song ? song.title : "No song assigned";
+
+      infoDiv.innerHTML = `
+              <div class="mb-2">
+                  <strong>Segment Details:</strong><br>
+                  <small class="text-muted">${formatTime(selectedSegment.startTime)} - ${formatTime(selectedSegment.endTime)}</small><br>
+                  <small class="text-info">${songTitle}</small>
+              </div>
+              <div class="mb-2">
+                  <label class="form-label small">Assign Song:</label>
+                  <select class="form-select form-select-sm" onchange="assignSongToSegment('${selectedSegment.id}', this.value)">
+                      <option value="">Select a song...</option>
+                      ${realSongs.map((song) => `<option value="${song.id}">${song.title} - ${song.artist}</option>`).join("")}
+                  </select>
+              </div>
+          `;
+    }
+
+    // Helper functions
+    function deleteSegment(segmentId) {
+      peaks.segments.removeSegment(segmentId);
+      delete segmentSongMap[segmentId];
+      updateSegmentList();
+      updateSelectedSegmentInfo();
+    }
+
+    function assignSongToSegment(segmentId, songId) {
+      if (!songId) return;
+
+      const song = realSongs.find((s) => s.id == songId);
+      if (song) {
+        segmentSongMap[segmentId] = song.id;
+        updateSegmentList();
+        updateSelectedSegmentInfo();
+      }
+    }
+
+    function formatTime(seconds) {
+      if (!seconds || isNaN(seconds)) return "0:00";
+      const minutes = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${minutes}:${secs.toString().padStart(2, "0")}`;
+    }
+
+    function showError(message) {
+      const alertDiv = document.createElement("div");
+      alertDiv.className = "alert alert-danger alert-dismissible fade show";
+      alertDiv.innerHTML = `
+              ${message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          `;
+      document.body.insertBefore(alertDiv, document.body.firstChild);
+    }
+  });
+</script>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Peaks Test</title>
+  </head>
+  <body>
+    <h1>Simple Peaks Test</h1>
+    <p>Recording: <%= recording.filePath %></p>
+    <p>Duration: <%= recording.duration %></p>
+
+    <div
+      id="overview-container"
+      style="height: 100px; border: 1px solid #ccc"
+    ></div>
+    <div
+      id="zoomview-container"
+      style="height: 200px; border: 1px solid #ccc"
+    ></div>
+
+    <audio id="audio" controls>
+      <source src="<%= recording.filePath %>" type="audio/mpeg" />
+    </audio>
+
+    <script src="/js/konva.min.js"></script>
+    <script src="/js/waveform-data.min.js"></script>
+    <script src="/js/peaks.min.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log("Simple test starting...");
+        console.log("Peaks available:", typeof Peaks);
+
+        const audioElement = document.getElementById("audio");
+        const overviewContainer = document.getElementById("overview-container");
+        const zoomviewContainer = document.getElementById("zoomview-container");
+
+        audioElement.addEventListener("canplay", function () {
+          console.log("Audio ready, initializing Peaks...");
+
+          const options = {
+            containers: {
+              overview: overviewContainer,
+              zoomview: zoomviewContainer,
+            },
+            mediaElement: audioElement,
+            webAudio: {
+              audioContext: new (window.AudioContext ||
+                window.webkitAudioContext)(),
+            },
+            segments: [],
+          };
+
+          Peaks.init(options, function (err, peaks) {
+            if (err) {
+              console.error("Peaks init error:", err);
+              document.body.innerHTML +=
+                "<p style='color: red;'>Error: " + err.message + "</p>";
+            } else {
+              console.log("Peaks initialized successfully!");
+              document.body.innerHTML +=
+                "<p style='color: green;'>Peaks.js loaded successfully!</p>";
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

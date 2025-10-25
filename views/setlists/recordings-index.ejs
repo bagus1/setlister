@@ -44,9 +44,14 @@
                                 Accepted formats: MP3, M4A, OGG, WAV (MP3 recommended for smaller file sizes)
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary" id="uploadBtn">
-                            <i class="bi bi-upload"></i> Upload and Split Recording
-                        </button>
+                        <div class="btn-group" role="group">
+                            <button type="submit" class="btn btn-primary" id="uploadBtn">
+                                <i class="bi bi-upload"></i> Upload and Split Recording
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="uploadPeaksBtn">
+                                <i class="bi bi-graph-up-arrow"></i> Upload with Peaks.js
+                            </button>
+                        </div>
                         <div id="uploadProgress" class="mt-3" style="display: none;">
                             <div class="progress">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated" 
@@ -244,9 +249,14 @@
                                     Accepted formats: MP3, M4A, OGG, WAV (MP3 recommended for smaller file sizes)
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary" id="uploadBtn">
-                                <i class="bi bi-upload"></i> Upload and Split Recording
-                            </button>
+                            <div class="btn-group" role="group">
+                                <button type="submit" class="btn btn-primary" id="uploadBtn">
+                                    <i class="bi bi-upload"></i> Upload and Split Recording
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="uploadPeaksBtn">
+                                    <i class="bi bi-graph-up-arrow"></i> Upload with Peaks.js
+                                </button>
+                            </div>
                             <div id="uploadProgress" class="mt-3" style="display: none;">
                                 <div class="progress">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated" 
@@ -571,10 +581,22 @@ if (uploadForm) {
         // Check if file is large enough to use chunked upload (>100MB)
         const CHUNK_THRESHOLD = 100 * 1024 * 1024; // 100MB
         
+        console.log('File size:', file.size, 'bytes');
+        console.log('Chunk threshold:', CHUNK_THRESHOLD, 'bytes');
+        console.log('ChunkedUploader available:', typeof ChunkedUploader);
+        
         if (file.size > CHUNK_THRESHOLD) {
             console.log('Large file detected, using chunked upload...');
+            if (typeof ChunkedUploader === 'undefined') {
+                alert('ChunkedUploader class not loaded. Please refresh the page.');
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<i class="bi bi-upload"></i> Upload and Split Recording';
+                uploadProgress.style.display = 'none';
+                return;
+            }
             await uploadFileChunked(file, uploadBtn, uploadProgress, progressBar);
         } else {
+            console.log('Small file detected, using regular upload...');
             await uploadFileRegular(file, uploadBtn, uploadProgress, progressBar);
         }
     });
@@ -663,6 +685,88 @@ async function uploadFileChunked(file, uploadBtn, uploadProgress, progressBar) {
         uploadBtn.innerHTML = '<i class="bi bi-upload"></i> Upload and Split Recording';
         uploadProgress.style.display = 'none';
     }
+}
+
+// Handle Peaks.js upload button
+const uploadPeaksBtn = document.getElementById('uploadPeaksBtn');
+if (uploadPeaksBtn) {
+    uploadPeaksBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('audioFile');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a file');
+            return;
+        }
+        
+        // Show progress
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = uploadProgress.querySelector('.progress-bar');
+        uploadProgress.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = 'Uploading...';
+        
+        // Store original window.location.href to restore after upload
+        const originalLocation = window.location.href;
+        
+        // Override window.location.href to intercept redirects
+        let interceptedRedirect = null;
+        const originalLocationSetter = Object.getOwnPropertyDescriptor(window.location, 'href').set;
+        Object.defineProperty(window.location, 'href', {
+            set: function(url) {
+                if (url.includes('/split')) {
+                    interceptedRedirect = url.replace('/split', '/split-peaks-integrated');
+                    console.log('Intercepted redirect:', url, '->', interceptedRedirect);
+                } else {
+                    originalLocationSetter.call(this, url);
+                }
+            },
+            get: function() {
+                return originalLocation;
+            }
+        });
+        
+        try {
+            // Check if file is large enough to use chunked upload (>100MB)
+            const CHUNK_THRESHOLD = 100 * 1024 * 1024; // 100MB
+            
+            console.log('Peaks.js upload - File size:', file.size, 'bytes');
+            console.log('Peaks.js upload - ChunkedUploader available:', typeof ChunkedUploader);
+            
+            if (file.size > CHUNK_THRESHOLD) {
+                console.log('Large file detected, using chunked upload...');
+                if (typeof ChunkedUploader === 'undefined') {
+                    alert('ChunkedUploader class not loaded. Please refresh the page.');
+                    uploadProgress.style.display = 'none';
+                    return;
+                }
+                await uploadFileChunked(file, uploadPeaksBtn, uploadProgress, progressBar);
+            } else {
+                console.log('Small file detected, using regular upload...');
+                await uploadFileRegular(file, uploadPeaksBtn, uploadProgress, progressBar);
+            }
+            
+            // If we intercepted a redirect, use it
+            if (interceptedRedirect) {
+                window.location.href = interceptedRedirect;
+            }
+            
+        } catch (error) {
+            console.error('Peaks.js upload failed:', error);
+            alert(`Upload failed: ${error.message}`);
+            uploadProgress.style.display = 'none';
+        } finally {
+            // Restore original location.href behavior
+            Object.defineProperty(window.location, 'href', {
+                set: originalLocationSetter,
+                get: function() {
+                    return originalLocation;
+                }
+            });
+        }
+    });
 }
 </script>
 

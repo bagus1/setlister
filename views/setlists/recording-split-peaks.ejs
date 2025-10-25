@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peaks.js Waveform Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="mb-4">Peaks.js vs WaveSurfer.js Comparison</h2>
+                
+                <!-- Comparison Table -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="bi bi-table"></i> Feature Comparison</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Feature</th>
+                                        <th>WaveSurfer.js</th>
+                                        <th>Peaks.js</th>
+                                        <th>Winner</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Large File Performance</strong></td>
+                                        <td>❌ Struggles with 200MB+ files</td>
+                                        <td>✅ Designed for large files</td>
+                                        <td><span class="badge bg-success">Peaks.js</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Zoom Behavior</strong></td>
+                                        <td>⚠️ Can get stuck, needs reset</td>
+                                        <td>✅ Smooth, predictable zoom</td>
+                                        <td><span class="badge bg-success">Peaks.js</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Loading Reliability</strong></td>
+                                        <td>❌ Fails on large files</td>
+                                        <td>✅ More reliable loading</td>
+                                        <td><span class="badge bg-success">Peaks.js</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Bundle Size</strong></td>
+                                        <td>📦 ~200KB</td>
+                                        <td>📦 ~150KB + dependencies</td>
+                                        <td><span class="badge bg-warning">Tie</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Documentation</strong></td>
+                                        <td>✅ Extensive examples</td>
+                                        <td>✅ BBC-quality docs</td>
+                                        <td><span class="badge bg-warning">Tie</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Region Selection</strong></td>
+                                        <td>✅ Built-in regions plugin</td>
+                                        <td>✅ Segments & markers</td>
+                                        <td><span class="badge bg-warning">Tie</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Mobile Support</strong></td>
+                                        <td>⚠️ iOS Safari issues</td>
+                                        <td>✅ Better mobile support</td>
+                                        <td><span class="badge bg-success">Peaks.js</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Dependencies</strong></td>
+                                        <td>✅ Minimal</td>
+                                        <td>⚠️ Requires Konva, waveform-data</td>
+                                        <td><span class="badge bg-warning">WaveSurfer</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Peaks.js Demo -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-play-circle"></i> Peaks.js Demo</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <!-- Peaks.js Container -->
+                                <div id="peaks-container" style="height: 200px; border: 2px solid #dee2e6; border-radius: 8px; background: #f8f9fa;"></div>
+                                
+                                <!-- Controls -->
+                                <div class="mt-3 d-flex align-items-center gap-3">
+                                    <button id="playBtn" class="btn btn-primary">
+                                        <i class="bi bi-play-fill"></i> Play
+                                    </button>
+                                    <div class="flex-grow-1">
+                                        <input type="range" id="zoomSlider" min="1" max="100" value="1" class="form-range">
+                                        <small class="text-muted">Zoom: <span id="zoomValue">1x</span></small>
+                                    </div>
+                                    <button id="resetZoomBtn" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-arrow-clockwise"></i> Reset
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Peaks.js Features:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check-circle text-success"></i> Dual waveform views</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Smooth zoom & scroll</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Segment selection</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Marker support</li>
+                                    <li><i class="bi bi-check-circle text-success"></i> Large file optimized</li>
+                                </ul>
+                                
+                                <h6 class="mt-3">Migration Benefits:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-arrow-up text-primary"></i> Better performance</li>
+                                    <li><i class="bi bi-arrow-up text-primary"></i> Reliable loading</li>
+                                    <li><i class="bi bi-arrow-up text-primary"></i> Predictable zoom</li>
+                                    <li><i class="bi bi-arrow-up text-primary"></i> Mobile friendly</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Implementation Code -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5><i class="bi bi-code-slash"></i> Peaks.js Implementation</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre><code class="language-javascript">// Peaks.js Implementation
+import Peaks from 'peaks.js';
+
+// Initialize Peaks
+const peaks = Peaks.init({
+  container: document.getElementById('peaks-container'),
+  mediaElement: document.getElementById('audio'),
+  webAudio: {
+    audioContext: new AudioContext()
+  },
+  waveformData: {
+    // Pre-computed waveform data for better performance
+  },
+  overview: {
+    container: document.getElementById('overview-container'),
+    waveformColor: '#6f42c1',
+    playedWaveformColor: '#6f42c1'
+  },
+  zoomview: {
+    container: document.getElementById('zoomview-container'),
+    waveformColor: '#6f42c1',
+    playedWaveformColor: '#6f42c1'
+  },
+  segments: {
+    // Enable segment selection
+  },
+  markers: {
+    // Enable markers
+  }
+});
+
+// Zoom control
+document.getElementById('zoomSlider').addEventListener('input', (e) => {
+  peaks.zoom.setZoom(Number(e.target.value));
+});
+
+// Reset zoom
+document.getElementById('resetZoomBtn').addEventListener('click', () => {
+  peaks.zoom.setZoom(1);
+  document.getElementById('zoomSlider').value = 1;
+});</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/konva@9/konva.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/waveform-data@4.4.0/dist/waveform-data.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peaks.js@3.4.0/dist/peaks.min.js"></script>
+    
+    <script>
+        // Demo implementation (simplified)
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Peaks.js demo loaded');
+            
+            // Simulate Peaks.js initialization
+            const zoomSlider = document.getElementById('zoomSlider');
+            const zoomValue = document.getElementById('zoomValue');
+            const resetBtn = document.getElementById('resetZoomBtn');
+            
+            zoomSlider.addEventListener('input', function() {
+                zoomValue.textContent = this.value + 'x';
+                console.log('Zoom level:', this.value);
+            });
+            
+            resetBtn.addEventListener('click', function() {
+                zoomSlider.value = 1;
+                zoomValue.textContent = '1x';
+                console.log('Zoom reset');
+            });
+        });
+    </script>
+</body>
+</html>

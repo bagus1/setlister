@@ -9,7 +9,10 @@ const {
 const { v4: uuidv4 } = require("uuid");
 const { requireAuth } = require("./auth");
 const logger = require("../utils/logger");
-const { generateShareTokens, getViewTypeFromToken } = require("../utils/shareTokens");
+const {
+  generateShareTokens,
+  getViewTypeFromToken,
+} = require("../utils/shareTokens");
 const { checkBandLimit } = require("../middleware/checkBandLimit");
 const { deleteBandFiles } = require("../utils/fileCleanup");
 
@@ -18,16 +21,16 @@ async function validatePublicToken(setlistId, token, expectedViewType) {
   if (!token) {
     return false;
   }
-  
+
   const setlist = await prisma.setlist.findUnique({
     where: { id: setlistId },
     select: { shareTokens: true },
   });
-  
+
   if (!setlist) {
     return false;
   }
-  
+
   const viewType = getViewTypeFromToken(setlist.shareTokens, token);
   return viewType === expectedViewType;
 }
@@ -323,7 +326,7 @@ router.get(
         setlist,
         recording: {
           ...recording,
-          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
         },
         hasBandHeader: true,
         band: setlist.band,
@@ -336,7 +339,449 @@ router.get(
   }
 );
 
-// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/split - Show split page
+// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/split-comparison - Comparison demo
+router.get(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/split-comparison",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get setlist with all songs
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: true,
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.bandId !== bandId) {
+        req.flash("error", "Setlist does not belong to this band");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.band.members.length === 0) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      // Get recording from database
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording) {
+        req.flash("error", "Recording not found");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      if (recording.setlistId !== setlistId) {
+        req.flash("error", "Recording does not belong to this setlist");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      // Calculate total songs count
+      const totalSongs = setlist.sets.reduce(
+        (total, set) => total + set.songs.length,
+        0
+      );
+
+      res.render("setlists/recording-split-peaks", {
+        title: `Peaks.js vs WaveSurfer Comparison - ${setlist.title}`,
+        pageTitle: `Peaks.js vs WaveSurfer Comparison`,
+        marqueeTitle: setlist.title,
+        setlist,
+        totalSongs,
+        recording: {
+          id: recording.id,
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
+          duration: recording.duration,
+        },
+        hasBandHeader: true,
+        band: setlist.band,
+      });
+    } catch (error) {
+      logger.logError("Peaks.js comparison page error", error);
+      req.flash("error", "Error loading Peaks.js comparison page");
+      res.redirect("/bands");
+    }
+  }
+);
+router.get(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/split-peaks",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get setlist with all songs
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: true,
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.bandId !== bandId) {
+        req.flash("error", "Setlist does not belong to this band");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.band.members.length === 0) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      // Get recording from database
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording) {
+        req.flash("error", "Recording not found");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      if (recording.setlistId !== setlistId) {
+        req.flash("error", "Recording does not belong to this setlist");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      // Calculate total songs count
+      const totalSongs = setlist.sets.reduce(
+        (total, set) => total + set.songs.length,
+        0
+      );
+
+      res.render("setlists/recording-split-peaks-prototype", {
+        title: `Peaks.js Split Recording - ${setlist.title}`,
+        pageTitle: `Peaks.js Split Recording`,
+        marqueeTitle: setlist.title,
+        setlist,
+        totalSongs,
+        recording: {
+          id: recording.id,
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
+          duration: recording.duration,
+        },
+        hasBandHeader: true,
+        band: setlist.band,
+      });
+    } catch (error) {
+      logger.logError("Peaks.js recording split page error", error);
+      req.flash("error", "Error loading Peaks.js split page");
+      res.redirect("/bands");
+    }
+  }
+);
+
+// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/test-peaks-simple - Simple Peaks test
+router.get(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/test-peaks-simple",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get recording from database
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording) {
+        req.flash("error", "Recording not found");
+        return res.redirect("/bands");
+      }
+
+      res.render("setlists/test-peaks-simple", {
+        title: "Simple Peaks Test",
+        recording: {
+          id: recording.id,
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
+          duration: recording.duration,
+        },
+      });
+    } catch (error) {
+      logger.logError("Simple Peaks test error", error);
+      req.flash("error", "Error loading simple Peaks test");
+      res.redirect("/bands");
+    }
+  }
+);
+
+// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/split-peaks2 - Clean Peaks.js prototype
+router.get(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/split-peaks2",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get setlist with all songs
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: true,
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.bandId !== bandId) {
+        req.flash("error", "Setlist does not belong to this band");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.band.members.length === 0) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      // Get recording from database
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording) {
+        req.flash("error", "Recording not found");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      if (recording.setlistId !== setlistId) {
+        req.flash("error", "Recording does not belong to this setlist");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      // Calculate total songs count
+      const totalSongs = setlist.sets.reduce(
+        (total, set) => total + set.songs.length,
+        0
+      );
+
+      res.render("setlists/recording-split-peaks-prototype2", {
+        title: `Peaks.js Split Recording v2 - ${setlist.title}`,
+        pageTitle: `Peaks.js Split Recording v2`,
+        marqueeTitle: setlist.title,
+        setlist,
+        totalSongs,
+        recording: {
+          id: recording.id,
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
+          duration: recording.duration,
+        },
+        hasBandHeader: true,
+        band: setlist.band,
+      });
+    } catch (error) {
+      logger.logError("Peaks.js v2 recording split page error", error);
+      req.flash("error", "Error loading Peaks.js v2 split page");
+      res.redirect("/bands");
+    }
+  }
+);
+
+// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/split-peaks-integrated - Integrated Peaks.js split page
+router.get(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/split-peaks-integrated",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get setlist with all songs
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: true,
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.bandId !== bandId) {
+        req.flash("error", "Setlist does not belong to this band");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.band.members.length === 0) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      // Get recording from database
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording) {
+        req.flash("error", "Recording not found");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      if (recording.setlistId !== setlistId) {
+        req.flash("error", "Recording does not belong to this setlist");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      // Calculate total songs count
+      const totalSongs = setlist.sets.reduce(
+        (total, set) => total + set.songs.length,
+        0
+      );
+
+      res.render("setlists/recording-split-peaks-integrated", {
+        title: `Split Recording (Peaks.js) - ${setlist.title}`,
+        pageTitle: `Split Recording (Peaks.js)`,
+        marqueeTitle: setlist.title,
+        setlist,
+        totalSongs,
+        recording: {
+          id: recording.id,
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
+          duration: recording.duration,
+        },
+        hasBandHeader: true,
+        band: setlist.band,
+      });
+    } catch (error) {
+      logger.logError("Peaks.js integrated recording split page error", error);
+      req.flash("error", "Error loading Peaks.js integrated split page");
+      res.redirect("/bands");
+    }
+  }
+);
+
 router.get(
   "/:bandId/setlists/:setlistId/recordings/:recordingId/split",
   requireAuth,
@@ -398,16 +843,23 @@ router.get(
 
       if (!recording) {
         req.flash("error", "Recording not found");
-        return res.redirect(`/bands/${bandId}/setlists/${setlistId}/recordings`);
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
       }
 
       if (recording.setlistId !== setlistId) {
         req.flash("error", "Recording does not belong to this setlist");
-        return res.redirect(`/bands/${bandId}/setlists/${setlistId}/recordings`);
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
       }
 
       // Calculate total songs count
-      const totalSongs = setlist.sets.reduce((total, set) => total + set.songs.length, 0);
+      const totalSongs = setlist.sets.reduce(
+        (total, set) => total + set.songs.length,
+        0
+      );
 
       res.render("setlists/recording-split", {
         title: `Split Recording - ${setlist.title}`,
@@ -439,15 +891,22 @@ router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
     const token = req.query.t;
 
     // Check for songId in navigation context before clearing
-    const { getNavigationContext, clearNavigationContext } = require('../middleware/navigationContext');
+    const {
+      getNavigationContext,
+      clearNavigationContext,
+    } = require("../middleware/navigationContext");
     const navContext = getNavigationContext(req);
     const songIdToScroll = navContext?.songId || null;
-    
+
     // Clear navigation context when viewing rehearsal (navigation complete)
     clearNavigationContext(req);
 
     // Validate token for public access
-    const isValidToken = await validatePublicToken(setlistId, token, 'rehearsal');
+    const isValidToken = await validatePublicToken(
+      setlistId,
+      token,
+      "rehearsal"
+    );
     if (!isValidToken) {
       return res.status(403).send("Access denied. Valid token required.");
     }
@@ -539,7 +998,7 @@ router.get("/:bandId/setlists/:setlistId/rehearsal", async (req, res) => {
       band: setlist.band,
       hasBandHeader: true,
       user: req.session.user || null, // Pass user if logged in, null if not
-      token: token || '',
+      token: token || "",
       songIdToScroll, // Pass songId for scrolling
       getLinkIcon,
       getLinkDisplayText,
@@ -559,7 +1018,7 @@ router.get("/:bandId/setlists/:setlistId/listen", async (req, res) => {
     const { url, t: token } = req.query;
 
     // Validate token for public access
-    const isValidToken = await validatePublicToken(setlistId, token, 'listen');
+    const isValidToken = await validatePublicToken(setlistId, token, "listen");
     if (!isValidToken) {
       return res.status(403).send("Access denied. Valid token required.");
     }
@@ -718,7 +1177,7 @@ router.get("/:bandId/setlists/:setlistId/print", async (req, res) => {
     const token = req.query.t;
 
     // Validate token for public access
-    const isValidToken = await validatePublicToken(setlistId, token, 'print');
+    const isValidToken = await validatePublicToken(setlistId, token, "print");
     if (!isValidToken) {
       return res.status(403).send("Access denied. Valid token required.");
     }
@@ -782,7 +1241,11 @@ router.get("/:bandId/setlists/:setlistId/gig-view", async (req, res) => {
     const token = req.query.t;
 
     // Validate token for public access
-    const isValidToken = await validatePublicToken(setlistId, token, 'gig-view');
+    const isValidToken = await validatePublicToken(
+      setlistId,
+      token,
+      "gig-view"
+    );
     if (!isValidToken) {
       return res.status(403).send("Access denied. Valid token required.");
     }
@@ -1047,7 +1510,11 @@ router.get("/:bandId/setlists/:setlistId/playlist", async (req, res) => {
     const token = req.query.t;
 
     // Validate token for public access
-    const isValidToken = await validatePublicToken(setlistId, token, 'playlist');
+    const isValidToken = await validatePublicToken(
+      setlistId,
+      token,
+      "playlist"
+    );
     if (!isValidToken) {
       return res.status(403).send("Access denied. Valid token required.");
     }
@@ -1352,7 +1819,11 @@ router.get(
       const token = req.query.t;
 
       // Validate token for public access
-      const isValidToken = await validatePublicToken(setlistId, token, 'youtube-playlist');
+      const isValidToken = await validatePublicToken(
+        setlistId,
+        token,
+        "youtube-playlist"
+      );
       if (!isValidToken) {
         return res.status(403).send("Access denied. Valid token required.");
       }
@@ -1509,7 +1980,7 @@ router.get("/:bandId/setlists/:setlistId/midi", async (req, res) => {
     const token = req.query.t;
 
     // Validate token for public access
-    const isValidToken = await validatePublicToken(setlistId, token, 'midi');
+    const isValidToken = await validatePublicToken(setlistId, token, "midi");
     if (!isValidToken) {
       return res.status(403).send("Access denied. Valid token required.");
     }
@@ -1655,7 +2126,11 @@ router.get("/:bandId/setlists/:setlistId/leadsheets", async (req, res) => {
     const token = req.query.t;
 
     // Validate token for public access
-    const isValidToken = await validatePublicToken(setlistId, token, 'leadsheets');
+    const isValidToken = await validatePublicToken(
+      setlistId,
+      token,
+      "leadsheets"
+    );
     if (!isValidToken) {
       return res.status(403).send("Access denied. Valid token required.");
     }
@@ -2384,9 +2859,9 @@ router.get("/:id/slug/check", requireAuth, async (req, res) => {
     });
 
     if (existingBand) {
-      return res.json({ 
-        available: false, 
-        error: 'This slug is already taken by another band' 
+      return res.json({
+        available: false,
+        error: "This slug is already taken by another band",
       });
     }
 
@@ -2692,22 +3167,22 @@ router.get("/:id/edit", async (req, res) => {
           },
         },
         photos: {
-          orderBy: { sortOrder: 'asc' },
+          orderBy: { sortOrder: "asc" },
         },
         videos: {
-          orderBy: { sortOrder: 'asc' },
+          orderBy: { sortOrder: "asc" },
         },
         audioSamples: {
-          orderBy: { sortOrder: 'asc' },
+          orderBy: { sortOrder: "asc" },
         },
         logos: {
-          orderBy: { sortOrder: 'asc' },
+          orderBy: { sortOrder: "asc" },
         },
         pressQuotes: {
-          orderBy: { sortOrder: 'asc' },
+          orderBy: { sortOrder: "asc" },
         },
         socialLinks: {
-          orderBy: { sortOrder: 'asc' },
+          orderBy: { sortOrder: "asc" },
         },
       },
     });
@@ -2926,11 +3401,11 @@ router.post(
 
       // Check if band has any songs
       const bandSongCount = await prisma.bandSong.count({
-        where: { bandId: parseInt(bandId) }
+        where: { bandId: parseInt(bandId) },
       });
 
       req.flash("success", "Setlist created successfully!");
-      
+
       // If no songs, redirect to show view (for recording)
       // If has songs, redirect to edit view (for building setlist)
       if (bandSongCount === 0) {
@@ -4996,11 +5471,18 @@ router.get("/:id/songs/:songId", async (req, res) => {
 
     // Handle navigation context from query parameters
     const { from, setlistId, token, songId: querySongId } = req.query;
-    const { setNavigationContext } = require('../middleware/navigationContext');
-    
+    const { setNavigationContext } = require("../middleware/navigationContext");
+
     if (from && setlistId) {
       // Set/update navigation context when coming from setlist/rehearsal
-      setNavigationContext(req, from, parseInt(setlistId), bandId, token, querySongId ? parseInt(querySongId) : null);
+      setNavigationContext(
+        req,
+        from,
+        parseInt(setlistId),
+        bandId,
+        token,
+        querySongId ? parseInt(querySongId) : null
+      );
     }
     // Note: We don't clear context when no query params - it persists in session
 
@@ -5164,7 +5646,9 @@ router.get("/:id/songs/:songId", async (req, res) => {
     }
 
     // Get navigation back button
-    const { getBackToSetlistButton } = require('../middleware/navigationContext');
+    const {
+      getBackToSetlistButton,
+    } = require("../middleware/navigationContext");
     const backButton = getBackToSetlistButton(req);
 
     res.render("bands/songs/show", {
@@ -5211,7 +5695,9 @@ router.get("/:id/songs/:songId/edit", requireAuth, async (req, res) => {
     const userId = req.session.user.id;
 
     // Navigation context persists from session (no query params needed)
-    const { getBackToSetlistButton } = require('../middleware/navigationContext');
+    const {
+      getBackToSetlistButton,
+    } = require("../middleware/navigationContext");
     const backButton = getBackToSetlistButton(req);
 
     const band = await verifyBandAccess(bandId, userId);
@@ -5428,7 +5914,9 @@ router.get("/:id/songs/:songId/links/:linkId", async (req, res) => {
     const linkId = parseInt(req.params.linkId);
 
     // Navigation context persists from session
-    const { getBackToSetlistButton } = require('../middleware/navigationContext');
+    const {
+      getBackToSetlistButton,
+    } = require("../middleware/navigationContext");
     const backButton = getBackToSetlistButton(req);
 
     // Get band (no membership required for viewing)
@@ -5757,11 +6245,21 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
 
     // Handle navigation context from query parameters
     const { from, setlistId, token, songId: querySongId } = req.query;
-    const { setNavigationContext, clearNavigationContext } = require('../middleware/navigationContext');
-    
+    const {
+      setNavigationContext,
+      clearNavigationContext,
+    } = require("../middleware/navigationContext");
+
     if (from && setlistId) {
       // Set new navigation context when coming from setlist/rehearsal
-      setNavigationContext(req, from, parseInt(setlistId), bandId, token, querySongId ? parseInt(querySongId) : null);
+      setNavigationContext(
+        req,
+        from,
+        parseInt(setlistId),
+        bandId,
+        token,
+        querySongId ? parseInt(querySongId) : null
+      );
     }
 
     // Get band - don't require membership for viewing
@@ -5812,7 +6310,9 @@ router.get("/:id/songs/:songId/docs/:docId", async (req, res) => {
     const isPrintRequest = req.query.print === "true";
 
     // Get navigation back button from session context
-    const { getBackToSetlistButton } = require('../middleware/navigationContext');
+    const {
+      getBackToSetlistButton,
+    } = require("../middleware/navigationContext");
     const backButton = getBackToSetlistButton(req);
 
     const getTypeIcon = (type) => {
@@ -9255,7 +9755,9 @@ router.get("/:bandId/setlists/:setlistId", requireAuth, async (req, res) => {
     const userId = req.session.user.id;
 
     // Clear navigation context when viewing setlist (navigation complete)
-    const { clearNavigationContext } = require('../middleware/navigationContext');
+    const {
+      clearNavigationContext,
+    } = require("../middleware/navigationContext");
     clearNavigationContext(req);
 
     const setlist = await prisma.setlist.findUnique({
@@ -10001,7 +10503,9 @@ router.delete("/:id", requireAuth, async (req, res) => {
     );
 
     if (!isOwner) {
-      return res.status(403).json({ error: "Only the band owner can delete the band" });
+      return res
+        .status(403)
+        .json({ error: "Only the band owner can delete the band" });
     }
 
     // Delete all associated files first
@@ -10014,7 +10518,10 @@ router.delete("/:id", requireAuth, async (req, res) => {
       where: { id: bandId },
     });
 
-    req.flash("success", `Band "${band.name}" and all associated files have been deleted`);
+    req.flash(
+      "success",
+      `Band "${band.name}" and all associated files have been deleted`
+    );
     res.json({ success: true, filesDeleted: deleted });
   } catch (error) {
     logger.logError("Delete band error", error);

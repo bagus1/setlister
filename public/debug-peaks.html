@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Debug Peaks.js Loading</title>
+  </head>
+  <body>
+    <h1>Debug Peaks.js Loading</h1>
+    <div id="results"></div>
+
+    <!-- Hidden test containers for Peaks.js -->
+    <div id="overview-container"></div>
+    <div id="zoomview-container"></div>
+
+    <audio id="audio" style="display: none" preload="metadata"></audio>
+
+    <script>
+      function log(message) {
+        console.log(message);
+        document.getElementById("results").innerHTML +=
+          "<div>" + message + "</div>";
+      }
+
+      log("Starting script loading test...");
+
+      // Test each script individually
+      const scripts = [
+        { name: "Konva", src: "/js/konva.min.js" },
+        { name: "WaveformData", src: "/js/waveform-data.min.js" },
+        { name: "Peaks", src: "/js/peaks.min.js" },
+      ];
+
+      let loadedCount = 0;
+
+      function loadScript(scriptInfo) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = scriptInfo.src;
+          script.onload = () => {
+            log("✅ " + scriptInfo.name + " loaded successfully");
+            loadedCount++;
+            resolve();
+          };
+          script.onerror = () => {
+            log("❌ " + scriptInfo.name + " failed to load");
+            reject(new Error(scriptInfo.name + " failed to load"));
+          };
+          document.head.appendChild(script);
+        });
+      }
+
+      // Load scripts sequentially
+      async function loadAllScripts() {
+        try {
+          for (const scriptInfo of scripts) {
+            await loadScript(scriptInfo);
+          }
+
+          log("All scripts loaded. Checking availability...");
+          log("Konva available: " + (typeof Konva !== "undefined"));
+          log(
+            "WaveformData available: " + (typeof WaveformData !== "undefined")
+          );
+          log("Peaks (uppercase) available: " + (typeof Peaks !== "undefined"));
+          log("peaks (lowercase) available: " + (typeof peaks !== "undefined"));
+          log(
+            "window.peaks available: " + (typeof window.peaks !== "undefined")
+          );
+
+          if (typeof window.peaks !== "undefined") {
+            log("✅ Peaks.js is ready to use!");
+            log(
+              "peaks.init available: " +
+                (typeof window.peaks.init !== "undefined")
+            );
+
+            // Run test automatically
+            testPeaksInit();
+          } else if (typeof Peaks !== "undefined") {
+            log("✅ Peaks.js is ready to use!");
+            log("Peaks.init available: " + (typeof Peaks.init !== "undefined"));
+          } else {
+            log("❌ Peaks.js is not available");
+          }
+        } catch (error) {
+          log("❌ Error loading scripts: " + error.message);
+        }
+      }
+
+      // Test Peaks.js initialization
+      function testPeaksInit() {
+        log("Testing Peaks.js initialization...");
+        const overviewContainer = document.getElementById("overview-container");
+        const zoomviewContainer = document.getElementById("zoomview-container");
+        const audioElement = document.getElementById("audio");
+
+        log(
+          "Overview container: " + (overviewContainer ? "Found" : "Not found")
+        );
+        log(
+          "Zoomview container: " + (zoomviewContainer ? "Found" : "Not found")
+        );
+        log("Audio element: " + (audioElement ? "Found" : "Not found"));
+
+        // Show containers for testing
+        overviewContainer.style.display = "block";
+        zoomviewContainer.style.display = "block";
+
+        const options = {
+          // CORRECTED: Use top-level overview and zoomview properties
+          overview: {
+            container: overviewContainer,
+          },
+          zoomview: {
+            container: zoomviewContainer,
+          },
+          mediaElement: audioElement,
+          webAudio: {
+            audioContext: new (window.AudioContext ||
+              window.webkitAudioContext)(),
+          },
+          segments: [],
+        };
+
+        log("Calling window.peaks.init...");
+        window.peaks.init(options, (err, peaks) => {
+          // ... (rest of your callback logic)
+        });
+      }
+
+      // Start loading when page is ready
+      document.addEventListener("DOMContentLoaded", loadAllScripts);
+    </script>
+  </body>
+</html>

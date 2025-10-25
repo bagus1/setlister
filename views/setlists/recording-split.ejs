@@ -234,6 +234,9 @@ const wavesurfer = WaveSurfer.create({
     // Use MediaElement backend for large files - it doesn't load entire file into memory
     backend: 'MediaElement',
     mediaControls: false,
+    // Better zoom behavior
+    fillParent: true,
+    scrollParent: true,
     plugins: [
         wsRegions,
         WaveSurfer.Timeline.create({
@@ -438,7 +441,60 @@ document.getElementById('zoom').addEventListener('input', function(e) {
 // Reset zoom button
 document.getElementById('resetZoomBtn').addEventListener('click', function() {
     document.getElementById('zoom').value = 1;
-    wavesurfer.zoom(1);
+    wavesurfer.zoom(false); // This properly resets to the original state
+});
+
+// Keyboard shortcuts for zoom
+document.addEventListener('keydown', function(e) {
+    // Only handle zoom shortcuts if the waveform is focused or no input is focused
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+    }
+    
+    const zoomSlider = document.getElementById('zoom');
+    let currentZoom = parseInt(zoomSlider.value);
+    
+    switch(e.key) {
+        case '=':
+        case '+':
+            // Zoom in
+            e.preventDefault();
+            currentZoom = Math.min(currentZoom + 10, 500);
+            zoomSlider.value = currentZoom;
+            wavesurfer.zoom(currentZoom);
+            break;
+            
+        case '-':
+            // Zoom out
+            e.preventDefault();
+            currentZoom = Math.max(currentZoom - 10, 1);
+            zoomSlider.value = currentZoom;
+            wavesurfer.zoom(currentZoom);
+            break;
+            
+        case '0':
+            // Reset zoom
+            e.preventDefault();
+            zoomSlider.value = 1;
+            wavesurfer.zoom(false);
+            break;
+            
+        case 'ArrowLeft':
+            // Fine zoom out
+            e.preventDefault();
+            currentZoom = Math.max(currentZoom - 1, 1);
+            zoomSlider.value = currentZoom;
+            wavesurfer.zoom(currentZoom);
+            break;
+            
+        case 'ArrowRight':
+            // Fine zoom in
+            e.preventDefault();
+            currentZoom = Math.min(currentZoom + 1, 500);
+            zoomSlider.value = currentZoom;
+            wavesurfer.zoom(currentZoom);
+            break;
+    }
 });
 
 // Region event handlers

@@ -409,7 +409,7 @@ router.get(
       // Calculate total songs count
       const totalSongs = setlist.sets.reduce((total, set) => total + set.songs.length, 0);
 
-      res.render("setlists/recording-split-simple", {
+      res.render("setlists/recording-split", {
         title: `Split Recording - ${setlist.title}`,
         pageTitle: `Split Recording`,
         marqueeTitle: setlist.title,

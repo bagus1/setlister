@@ -45,12 +45,10 @@
                     
                     <!-- Simple Waveform Container -->
                     <div id="waveform" style="min-height: 200px; display: none;">
-                        <div class="waveform-wrapper" style="overflow: hidden; border: 1px solid #dee2e6; border-radius: 4px;">
-                            <div class="waveform-container" style="position: relative; height: 200px; background: #f8f9fa; cursor: crosshair; min-width: 100%;">
-                                <div class="timeline-bar" style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #6f42c1; transform: translateY(-50%);"></div>
-                                <div class="progress-bar" style="position: absolute; top: 50%; left: 0; height: 2px; background: #28a745; transform: translateY(-50%); width: 0%;"></div>
-                                <div class="cursor" style="position: absolute; top: 0; bottom: 0; width: 2px; background: #dc3545; transform: translateX(-50%);"></div>
-                            </div>
+                        <div class="waveform-container" style="position: relative; height: 200px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; cursor: crosshair; overflow: hidden;">
+                            <div class="timeline-bar" style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #6f42c1; transform: translateY(-50%);"></div>
+                            <div class="progress-bar" style="position: absolute; top: 50%; left: 0; height: 2px; background: #28a745; transform: translateY(-50%); width: 0%;"></div>
+                            <div class="cursor" style="position: absolute; top: 0; bottom: 0; width: 2px; background: #dc3545; transform: translateX(-50%);"></div>
                         </div>
                     </div>
                     
@@ -172,9 +170,14 @@ function initAudio() {
         setupWaveform();
     });
     
+    audioElement.addEventListener('canplay', () => {
+        console.log('Audio can play');
+    });
+    
     audioElement.addEventListener('error', (error) => {
         console.error('Audio element error:', error);
-        showError('Failed to load audio file');
+        console.error('Error details:', error.target.error);
+        showError('Failed to load audio file: ' + (error.target.error?.message || 'Unknown error'));
     });
     
     audioElement.addEventListener('timeupdate', updateCurrentTime);
@@ -185,20 +188,25 @@ function initAudio() {
 function updateTotalTime() {
     const totalTimeElement = document.getElementById('totalTime');
     if (totalTimeElement && audioElement) {
-        totalTimeElement.textContent = formatTime(audioElement.duration);
+        totalTimeElement.textContent = formatTime(Math.floor(audioElement.duration));
     }
 }
 
 function updateCurrentTime() {
     const currentTimeElement = document.getElementById('currentTime');
     if (currentTimeElement && audioElement) {
-        currentTimeElement.textContent = formatTime(audioElement.currentTime);
+        currentTimeElement.textContent = formatTime(Math.floor(audioElement.currentTime));
     }
 }
 
 function setupWaveform() {
+    console.log('Setting up waveform...');
     const container = document.querySelector('.waveform-container');
-    if (!container) return;
+    if (!container) {
+        console.error('Waveform container not found!');
+        return;
+    }
+    console.log('Waveform container found:', container);
     
     // Add click handler for region creation
     container.addEventListener('click', (e) => {
@@ -223,6 +231,7 @@ function setupWaveform() {
     
     // Setup zoom controls
     setupZoomControls();
+    console.log('Waveform setup complete');
 }
 
 function setupZoomControls() {
@@ -249,12 +258,14 @@ function applyZoom() {
     const container = document.querySelector('.waveform-container');
     if (!container) return;
     
-    // Calculate new width based on zoom level
+    // Simple zoom by changing the container width
     waveformWidth = 100 * zoomLevel;
     container.style.width = waveformWidth + '%';
     
     // Re-render regions with new zoom
-    renderRegions();
+    if (regions.length > 0) {
+        renderRegions();
+    }
     
     console.log('Zoom applied:', zoomLevel, 'Width:', waveformWidth + '%');
 }

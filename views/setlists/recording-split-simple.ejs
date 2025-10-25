@@ -1,0 +1,489 @@
+<div class="container mt-4" data-total-songs="<%= totalSongs %>">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Split Recording</h1>
+                    <h2 class="h5 text-muted"><%= setlist.title %></h2>
+                </div>
+                <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Setlist
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Waveform Area -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-scissors"></i> Mark Song Boundaries
+                    </h5>
+                    <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Recordings
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Loading Progress -->
+                    <div id="loadingProgress" class="text-center mb-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">Loading audio file...</small>
+                        </div>
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div id="loadingBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="loadingStatus" class="mt-1">
+                            <small class="text-muted">Preparing waveform...</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Simple Waveform Container -->
+                    <div id="waveform" style="min-height: 200px; display: none;">
+                        <div class="waveform-wrapper" style="overflow: hidden; border: 1px solid #dee2e6; border-radius: 4px;">
+                            <div class="waveform-container" style="position: relative; height: 200px; background: #f8f9fa; cursor: crosshair; min-width: 100%;">
+                                <div class="timeline-bar" style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #6f42c1; transform: translateY(-50%);"></div>
+                                <div class="progress-bar" style="position: absolute; top: 50%; left: 0; height: 2px; background: #28a745; transform: translateY(-50%); width: 0%;"></div>
+                                <div class="cursor" style="position: absolute; top: 0; bottom: 0; width: 2px; background: #dc3545; transform: translateX(-50%);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Playback Controls -->
+                    <div class="mt-3 d-flex justify-content-center gap-2 align-items-center">
+                        <button id="playPauseBtn" class="btn btn-primary">
+                            <i class="bi bi-play-fill"></i> Play
+                        </button>
+                        <button id="stopBtn" class="btn btn-secondary">
+                            <i class="bi bi-stop-fill"></i> Stop
+                        </button>
+                        <div class="mx-3" style="width: 180px; text-align: center;">
+                            <span id="currentTime">0:00</span> / <span id="totalTime">0:00</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="zoomSlider" class="mb-0">Zoom:</label>
+                            <input type="range" id="zoomSlider" min="1" max="10" value="1" class="form-range" style="width: 150px;">
+                            <button id="resetZoomBtn" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-arrow-clockwise"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Instructions -->
+                    <div class="mt-3 alert alert-info">
+                        <strong><i class="bi bi-info-circle"></i> Instructions:</strong>
+                        <ol class="mb-0 mt-2 ps-3">
+                            <li>Click on the timeline to mark song start/end points</li>
+                            <li>Assign songs to each region using the list on the right</li>
+                            <li>Repeat for all songs</li>
+                            <li>Press Process Splits when done</li>
+                        </ol>
+                    </div>
+                    
+                    <!-- Regions List -->
+                    <div id="regionsList" class="mt-3" style="display: none;">
+                        <h6>Created Regions:</h6>
+                        <div id="regionsContainer"></div>
+                    </div>
+                    
+                    <!-- Process Button -->
+                    <div class="mt-3 text-center">
+                        <button id="processSplitsBtn" class="btn btn-success" disabled>
+                            <i class="bi bi-scissors"></i> Process Splits
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Songs List -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-music-note-list"></i> Songs in Setlist
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <% let songIndex = 1; %>
+                    <% setlist.sets.filter(set => set.name !== 'Maybe').forEach(set => { %>
+                        <% if (set.songs && set.songs.length > 0) { %>
+                            <h6 class="text-primary mt-3 mb-2"><%= set.name %></h6>
+                            <% set.songs.forEach(setlistSong => { %>
+                                <div class="song-item mb-2 p-2 border rounded" 
+                                     data-song-id="<%= setlistSong.song.id %>"
+                                     data-song-index="<%= songIndex %>"
+                                     data-song-title="<%= setlistSong.song.title %>"
+                                     style="cursor: pointer; transition: background 0.2s;"
+                                     onclick="assignSongToRegionFromElement(this)">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong><%= songIndex %>. <%= setlistSong.song.title %></strong>
+                                            <% if (setlistSong.song.artists && setlistSong.song.artists.length > 0) { %>
+                                                <div class="small text-muted">
+                                                    <%= setlistSong.song.artists[0].artist.name %>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                        <span class="badge bg-secondary" id="song-badge-<%= setlistSong.song.id %>" style="display: none;">
+                                            Assigned
+                                        </span>
+                                    </div>
+                                </div>
+                                <% songIndex++; %>
+                            <% }); %>
+                        <% } %>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Simple HTML5 audio-based waveform editor for large files
+let audioElement = null;
+let regions = [];
+let selectedRegion = null;
+const regionSongMap = {};
+const regionCreationOrder = [];
+let zoomLevel = 1;
+let waveformWidth = 100; // Base width percentage
+
+// Initialize audio element
+function initAudio() {
+    const filePath = '<%= recording.filePath %>';
+    const fileUrl = window.location.origin + filePath;
+    
+    console.log('Initializing HTML5 audio for:', fileUrl);
+    
+    audioElement = new Audio(fileUrl);
+    audioElement.preload = 'metadata';
+    
+    audioElement.addEventListener('loadedmetadata', () => {
+        console.log('Audio metadata loaded, duration:', audioElement.duration);
+        updateTotalTime();
+        hideLoadingProgress();
+        setupWaveform();
+    });
+    
+    audioElement.addEventListener('error', (error) => {
+        console.error('Audio element error:', error);
+        showError('Failed to load audio file');
+    });
+    
+    audioElement.addEventListener('timeupdate', updateCurrentTime);
+    
+    audioElement.load();
+}
+
+function updateTotalTime() {
+    const totalTimeElement = document.getElementById('totalTime');
+    if (totalTimeElement && audioElement) {
+        totalTimeElement.textContent = formatTime(audioElement.duration);
+    }
+}
+
+function updateCurrentTime() {
+    const currentTimeElement = document.getElementById('currentTime');
+    if (currentTimeElement && audioElement) {
+        currentTimeElement.textContent = formatTime(audioElement.currentTime);
+    }
+}
+
+function setupWaveform() {
+    const container = document.querySelector('.waveform-container');
+    if (!container) return;
+    
+    // Add click handler for region creation
+    container.addEventListener('click', (e) => {
+        const rect = container.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = x / rect.width;
+        const time = percentage * audioElement.duration;
+        
+        console.log('Clicked at time:', time);
+        createRegion(time);
+    });
+    
+    // Update progress as audio plays
+    audioElement.addEventListener('timeupdate', () => {
+        const progress = (audioElement.currentTime / audioElement.duration) * 100;
+        const cursor = container.querySelector('.cursor');
+        const progressBar = container.querySelector('.progress-bar');
+        
+        if (cursor) cursor.style.left = progress + '%';
+        if (progressBar) progressBar.style.width = progress + '%';
+    });
+    
+    // Setup zoom controls
+    setupZoomControls();
+}
+
+function setupZoomControls() {
+    const zoomSlider = document.getElementById('zoomSlider');
+    const resetZoomBtn = document.getElementById('resetZoomBtn');
+    
+    if (zoomSlider) {
+        zoomSlider.addEventListener('input', (e) => {
+            zoomLevel = parseInt(e.target.value);
+            applyZoom();
+        });
+    }
+    
+    if (resetZoomBtn) {
+        resetZoomBtn.addEventListener('click', () => {
+            zoomLevel = 1;
+            zoomSlider.value = 1;
+            applyZoom();
+        });
+    }
+}
+
+function applyZoom() {
+    const container = document.querySelector('.waveform-container');
+    if (!container) return;
+    
+    // Calculate new width based on zoom level
+    waveformWidth = 100 * zoomLevel;
+    container.style.width = waveformWidth + '%';
+    
+    // Re-render regions with new zoom
+    renderRegions();
+    
+    console.log('Zoom applied:', zoomLevel, 'Width:', waveformWidth + '%');
+}
+
+function createRegion(time) {
+    const region = {
+        id: Date.now(),
+        start: time,
+        end: time + 30, // Default 30 second region
+        songId: null,
+        songTitle: null
+    };
+    
+    regions.push(region);
+    regionCreationOrder.push(region.id);
+    
+    renderRegions();
+    showRegionsList();
+}
+
+function renderRegions() {
+    const container = document.querySelector('.waveform-container');
+    if (!container) return;
+    
+    // Clear existing region markers
+    container.querySelectorAll('.region-marker').forEach(marker => marker.remove());
+    
+    // Add region markers
+    regions.forEach(region => {
+        const startPercent = (region.start / audioElement.duration) * 100;
+        const endPercent = (region.end / audioElement.duration) * 100;
+        
+        const marker = document.createElement('div');
+        marker.className = 'region-marker';
+        marker.style.cssText = `
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: ${startPercent}%;
+            width: ${endPercent - startPercent}%;
+            background: rgba(0, 123, 255, 0.3);
+            border: 2px solid #007bff;
+            cursor: pointer;
+        `;
+        
+        marker.addEventListener('click', () => {
+            selectedRegion = region;
+            highlightSelectedRegion();
+        });
+        
+        container.appendChild(marker);
+    });
+}
+
+function showRegionsList() {
+    const regionsList = document.getElementById('regionsList');
+    const regionsContainer = document.getElementById('regionsContainer');
+    
+    if (regionsList) regionsList.style.display = 'block';
+    
+    if (regionsContainer) {
+        regionsContainer.innerHTML = regions.map((region, index) => `
+            <div class="region-item mb-2 p-2 border rounded ${selectedRegion && selectedRegion.id === region.id ? 'bg-primary text-white' : ''}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Region ${index + 1}</strong>
+                        <div class="small">${formatTime(region.start)} - ${formatTime(region.end)}</div>
+                        ${region.songTitle ? `<div class="small">Song: ${region.songTitle}</div>` : '<div class="small text-muted">No song assigned</div>'}
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteRegion(${region.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function highlightSelectedRegion() {
+    showRegionsList(); // Re-render to update highlighting
+}
+
+function deleteRegion(regionId) {
+    regions = regions.filter(r => r.id !== regionId);
+    regionCreationOrder = regionCreationOrder.filter(id => id !== regionId);
+    delete regionSongMap[regionId];
+    
+    if (selectedRegion && selectedRegion.id === regionId) {
+        selectedRegion = null;
+    }
+    
+    renderRegions();
+    showRegionsList();
+    updateProcessButton();
+}
+
+function assignSongToRegionFromElement(element) {
+    if (!selectedRegion) {
+        alert('Please select a region first by clicking on it');
+        return;
+    }
+    
+    const songId = parseInt(element.dataset.songId);
+    const songTitle = element.dataset.songTitle;
+    const songIndex = parseInt(element.dataset.songIndex);
+    
+    selectedRegion.songId = songId;
+    selectedRegion.songTitle = songTitle;
+    regionSongMap[selectedRegion.id] = { songId, songTitle, songIndex };
+    
+    // Show assigned badge
+    const badge = document.getElementById(`song-badge-${songId}`);
+    if (badge) badge.style.display = 'inline-block';
+    
+    // Update display
+    showRegionsList();
+    updateProcessButton();
+    
+    // Clear selection
+    selectedRegion = null;
+}
+
+function updateProcessButton() {
+    const processBtn = document.getElementById('processSplitsBtn');
+    const assignedRegions = regions.filter(r => r.songId);
+    
+    if (processBtn) {
+        processBtn.disabled = assignedRegions.length === 0;
+        processBtn.textContent = `Process Splits (${assignedRegions.length}/${regions.length})`;
+    }
+}
+
+function hideLoadingProgress() {
+    const loadingDiv = document.getElementById('loadingProgress');
+    const waveformDiv = document.getElementById('waveform');
+    
+    if (loadingDiv) loadingDiv.style.display = 'none';
+    if (waveformDiv) waveformDiv.style.display = 'block';
+}
+
+function showError(message) {
+    const loadingStatus = document.getElementById('loadingStatus');
+    const loadingBar = document.getElementById('loadingBar');
+    
+    if (loadingStatus) loadingStatus.textContent = message;
+    if (loadingBar) {
+        loadingBar.classList.remove('progress-bar-animated');
+        loadingBar.classList.add('bg-danger');
+    }
+}
+
+// Playback controls
+document.addEventListener('DOMContentLoaded', () => {
+    initAudio();
+    
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    
+    if (playPauseBtn) {
+        playPauseBtn.addEventListener('click', () => {
+            if (audioElement.paused) {
+                audioElement.play();
+                playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+            } else {
+                audioElement.pause();
+                playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+            }
+        });
+    }
+    
+    if (stopBtn) {
+        stopBtn.addEventListener('click', () => {
+            audioElement.pause();
+            audioElement.currentTime = 0;
+            playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+        });
+    }
+    
+    // Process splits button
+    const processBtn = document.getElementById('processSplitsBtn');
+    if (processBtn) {
+        processBtn.addEventListener('click', async () => {
+            const assignedRegions = regions.filter(r => r.songId);
+            if (assignedRegions.length === 0) {
+                alert('Please assign songs to regions first');
+                return;
+            }
+            
+            try {
+                processBtn.disabled = true;
+                processBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+                
+                const response = await fetch('/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        splits: assignedRegions.map(region => ({
+                            start: region.start,
+                            end: region.end,
+                            songId: region.songId
+                        }))
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(`Successfully split ${result.splits} songs!`);
+                    window.location.href = '/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings';
+                } else {
+                    throw new Error('Failed to process splits');
+                }
+            } catch (error) {
+                console.error('Error processing splits:', error);
+                alert('Error processing splits: ' + error.message);
+            } finally {
+                processBtn.disabled = false;
+                processBtn.innerHTML = '<i class="bi bi-scissors"></i> Process Splits';
+            }
+        });
+    }
+});
+
+// Helper function to format time
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+</script>

@@ -1,4 +1,4 @@
-<div class="container mt-4">
+<div class="container mt-4" data-total-songs="<%= totalSongs %>">
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -120,8 +120,9 @@
                                     <div class="song-item mb-2 p-2 border rounded" 
                                          data-song-id="<%= setlistSong.song.id %>"
                                          data-song-index="<%= songIndex %>"
+                                         data-song-title="<%= setlistSong.song.title %>"
                                          style="cursor: pointer; transition: background 0.2s;"
-                                         onclick="assignSongToRegion(<%= setlistSong.song.id %>, '<%= setlistSong.song.title.replace(/'/g, "\\'") %>', <%= songIndex %>)">
+                                         onclick="assignSongToRegionFromElement(this)">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
                                                 <strong><%= songIndex %>. <%= setlistSong.song.title %></strong>
@@ -227,12 +228,28 @@ const wavesurfer = WaveSurfer.create({
     cursorColor: '#dc3545',
     height: 200,
     normalize: true,
+    // Use MediaElement backend for large files - it doesn't load entire file into memory
+    backend: 'MediaElement',
+    mediaControls: false,
     plugins: [
         wsRegions,
         WaveSurfer.Timeline.create({
             container: '#wave-timeline'
         })
     ]
+});
+
+// Add debugging for WaveSurfer events
+wavesurfer.on('loading', (percent) => {
+    console.log('WaveSurfer loading:', percent + '%');
+});
+
+wavesurfer.on('load', () => {
+    console.log('WaveSurfer load event fired');
+});
+
+wavesurfer.on('decode', () => {
+    console.log('WaveSurfer decode event fired');
 });
 
 // Track regions and song assignments
@@ -275,11 +292,26 @@ const progressInterval = setInterval(() => {
 }, 500); // Slower updates
 
     // Load audio file directly with WaveSurfer
-    console.log('Attempting to load audio file:', '<%= recording.filePath %>');
-    console.log('File size:', '<%= recording.duration %> seconds');
+    const filePath = '<%= recording.filePath %>';
+    const duration = <%= recording.duration %>;
+    console.log('Attempting to load audio file:', filePath);
+    console.log('File size:', duration, 'seconds');
     
-    // Load directly - WaveSurfer handles the fetch internally
-    wavesurfer.load('<%= recording.filePath %>');
+    // Try with absolute URL first
+    const fileUrl = window.location.origin + filePath;
+    console.log('Absolute file URL:', fileUrl);
+    
+    // Wait for WaveSurfer to be ready before loading
+    setTimeout(() => {
+        console.log('WaveSurfer ready, loading file...');
+        try {
+            wavesurfer.load(fileUrl);
+        } catch (error) {
+            console.error('Error calling wavesurfer.load:', error);
+            loadingStatus.textContent = 'Error calling WaveSurfer load: ' + error.message;
+            loadingBar.classList.add('bg-danger');
+        }
+    }, 100); // Small delay to ensure WaveSurfer is initialized
 
 // Update time display
 let lastDisplayedTime = -1;
@@ -314,6 +346,31 @@ wavesurfer.on('error', function(error) {
     console.error('Error type:', typeof error);
     console.error('Error properties:', Object.keys(error));
     
+    // Test if the file is playable with HTML5 audio
+    console.log('Testing file with HTML5 audio element...');
+    const testAudio = new Audio(fileUrl);
+    testAudio.addEventListener('canplaythrough', () => {
+        console.log('✅ File is playable with HTML5 audio!');
+        const audioTestResult = document.createElement('div');
+        audioTestResult.className = 'mt-2 text-success small';
+        audioTestResult.innerHTML = `
+            <strong>✅ File Test:</strong> The audio file is playable with HTML5 audio.<br>
+            <small>This suggests the issue is with WaveSurfer, not the file itself.</small>
+        `;
+        loadingProgressDiv.appendChild(audioTestResult);
+    });
+    testAudio.addEventListener('error', (audioError) => {
+        console.error('❌ HTML5 audio also failed:', audioError);
+        const audioTestResult = document.createElement('div');
+        audioTestResult.className = 'mt-2 text-danger small';
+        audioTestResult.innerHTML = `
+            <strong>❌ File Test:</strong> HTML5 audio also failed to load the file.<br>
+            <small>This suggests a server or file issue.</small>
+        `;
+        loadingProgressDiv.appendChild(audioTestResult);
+    });
+    testAudio.load();
+    
     // Show more detailed error info
     const errorDetails = document.createElement('div');
     errorDetails.className = 'mt-2 text-danger small';
@@ -321,7 +378,7 @@ wavesurfer.on('error', function(error) {
         <strong>Error Details:</strong><br>
         Message: ${error.message || error.toString()}<br>
         Type: ${error.name || 'Unknown'}<br>
-        File: <%= recording.filePath %><br>
+        File: ${fileUrl}<br>
         <small>Check browser console for more details</small>
     `;
     loadingProgressDiv.appendChild(errorDetails);
@@ -330,7 +387,7 @@ wavesurfer.on('error', function(error) {
     const testLink = document.createElement('div');
     testLink.className = 'mt-2';
     testLink.innerHTML = `
-        <a href="<%= recording.filePath %>" target="_blank" class="btn btn-outline-info btn-sm">
+        <a href="${fileUrl}" target="_blank" class="btn btn-outline-info btn-sm">
             <i class="bi bi-download"></i> Test File Access
         </a>
         <small class="text-muted ms-2">Click to test if the file downloads</small>
@@ -435,6 +492,14 @@ function showInstruction(text) {
     return;
 }
 
+// Function to assign a song to the selected region (from element)
+function assignSongToRegionFromElement(element) {
+    const songId = parseInt(element.dataset.songId);
+    const songTitle = element.dataset.songTitle;
+    const songIndex = parseInt(element.dataset.songIndex);
+    assignSongToRegion(songId, songTitle, songIndex);
+}
+
 // Assign song to selected region
 function assignSongToRegion(songId, songTitle, songIndex) {
     if (!selectedRegion) {
@@ -476,7 +541,7 @@ function assignSongToRegion(songId, songTitle, songIndex) {
     
     // Clear selection and show next instruction
     selectedRegion = null;
-    const remainingCount = <%= setlist.sets.flatMap(s => s.songs).length %> - Object.keys(regionSongMap).length;
+    const remainingCount = parseInt(document.querySelector('.container').dataset.totalSongs) - Object.keys(regionSongMap).length;
     
     if (remainingCount > 0) {
         showInstruction(`✓ Song assigned! Now create another region for the next song (${remainingCount} remaining, Press <kbd>ESC</kbd> to undo)`);

@@ -406,11 +406,15 @@ router.get(
         return res.redirect(`/bands/${bandId}/setlists/${setlistId}/recordings`);
       }
 
-      res.render("setlists/recording-split", {
+      // Calculate total songs count
+      const totalSongs = setlist.sets.reduce((total, set) => total + set.songs.length, 0);
+
+      res.render("setlists/recording-split-simple", {
         title: `Split Recording - ${setlist.title}`,
         pageTitle: `Split Recording`,
         marqueeTitle: setlist.title,
         setlist,
+        totalSongs,
         recording: {
           id: recording.id,
           filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,

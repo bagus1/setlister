@@ -706,7 +706,15 @@ router.get(
             include: {
               songs: {
                 include: {
-                  song: true,
+                  song: {
+                    include: {
+                      artists: {
+                        include: {
+                          artist: true,
+                        },
+                      },
+                    },
+                  },
                 },
                 orderBy: {
                   order: "asc",

@@ -93,6 +93,7 @@
               border-radius: 8px;
               background: #f8f9fa;
               display: none;
+              overflow-y: hidden;
             "
           ></div>
 
@@ -136,14 +137,76 @@
           </div>
 
           <!-- Instructions -->
+          <style>
+            kbd {
+              background-color: #0d6efd;
+              color: white;
+              padding: 2px 6px;
+              border-radius: 4px;
+              border: 1px solid #0a58ca;
+            }
+          </style>
           <div class="mt-3 alert alert-info">
-            <strong><i class="bi bi-info-circle"></i> Instructions:</strong>
+            <strong
+              ><i class="bi bi-info-circle"></i> Key Commands &
+              Workflow:</strong
+            >
             <ul class="mb-0 mt-2">
-              <li>Drag on the waveform to create segments</li>
-              <li>Use zoom controls to focus on specific areas</li>
-              <li>Click segments to select them</li>
-              <li>Assign songs to segments using the panel on the right</li>
+              <li>
+                <strong>Create Segment:</strong> Click and drag on the main
+                waveform. The new segment will be highlighted yellow, making it
+                the active selection.
+              </li>
+              <li>
+                <strong>Assign Song:</strong> With a segment selected (yellow),
+                click a song from the "Available Songs" list on the right.
+              </li>
+              <li>
+                <strong>To Zoom:</strong> Use the zoom slider to get a more
+                detailed view.
+              </li>
+              <li>
+                <strong>To Pan/Scroll View:</strong> Hold <kbd>Option</kbd> (or
+                <kbd>Alt</kbd>) while clicking and dragging the main waveform to
+                move it left and right.
+              </li>
+              <li>
+                <strong>Seek Playhead:</strong> Click anywhere on the waveform
+                to move the playhead to that spot.
+              </li>
+              <li>
+                <strong>Undo:</strong> Press <kbd>ESC</kbd> or click the "Undo"
+                button to remove the last created segment.
+              </li>
+              <li>
+                <strong>Process:</strong> When all songs are assigned, click
+                "Process Splits".
+              </li>
             </ul>
+          </div>
+
+          <!-- Utility Buttons -->
+          <div class="mt-3 d-flex gap-2 justify-content-center flex-wrap">
+            <button
+              id="undoBtn"
+              onclick="undoLastRegion()"
+              class="btn btn-outline-warning"
+              disabled
+            >
+              <i class="bi bi-arrow-counterclockwise"></i> Undo Last Segment
+              <kbd>ESC</kbd>
+            </button>
+            <button id="autoDetectBtn" class="btn btn-outline-info" disabled>
+              <i class="bi bi-magic"></i> Auto-Detect Silence
+            </button>
+            <button id="processSplitsBtn" class="btn btn-success" disabled>
+              <i class="bi bi-scissors"></i> Process Splits
+            </button>
+          </div>
+          <div id="processSplitsStatus" class="text-center mt-2">
+            <small class="text-muted"
+              >Assign songs to segments to enable processing</small
+            >
           </div>
         </div>
       </div>
@@ -174,6 +237,10 @@
             <div id="selectedSegmentInfo" class="alert alert-light">
               <p class="mb-0 text-muted">No segment selected</p>
             </div>
+          </div>
+
+          <div class="mt-4">
+            <!-- This button is now in the main panel -->
           </div>
         </div>
       </div>
@@ -218,12 +285,20 @@
     let selectedSegment = null;
     const segmentSongMap = {};
 
-    // Real songs from your setlist (using mock data for now to avoid EJS issues)
-    const realSongs = [
-      { id: 1, title: "Song 1", artist: "Artist 1" },
-      { id: 2, title: "Song 2", artist: "Artist 2" },
-      { id: 3, title: "Song 3", artist: "Artist 3" },
-    ];
+    // Real songs from your setlist
+    const realSongs = <%- JSON.stringify(
+      setlist.sets
+        .filter(set => set.name !== 'Maybe')
+        .flatMap(set =>
+          (set.songs || []).map(setlistSong => ({
+            id: setlistSong.song.id,
+            title: setlistSong.song.title,
+            artist: (setlistSong.song.artists && setlistSong.song.artists.length > 0)
+              ? setlistSong.song.artists[0].artist.name
+              : 'Unknown'
+          }))
+        )
+    ) %>;
 
     // Load the actual recording file
     const audioElement = document.getElementById("audio");
@@ -243,20 +318,37 @@
 
     // Populate songs list
     const songsList = document.getElementById("songsList");
+    let songIndex = 1;
     realSongs.forEach((song) => {
-      const li = document.createElement("a");
-      li.href = "#";
-      li.className = "list-group-item list-group-item-action";
-      li.innerHTML = `${song.title} <span class="text-muted">by ${song.artist}</span>`;
-      li.onclick = (e) => {
-        e.preventDefault();
+      const div = document.createElement("div");
+      div.className = "song-item mb-2 p-2 border rounded";
+      div.setAttribute("data-song-id", song.id);
+      div.setAttribute("data-song-index", songIndex);
+      div.setAttribute("data-song-title", song.title);
+      div.style.cssText = "cursor: pointer; transition: background 0.2s;";
+      div.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <strong>${songIndex}. ${song.title}</strong>
+            <div class="small text-muted">${song.artist}</div>
+          </div>
+          <span class="badge bg-secondary" id="song-badge-${song.id}" style="display: none;">
+            Assigned
+          </span>
+        </div>
+      `;
+      div.onclick = () => {
+        addDebugLog(`Song clicked: ${song.title}. Current selectedSegment ID: ${selectedSegment ? selectedSegment.id : 'null'}`);
         if (selectedSegment) {
-          segmentSongMap[selectedSegment.id] = song.id;
-          updateSegmentList();
-          updateSelectedSegmentInfo();
+          assignSongToSegment(selectedSegment.id, song.id);
+        } else {
+          addDebugLog(
+            "Please select a segment first by clicking on it in the waveform."
+          );
         }
       };
-      songsList.appendChild(li);
+      songsList.appendChild(div);
+      songIndex++;
     });
 
     // Initialize Peaks.js - fix race condition
@@ -410,6 +502,15 @@
         },
         zoomview: {
           container: zoomviewContainer,
+          // Disable default click-to-seek behavior that resets zoom
+          axisGridlineColor: "#ccc",
+          axisLabelColor: "#000",
+          // Try to prevent auto-scrolling during segment drag
+          playheadColor: "#f00",
+          playheadTextColor: "#000",
+          // Enable scrollbar when zoomed in
+          enableScrollbar: true,
+          showSegmentLabels: true
         },
         mediaElement: audioElement,
         // Use pre-computed waveform data for long files (56+ minutes)
@@ -417,6 +518,10 @@
           arraybuffer: "/uploads/recordings/1761414671545_first.dat",
         },
         segments: [],
+        // Disable default keyboard shortcuts that might interfere
+        keyboard: false,
+        // Disable default point editing
+        pointMarkerColor: "#ff0000",
       };
 
       PeaksLib.init(options, (err, p) => {
@@ -444,19 +549,7 @@
           "Using pre-computed waveform data: /uploads/recordings/1761414671545_first.dat"
         );
 
-        // Try to get zoom levels safely
-        try {
-          addDebugLog(
-            "Peaks zoom levels - min: " +
-              peaks.zoom.getMinZoom() +
-              ", max: " +
-              peaks.zoom.getMaxZoom()
-          );
-        } catch (error) {
-          addDebugLog("Error getting zoom levels: " + error.message);
-        }
-
-        addDebugLog("About to hide loading progress...");
+        // Hide loading progress
 
         // Hide loading progress and show waveform
         document.getElementById("loadingProgress").style.display = "none";
@@ -465,18 +558,21 @@
         addDebugLog("Waveform containers shown");
 
         // Set up controls
-        addDebugLog("About to call setupControls()");
         setupControls();
-        addDebugLog("setupControls() completed");
         setupSegmentEvents();
+
+        // Initialize process button state
+        updateProcessButton();
 
         // Set initial zoom to show whole file
         const zoomview = peaks.views.getView("zoomview");
+        const scrollbar = peaks.views.getScrollbar();
         zoomview.setZoom({ seconds: "auto" });
         document.getElementById("zoom").value = 0; // Slider at left = auto
-        addDebugLog(
-          "Set initial zoom to auto (fit entire waveform to container width)"
-        );
+        // Hide scrollbar initially (zoomed out)
+        if (scrollbar) {
+          scrollbar.hide();
+        }
 
         // Update total time
         document.getElementById("totalTime").textContent = formatTime(
@@ -494,125 +590,468 @@
     });
 
     // Setup UI controls
+    let controlsSetup = false;
     function setupControls() {
-      addDebugLog("Setting up controls...");
+      if (controlsSetup) {
+        addDebugLog("Controls already setup - skipping");
+        return;
+      }
+      controlsSetup = true;
 
-      // Check if play button exists
+      // Play/Pause button
       const playBtn = document.getElementById("playPauseBtn");
-      addDebugLog("Play button found: " + (playBtn ? "Yes" : "No"));
-
       if (playBtn) {
-        // Play/Pause button
-        playBtn.addEventListener("click", () => {
-          addDebugLog("Play/Pause button clicked");
-          addDebugLog("peaks.player.isPlaying(): " + peaks.player.isPlaying());
+        let isProcessing = false; // Prevent rapid clicks
+        playBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
 
-          // Force button text update immediately
-          if (playBtn.innerHTML.includes("Play")) {
-            playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
-            addDebugLog("Button changed to Pause");
-            peaks.player.play();
-            addDebugLog("Started playing audio");
-          } else {
+          if (isProcessing) {
+            addDebugLog("Click ignored - already processing");
+            return;
+          }
+
+          isProcessing = true;
+          addDebugLog("Button clicked - paused: " + audioElement.paused);
+
+          try {
+            if (audioElement.paused) {
+              addDebugLog("Calling audioElement.play()");
+              await audioElement.play();
+              playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+              addDebugLog("Play successful");
+            } else {
+              addDebugLog("Calling audioElement.pause()");
+              audioElement.pause();
+              playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+              addDebugLog("Pause successful");
+            }
+          } catch (error) {
+            addDebugLog("Play error: " + error.message);
             playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
-            addDebugLog("Button changed to Play");
-            peaks.player.pause();
-            addDebugLog("Paused audio");
+          } finally {
+            // Reset processing flag after a short delay
+            setTimeout(() => {
+              isProcessing = false;
+            }, 100);
           }
         });
-        addDebugLog("Play button event listener attached");
-      } else {
-        addDebugLog("ERROR: Play button not found!");
       }
 
       // Stop button
       const stopBtn = document.getElementById("stopBtn");
-      addDebugLog("Stop button found: " + (stopBtn ? "Yes" : "No"));
       if (stopBtn) {
         stopBtn.addEventListener("click", () => {
-          addDebugLog("Stop button clicked");
-          peaks.player.pause();
-          peaks.player.seek(0);
-          addDebugLog("Audio stopped and reset to beginning");
+          audioElement.pause();
+          audioElement.currentTime = 0;
+          playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
         });
-        addDebugLog("Stop button event listener attached");
-      } else {
-        addDebugLog("ERROR: Stop button not found!");
       }
 
-      // Zoom control
-      const zoomSlider = document.getElementById("zoom");
-      addDebugLog("Zoom slider found: " + (zoomSlider ? "Yes" : "No"));
-      if (zoomSlider) {
-        zoomSlider.addEventListener("input", (e) => {
-          const sliderValue = Number(e.target.value);
-          const zoomview = peaks.views.getView("zoomview");
-
-          if (sliderValue === 0) {
-            // Slider at left = auto (show whole file)
-            zoomview.setZoom({ seconds: "auto" });
-            addDebugLog("Zoom slider at 0 - set to auto (show whole file)");
-          } else {
-            // Slider at right = show fewer seconds (more zoomed in)
-            // Map slider value to seconds: 1-100 maps to totalDuration-1
-            const totalDuration = audioElement.duration;
-            const secondsToShow =
-              totalDuration - (sliderValue / 100) * (totalDuration - 1);
-            zoomview.setZoom({ seconds: secondsToShow });
-            addDebugLog(
-              "Zoom slider at " +
-                sliderValue +
-                " - showing " +
-                secondsToShow.toFixed(1) +
-                " seconds"
-            );
-          }
-        });
-        addDebugLog("Zoom slider event listener attached");
-      } else {
-        addDebugLog("ERROR: Zoom slider not found!");
-      }
-
-      // Reset zoom
-      document.getElementById("resetZoomBtn").addEventListener("click", () => {
-        addDebugLog("Reset zoom button clicked");
+    // Zoom control
+    const zoomSlider = document.getElementById("zoom");
+    if (zoomSlider) {
+      zoomSlider.addEventListener("input", (e) => {
+        const sliderValue = Number(e.target.value);
         const zoomview = peaks.views.getView("zoomview");
-        zoomview.setZoom({ seconds: "auto" });
-        document.getElementById("zoom").value = 0; // Slider at left = auto
-        addDebugLog("Reset zoom to auto (fit entire waveform)");
+        const scrollbar = peaks.views.getScrollbar();
+
+        if (sliderValue === 0) {
+          // Slider at left = auto (show whole file)
+          zoomview.setZoom({ seconds: "auto" });
+          // Hide scrollbar when zoomed out
+          scrollbar?.hide();
+        } else {
+          // Slider at right = show fewer seconds (more zoomed in)
+          const totalDuration = audioElement.duration;
+          const secondsToShow =
+            totalDuration - (sliderValue / 100) * (totalDuration - 1);
+          zoomview.setZoom({ seconds: secondsToShow });
+          // Show scrollbar when zoomed in
+          scrollbar?.show();
+        }
       });
     }
 
+    // Reset zoom
+    document.getElementById("resetZoomBtn").addEventListener("click", () => {
+      const zoomview = peaks.views.getView("zoomview");
+      const scrollbar = peaks.views.getScrollbar();
+      zoomview.setZoom({ seconds: "auto" });
+      document.getElementById("zoom").value = 0;
+      // Hide scrollbar when resetting to auto zoom
+      scrollbar?.hide();
+    });
+    }
+
     // Setup Peaks.js segment events
+    let segmentEventsSetup = false;
     function setupSegmentEvents() {
-      peaks.on("segments.dragend", (segment, oldSegment) => {
-        console.log("Segment dragged:", segment.id);
-        updateSegmentList();
+      if (segmentEventsSetup) {
+        addDebugLog("Segment events already setup - skipping");
+        return;
+      }
+      segmentEventsSetup = true;
+
+      // Enable segment creation by dragging
+      peaks.on("segments.add", (segment) => {
+        // This event is for segments created via the UI, which we have customized.
+        // The main logic is now handled manually after creation.
+        addDebugLog("peaks.on segments.add fired.");
       });
 
-      peaks.on("segments.click", (segment) => {
-        if (selectedSegment) {
-          selectedSegment.deselect();
+      // Update time display using native audio element
+      audioElement.addEventListener("timeupdate", () => {
+        document.getElementById("currentTime").textContent = formatTime(audioElement.currentTime);
+      });
+
+      // Don't add play/pause event listeners - button handler updates manually
+      // This prevents duplicate event handling
+
+      // Monitor zoom changes and prevent unwanted resets
+      let zoomCheckInterval = null;
+      const startZoomMonitoring = () => {
+        if (zoomCheckInterval) return;
+        zoomCheckInterval = setInterval(() => {
+          try {
+            const zoomview = peaks.views.getView("zoomview");
+            const startTime = zoomview.getStartTime();
+            const endTime = zoomview.getEndTime();
+            const visibleDuration = endTime - startTime;
+
+            // If zoom suddenly changes to auto (full duration), restore it
+            if (currentZoomSeconds && visibleDuration >= audioElement.duration * 0.99) {
+              const sliderValue = document.getElementById("zoom").value;
+              if (sliderValue != 0) {
+                addDebugLog("Detected zoom reset - restoring");
+                restoreZoomIfNeeded();
+              }
+            }
+          } catch (err) {
+            // Ignore errors - zoom monitoring may fail if Peaks.js not ready
+          }
+        }, 100);
+      };
+
+      // Start monitoring after initial setup
+      setTimeout(() => {
+        startZoomMonitoring();
+      }, 1000);
+
+      // Prevent zoom reset - store current zoom state
+      let currentZoomSeconds = null;
+
+      // Store current zoom before any interaction
+      function storeCurrentZoom() {
+        try {
+          const zoomview = peaks.views.getView("zoomview");
+          const startTime = zoomview.getStartTime();
+          const endTime = zoomview.getEndTime();
+          const visibleDuration = endTime - startTime;
+          if (visibleDuration > 0 && visibleDuration < audioElement.duration) {
+            currentZoomSeconds = visibleDuration;
+            addDebugLog("Stored zoom: " + currentZoomSeconds.toFixed(1) + " seconds");
+          } else {
+             addDebugLog("Did not store zoom. Visible duration: " + visibleDuration);
+          }
+        } catch (err) {
+          addDebugLog("Error in storeCurrentZoom: " + err.message);
         }
-        selectedSegment = segment;
-        selectedSegment.select();
-        updateSelectedSegmentInfo();
+      }
+
+      // Restore zoom if it gets reset
+      function restoreZoomIfNeeded() {
+        addDebugLog(`restoreZoomIfNeeded called. Stored zoom is: ${currentZoomSeconds ? currentZoomSeconds.toFixed(1) : 'null'}`);
+        if (currentZoomSeconds && currentZoomSeconds < audioElement.duration) {
+          try {
+            const sliderValue = document.getElementById("zoom").value;
+            if (sliderValue != 0) {
+              // Only restore if zoom slider is not at 0 (auto)
+              const zoomview = peaks.views.getView("zoomview");
+              zoomview.setZoom({ seconds: currentZoomSeconds });
+              addDebugLog("Restored zoom to: " + currentZoomSeconds.toFixed(1) + " seconds");
+            }
+          } catch (err) {
+            // Ignore errors
+          }
+        }
+      }
+
+      // Enable segment creation by dragging and prevent zoom reset
+      const zoomviewContainer = document.getElementById("zoomview-container");
+      let isDragging = false;
+      let dragStart = null;
+      let dragStartX = null;
+      let dragVisualizer = null;
+      let isPanning = false;
+      let panStartX = null;
+
+      const handlePanMove = (e) => {
+        if (!isPanning) return;
+        const dx = e.clientX - panStartX;
+        const zoomview = peaks.views.getView("zoomview");
+        const duration = zoomview.getEndTime() - zoomview.getStartTime();
+        const pixelsPerSecond = zoomviewContainer.offsetWidth / duration;
+        const timeOffset = dx / pixelsPerSecond;
+        zoomview.setStartTime(zoomview.getStartTime() - timeOffset);
+        panStartX = e.clientX;
+        e.preventDefault();
+      };
+
+      const handlePanEnd = (e) => {
+        if (isPanning) {
+          isPanning = false;
+          zoomviewContainer.style.cursor = "default";
+          window.removeEventListener("mousemove", handlePanMove);
+          window.removeEventListener("mouseup", handlePanEnd);
+          e.preventDefault();
+        }
+      };
+
+      // Prevent overview clicks from resetting zoom
+      const overviewContainer = document.getElementById("overview-container");
+      overviewContainer.addEventListener("mousedown", (e) => {
+        addDebugLog("Overview mousedown detected. Storing zoom.");
+        storeCurrentZoom();
+        // Use a timeout to restore the zoom after Peaks.js has finished its default action
+        setTimeout(() => {
+          addDebugLog("Overview timeout fired. Restoring zoom.");
+          restoreZoomIfNeeded();
+        }, 50);
       });
 
-      peaks.on("player.play", () => {
-        addDebugLog("Peaks player.play event fired - changing button to Pause");
-        document.getElementById("playPauseBtn").innerHTML =
-          '<i class="bi bi-pause-fill"></i> Pause';
+      zoomviewContainer.addEventListener("mousedown", (e) => {
+        // Check for pan mode (Option/Alt key)
+        if (e.altKey) {
+          isPanning = true;
+          panStartX = e.clientX;
+          zoomviewContainer.style.cursor = "grabbing";
+          window.addEventListener("mousemove", handlePanMove);
+          window.addEventListener("mouseup", handlePanEnd);
+          e.stopPropagation();
+          e.preventDefault();
+          return;
+        }
+
+        // Prevent Peaks.js default click handler from resetting zoom
+        e.stopPropagation();
+
+        // Store current zoom before interaction
+        if (!e.target.closest(".segment")) {
+          storeCurrentZoom();
+        }
+
+        // Only start drag if not clicking on existing segment
+        if (!e.target.closest(".segment")) {
+          const rect = zoomviewContainer.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const zoomview = peaks.views.getView("zoomview");
+
+          // Convert pixel position to time
+          let time;
+          try {
+            // Try to use Peaks.js API first
+            if (typeof zoomview.pixelsToTime === "function") {
+              time = zoomview.pixelsToTime(x);
+            } else {
+              throw new Error("pixelsToTime not available");
+            }
+          } catch (err) {
+            // Fallback: calculate from viewport offset
+            const width = zoomviewContainer.offsetWidth;
+            const duration = peaks.player.getDuration();
+            // Get visible time range from viewport
+            const startTime = zoomview.getStartTime();
+            const endTime = zoomview.getEndTime();
+            const visibleDuration = endTime - startTime;
+            const pixelsPerSecond = width / visibleDuration;
+            time = startTime + x / pixelsPerSecond;
+            addDebugLog(
+              "Using fallback calculation - startTime=" +
+                startTime +
+                ", x=" +
+                x +
+                ", time=" +
+                time.toFixed(2)
+            );
+          }
+
+          addDebugLog("mousedown at x=" + x + ", time=" + time.toFixed(2));
+
+          // Check if this is a drag (we'll know on mousemove) or just a click
+          isDragging = false;
+          dragStart = time;
+          dragStartX = x;
+
+          // Create a visual drag indicator
+          dragVisualizer = document.createElement("div");
+          dragVisualizer.style.cssText = `
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: ${x}px;
+            width: 0;
+            background: rgba(0, 123, 255, 0.3);
+            border-left: 2px solid #007bff;
+            border-right: 2px solid #007bff;
+            pointer-events: none;
+            z-index: 10;
+          `;
+          zoomviewContainer.style.position = "relative";
+          zoomviewContainer.appendChild(dragVisualizer);
+        }
       });
 
-      peaks.on("player.pause", () => {
-        addDebugLog("Peaks player.pause event fired - changing button to Play");
-        document.getElementById("playPauseBtn").innerHTML =
-          '<i class="bi bi-play-fill"></i> Play';
+      zoomviewContainer.addEventListener("mousemove", (e) => {
+        if (isPanning) {
+          e.preventDefault();
+          return;
+        }
+
+        if (dragStart !== null && dragStartX !== null) {
+          const rect = zoomviewContainer.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const zoomview = peaks.views.getView("zoomview");
+
+          // Convert current mouse position to time
+          let currentTime;
+          try {
+            if (typeof zoomview.pixelsToTime === "function") {
+              currentTime = zoomview.pixelsToTime(x);
+            } else {
+              throw new Error("pixelsToTime not available");
+            }
+          } catch (err) {
+            // Fallback calculation
+            const width = zoomviewContainer.offsetWidth;
+            const startTime = zoomview.getStartTime();
+            const endTime = zoomview.getEndTime();
+            const visibleDuration = endTime - startTime;
+            const pixelsPerSecond = width / visibleDuration;
+            currentTime = startTime + x / pixelsPerSecond;
+          }
+
+          // Update visual indicator
+          if (dragVisualizer) {
+            const left = Math.min(dragStartX, x);
+            const width = Math.abs(x - dragStartX);
+            dragVisualizer.style.left = left + "px";
+            dragVisualizer.style.width = width + "px";
+          }
+
+          // Mark as dragging if moved more than 5 pixels
+          if (Math.abs(x - dragStartX) > 5) {
+            isDragging = true;
+            e.preventDefault();
+
+            // Update or create temporary segment during drag
+            const segmentStart = Math.min(dragStart, currentTime);
+            const segmentEnd = Math.max(dragStart, currentTime);
+          }
+        }
       });
 
-      peaks.on("player.timeupdate", (time) => {
-        document.getElementById("currentTime").textContent = formatTime(time);
+      zoomviewContainer.addEventListener("mouseup", (e) => {
+        if (isPanning) {
+          // This is now fully handled by the global handlePanEnd
+          e.preventDefault();
+          return;
+        }
+
+        // Prevent Peaks.js default handlers
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (dragStart !== null && dragStartX !== null) {
+          const rect = zoomviewContainer.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const zoomview = peaks.views.getView("zoomview");
+
+          // Convert pixel position to time
+          let dragEnd;
+          try {
+            // Try to use Peaks.js API first
+            if (typeof zoomview.pixelsToTime === "function") {
+              dragEnd = zoomview.pixelsToTime(x);
+            } else {
+              throw new Error("pixelsToTime not available");
+            }
+          } catch (err) {
+            // Fallback: calculate from viewport offset
+            const width = zoomviewContainer.offsetWidth;
+            const duration = peaks.player.getDuration();
+            // Get visible time range from viewport
+            const startTime = zoomview.getStartTime();
+            const endTime = zoomview.getEndTime();
+            const visibleDuration = endTime - startTime;
+            const pixelsPerSecond = width / visibleDuration;
+            dragEnd = startTime + x / pixelsPerSecond;
+            addDebugLog("Using fallback calculation for dragEnd");
+          }
+
+          addDebugLog("mouseup at x=" + x + ", time=" + dragEnd.toFixed(2));
+
+          // Remove visual indicator
+          if (dragVisualizer) {
+            dragVisualizer.remove();
+            dragVisualizer = null;
+          }
+
+          if (isDragging && Math.abs(dragEnd - dragStart) > 0.5) {
+            // Drag complete, create the final segment now
+            const newSegment = peaks.segments.add({
+              startTime: Math.min(dragStart, dragEnd),
+              endTime: Math.max(dragStart, dragEnd),
+              labelText: "",
+              color: "#007bff",
+              editable: true
+            });
+            addDebugLog(`Segment created from drag with ID: ${newSegment.id}`);
+
+            // --- MANUAL AUTO-SELECTION ---
+            // Deselect any previously selected segment
+            if (selectedSegment) {
+              const oldAssignment = segmentSongMap[selectedSegment.id];
+              selectedSegment.update({ color: oldAssignment ? '#28a745' : '#007bff' });
+            }
+            // Select the new segment
+            selectedSegment = newSegment;
+            selectedSegment.update({ color: '#ffc107' }); // Highlight yellow
+            updateSelectedSegmentInfo();
+            updateSegmentList();
+            // --- END MANUAL AUTO-SELECTION ---
+
+          } else {
+            // This was a click, not a drag. Seek the playhead to the click time.
+            if (peaks && peaks.player) {
+              try {
+                peaks.player.seek(dragStart);
+                addDebugLog("Seeked playhead to: " + dragStart.toFixed(2));
+              } catch (err) {
+                addDebugLog("Error seeking playhead: " + err.message);
+                // Fallback to direct audio element seek
+                audioElement.currentTime = dragStart;
+              }
+            }
+
+          }
+
+          // Restore zoom after interaction
+          setTimeout(() => {
+            restoreZoomIfNeeded();
+          }, 100);
+
+          // Reset drag state
+          dragStart = null;
+          dragStartX = null;
+        }
+
+        // Always restore zoom after any interaction
+        if (currentZoomSeconds) {
+          setTimeout(() => {
+            restoreZoomIfNeeded();
+          }, 10);
+        }
       });
     }
 
@@ -629,12 +1068,13 @@
 
       let html = '<div class="list-group">';
       segments.forEach((segment, index) => {
-        const songId = segmentSongMap[segment.id];
-        const song = realSongs.find((s) => s.id === songId);
-        const songTitle = song ? song.title : "No song assigned";
+        const assignment = segmentSongMap[segment.id];
+        const songTitle = assignment
+          ? assignment.songTitle
+          : "No song assigned";
 
         html += `
-                  <div class="list-group-item d-flex justify-content-between align-items-center ${selectedSegment?.id === segment.id ? "active" : ""}">
+                  <div class="list-group-item d-flex justify-content-between align-items-center ${selectedSegment && selectedSegment.id === segment.id ? 'active' : ''}">
                       <div>
                           <strong>Segment ${index + 1}</strong><br>
                           <small class="text-muted">${formatTime(segment.startTime)} - ${formatTime(segment.endTime)}</small><br>
@@ -656,49 +1096,180 @@
       const infoDiv = document.getElementById("selectedSegmentInfo");
 
       if (!selectedSegment) {
-        infoDiv.innerHTML =
-          '<p class="mb-0 text-muted">No segment selected</p>';
+        infoDiv.innerHTML = '<p class="mb-0 text-muted">No segment selected</p>';
         return;
       }
 
-      const songId = segmentSongMap[selectedSegment.id];
-      const song = realSongs.find((s) => s.id === songId);
-      const songTitle = song ? song.title : "No song assigned";
+      const assignment = segmentSongMap[selectedSegment.id];
+      const songTitle = assignment ? `Assigned: ${assignment.songTitle}` : "No song assigned";
 
       infoDiv.innerHTML = `
-              <div class="mb-2">
-                  <strong>Segment Details:</strong><br>
-                  <small class="text-muted">${formatTime(selectedSegment.startTime)} - ${formatTime(selectedSegment.endTime)}</small><br>
-                  <small class="text-info">${songTitle}</small>
-              </div>
-              <div class="mb-2">
-                  <label class="form-label small">Assign Song:</label>
-                  <select class="form-select form-select-sm" onchange="assignSongToSegment('${selectedSegment.id}', this.value)">
-                      <option value="">Select a song...</option>
-                      ${realSongs.map((song) => `<option value="${song.id}">${song.title} - ${song.artist}</option>`).join("")}
-                  </select>
-              </div>
-          `;
+        <div class="mb-2">
+            <strong>Segment Details:</strong><br>
+            <small class="text-muted">${formatTime(selectedSegment.startTime)} - ${formatTime(selectedSegment.endTime)}</small><br>
+            <small class="text-info">${songTitle}</small>
+        </div>
+      `;
     }
 
     // Helper functions
-    function deleteSegment(segmentId) {
-      peaks.segments.removeSegment(segmentId);
-      delete segmentSongMap[segmentId];
-      updateSegmentList();
-      updateSelectedSegmentInfo();
-    }
+      function deleteSegment(segmentId) {
+        const segment = peaks.segments.getSegment(segmentId);
+        if (!segment) return;
 
-    function assignSongToSegment(segmentId, songId) {
-      if (!songId) return;
+        // If the segment had a song, make that song available again in the UI
+        const assignment = segmentSongMap[segmentId];
+        if (assignment) {
+          const songItem = document.querySelector(`[data-song-id="${assignment.songId}"]`);
+          if (songItem) {
+            songItem.style.display = 'block';
+          }
+        }
 
-      const song = realSongs.find((s) => s.id == songId);
-      if (song) {
-        segmentSongMap[segmentId] = song.id;
+        peaks.segments.removeById(segmentId);
+        delete segmentSongMap[segmentId];
+
+        if (selectedSegment && selectedSegment.id === segmentId) {
+          selectedSegment = null;
+        }
+
         updateSegmentList();
         updateSelectedSegmentInfo();
+        updateProcessButton();
+      }
+
+      function assignSongToSegment(segmentId, songId) {
+        const segment = peaks.segments.getSegment(segmentId);
+        const song = realSongs.find((s) => String(s.id) === String(songId));
+
+        if (!segment || !song) {
+          addDebugLog(`Assign failed: segment or song not found.`);
+          return;
+        }
+
+        // If this song is already assigned to a different segment, unassign it from the old one.
+        for (const [key, value] of Object.entries(segmentSongMap)) {
+          if (String(value.songId) === String(songId) && key !== segmentId) {
+            const oldSegment = peaks.segments.getSegment(key);
+            if (oldSegment) {
+              oldSegment.update({ labelText: '', color: '#007bff' });
+            }
+            delete segmentSongMap[key];
+
+            // Make the song visible again in the list before re-assigning
+            const oldSongItem = document.querySelector(`[data-song-id="${songId}"]`);
+            if (oldSongItem) {
+              oldSongItem.style.display = 'block';
+            }
+          }
+        }
+
+        // Store the new assignment
+        segmentSongMap[segmentId] = {
+          songId: song.id,
+          songTitle: song.title,
+          start: segment.startTime,
+          end: segment.endTime,
+        };
+
+        // Update the segment on the waveform
+        segment.update({
+          labelText: song.title,
+          color: "#28a745", // Green for assigned
+        });
+
+        // Visually hide the song from the "Available" list
+        const songItem = document.querySelector(`[data-song-id="${song.id}"]`);
+        if (songItem) {
+          songItem.style.display = 'none';
+        }
+
+        // Deselect segment after successful assignment for a smoother workflow
+        selectedSegment = null;
+
+        // Update all UI elements
+        updateSegmentList();
+        updateSelectedSegmentInfo();
+        updateProcessButton();
+
+        addDebugLog(`Assigned ${song.title} to segment ${segment.id}`);
+      }
+
+    // Update process button state
+    function updateProcessButton() {
+      const btn = document.getElementById("processSplitsBtn");
+      const statusText = document.getElementById("processSplitsStatus");
+      const assignedCount = Object.keys(segmentSongMap).length;
+      const undoBtn = document.getElementById('undoBtn');
+
+      if (peaks && peaks.segments.getSegments().length > 0) {
+        undoBtn.disabled = false;
+      } else {
+        undoBtn.disabled = true;
+      }
+
+      if (assignedCount > 0) {
+        btn.disabled = false;
+        if (statusText) {
+          statusText.textContent = `${assignedCount} song(s) ready to process`;
+        }
+      } else {
+        btn.disabled = true;
+        if (statusText) {
+          statusText.textContent =
+            "Assign songs to segments to enable processing";
+        }
       }
     }
+
+    // Process splits button handler
+    document
+      .getElementById("processSplitsBtn")
+      .addEventListener("click", async function () {
+        if (Object.keys(segmentSongMap).length === 0) {
+          alert("Please assign songs to segments first");
+          return;
+        }
+
+        const splits = Object.values(segmentSongMap).map((assignment) => ({
+          songId: assignment.songId,
+          songTitle: assignment.songTitle,
+          start: Math.floor(assignment.start),
+          end: Math.floor(assignment.end),
+          duration: Math.floor(assignment.end - assignment.start),
+        }));
+
+        // Show loading
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+
+        try {
+          const response = await fetch(
+            "/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/process",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ splits }),
+            }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            alert(`Successfully split ${splits.length} songs!`);
+            window.location.href =
+              "/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings";
+          } else {
+            throw new Error("Failed to process splits");
+          }
+        } catch (error) {
+          console.error("Processing error:", error);
+          alert("Failed to process splits. Please try again.");
+          this.disabled = false;
+          this.innerHTML = '<i class="bi bi-scissors"></i> Process Splits';
+        }
+      });
 
     function formatTime(seconds) {
       if (!seconds || isNaN(seconds)) return "0:00";
@@ -716,5 +1287,19 @@
           `;
       document.body.insertBefore(alertDiv, document.body.firstChild);
     }
+
+    document.addEventListener('keydown', (e) => {
+      // Ignore keyboard shortcuts if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        undoLastRegion();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        document.getElementById('playPauseBtn').click();
+      }
+    });
   });
 </script>

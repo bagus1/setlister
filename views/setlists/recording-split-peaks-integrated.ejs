@@ -54,10 +54,16 @@
               top: 5px;
               left: 5px;
               color: white;
-              background-color: rgba(0, 0, 0, 0.5);
-              padding: 2px 5px;
+              background-color: rgba(
+                0,
+                0,
+                0,
+                0.6
+              ); /* Slightly darker for better contrast */
+              padding: 3px 6px;
               border-radius: 3px;
               font-size: 12px;
+              font-weight: 600; /* Bolder text */
               pointer-events: none; /* Allows clicks to pass through to the segment */
               white-space: nowrap;
               overflow: hidden;
@@ -65,6 +71,8 @@
               max-width: calc(
                 100% - 10px
               ); /* Prevent label from overflowing the segment */
+              opacity: 1 !important; /* Force the label to be visible */
+              transition: none !important; /* Disable any fade transitions */
             }
           </style>
 
@@ -286,7 +294,7 @@
     // Add visual debugging instead of console logs
     const debugDiv = document.createElement("div");
     debugDiv.style.cssText =
-      "position: fixed; top: 10px; right: 10px; background: #000; color: #fff; padding: 10px; z-index: 9999; font-family: monospace; font-size: 12px; max-width: 300px; max-height: 400px; overflow-y: auto; border: 1px solid #333;";
+      "position: fixed; top: 10px; right: 10px; background: #000; color: #fff; padding: 10px; z-index: 9999; font-family: monospace; font-size: 12px; max-width: 300px; max-height: 200px; overflow-y: auto; border: 1px solid #333;";
     debugDiv.innerHTML = "<div>JavaScript loaded</div>";
     document.body.appendChild(debugDiv);
 
@@ -412,7 +420,13 @@
       }
     }
 
+    let peaksInitialized = false;
+
     function initializePeaksWithAudio() {
+      if (peaksInitialized) {
+        addDebugLog("Peaks.js already initialized - skipping re-initialization");
+        return;
+      }
       addDebugLog("Starting Peaks.js initialization...");
 
       const overviewContainer = document.getElementById("overview-container");
@@ -577,6 +591,7 @@
         peaks = p;
         console.log("Peaks.js initialized successfully");
         addDebugLog("Peaks.js initialized successfully!");
+        peaksInitialized = true; // Mark as initialized to prevent re-initialization
         addDebugLog("Peaks instance: " + typeof peaks);
         addDebugLog("Peaks player: " + typeof peaks.player);
         addDebugLog("Peaks zoom: " + typeof peaks.zoom);
@@ -978,8 +993,8 @@
           isResizing = false;
           resizeSegment = null;
           resizeEdge = null;
-        } else if (tempSegment) {
-          // Remove the temp segment and create a permanent one
+        } else if (isDragging && tempSegment) {
+          // Only create permanent segment if we actually dragged
           const startTime = tempSegment.startTime;
           const endTime = tempSegment.endTime;
 
@@ -1013,6 +1028,17 @@
             // This was a click, not a drag. Seek the playhead.
             peaks.player.seek(dragStart);
             addDebugLog("Seeked playhead to: " + dragStart.toFixed(2));
+        }
+
+        // Always clean up temp segment if it exists but wasn't converted
+        if (tempSegment) {
+          try {
+            peaks.segments.removeById('temp-drag-segment');
+            addDebugLog("Cleaned up leftover temp segment");
+          } catch (err) {
+            // Ignore if already removed
+          }
+          tempSegment = null;
         }
 
         // Restore zoom after interaction

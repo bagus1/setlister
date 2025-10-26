@@ -47,6 +47,27 @@
           </div>
         </div>
         <div class="card-body">
+          <!-- Add custom styles for segment labels -->
+          <style>
+            .peaks-segment-label {
+              position: absolute;
+              top: 5px;
+              left: 5px;
+              color: white;
+              background-color: rgba(0, 0, 0, 0.5);
+              padding: 2px 5px;
+              border-radius: 3px;
+              font-size: 12px;
+              pointer-events: none; /* Allows clicks to pass through to the segment */
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              max-width: calc(
+                100% - 10px
+              ); /* Prevent label from overflowing the segment */
+            }
+          </style>
+
           <!-- Loading Progress -->
           <div id="loadingProgress" class="text-center mb-3">
             <div class="spinner-border text-primary" role="status">
@@ -513,10 +534,19 @@
           showSegmentLabels: true
         },
         mediaElement: audioElement,
-        // Use pre-computed waveform data for long files (56+ minutes)
+        // Use pre-computed waveform data if available
+        <% if (recording.waveformPath) { %>
         dataUri: {
-          arraybuffer: "/uploads/recordings/1761414671545_first.dat",
+          arraybuffer: "<%= recording.waveformPath %>"
         },
+        <% } else { %>
+        // Fallback to generating waveform in the browser
+        webAudio: {
+          audioContext: new (window.AudioContext || window.webkitAudioContext)(),
+          scale: 512,
+          multiChannel: false
+        },
+        <% } %>
         segments: [],
         // Disable default keyboard shortcuts that might interfere
         keyboard: false,
@@ -545,9 +575,15 @@
         // Debug audio duration
         addDebugLog("Audio element duration: " + audioElement.duration);
         addDebugLog("Peaks player duration: " + peaks.player.getDuration());
+        <% if (recording.waveformPath) { %>
         addDebugLog(
-          "Using pre-computed waveform data: /uploads/recordings/1761414671545_first.dat"
+          "Using pre-computed waveform data: <%= recording.waveformPath %>"
         );
+        <% } else { %>
+        addDebugLog(
+          "No pre-computed waveform data found. Using Web Audio API."
+        );
+        <% } %>
 
         // Hide loading progress
 

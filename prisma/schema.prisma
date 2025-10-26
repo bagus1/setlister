@@ -44,7 +44,7 @@ model User {
   opportunities  Opportunity[]
   venueChangesSuggested VenueChange[] @relation("VenueChangeSuggestedBy")
   venueChangesReviewed VenueChange[] @relation("VenueChangeReviewedBy")
-  recordings     Recording[]      @relation("Recordings")
+  recordings     Recording[]      @relation("RecordingCreator")
   photos         UserPhoto[]
   subscription   UserSubscription?
 
@@ -844,20 +844,30 @@ model VenueChange {
 // Full set recording from a gig/rehearsal
 model Recording {
   id                  Int       @id @default(autoincrement())
-  createdAt           DateTime  @default(now())
+  setlistId           Int       @map("setlist_id")
   setlist             Setlist   @relation(fields: [setlistId], references: [id], onDelete: Cascade)
-  setlistId           Int
-  filePath            String
-  fileSize            BigInt?
-  duration            Int
-  format              String
-  isProcessed         Boolean   @default(false)
-  creator             User      @relation("Recordings", fields: [createdById], references: [id])
-  createdById         Int
+  
+  filePath            String    @db.VarChar(500) @map("file_path")
+  fileSize            BigInt?   @map("file_size")  // In bytes
+  duration            Int       // Total duration in seconds
+  format              String    @default("webm") @db.VarChar(10)
+  
+  createdById         Int       @map("created_by_id")
+  creator             User      @relation("RecordingCreator", fields: [createdById], references: [id])
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  isProcessed         Boolean   @default(false) @map("is_processed")
+  processedAt         DateTime? @map("processed_at") @db.Timestamptz(6)
+  
   splits              RecordingSplit[]
-  waveformStatus      String?   @default("pending")
-  waveformPath        String?
-  waveformGeneratedAt DateTime?
+  
+  waveformStatus      String?   @default("pending") @map("waveform_status")
+  waveformPath        String?   @map("waveform_path") @db.VarChar(500)
+  waveformGeneratedAt DateTime? @map("waveform_generated_at") @db.Timestamptz(6)
+
+  @@map("recordings")
+  @@index([setlistId])
+  @@index([createdById])
 }
 
 // Individual song extracted from a recording

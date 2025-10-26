@@ -625,7 +625,7 @@
         );
 
         // CRITICAL: Disable Peaks.js's built-in drag-to-scroll by making ALL canvases non-interactive
-        // Our container-level handlers will still work
+        // We'll handle segment editing through Peaks.js API instead
         setTimeout(() => {
           const allCanvases = zoomviewContainer.querySelectorAll('canvas');
           addDebugLog("Found " + allCanvases.length + " canvas elements in zoomview");
@@ -633,7 +633,6 @@
             canvas.style.pointerEvents = 'none';
             addDebugLog("Disabled pointer events on canvas " + index);
           });
-          // Also disable on the konva container if it exists
           const konvaContainer = zoomviewContainer.querySelector('.konvajs-content');
           if (konvaContainer) {
             konvaContainer.style.pointerEvents = 'none';
@@ -849,13 +848,68 @@
       let panStartX = null;
       let tempSegment = null;
       let isPreparingToDrag = false;
+      let isResizing = false;
+      let resizeSegment = null;
+      let resizeEdge = null; // 'start' or 'end'
+
+      // Helper function to check if clicking near a segment edge
+      function findSegmentEdgeAtTime(time, tolerance = 2) {
+        const segments = peaks.segments.getSegments();
+        for (const segment of segments) {
+          const startDiff = Math.abs(segment.startTime - time);
+          const endDiff = Math.abs(segment.endTime - time);
+
+          if (startDiff < tolerance) {
+            return { segment, edge: 'start' };
+          } else if (endDiff < tolerance) {
+            return { segment, edge: 'end' };
+          }
+        }
+        return null;
+      }
+
+      // Helper function to find segment at a given time (for selection)
+      function findSegmentAtTime(time) {
+        const segments = peaks.segments.getSegments();
+        for (const segment of segments) {
+          if (time >= segment.startTime && time <= segment.endTime) {
+            return segment;
+          }
+        }
+        return null;
+      }
 
       // Define drag handlers before they're referenced
       const handleDragMove = (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if (dragStart !== null) {
+        if (isResizing && resizeSegment) {
+          // Handle segment resizing
+          isDragging = true;
+          const rect = zoomviewContainer.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const zoomview = peaks.views.getView("zoomview");
+
+          const startTime = zoomview.getStartTime();
+          const endTime = zoomview.getEndTime();
+          const visibleDuration = endTime - startTime;
+          const width = zoomviewContainer.offsetWidth;
+          const currentTime = startTime + (x / width) * visibleDuration;
+
+          // Update the segment's start or end time
+          if (resizeEdge === 'start') {
+            if (currentTime < resizeSegment.endTime) {
+              resizeSegment.update({ startTime: currentTime });
+            }
+          } else if (resizeEdge === 'end') {
+            if (currentTime > resizeSegment.startTime) {
+              resizeSegment.update({ endTime: currentTime });
+            }
+          }
+
+        } else if (dragStart !== null) {
+          // Handle new segment creation
           isDragging = true;
           const rect = zoomviewContainer.getBoundingClientRect();
           const x = e.clientX - rect.left;
@@ -912,11 +966,19 @@
       };
 
       const handleDragEnd = (e) => {
-        addDebugLog("handleDragEnd called. isDragging: " + isDragging + ", tempSegment: " + (tempSegment ? tempSegment.id : "null") + ", dragStart: " + dragStart);
+        addDebugLog("handleDragEnd called. isDragging: " + isDragging + ", isResizing: " + isResizing + ", tempSegment: " + (tempSegment ? tempSegment.id : "null") + ", dragStart: " + dragStart);
         window.removeEventListener('mousemove', handleDragMove);
         window.removeEventListener('mouseup', handleDragEnd);
 
-        if (tempSegment) {
+        if (isResizing && resizeSegment) {
+          // Resize complete
+          addDebugLog(`Finished resizing segment ${resizeSegment.id}`);
+          zoomviewContainer.style.cursor = 'default';
+          updateSegmentList();
+          isResizing = false;
+          resizeSegment = null;
+          resizeEdge = null;
+        } else if (tempSegment) {
           // Remove the temp segment and create a permanent one
           const startTime = tempSegment.startTime;
           const endTime = tempSegment.endTime;
@@ -1021,34 +1083,63 @@
         // Store current zoom before interaction
         storeCurrentZoom();
 
-        // Start segment creation drag
-        {
-          const rect = zoomviewContainer.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const zoomview = peaks.views.getView("zoomview");
+        // Calculate click position and time
+        const rect = zoomviewContainer.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const zoomview = peaks.views.getView("zoomview");
 
-          // Convert pixel position to time
-          // Since we disabled pointer events on canvas, we must calculate manually
-          const startTime = zoomview.getStartTime();
-          const endTime = zoomview.getEndTime();
-          const visibleDuration = endTime - startTime;
-          const width = zoomviewContainer.offsetWidth;
+        // Convert pixel position to time
+        const startTime = zoomview.getStartTime();
+        const endTime = zoomview.getEndTime();
+        const visibleDuration = endTime - startTime;
+        const width = zoomviewContainer.offsetWidth;
+        const time = startTime + (x / width) * visibleDuration;
 
-          // Manual calculation: startTime + (pixelOffset / totalWidth) * visibleDuration
-          const time = startTime + (x / width) * visibleDuration;
+        addDebugLog(`Visible range: ${startTime.toFixed(2)}s - ${endTime.toFixed(2)}s, clicked at x=${x}, calculated time=${time.toFixed(2)}s`);
 
-          addDebugLog(`Visible range: ${startTime.toFixed(2)}s - ${endTime.toFixed(2)}s, clicked at x=${x}, calculated time=${time.toFixed(2)}s`);
+        // Check if clicking near a segment edge for resizing
+        const edgeInfo = findSegmentEdgeAtTime(time);
 
-          addDebugLog("mousedown at x=" + x + ", time=" + time.toFixed(2));
-
-          isPreparingToDrag = true; // Set flag to prepare for drag
+        if (edgeInfo) {
+          // Start resizing
+          addDebugLog(`Starting resize of segment ${edgeInfo.segment.id} on ${edgeInfo.edge} edge`);
+          isResizing = true;
+          resizeSegment = edgeInfo.segment;
+          resizeEdge = edgeInfo.edge;
           isDragging = false;
-          dragStart = time;
-          dragStartX = x;
-
-          // Add temporary listeners for dragging
+          dragStart = null;
+          zoomviewContainer.style.cursor = 'ew-resize';
           window.addEventListener('mousemove', handleDragMove);
           window.addEventListener('mouseup', handleDragEnd);
+        } else {
+          // Check if clicking inside a segment (for selection)
+          const clickedSegment = findSegmentAtTime(time);
+
+          if (clickedSegment) {
+            // Select the segment
+            addDebugLog(`Selecting segment ${clickedSegment.id}`);
+
+            // Deselect previous segment
+            if (selectedSegment) {
+              const oldAssignment = segmentSongMap[selectedSegment.id];
+              selectedSegment.update({ color: oldAssignment ? '#28a745' : '#007bff' });
+            }
+
+            // Select new segment
+            selectedSegment = clickedSegment;
+            selectedSegment.update({ color: '#ffc107' }); // Highlight yellow
+            updateSelectedSegmentInfo();
+            updateSegmentList();
+          } else {
+            // Start segment creation (clicked on empty waveform)
+            addDebugLog("mousedown at x=" + x + ", time=" + time.toFixed(2));
+            isPreparingToDrag = true;
+            isDragging = false;
+            dragStart = time;
+            dragStartX = x;
+            window.addEventListener('mousemove', handleDragMove);
+            window.addEventListener('mouseup', handleDragEnd);
+          }
         }
       });
     }

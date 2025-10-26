@@ -248,12 +248,18 @@
           <h5 class="mb-0"><i class="bi bi-list-music"></i> Song Assignment</h5>
         </div>
         <div class="card-body">
-          <div id="segmentsList" class="mb-3">
-            <p class="text-muted">
-              No segments created yet. Drag on the waveform to create segments.
-            </p>
+          <!-- Selected Segment - Moved to top -->
+          <div class="mb-3">
+            <h6>Selected Segment:</h6>
+            <div
+              id="selectedSegmentInfo"
+              class="p-2 border rounded bg-dark text-light"
+            >
+              <p class="mb-0">No segment selected</p>
+            </div>
           </div>
 
+          <!-- Available Songs -->
           <div class="mb-3">
             <h6>Available Songs:</h6>
             <div id="songsList" class="list-group">
@@ -261,15 +267,15 @@
             </div>
           </div>
 
+          <!-- Segments List - Moved below songs -->
           <div class="mb-3">
-            <h6>Selected Segment:</h6>
-            <div id="selectedSegmentInfo" class="alert alert-light">
-              <p class="mb-0 text-muted">No segment selected</p>
+            <h6>Segments Assigned:</h6>
+            <div id="segmentsList">
+              <p class="text-muted">
+                No segments created yet. Drag on the waveform to create
+                segments.
+              </p>
             </div>
-          </div>
-
-          <div class="mt-4">
-            <!-- This button is now in the main panel -->
           </div>
         </div>
       </div>
@@ -305,11 +311,6 @@
       console.log(message); // Still try console
     }
 
-    // Check if libraries are loaded
-    addDebugLog("Checking libraries...");
-    addDebugLog("Peaks available: " + typeof Peaks);
-    addDebugLog("window.peaks available: " + typeof window.peaks);
-
     let peaks = null;
     let selectedSegment = null;
     const segmentSongMap = {};
@@ -333,14 +334,9 @@
     const audioElement = document.getElementById("audio");
     const recordingPath = window.location.origin + "<%= recording.filePath %>";
 
-    addDebugLog("Loading recording: " + recordingPath);
-    addDebugLog("Audio element found: " + (audioElement ? "Yes" : "No"));
     audioElement.src = recordingPath;
 
     // Add audio event listeners for debugging
-    audioElement.addEventListener("canplay", () => {
-      addDebugLog("Audio can play - duration: " + audioElement.duration);
-    });
     audioElement.addEventListener("error", (e) => {
       addDebugLog("Audio error: " + e.message);
     });
@@ -394,27 +390,14 @@
       const overviewContainer = document.getElementById("overview-container");
       const zoomviewContainer = document.getElementById("zoomview-container");
 
-      console.log("Initializing Peaks.js...");
-      console.log("Overview container:", overviewContainer);
-      console.log("Zoomview container:", zoomviewContainer);
-      console.log("Audio element:", audioElement);
-      console.log("Peaks available:", typeof Peaks);
-
       addDebugLog("Initializing Peaks.js...");
 
       // Check if audio is already ready, or wait for it
       if (audioElement.readyState >= 3) {
         // HAVE_FUTURE_DATA or higher
-        addDebugLog("Audio already ready, initializing Peaks immediately");
         initializePeaksWithAudio();
       } else {
-        addDebugLog("Audio not ready, waiting for canplay event");
         audioElement.addEventListener("canplay", () => {
-          addDebugLog(
-            "Audio can play event fired - readyState: " +
-              audioElement.readyState
-          );
-          addDebugLog("Audio duration: " + audioElement.duration);
           initializePeaksWithAudio();
         });
       }
@@ -449,60 +432,7 @@
       //   const PeaksLib = window.peaks || window.Peaks;
       //   addDebugLog("Using PeaksLib: " + typeof PeaksLib);
 
-      // Debug container elements
-      addDebugLog(
-        "Overview container type: " + overviewContainer.constructor.name
-      );
-      addDebugLog("Overview container tagName: " + overviewContainer.tagName);
-      addDebugLog(
-        "Zoomview container type: " + zoomviewContainer.constructor.name
-      );
-      addDebugLog("Zoomview container tagName: " + zoomviewContainer.tagName);
-      addDebugLog("Audio element type: " + audioElement.constructor.name);
-
-      // Show the actual HTML content of containers
-      addDebugLog(
-        "Overview container HTML: " +
-          overviewContainer.outerHTML.substring(0, 100) +
-          "..."
-      );
-      addDebugLog(
-        "Zoomview container HTML: " +
-          zoomviewContainer.outerHTML.substring(0, 100) +
-          "..."
-      );
-      addDebugLog(
-        "Audio element HTML: " +
-          audioElement.outerHTML.substring(0, 100) +
-          "..."
-      );
-
-      // Show container dimensions and visibility
-      addDebugLog(
-        "Overview dimensions: " +
-          overviewContainer.offsetWidth +
-          "x" +
-          overviewContainer.offsetHeight
-      );
-      addDebugLog(
-        "Zoomview dimensions: " +
-          zoomviewContainer.offsetWidth +
-          "x" +
-          zoomviewContainer.offsetHeight
-      );
-      addDebugLog(
-        "Overview visible: " +
-          (overviewContainer.offsetWidth > 0 &&
-            overviewContainer.offsetHeight > 0)
-      );
-      addDebugLog(
-        "Zoomview visible: " +
-          (zoomviewContainer.offsetWidth > 0 &&
-            zoomviewContainer.offsetHeight > 0)
-      );
-
       // Fix container dimensions - ensure they have width and are visible
-      addDebugLog("Fixing container dimensions...");
       overviewContainer.style.width = "100%";
       overviewContainer.style.minHeight = "100px";
       overviewContainer.style.display = "block";
@@ -510,26 +440,8 @@
       zoomviewContainer.style.minHeight = "200px";
       zoomviewContainer.style.display = "block";
 
-      // Check dimensions again after fixing
-      addDebugLog(
-        "After fix - Overview dimensions: " +
-          overviewContainer.offsetWidth +
-          "x" +
-          overviewContainer.offsetHeight
-      );
-      addDebugLog(
-        "After fix - Zoomview dimensions: " +
-          zoomviewContainer.offsetWidth +
-          "x" +
-          zoomviewContainer.offsetHeight
-      );
-
-      // Call Peaks.js immediately - no setTimeout delay
-      addDebugLog("Attempting Peaks.js initialization...");
-
       // Use the working approach from prototype2
       const PeaksLib = window.peaks || window.Peaks;
-      addDebugLog("Using PeaksLib: " + typeof PeaksLib);
 
       const options = {
         overview: {
@@ -592,30 +504,11 @@
         console.log("Peaks.js initialized successfully");
         addDebugLog("Peaks.js initialized successfully!");
         peaksInitialized = true; // Mark as initialized to prevent re-initialization
-        addDebugLog("Peaks instance: " + typeof peaks);
-        addDebugLog("Peaks player: " + typeof peaks.player);
-        addDebugLog("Peaks zoom: " + typeof peaks.zoom);
-
-        // Debug audio duration
-        addDebugLog("Audio element duration: " + audioElement.duration);
-        addDebugLog("Peaks player duration: " + peaks.player.getDuration());
-        <% if (recording.waveformPath) { %>
-        addDebugLog(
-          "Using pre-computed waveform data: <%= recording.waveformPath %>"
-        );
-        <% } else { %>
-        addDebugLog(
-          "No pre-computed waveform data found. Using Web Audio API."
-        );
-        <% } %>
-
-        // Hide loading progress
 
         // Hide loading progress and show waveform
         document.getElementById("loadingProgress").style.display = "none";
         overviewContainer.style.display = "block";
         zoomviewContainer.style.display = "block";
-        addDebugLog("Waveform containers shown");
 
         // Set up controls
         setupControls();
@@ -643,15 +536,12 @@
         // We'll handle segment editing through Peaks.js API instead
         setTimeout(() => {
           const allCanvases = zoomviewContainer.querySelectorAll('canvas');
-          addDebugLog("Found " + allCanvases.length + " canvas elements in zoomview");
-          allCanvases.forEach((canvas, index) => {
+          allCanvases.forEach((canvas) => {
             canvas.style.pointerEvents = 'none';
-            addDebugLog("Disabled pointer events on canvas " + index);
           });
           const konvaContainer = zoomviewContainer.querySelector('.konvajs-content');
           if (konvaContainer) {
             konvaContainer.style.pointerEvents = 'none';
-            addDebugLog("Disabled pointer events on konva container");
           }
         }, 100);
 
@@ -670,7 +560,6 @@
     let controlsSetup = false;
     function setupControls() {
       if (controlsSetup) {
-        addDebugLog("Controls already setup - skipping");
         return;
       }
       controlsSetup = true;
@@ -765,7 +654,6 @@
     let segmentEventsSetup = false;
     function setupSegmentEvents() {
       if (segmentEventsSetup) {
-        addDebugLog("Segment events already setup - skipping");
         return;
       }
       segmentEventsSetup = true;
@@ -774,7 +662,6 @@
       peaks.on("segments.add", (segment) => {
         // This event is for segments created via the UI, which we have customized.
         // The main logic is now handled manually after creation.
-        addDebugLog("peaks.on segments.add fired.");
       });
 
       // Update time display using native audio element
@@ -951,17 +838,14 @@
                 color: 'rgba(0, 123, 255, 0.3)',
                 editable: false
               });
-              addDebugLog("peaks.segments.add returned type: " + typeof result + ", isArray: " + Array.isArray(result) + ", keys: " + (result ? Object.keys(result).join(',') : 'N/A'));
 
               // Handle both array and single object return types
               if (Array.isArray(result) && result.length > 0) {
                 tempSegment = result[0];
-                addDebugLog("Created temp drag segment from array, ID: " + tempSegment.id);
               } else if (result && typeof result === 'object' && result.id) {
                 tempSegment = result;
-                addDebugLog("Created temp drag segment directly, ID: " + tempSegment.id);
               } else {
-                addDebugLog("peaks.segments.add returned unexpected format");
+                addDebugLog("Error: peaks.segments.add returned unexpected format");
               }
             } catch (err) {
               addDebugLog("Error creating temp segment: " + err.message);
@@ -981,13 +865,11 @@
       };
 
       const handleDragEnd = (e) => {
-        addDebugLog("handleDragEnd called. isDragging: " + isDragging + ", isResizing: " + isResizing + ", tempSegment: " + (tempSegment ? tempSegment.id : "null") + ", dragStart: " + dragStart);
         window.removeEventListener('mousemove', handleDragMove);
         window.removeEventListener('mouseup', handleDragEnd);
 
         if (isResizing && resizeSegment) {
           // Resize complete
-          addDebugLog(`Finished resizing segment ${resizeSegment.id}`);
           zoomviewContainer.style.cursor = 'default';
           updateSegmentList();
           isResizing = false;
@@ -998,11 +880,8 @@
           const startTime = tempSegment.startTime;
           const endTime = tempSegment.endTime;
 
-          addDebugLog(`Creating final segment: ${startTime.toFixed(2)}s - ${endTime.toFixed(2)}s`);
-
           // Remove the temporary segment
           peaks.segments.removeById('temp-drag-segment');
-          addDebugLog('Removed temp segment');
 
           // Create the final permanent segment
           const result = peaks.segments.add({
@@ -1013,17 +892,14 @@
             editable: true
           });
 
-          addDebugLog(`peaks.segments.add result type: ${typeof result}, isArray: ${Array.isArray(result)}`);
-
           const finalSegment = Array.isArray(result) ? result[0] : result;
-          addDebugLog(`finalSegment: ${finalSegment ? finalSegment.id : 'NULL'}`);
 
           if (!finalSegment) {
-            addDebugLog('ERROR: finalSegment is null/undefined!');
+            addDebugLog('ERROR: Failed to create segment!');
             return;
           }
 
-          addDebugLog(`Segment created from drag with ID: ${finalSegment.id}`);
+          addDebugLog(`Created segment: ${startTime.toFixed(2)}s - ${endTime.toFixed(2)}s`);
 
           // Auto-select the new segment
           if (selectedSegment) {
@@ -1032,7 +908,6 @@
           }
           selectedSegment = finalSegment;
           selectedSegment.update({ color: '#ffc107' });
-          addDebugLog(`Auto-selected new segment: ${finalSegment.id}`);
           updateSelectedSegmentInfo();
           updateSegmentList();
 
@@ -1041,7 +916,6 @@
         } else if (dragStart !== null && !isDragging) {
             // This was a click, not a drag. Seek the playhead.
             peaks.player.seek(dragStart);
-            addDebugLog("Seeked playhead to: " + dragStart.toFixed(2));
         }
 
         // Always clean up temp segment if it exists but wasn't converted
@@ -1092,11 +966,9 @@
       // Prevent overview clicks from resetting zoom
       const overviewContainer = document.getElementById("overview-container");
       overviewContainer.addEventListener("mousedown", (e) => {
-        addDebugLog("Overview mousedown detected. Storing zoom.");
         storeCurrentZoom();
         // Use a timeout to restore the zoom after Peaks.js has finished its default action
         setTimeout(() => {
-          addDebugLog("Overview timeout fired. Restoring zoom.");
           restoreZoomIfNeeded();
         }, 50);
       });
@@ -1135,14 +1007,11 @@
         const width = zoomviewContainer.offsetWidth;
         const time = startTime + (x / width) * visibleDuration;
 
-        addDebugLog(`Visible range: ${startTime.toFixed(2)}s - ${endTime.toFixed(2)}s, clicked at x=${x}, calculated time=${time.toFixed(2)}s`);
-
         // Check if clicking near a segment edge for resizing
         const edgeInfo = findSegmentEdgeAtTime(time);
 
         if (edgeInfo) {
           // Start resizing
-          addDebugLog(`Starting resize of segment ${edgeInfo.segment.id} on ${edgeInfo.edge} edge`);
           isResizing = true;
           resizeSegment = edgeInfo.segment;
           resizeEdge = edgeInfo.edge;
@@ -1157,8 +1026,6 @@
 
           if (clickedSegment) {
             // Select the segment
-            addDebugLog(`Selecting segment ${clickedSegment.id}`);
-
             // Deselect previous segment
             if (selectedSegment) {
               const oldAssignment = segmentSongMap[selectedSegment.id];
@@ -1172,7 +1039,6 @@
             updateSegmentList();
           } else {
             // Start segment creation (clicked on empty waveform)
-            addDebugLog("mousedown at x=" + x + ", time=" + time.toFixed(2));
             isPreparingToDrag = true;
             isDragging = false;
             dragStart = time;
@@ -1225,7 +1091,7 @@
       const infoDiv = document.getElementById("selectedSegmentInfo");
 
       if (!selectedSegment) {
-        infoDiv.innerHTML = '<p class="mb-0 text-muted">No segment selected</p>';
+        infoDiv.innerHTML = '<p class="mb-0">No segment selected</p>';
         return;
       }
 
@@ -1233,10 +1099,9 @@
       const songTitle = assignment ? `Assigned: ${assignment.songTitle}` : "No song assigned";
 
       infoDiv.innerHTML = `
-        <div class="mb-2">
-            <strong>Segment Details:</strong><br>
-            <small class="text-muted">${formatTime(selectedSegment.startTime)} - ${formatTime(selectedSegment.endTime)}</small><br>
-            <small class="text-info">${songTitle}</small>
+        <div>
+            <div>${formatTime(selectedSegment.startTime)} - ${formatTime(selectedSegment.endTime)}</div>
+            <div class="small text-info">${songTitle}</div>
         </div>
       `;
     }
@@ -1266,6 +1131,23 @@
         updateSelectedSegmentInfo();
         updateProcessButton();
       }
+
+      function undoLastRegion() {
+        const segments = peaks.segments.getSegments();
+        if (segments.length === 0) {
+          addDebugLog("No segments to undo");
+          return;
+        }
+
+        // Remove the last segment
+        const lastSegment = segments[segments.length - 1];
+        deleteSegment(lastSegment.id);
+        addDebugLog(`Removed last segment: ${lastSegment.id}`);
+      }
+
+      // Make functions globally accessible for onclick handlers
+      window.deleteSegment = deleteSegment;
+      window.undoLastRegion = undoLastRegion;
 
       function assignSongToSegment(segmentId, songId) {
         const segment = peaks.segments.getSegment(segmentId);

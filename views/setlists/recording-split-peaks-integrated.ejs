@@ -267,6 +267,31 @@
             </div>
           </div>
 
+          <!-- Add New Song -->
+          <div class="mb-3">
+            <div class="alert alert-light mb-0">
+              <strong><i class="bi bi-music-note"></i> Add new song</strong>
+              <p class="small mb-2">
+                If you played a song that wasn't in the setlist (encore, jam,
+                etc.), add it here:
+              </p>
+              <div class="input-group input-group-sm">
+                <input
+                  type="text"
+                  id="unlistedSongTitle"
+                  class="form-control"
+                  placeholder="Enter song title..."
+                />
+                <button
+                  onclick="addUnlistedSong()"
+                  class="btn btn-outline-primary"
+                >
+                  <i class="bi bi-plus"></i> Add & Assign
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Segments List - Moved below songs -->
           <div class="mb-3">
             <h6>Segments Assigned:</h6>
@@ -1145,9 +1170,89 @@
         addDebugLog(`Removed last segment: ${lastSegment.id}`);
       }
 
+      // Add unlisted song
+      async function addUnlistedSong() {
+        const titleInput = document.getElementById('unlistedSongTitle');
+        const songTitle = titleInput.value.trim();
+
+        if (!songTitle) {
+          alert('Please enter a song title');
+          return;
+        }
+
+        if (!selectedSegment) {
+          alert('Please select a segment on the waveform first');
+          return;
+        }
+
+        try {
+          // Add song to band
+          const response = await fetch('/bands/<%= setlist.band.id %>/songs/quick-add', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title: songTitle })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to add song');
+          }
+
+          const result = await response.json();
+
+          // Add to realSongs array
+          const newSong = {
+            id: result.songId,
+            title: songTitle,
+            artist: 'Unknown'
+          };
+          realSongs.push(newSong);
+
+          // Add to UI
+          const songIndex = realSongs.length;
+          const div = document.createElement("div");
+          div.className = "song-item mb-2 p-2 border rounded";
+          div.setAttribute("data-song-id", newSong.id);
+          div.setAttribute("data-song-index", songIndex);
+          div.setAttribute("data-song-title", newSong.title);
+          div.style.cssText = "cursor: pointer; transition: background 0.2s;";
+          div.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${songIndex}. ${newSong.title}</strong>
+                <div class="small text-muted">${newSong.artist}</div>
+              </div>
+              <span class="badge bg-secondary" id="song-badge-${newSong.id}" style="display: none;">
+                Assigned
+              </span>
+            </div>
+          `;
+          div.onclick = () => {
+            if (selectedSegment) {
+              assignSongToSegment(selectedSegment.id, newSong.id);
+            }
+          };
+          songsList.appendChild(div);
+
+          // Assign to the selected segment
+          assignSongToSegment(selectedSegment.id, result.songId);
+
+          // Clear input
+          titleInput.value = '';
+
+          addDebugLog(`✓ "${songTitle}" added to band and assigned to segment!`);
+
+        } catch (error) {
+          console.error('Error adding unlisted song:', error);
+          alert('Failed to add song. Please try again.');
+        }
+      }
+
       // Make functions globally accessible for onclick handlers
       window.deleteSegment = deleteSegment;
       window.undoLastRegion = undoLastRegion;
+      window.addUnlistedSong = addUnlistedSong;
 
       function assignSongToSegment(segmentId, songId) {
         const segment = peaks.segments.getSegment(segmentId);
@@ -1312,5 +1417,15 @@
         document.getElementById('playPauseBtn').click();
       }
     });
+
+    // Allow Enter key in unlisted song input
+    const unlistedInput = document.getElementById('unlistedSongTitle');
+    if (unlistedInput) {
+      unlistedInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          addUnlistedSong();
+        }
+      });
+    }
   });
 </script>

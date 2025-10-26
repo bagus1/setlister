@@ -531,7 +531,10 @@
           playheadTextColor: "#000",
           // Enable scrollbar when zoomed in
           enableScrollbar: true,
-          showSegmentLabels: true
+          showSegmentLabels: true,
+          // CRITICAL: Disable Peaks.js's built-in mouse interactions
+          enableMarkerEditing: false,
+          enableSegmentDragging: false
         },
         mediaElement: audioElement,
         // Use pre-computed waveform data if available
@@ -552,6 +555,12 @@
         keyboard: false,
         // Disable default point editing
         pointMarkerColor: "#ff0000",
+        // Disable segment dragging to prevent interference with our custom segment creation
+        segmentOptions: {
+          markers: false
+        },
+        // Explicitly disable Peaks.js's built-in click-to-seek and drag-to-scroll
+        zoomLevels: [512, 1024, 2048, 4096]
       };
 
       PeaksLib.init(options, (err, p) => {
@@ -614,6 +623,24 @@
         document.getElementById("totalTime").textContent = formatTime(
           Math.floor(audioElement.duration)
         );
+
+        // CRITICAL: Disable Peaks.js's built-in drag-to-scroll by making ALL canvases non-interactive
+        // Our container-level handlers will still work
+        setTimeout(() => {
+          const allCanvases = zoomviewContainer.querySelectorAll('canvas');
+          addDebugLog("Found " + allCanvases.length + " canvas elements in zoomview");
+          allCanvases.forEach((canvas, index) => {
+            canvas.style.pointerEvents = 'none';
+            addDebugLog("Disabled pointer events on canvas " + index);
+          });
+          // Also disable on the konva container if it exists
+          const konvaContainer = zoomviewContainer.querySelector('.konvajs-content');
+          if (konvaContainer) {
+            konvaContainer.style.pointerEvents = 'none';
+            addDebugLog("Disabled pointer events on konva container");
+          }
+        }, 100);
+
         addDebugLog("Setup complete!");
       });
     }
@@ -818,9 +845,125 @@
       let isDragging = false;
       let dragStart = null;
       let dragStartX = null;
-      let dragVisualizer = null;
       let isPanning = false;
       let panStartX = null;
+      let tempSegment = null;
+      let isPreparingToDrag = false;
+
+      // Define drag handlers before they're referenced
+      const handleDragMove = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (dragStart !== null) {
+          isDragging = true;
+          const rect = zoomviewContainer.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const zoomview = peaks.views.getView("zoomview");
+
+          // Manual calculation since pointer events are disabled on canvas
+          const startTime = zoomview.getStartTime();
+          const endTime = zoomview.getEndTime();
+          const visibleDuration = endTime - startTime;
+          const width = zoomviewContainer.offsetWidth;
+          const currentTime = startTime + (x / width) * visibleDuration;
+
+          const segmentStart = Math.min(dragStart, currentTime);
+          const segmentEnd = Math.max(dragStart, currentTime);
+
+          if (isPreparingToDrag) {
+            isPreparingToDrag = false;
+            // Create the temp segment on the first mouse move
+            try {
+              const result = peaks.segments.add({
+                startTime: segmentStart,
+                endTime: segmentEnd,
+                id: 'temp-drag-segment',
+                color: 'rgba(0, 123, 255, 0.3)',
+                editable: false
+              });
+              addDebugLog("peaks.segments.add returned type: " + typeof result + ", isArray: " + Array.isArray(result) + ", keys: " + (result ? Object.keys(result).join(',') : 'N/A'));
+
+              // Handle both array and single object return types
+              if (Array.isArray(result) && result.length > 0) {
+                tempSegment = result[0];
+                addDebugLog("Created temp drag segment from array, ID: " + tempSegment.id);
+              } else if (result && typeof result === 'object' && result.id) {
+                tempSegment = result;
+                addDebugLog("Created temp drag segment directly, ID: " + tempSegment.id);
+              } else {
+                addDebugLog("peaks.segments.add returned unexpected format");
+              }
+            } catch (err) {
+              addDebugLog("Error creating temp segment: " + err.message);
+            }
+          } else if (tempSegment) {
+            // Update the existing temp segment
+            try {
+              tempSegment.update({
+                startTime: segmentStart,
+                endTime: segmentEnd
+              });
+            } catch (err) {
+              addDebugLog("Error updating temp segment: " + err.message);
+            }
+          }
+        }
+      };
+
+      const handleDragEnd = (e) => {
+        addDebugLog("handleDragEnd called. isDragging: " + isDragging + ", tempSegment: " + (tempSegment ? tempSegment.id : "null") + ", dragStart: " + dragStart);
+        window.removeEventListener('mousemove', handleDragMove);
+        window.removeEventListener('mouseup', handleDragEnd);
+
+        if (tempSegment) {
+          // Remove the temp segment and create a permanent one
+          const startTime = tempSegment.startTime;
+          const endTime = tempSegment.endTime;
+
+          // Remove the temporary segment
+          peaks.segments.removeById('temp-drag-segment');
+
+          // Create the final permanent segment
+          const finalSegment = peaks.segments.add({
+            startTime: startTime,
+            endTime: endTime,
+            labelText: "",
+            color: '#007bff',
+            editable: true
+          })[0];
+
+          addDebugLog(`Segment created from drag with ID: ${finalSegment.id}`);
+
+          // Auto-select the new segment
+          if (selectedSegment) {
+            const oldAssignment = segmentSongMap[selectedSegment.id];
+            selectedSegment.update({ color: oldAssignment ? '#28a745' : '#007bff' });
+          }
+          selectedSegment = finalSegment;
+          selectedSegment.update({ color: '#ffc107' });
+          updateSelectedSegmentInfo();
+          updateSegmentList();
+
+          tempSegment = null;
+
+        } else if (dragStart !== null && !isDragging) {
+            // This was a click, not a drag. Seek the playhead.
+            peaks.player.seek(dragStart);
+            addDebugLog("Seeked playhead to: " + dragStart.toFixed(2));
+        }
+
+        // Restore zoom after interaction
+        setTimeout(() => {
+          restoreZoomIfNeeded();
+        }, 100);
+
+        // Reset all drag-related state
+        isDragging = false;
+        dragStart = null;
+        dragStartX = null;
+        isPreparingToDrag = false;
+      };
 
       const handlePanMove = (e) => {
         if (!isPanning) return;
@@ -856,6 +999,7 @@
         }, 50);
       });
 
+      // Use event capturing (true parameter) to intercept BEFORE Peaks.js handlers
       zoomviewContainer.addEventListener("mousedown", (e) => {
         // Check for pan mode (Option/Alt key)
         if (e.altKey) {
@@ -869,224 +1013,42 @@
           return;
         }
 
-        // Prevent Peaks.js default click handler from resetting zoom
+        // CRITICAL: Prevent Peaks.js default click handler and drag-to-scroll
         e.stopPropagation();
+        e.preventDefault();
+        e.stopImmediatePropagation(); // Also prevent other handlers on same element
 
         // Store current zoom before interaction
-        if (!e.target.closest(".segment")) {
-          storeCurrentZoom();
-        }
+        storeCurrentZoom();
 
-        // Only start drag if not clicking on existing segment
-        if (!e.target.closest(".segment")) {
+        // Start segment creation drag
+        {
           const rect = zoomviewContainer.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const zoomview = peaks.views.getView("zoomview");
 
           // Convert pixel position to time
-          let time;
-          try {
-            // Try to use Peaks.js API first
-            if (typeof zoomview.pixelsToTime === "function") {
-              time = zoomview.pixelsToTime(x);
-            } else {
-              throw new Error("pixelsToTime not available");
-            }
-          } catch (err) {
-            // Fallback: calculate from viewport offset
-            const width = zoomviewContainer.offsetWidth;
-            const duration = peaks.player.getDuration();
-            // Get visible time range from viewport
-            const startTime = zoomview.getStartTime();
-            const endTime = zoomview.getEndTime();
-            const visibleDuration = endTime - startTime;
-            const pixelsPerSecond = width / visibleDuration;
-            time = startTime + x / pixelsPerSecond;
-            addDebugLog(
-              "Using fallback calculation - startTime=" +
-                startTime +
-                ", x=" +
-                x +
-                ", time=" +
-                time.toFixed(2)
-            );
-          }
+          // Since we disabled pointer events on canvas, we must calculate manually
+          const startTime = zoomview.getStartTime();
+          const endTime = zoomview.getEndTime();
+          const visibleDuration = endTime - startTime;
+          const width = zoomviewContainer.offsetWidth;
+
+          // Manual calculation: startTime + (pixelOffset / totalWidth) * visibleDuration
+          const time = startTime + (x / width) * visibleDuration;
+
+          addDebugLog(`Visible range: ${startTime.toFixed(2)}s - ${endTime.toFixed(2)}s, clicked at x=${x}, calculated time=${time.toFixed(2)}s`);
 
           addDebugLog("mousedown at x=" + x + ", time=" + time.toFixed(2));
 
-          // Check if this is a drag (we'll know on mousemove) or just a click
+          isPreparingToDrag = true; // Set flag to prepare for drag
           isDragging = false;
           dragStart = time;
           dragStartX = x;
 
-          // Create a visual drag indicator
-          dragVisualizer = document.createElement("div");
-          dragVisualizer.style.cssText = `
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: ${x}px;
-            width: 0;
-            background: rgba(0, 123, 255, 0.3);
-            border-left: 2px solid #007bff;
-            border-right: 2px solid #007bff;
-            pointer-events: none;
-            z-index: 10;
-          `;
-          zoomviewContainer.style.position = "relative";
-          zoomviewContainer.appendChild(dragVisualizer);
-        }
-      });
-
-      zoomviewContainer.addEventListener("mousemove", (e) => {
-        if (isPanning) {
-          e.preventDefault();
-          return;
-        }
-
-        if (dragStart !== null && dragStartX !== null) {
-          const rect = zoomviewContainer.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const zoomview = peaks.views.getView("zoomview");
-
-          // Convert current mouse position to time
-          let currentTime;
-          try {
-            if (typeof zoomview.pixelsToTime === "function") {
-              currentTime = zoomview.pixelsToTime(x);
-            } else {
-              throw new Error("pixelsToTime not available");
-            }
-          } catch (err) {
-            // Fallback calculation
-            const width = zoomviewContainer.offsetWidth;
-            const startTime = zoomview.getStartTime();
-            const endTime = zoomview.getEndTime();
-            const visibleDuration = endTime - startTime;
-            const pixelsPerSecond = width / visibleDuration;
-            currentTime = startTime + x / pixelsPerSecond;
-          }
-
-          // Update visual indicator
-          if (dragVisualizer) {
-            const left = Math.min(dragStartX, x);
-            const width = Math.abs(x - dragStartX);
-            dragVisualizer.style.left = left + "px";
-            dragVisualizer.style.width = width + "px";
-          }
-
-          // Mark as dragging if moved more than 5 pixels
-          if (Math.abs(x - dragStartX) > 5) {
-            isDragging = true;
-            e.preventDefault();
-
-            // Update or create temporary segment during drag
-            const segmentStart = Math.min(dragStart, currentTime);
-            const segmentEnd = Math.max(dragStart, currentTime);
-          }
-        }
-      });
-
-      zoomviewContainer.addEventListener("mouseup", (e) => {
-        if (isPanning) {
-          // This is now fully handled by the global handlePanEnd
-          e.preventDefault();
-          return;
-        }
-
-        // Prevent Peaks.js default handlers
-        e.stopPropagation();
-        e.preventDefault();
-
-        if (dragStart !== null && dragStartX !== null) {
-          const rect = zoomviewContainer.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const zoomview = peaks.views.getView("zoomview");
-
-          // Convert pixel position to time
-          let dragEnd;
-          try {
-            // Try to use Peaks.js API first
-            if (typeof zoomview.pixelsToTime === "function") {
-              dragEnd = zoomview.pixelsToTime(x);
-            } else {
-              throw new Error("pixelsToTime not available");
-            }
-          } catch (err) {
-            // Fallback: calculate from viewport offset
-            const width = zoomviewContainer.offsetWidth;
-            const duration = peaks.player.getDuration();
-            // Get visible time range from viewport
-            const startTime = zoomview.getStartTime();
-            const endTime = zoomview.getEndTime();
-            const visibleDuration = endTime - startTime;
-            const pixelsPerSecond = width / visibleDuration;
-            dragEnd = startTime + x / pixelsPerSecond;
-            addDebugLog("Using fallback calculation for dragEnd");
-          }
-
-          addDebugLog("mouseup at x=" + x + ", time=" + dragEnd.toFixed(2));
-
-          // Remove visual indicator
-          if (dragVisualizer) {
-            dragVisualizer.remove();
-            dragVisualizer = null;
-          }
-
-          if (isDragging && Math.abs(dragEnd - dragStart) > 0.5) {
-            // Drag complete, create the final segment now
-            const newSegment = peaks.segments.add({
-              startTime: Math.min(dragStart, dragEnd),
-              endTime: Math.max(dragStart, dragEnd),
-              labelText: "",
-              color: "#007bff",
-              editable: true
-            });
-            addDebugLog(`Segment created from drag with ID: ${newSegment.id}`);
-
-            // --- MANUAL AUTO-SELECTION ---
-            // Deselect any previously selected segment
-            if (selectedSegment) {
-              const oldAssignment = segmentSongMap[selectedSegment.id];
-              selectedSegment.update({ color: oldAssignment ? '#28a745' : '#007bff' });
-            }
-            // Select the new segment
-            selectedSegment = newSegment;
-            selectedSegment.update({ color: '#ffc107' }); // Highlight yellow
-            updateSelectedSegmentInfo();
-            updateSegmentList();
-            // --- END MANUAL AUTO-SELECTION ---
-
-          } else {
-            // This was a click, not a drag. Seek the playhead to the click time.
-            if (peaks && peaks.player) {
-              try {
-                peaks.player.seek(dragStart);
-                addDebugLog("Seeked playhead to: " + dragStart.toFixed(2));
-              } catch (err) {
-                addDebugLog("Error seeking playhead: " + err.message);
-                // Fallback to direct audio element seek
-                audioElement.currentTime = dragStart;
-              }
-            }
-
-          }
-
-          // Restore zoom after interaction
-          setTimeout(() => {
-            restoreZoomIfNeeded();
-          }, 100);
-
-          // Reset drag state
-          dragStart = null;
-          dragStartX = null;
-        }
-
-        // Always restore zoom after any interaction
-        if (currentZoomSeconds) {
-          setTimeout(() => {
-            restoreZoomIfNeeded();
-          }, 10);
+          // Add temporary listeners for dragging
+          window.addEventListener('mousemove', handleDragMove);
+          window.addEventListener('mouseup', handleDragEnd);
         }
       });
     }

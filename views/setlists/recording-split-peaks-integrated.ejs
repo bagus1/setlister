@@ -998,17 +998,30 @@
           const startTime = tempSegment.startTime;
           const endTime = tempSegment.endTime;
 
+          addDebugLog(`Creating final segment: ${startTime.toFixed(2)}s - ${endTime.toFixed(2)}s`);
+
           // Remove the temporary segment
           peaks.segments.removeById('temp-drag-segment');
+          addDebugLog('Removed temp segment');
 
           // Create the final permanent segment
-          const finalSegment = peaks.segments.add({
+          const result = peaks.segments.add({
             startTime: startTime,
             endTime: endTime,
             labelText: "",
             color: '#007bff',
             editable: true
-          })[0];
+          });
+
+          addDebugLog(`peaks.segments.add result type: ${typeof result}, isArray: ${Array.isArray(result)}`);
+
+          const finalSegment = Array.isArray(result) ? result[0] : result;
+          addDebugLog(`finalSegment: ${finalSegment ? finalSegment.id : 'NULL'}`);
+
+          if (!finalSegment) {
+            addDebugLog('ERROR: finalSegment is null/undefined!');
+            return;
+          }
 
           addDebugLog(`Segment created from drag with ID: ${finalSegment.id}`);
 
@@ -1019,6 +1032,7 @@
           }
           selectedSegment = finalSegment;
           selectedSegment.update({ color: '#ffc107' });
+          addDebugLog(`Auto-selected new segment: ${finalSegment.id}`);
           updateSelectedSegmentInfo();
           updateSegmentList();
 

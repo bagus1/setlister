@@ -687,6 +687,70 @@ async function uploadFileChunked(file, uploadBtn, uploadProgress, progressBar) {
     }
 }
 
+// --- New functions specifically for Peaks.js upload ---
+
+async function uploadFileRegularForPeaks(file, uploadBtn, uploadProgress, progressBar) {
+    const formData = new FormData();
+    formData.append('audioFile', file);
+    
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            progressBar.style.width = percentComplete + '%';
+        }
+    });
+    
+    return new Promise((resolve, reject) => {
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    // Manually construct the correct redirect URL
+                    window.location.href = `/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/${response.recordingId}/split-peaks-integrated`;
+                } catch (parseError) {
+                    alert('Upload succeeded but failed to process response.');
+                    reject(parseError);
+                }
+            } else {
+                alert('Upload failed. Server returned status: ' + xhr.status);
+                reject(new Error('Upload failed'));
+            }
+        });
+        
+        xhr.addEventListener('error', (e) => {
+            alert('Upload failed due to network error.');
+            reject(e);
+        });
+        
+        xhr.open('POST', '/setlists/<%= setlist.id %>/recordings/upload');
+        xhr.send(formData);
+    });
+}
+
+async function uploadFileChunkedForPeaks(file, uploadBtn, uploadProgress, progressBar) {
+    try {
+        const uploader = new ChunkedUploader(file);
+        const result = await uploader.uploadChunks('<%= setlist.id %>', (progress) => {
+            progressBar.style.width = progress.percentage + '%';
+            uploadBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> Uploading... ${progress.percentage}%`;
+        });
+        
+        // Manually construct the correct redirect URL
+        window.location.href = `/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/${result.recordingId}/split-peaks-integrated`;
+        
+    } catch (error) {
+        console.error('Chunked upload failed:', error);
+        alert(`Upload failed: ${error.message}`);
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="bi bi-graph-up-arrow"></i> Upload with Peaks.js';
+        uploadProgress.style.display = 'none';
+        throw error;
+    }
+}
+
+
 // Handle Peaks.js upload button
 const uploadPeaksBtn = document.getElementById('uploadPeaksBtn');
 if (uploadPeaksBtn) {
@@ -701,70 +765,30 @@ if (uploadPeaksBtn) {
             return;
         }
         
-        // Show progress
+        // Show progress and disable button
         const uploadProgress = document.getElementById('uploadProgress');
         const progressBar = uploadProgress.querySelector('.progress-bar');
         uploadProgress.style.display = 'block';
         progressBar.style.width = '0%';
-        progressBar.textContent = 'Uploading...';
-        
-        // Store original window.location.href to restore after upload
-        const originalLocation = window.location.href;
-        
-        // Override window.location.href to intercept redirects
-        let interceptedRedirect = null;
-        const originalLocationSetter = Object.getOwnPropertyDescriptor(window.location, 'href').set;
-        Object.defineProperty(window.location, 'href', {
-            set: function(url) {
-                if (url.includes('/split')) {
-                    interceptedRedirect = url.replace('/split', '/split-peaks-integrated');
-                    console.log('Intercepted redirect:', url, '->', interceptedRedirect);
-                } else {
-                    originalLocationSetter.call(this, url);
-                }
-            },
-            get: function() {
-                return originalLocation;
-            }
-        });
+        uploadPeaksBtn.disabled = true;
+        uploadPeaksBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Uploading...';
         
         try {
             // Check if file is large enough to use chunked upload (>100MB)
             const CHUNK_THRESHOLD = 100 * 1024 * 1024; // 100MB
             
-            console.log('Peaks.js upload - File size:', file.size, 'bytes');
-            console.log('Peaks.js upload - ChunkedUploader available:', typeof ChunkedUploader);
-            
             if (file.size > CHUNK_THRESHOLD) {
-                console.log('Large file detected, using chunked upload...');
-                if (typeof ChunkedUploader === 'undefined') {
-                    alert('ChunkedUploader class not loaded. Please refresh the page.');
-                    uploadProgress.style.display = 'none';
-                    return;
-                }
-                await uploadFileChunked(file, uploadPeaksBtn, uploadProgress, progressBar);
+                await uploadFileChunkedForPeaks(file, uploadPeaksBtn, uploadProgress, progressBar);
             } else {
-                console.log('Small file detected, using regular upload...');
-                await uploadFileRegular(file, uploadPeaksBtn, uploadProgress, progressBar);
-            }
-            
-            // If we intercepted a redirect, use it
-            if (interceptedRedirect) {
-                window.location.href = interceptedRedirect;
+                await uploadFileRegularForPeaks(file, uploadPeaksBtn, uploadProgress, progressBar);
             }
             
         } catch (error) {
             console.error('Peaks.js upload failed:', error);
-            alert(`Upload failed: ${error.message}`);
+            // Re-enable button on failure
+            uploadPeaksBtn.disabled = false;
+            uploadPeaksBtn.innerHTML = '<i class="bi bi-graph-up-arrow"></i> Upload with Peaks.js';
             uploadProgress.style.display = 'none';
-        } finally {
-            // Restore original location.href behavior
-            Object.defineProperty(window.location, 'href', {
-                set: originalLocationSetter,
-                get: function() {
-                    return originalLocation;
-                }
-            });
         }
     });
 }

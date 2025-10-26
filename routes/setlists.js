@@ -10,6 +10,7 @@ const ffmpeg = require("fluent-ffmpeg");
 const { generateShareTokens } = require("../utils/shareTokens");
 const { checkStorageQuota } = require("../middleware/checkStorageQuota");
 const { updateBandStorageUsage } = require("../utils/storageCalculator");
+const { exec } = require("child_process");
 
 // Configure multer for audio file uploads
 const storage = multer.diskStorage({
@@ -37,9 +38,9 @@ const upload = multer({
     // Accept audio files only
     const allowedExtensions = /\.(webm|mp3|wav|m4a|ogg)$/i;
     const extname = allowedExtensions.test(file.originalname);
-    
+
     // Check if it's an audio MIME type (audio/mpeg, audio/wav, etc.)
-    const isAudioMimetype = file.mimetype.startsWith('audio/');
+    const isAudioMimetype = file.mimetype.startsWith("audio/");
 
     // Accept if either the extension is valid OR it's an audio mimetype
     if (extname || isAudioMimetype) {
@@ -2764,7 +2765,9 @@ router.post(
   "/:id/recordings/upload-chunk",
   requireAuth,
   (req, res, next) => {
-    logger.logInfo(`Chunk upload request started for setlist ${req.params.id} by user ${req.session.user.id}`);
+    logger.logInfo(
+      `Chunk upload request started for setlist ${req.params.id} by user ${req.session.user.id}`
+    );
     logger.logInfo(`Chunk request headers: ${JSON.stringify(req.headers)}`);
     next();
   },
@@ -2772,173 +2775,150 @@ router.post(
   (err, req, res, next) => {
     if (err) {
       logger.logError("Chunk multer error:", err);
-      return res.status(400).json({ error: "Chunk upload error", details: err.message });
+      return res
+        .status(400)
+        .json({ error: "Chunk upload error", details: err.message });
     }
     logger.logInfo("Chunk multer processing completed successfully");
     next();
   },
   async (req, res) => {
     try {
-      const { chunkIndex, totalChunks, originalFileName, originalFileSize } = req.body;
-      
-      logger.logInfo(`Processing chunk ${chunkIndex}/${totalChunks} for file ${originalFileName}`);
-      
+      const { chunkIndex, totalChunks, originalFileName, originalFileSize } =
+        req.body;
+
+      logger.logInfo(
+        `Processing chunk ${chunkIndex}/${totalChunks} for file ${originalFileName}`
+      );
+
       if (!req.file) {
         logger.logError("No chunk file uploaded");
         return res.status(400).json({ error: "No chunk uploaded" });
       }
 
-      logger.logInfo(`Chunk file received: ${req.file.filename}, size: ${req.file.size} bytes`);
+      logger.logInfo(
+        `Chunk file received: ${req.file.filename}, size: ${req.file.size} bytes`
+      );
 
       // Store chunk info in session or temporary storage
       const chunkKey = `chunk_${req.params.id}_${originalFileName}_${chunkIndex}`;
-      
+
       // Move chunk to temporary directory
-      const tempDir = path.join(__dirname, '../uploads/temp');
+      const tempDir = path.join(__dirname, "../uploads/temp");
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
-      
+
       const chunkPath = path.join(tempDir, `${chunkKey}.tmp`);
       fs.renameSync(req.file.path, chunkPath);
-      
+
       logger.logInfo(`Chunk ${chunkIndex} saved to: ${chunkPath}`);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         chunkIndex: parseInt(chunkIndex),
-        message: `Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully`
+        message: `Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully`,
       });
     } catch (error) {
       logger.logError("Chunk upload error", error);
-      res.status(500).json({ error: "Failed to upload chunk", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Failed to upload chunk", details: error.message });
     }
   }
 );
 
 // POST /setlists/:id/recordings/reassemble - Reassemble chunks into final file
-router.post(
-  "/:id/recordings/reassemble",
-  requireAuth,
-  async (req, res) => {
+router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
+  try {
+    const { originalFileName, originalFileSize, totalChunks } = req.body;
+    const setlistId = parseInt(req.params.id);
+
+    // Reassemble chunks
+    const tempDir = path.join(__dirname, "../uploads/temp");
+    const finalPath = path.join(
+      __dirname,
+      "../uploads/recordings",
+      `${Date.now()}_${originalFileName}`
+    );
+
+    const writeStream = fs.createWriteStream(finalPath);
+
+    for (let i = 0; i < totalChunks; i++) {
+      const chunkKey = `chunk_${setlistId}_${originalFileName}_${i}`;
+      const chunkPath = path.join(tempDir, `${chunkKey}.tmp`);
+
+      if (!fs.existsSync(chunkPath)) {
+        throw new Error(`Chunk ${i} not found`);
+      }
+
+      const chunkData = fs.readFileSync(chunkPath);
+      writeStream.write(chunkData);
+
+      // Clean up chunk file
+      fs.unlinkSync(chunkPath);
+    }
+
+    writeStream.end();
+
+    // Wait for the write stream to finish before processing
+    await new Promise((resolve, reject) => {
+      writeStream.on("finish", resolve);
+      writeStream.on("error", reject);
+    });
+
+    // Now process the reassembled file as a normal recording
+    const stats = fs.statSync(finalPath);
+
+    // Calculate duration using ffmpeg
+    let duration = 0;
     try {
-      const { originalFileName, originalFileSize, totalChunks } = req.body;
-      const setlistId = parseInt(req.params.id);
-      
-      // Reassemble chunks
-      const tempDir = path.join(__dirname, '../uploads/temp');
-      const finalPath = path.join(__dirname, '../uploads/recordings', `${Date.now()}_${originalFileName}`);
-      
-      const writeStream = fs.createWriteStream(finalPath);
-      
-      for (let i = 0; i < totalChunks; i++) {
-        const chunkKey = `chunk_${setlistId}_${originalFileName}_${i}`;
-        const chunkPath = path.join(tempDir, `${chunkKey}.tmp`);
-        
-        if (!fs.existsSync(chunkPath)) {
-          throw new Error(`Chunk ${i} not found`);
-        }
-        
-        const chunkData = fs.readFileSync(chunkPath);
-        writeStream.write(chunkData);
-        
-        // Clean up chunk file
-        fs.unlinkSync(chunkPath);
-      }
-      
-      writeStream.end();
-      
-      // Wait for the write stream to finish before processing
-      await new Promise((resolve, reject) => {
-        writeStream.on('finish', resolve);
-        writeStream.on('error', reject);
-      });
-      
-      // Now process the reassembled file as a normal recording
-      const stats = fs.statSync(finalPath);
-      
-      // Calculate duration using ffmpeg
-      let duration = 0;
-      try {
-        const ffprobe = require('fluent-ffmpeg');
-        duration = await new Promise((resolve, reject) => {
-          ffprobe.ffprobe(finalPath, (err, metadata) => {
-            if (err) {
-              console.error('Error getting duration:', err);
-              resolve(0);
-            } else {
-              resolve(Math.floor(metadata.format.duration || 0));
-            }
-          });
+      const ffprobe = require("fluent-ffmpeg");
+      duration = await new Promise((resolve, reject) => {
+        ffprobe.ffprobe(finalPath, (err, metadata) => {
+          if (err) {
+            console.error("Error getting duration:", err);
+            resolve(0);
+          } else {
+            resolve(Math.floor(metadata.format.duration || 0));
+          }
         });
-      } catch (error) {
-        console.error('Error calculating duration:', error);
-        duration = 0;
-      }
-      
-      // Create recording record
-      const recording = await prisma.recording.create({
-        data: {
-          setlistId: setlistId,
-          filePath: finalPath,
-          fileSize: BigInt(stats.size),
-          duration: duration,
-          format: path.extname(originalFileName).substring(1) || 'mp3',
-          createdById: req.session.user.id
-        }
-      });
-      
-      res.json({ 
-        success: true, 
-        recordingId: recording.id,
-        message: "File reassembled and uploaded successfully"
       });
     } catch (error) {
-      logger.logError("Reassembly error", error);
-      res.status(500).json({ error: "Failed to reassemble file" });
+      console.error("Error calculating duration:", error);
+      duration = 0;
     }
+
+    // Create recording record
+    const recording = await prisma.recording.create({
+      data: {
+        setlistId: setlistId,
+        filePath: finalPath,
+        fileSize: BigInt(stats.size),
+        duration: duration,
+        format: path.extname(originalFileName).substring(1) || "mp3",
+        createdById: req.session.user.id,
+      },
+    });
+
+    res.json({
+      success: true,
+      recordingId: recording.id,
+      message: "File reassembled and uploaded successfully",
+    });
+  } catch (error) {
+    logger.logError("Reassembly error", error);
+    res.status(500).json({ error: "Failed to reassemble file" });
   }
-);
+});
 
 // POST /setlists/:id/recordings/upload - Upload existing recording file
 router.post(
   "/:id/recordings/upload",
   requireAuth,
-  (req, res, next) => {
-    logger.logInfo(`Upload request started for setlist ${req.params.id} by user ${req.session.user.id}`);
-    logger.logInfo(`Request headers: ${JSON.stringify(req.headers)}`);
-    logger.logInfo(`Content-Length: ${req.headers['content-length']}`);
-    logger.logInfo(`Content-Type: ${req.headers['content-type']}`);
-    next();
-  },
   upload.single("audioFile"),
-  (err, req, res, next) => {
-    if (err) {
-      logger.logError("Multer error:", err);
-      logger.logError("Multer error code:", err.code);
-      logger.logError("Multer error message:", err.message);
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(413).json({ error: "File too large", maxSize: "500MB" });
-      }
-      return res.status(400).json({ error: "File upload error", details: err.message });
-    }
-    logger.logInfo("Multer processing completed successfully");
-    next();
-  },
-  (req, res, next) => {
-    if (req.file) {
-      logger.logInfo(`File uploaded successfully: ${req.file.filename}, size: ${req.file.size} bytes`);
-    } else {
-      logger.logError("No file uploaded - multer failed to process file");
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-    next();
-  },
-  checkStorageQuota, // Re-enabled after fixing null subscription bug
   async (req, res) => {
     try {
-      logger.logInfo(`Starting upload processing for setlist ${req.params.id}`);
-      logger.logInfo(`Storage quota check passed for file size: ${req.file.size} bytes`);
       const setlistId = parseInt(req.params.id);
       const userId = req.session.user.id;
 
@@ -2968,55 +2948,67 @@ router.post(
         return res.status(400).json({ error: "No audio file uploaded" });
       }
 
-      // Get duration from the uploaded file using FFmpeg
-      const filePath = req.file.path;
-      const duration = await new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(filePath, (err, metadata) => {
-          if (err) {
-            logger.logError("FFmpeg probe error:", err);
-            reject(err);
-          } else {
-            resolve(Math.floor(metadata.format.duration || 0));
-          }
-        });
-      });
-
       // Convert file path to web-accessible URL
-      const recordingPath = `/uploads/recordings/${req.file.filename}`;
+      // req.file.path could be absolute or relative, extract just the relative part
+      const duration = parseInt(req.body.duration) || 0;
       const fileSize = req.file.size || 0;
-      const format = path.extname(req.file.filename).substring(1) || "mp3";
+
+      // Get just the filename and construct the web path
+      const recordingPath = `/uploads/recordings/${req.file.filename}`;
+
+      // Determine format from file extension
+      const format = path.extname(req.file.filename).substring(1) || "webm";
 
       // Save to database
       const recording = await prisma.recording.create({
         data: {
           setlistId,
           filePath: recordingPath,
-          fileSize,
+          fileSize: BigInt(fileSize),
           duration,
           format,
           createdById: userId,
-          isProcessed: false,
         },
       });
 
       // Recalculate band storage after successful upload
       await updateBandStorageUsage(setlist.bandId);
 
-      console.log(`Recording uploaded: ${req.file.filename} (${(fileSize / 1024 / 1024).toFixed(2)}MB, ${duration}s) - ID: ${recording.id}`);
-      
+      // --- Waveform Generation ---
+      const audioPath = req.file.path;
+      const datPath = audioPath.replace(/\.(mp3|wav|m4a|ogg)$/, ".dat");
+      const waveformPath = `/uploads/recordings/${path.basename(datPath)}`;
+
+      exec(
+        `audiowaveform -i "${audioPath}" -o "${datPath}" -b 8`,
+        async (error, stdout, stderr) => {
+          if (error) {
+            console.error("Waveform generation failed:", stderr);
+            await prisma.recording.update({
+              where: { id: recording.id },
+              data: { waveformStatus: "failed" },
+            });
+          } else {
+            console.log("Waveform data generated successfully");
+            await prisma.recording.update({
+              where: { id: recording.id },
+              data: {
+                waveformStatus: "completed",
+                waveformPath: waveformPath,
+              },
+            });
+          }
+        }
+      );
+
       res.json({
         success: true,
         recordingId: recording.id,
         message: "Recording uploaded successfully",
       });
     } catch (error) {
-      logger.logError("File upload error", error);
-      logger.logError(`Upload error details: ${error.message}`);
-      logger.logError(`Upload error stack: ${error.stack}`);
-      res.status(500).json({ 
-        error: "Failed to upload file",
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      logger.logError("Recording upload error", error);
+      res.status(500).json({ error: "Failed to upload recording" });
     }
   }
 );
@@ -3194,7 +3186,9 @@ router.post(
 
       // Check if already promoted (has a linkId)
       if (split.linkId) {
-        return res.status(400).json({ error: "This recording is already added to the song" });
+        return res
+          .status(400)
+          .json({ error: "This recording is already added to the song" });
       }
 
       // Create Link for the global song
@@ -3214,7 +3208,9 @@ router.post(
         data: { linkId: link.id },
       });
 
-      console.log(`Recording split ${splitId} promoted to song ${songId} - Link ${link.id} created`);
+      console.log(
+        `Recording split ${splitId} promoted to song ${songId} - Link ${link.id} created`
+      );
 
       res.json({
         success: true,

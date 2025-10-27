@@ -184,6 +184,16 @@
               disabled
               onclick="autoDetectSilence()"
             >
+              <span
+                id="autoDetectSpinner"
+                style="display: none; margin-right: 5px"
+              >
+                <span
+                  class="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+              </span>
               <i class="bi bi-magic"></i> Auto-Detect Silence
             </button>
             <button id="processSplitsBtn" class="btn btn-success" disabled>
@@ -1205,6 +1215,13 @@
           return;
         }
 
+        // Show spinner and disable button
+        const autoDetectBtn = document.getElementById('autoDetectBtn');
+        const autoDetectSpinner = document.getElementById('autoDetectSpinner');
+        autoDetectBtn.disabled = true;
+        autoDetectSpinner.style.display = 'inline-block';
+
+        addDebugLog('Starting auto-detect silence...');
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const response = await fetch(audioElement.src);
         const arrayBuffer = await response.arrayBuffer();
@@ -1214,10 +1231,12 @@
         const sampleRate = audioBuffer.sampleRate;
         const duration = audioBuffer.duration;
 
+        addDebugLog(`Analyzing audio: ${duration.toFixed(2)}s, ${sampleRate}Hz, ${channelData.length} samples`);
+
         // Parameters for silence detection
-        const silenceThreshold = -40; // dB threshold for silence
-        const minSilenceDuration = 1.0; // Minimum 1 second of silence
-        const windowSize = Math.floor(sampleRate * 0.5); // 0.5 second windows
+        const silenceThreshold = -35; // dB threshold for silence (anything below -35 dB is considered silence)
+        const minSilenceDuration = 5.0; // Minimum 5 seconds of silence
+        const windowSize = Math.floor(sampleRate * 0.2); // 0.2 second windows
 
         const silenceRegions = [];
         let inSilence = false;
@@ -1225,20 +1244,19 @@
 
         // Analyze audio in windows
         for (let i = 0; i < channelData.length - windowSize; i += windowSize) {
-          let windowSum = 0;
-          let maxValue = 0;
+          let sumSquares = 0;
+          let count = 0;
 
           for (let j = 0; j < windowSize && i + j < channelData.length; j++) {
             const sample = channelData[i + j];
-            windowSum += sample;
-            const absSample = Math.abs(sample);
-            if (absSample > maxValue) {
-              maxValue = absSample;
-            }
+            sumSquares += sample * sample;
+            count++;
           }
 
+          // Calculate RMS
+          const rms = Math.sqrt(sumSquares / count);
           // Convert to dB
-          const dbValue = 20 * Math.log10(maxValue + 1e-10);
+          const dbValue = 20 * Math.log10(rms + 1e-10);
           const time = i / sampleRate;
 
           if (dbValue < silenceThreshold) {
@@ -1264,8 +1282,11 @@
           }
         }
 
+        addDebugLog(`Found ${silenceRegions.length} silence regions`);
+
         // Create segments between silence gaps
         let startTime = 0;
+        let segmentsCreated = 0;
         for (const silence of silenceRegions) {
           // Only create a segment if there's at least 0.5 seconds between start and silence
           if (silence.start - startTime >= 0.5) {
@@ -1276,6 +1297,8 @@
               color: '#007bff',
               editable: true
             });
+            segmentsCreated++;
+            addDebugLog(`Created segment: ${startTime.toFixed(2)}s - ${silence.start.toFixed(2)}s`);
           }
           startTime = silence.end;
         }
@@ -1289,12 +1312,22 @@
             color: '#007bff',
             editable: true
           });
+          segmentsCreated++;
+          addDebugLog(`Created final segment: ${startTime.toFixed(2)}s - ${duration.toFixed(2)}s`);
         }
 
         updateSegmentList();
         updateProcessButton();
         audioContext.close();
-        addDebugLog(`Auto-detected ${peaks.segments.getSegments().length} segments`);
+        addDebugLog(`Auto-detected ${segmentsCreated} segments`);
+
+        if (segmentsCreated === 0) {
+          alert('No segments created. Your recording may not have enough silence between songs, or the silence is too short.');
+        }
+
+        // Hide spinner and re-enable button
+        autoDetectSpinner.style.display = 'none';
+        autoDetectBtn.disabled = false;
       }
 
       // Make autoDetectSilence globally accessible
@@ -1545,6 +1578,11 @@
       } else if (e.key === ' ') {
         e.preventDefault();
         document.getElementById('playPauseBtn').click();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Delete the selected segment
+        if (selectedSegment) {
+          deleteSegment(selectedSegment.id);
+        }
       }
     });
 

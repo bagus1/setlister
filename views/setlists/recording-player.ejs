@@ -23,11 +23,11 @@
                 <div class="d-flex gap-2">
                     <% if (!recording.isProcessed) { %>
                         <div class="btn-group" role="group">
-                            <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
+                            <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split-with-wavesurfer" 
                                class="btn btn-primary">
                                 <i class="bi bi-graph-up"></i> WaveSurfer
                             </a>
-                            <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split-peaks-integrated" 
+                            <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
                                class="btn btn-primary" style="background-color: #0d6efd; border-color: #0d6efd;">
                                 <i class="bi bi-graph-up-arrow"></i> Peaks.js
                             </a>
@@ -195,7 +195,7 @@
                                         <p class="card-text flex-grow-1">
                                             Split the recording into multiple songs
                                         </p>
-                                        <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split-peaks-integrated" 
+                                        <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
                                            class="btn btn-info btn-lg w-100">
                                             <i class="bi bi-scissors"></i> Split Recording
                                         </a>

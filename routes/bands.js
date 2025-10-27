@@ -1116,9 +1116,9 @@ router.get(
   }
 );
 
-// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/split-peaks-integrated - Integrated Peaks.js split page
+// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/split - Peaks.js split page
 router.get(
-  "/:bandId/setlists/:setlistId/recordings/:recordingId/split-peaks-integrated",
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/split",
   requireAuth,
   async (req, res) => {
     try {
@@ -1227,7 +1227,7 @@ router.get(
 );
 
 router.get(
-  "/:bandId/setlists/:setlistId/recordings/:recordingId/split",
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/split-with-wavesurfer",
   requireAuth,
   async (req, res) => {
     try {

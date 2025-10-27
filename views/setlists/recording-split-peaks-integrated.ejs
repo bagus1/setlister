@@ -27,17 +27,6 @@
             <i class="bi bi-scissors"></i> Mark Song Boundaries
           </h5>
           <div class="d-flex gap-2">
-            <div class="btn-group" role="group">
-              <a
-                href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split"
-                class="btn btn-sm btn-outline-primary"
-              >
-                <i class="bi bi-graph-up"></i> WaveSurfer
-              </a>
-              <button class="btn btn-sm btn-primary" disabled>
-                <i class="bi bi-graph-up-arrow"></i> Peaks.js
-              </button>
-            </div>
             <a
               href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings"
               class="btn btn-sm btn-outline-secondary"
@@ -305,7 +294,7 @@
                   onclick="addUnlistedSong()"
                   class="btn btn-outline-light"
                 >
-                  <i class="bi bi-plus"></i> Add & Assign
+                  <i class="bi bi-plus"></i> Add
                 </button>
               </div>
             </div>
@@ -1284,36 +1273,44 @@
 
         addDebugLog(`Found ${silenceRegions.length} silence regions`);
 
-        // Create segments between silence gaps
+        // Create segments between silence gaps with 2 second buffer on each side
+        const bufferTime = 2.0; // 2 seconds buffer before and after each segment
         let startTime = 0;
         let segmentsCreated = 0;
         for (const silence of silenceRegions) {
           // Only create a segment if there's at least 0.5 seconds between start and silence
           if (silence.start - startTime >= 0.5) {
+            // Add buffer: start 2 seconds earlier, end 2 seconds later
+            const segmentStart = Math.max(0, startTime - bufferTime);
+            const segmentEnd = Math.min(duration, silence.start + bufferTime);
+
             peaks.segments.add({
-              startTime: startTime,
-              endTime: silence.start,
+              startTime: segmentStart,
+              endTime: segmentEnd,
               labelText: '',
               color: '#007bff',
               editable: true
             });
             segmentsCreated++;
-            addDebugLog(`Created segment: ${startTime.toFixed(2)}s - ${silence.start.toFixed(2)}s`);
+            addDebugLog(`Created segment: ${segmentStart.toFixed(2)}s - ${segmentEnd.toFixed(2)}s (original: ${startTime.toFixed(2)}s - ${silence.start.toFixed(2)}s)`);
           }
           startTime = silence.end;
         }
 
         // Create final segment after last silence
         if (duration - startTime >= 0.5) {
+          const segmentStart = Math.max(0, startTime - bufferTime);
+          const segmentEnd = Math.min(duration, duration); // No buffer needed at the end
+
           peaks.segments.add({
-            startTime: startTime,
-            endTime: duration,
+            startTime: segmentStart,
+            endTime: segmentEnd,
             labelText: '',
             color: '#007bff',
             editable: true
           });
           segmentsCreated++;
-          addDebugLog(`Created final segment: ${startTime.toFixed(2)}s - ${duration.toFixed(2)}s`);
+          addDebugLog(`Created final segment: ${segmentStart.toFixed(2)}s - ${segmentEnd.toFixed(2)}s (original: ${startTime.toFixed(2)}s - ${duration.toFixed(2)}s)`);
         }
 
         updateSegmentList();

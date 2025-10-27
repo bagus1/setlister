@@ -611,7 +611,10 @@ router.delete(
       // Delete recording (cascades to splits)
       await prisma.recording.delete({ where: { id: recordingId } });
 
-      res.json({ success: true, message: "Recording deleted" });
+      // Set flash message and redirect
+      req.session.success =
+        "Recording and all associated files deleted successfully.";
+      res.redirect(`/bands/${bandId}/setlists/${setlistId}/recordings`);
     } catch (error) {
       console.error("Delete recording error:", error);
       logger.logError("Delete recording error", error);

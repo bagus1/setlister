@@ -125,7 +125,8 @@
                                                 <button class="btn btn-sm btn-outline-danger delete-split-btn" 
                                                         data-split-id="<%= split.id %>"
                                                         data-song-title="<%= split.song.title %>"
-                                                        title="Delete this split recording"
+                                                        title="<%= split.filePath === recording.filePath ? 'Cannot delete - shares file with source. Use Delete Everything instead.' : 'Delete this split recording' %>"
+                                                        <% if (split.filePath === recording.filePath) { %>disabled<% } %>
                                                         onclick="event.stopPropagation(); deleteSplit(<%= split.id %>, '<%= split.filePath ? split.filePath.split('/').pop() : 'Unknown file' %>', '<%= split.song.title.replace(/'/g, "\\'") %>', <%= split.linkId || 'null' %>)">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -225,9 +226,15 @@
                                     <i class="bi bi-download"></i> Download Source
                                 </a>
                                 <button class="btn btn-outline-danger btn-sm" 
+                                        <% if (recording.splits.some(s => s.filePath === recording.filePath)) { %>disabled<% } %>
                                         onclick="deleteSourceRecording()" 
-                                        title="Save space by deleting the source if you've already split it">
+                                        title="<%= recording.splits.some(s => s.filePath === recording.filePath) ? 'Cannot delete - shares file with split songs. Use Delete Everything instead.' : 'Save space by deleting the source if you\'ve already split it' %>">
                                     <i class="bi bi-trash"></i> Delete Source
+                                </button>
+                                <button class="btn btn-danger btn-sm" 
+                                        onclick="deleteEntireRecording()" 
+                                        title="Permanently delete this recording and all split files">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Delete Everything
                                 </button>
                             </div>
                             <% if (recording.splits.some(s => s.filePath === recording.filePath)) { %>
@@ -246,6 +253,13 @@
                                 <small class="text-muted">
                                     Individual songs above are still available
                                 </small>
+                            </div>
+                            <div class="d-grid gap-2 mt-3">
+                                <button class="btn btn-danger btn-sm" 
+                                        onclick="deleteEntireRecording()" 
+                                        title="Permanently delete this recording and all split files">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Delete Everything
+                                </button>
                             </div>
                         <% } %>
                     </div>
@@ -282,6 +296,19 @@
                     <% } %>
                 </div>
             </div>
+            
+            <% if (!recording.isProcessed || recording.splits.length === 0) { %>
+                <!-- Delete Recording Button -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <button class="btn btn-danger w-100" 
+                                onclick="deleteEntireRecording()" 
+                                title="Permanently delete this recording">
+                            <i class="bi bi-exclamation-triangle-fill"></i> Delete Recording
+                        </button>
+                    </div>
+                </div>
+            <% } %>
         </div>
     </div>
 </div>
@@ -634,13 +661,11 @@ async function deleteEntireRecording() {
     
     try {
         const response = await fetch('/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            method: 'DELETE'
         });
         
         if (response.ok) {
+            // Server will redirect with flash message
             window.location.href = '/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings';
         } else {
             const error = await response.json();

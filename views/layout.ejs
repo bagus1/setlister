@@ -75,9 +75,11 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="d-flex w-100 justify-content-between align-items-center">
+                <div class="d-flex w-100" style="margin: 0 auto;">
+                    <!-- Left spacer -->
+                                     
                     <!-- Center navigation group -->
-                    <ul class="navbar-nav mx-auto d-flex align-items-center" style="">
+                    <ul class="navbar-nav d-flex align-items-center flex-shrink-0 window-center" >
                         <% if (user) { %>
                             <li class="nav-item">
                                 <a class="nav-link" href="/bands" style="background-image: url('/images/circle.png'); background-size: contain; background-repeat: no-repeat; background-position: center; padding: 38px 25px; text-align: center; color: white; position: relative; top: 5px;">My Bands</a>
@@ -105,16 +107,18 @@
                         </li>
                     </ul>
 
-                    <!-- Record Button & Profile dropdown - far right -->
-                    <ul class="navbar-nav">
+                    <!-- Right spacer -->
+                    <div class="flex-1 d-flex justify-content-end record-profile-container">
+                        <!-- Record Button & Profile dropdown - far right -->
+                        <ul class="navbar-nav d-flex flex-column align-items-end">
                         <% if (user) { %>
-                            <li class="nav-item me-2">
+                            <li class="nav-item mb-2">
                                 <a class="nav-link btn btn-danger text-white" href="/quick-record" style="padding: 8px 16px; border-radius: 5px;">
                                     <i class="bi bi-record-circle"></i> Record
                                 </a>
                             </li>
                         <% } else { %>
-                            <li class="nav-item me-2">
+                            <li class="nav-item mb-2">
                                 <a class="nav-link btn btn-danger text-white" href="/auth/register?intent=record" style="padding: 8px 16px; border-radius: 5px;">
                                     <i class="bi bi-record-circle"></i> Record
                                 </a>
@@ -122,7 +126,7 @@
                         <% } %>
                         
                         <% if (user) { %>
-                            <li class="nav-item dropdown">
+                            <li class="nav-item">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                                     data-bs-toggle="dropdown">
                                     <i class="bi bi-person-circle"></i>
@@ -185,7 +189,8 @@
                                 </div>
                             </li>
                         <% } %>
-                    </ul>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>

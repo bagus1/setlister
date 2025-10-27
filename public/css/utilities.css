@@ -329,6 +329,17 @@ h1 {
    MARQUEE HEADER STYLES
    ======================================== */
 
+.window-center {
+  text-align: center;
+  margin: 0 auto;
+}
+
+.record-profile-container {
+  position: fixed;
+  right: 30px;
+  top: 30px;
+}
+
 .marquee-header {
   border-radius: 0;
   margin-bottom: 0 !important;

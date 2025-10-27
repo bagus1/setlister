@@ -741,8 +741,13 @@ class RecordingManager {
       // Hide processing modal
       this.hideProcessingModal();
 
-      // Redirect to split page
-      window.location.href = `/setlists/${setlistId}/recordings/${result.recordingId}/split-with-wavesurfer`;
+      // Extract bandId from current URL
+      const currentUrl = window.location.href;
+      const bandsMatch = currentUrl.match(/\/bands\/(\d+)\//);
+      const bandId = bandsMatch ? bandsMatch[1] : "1"; // Fallback to 1 if not found
+
+      // Redirect to recording detail page
+      window.location.href = `/bands/${bandId}/setlists/${setlistId}/recordings/${result.recordingId}`;
     } catch (error) {
       console.error("Upload failed:", error);
       this.hideProcessingModal();
@@ -1000,8 +1005,13 @@ class RecordingManager {
       this.isProcessing = false;
       window.removeEventListener("beforeunload", this.beforeUnloadHandler);
 
-      // Redirect to split page
-      window.location.href = `/setlists/${recordingData.setlistId}/recordings/${result.recordingId}/split-with-wavesurfer`;
+      // Extract bandId from current URL
+      const currentUrl = window.location.href;
+      const bandsMatch = currentUrl.match(/\/bands\/(\d+)\//);
+      const bandId = bandsMatch ? bandsMatch[1] : "1"; // Fallback to 1 if not found
+
+      // Redirect to recording detail page
+      window.location.href = `/bands/${bandId}/setlists/${recordingData.setlistId}/recordings/${result.recordingId}`;
     } catch (error) {
       console.error("Retry upload failed:", error);
       this.hideProcessingModal();

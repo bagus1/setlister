@@ -6,12 +6,20 @@
           <h1>Split Recording (Peaks.js)</h1>
           <h2 class="h5 text-muted"><%= setlist.title %></h2>
         </div>
-        <a
-          href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>"
-          class="btn btn-outline-secondary"
-        >
-          <i class="bi bi-arrow-left"></i> Back to Setlist
-        </a>
+        <div class="d-flex gap-2">
+          <a
+            href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>"
+            class="btn btn-outline-secondary"
+          >
+            <i class="bi bi-arrow-left"></i> Back to Setlist
+          </a>
+          <a
+            href="/bands/<%= setlist.band.id %>"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house"></i> Back to Band
+          </a>
+        </div>
       </div>
     </div>
   </div>

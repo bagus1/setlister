@@ -7,7 +7,10 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const ffmpeg = require("fluent-ffmpeg");
-const { generateShareTokens } = require("../utils/shareTokens");
+const {
+  generateShareTokens,
+  getViewTypeFromToken,
+} = require("../utils/shareTokens");
 const { checkStorageQuota } = require("../middleware/checkStorageQuota");
 const { updateBandStorageUsage } = require("../utils/storageCalculator");
 const { exec } = require("child_process");
@@ -3066,11 +3069,15 @@ router.post(
 
       // Process each split with FFmpeg
       const createdSplits = [];
-      const inputPath = path.join(
-        __dirname,
-        "..",
-        recording.filePath.substring(1)
-      ); // Remove leading /
+      // recording.filePath is already an absolute path stored in the database
+      let inputPath;
+      if (recording.filePath.startsWith("/")) {
+        // Absolute path - use as-is
+        inputPath = recording.filePath;
+      } else {
+        // Relative path - build from public directory
+        inputPath = path.join(__dirname, "..", "public", recording.filePath);
+      }
 
       for (const split of splits) {
         // Create split metadata first
@@ -3220,6 +3227,146 @@ router.post(
     } catch (error) {
       logger.logError("Promote split error", error);
       res.status(500).json({ error: "Failed to add recording to song" });
+    }
+  }
+);
+
+// DELETE /setlists/:id/recordings/splits/:splitId - Delete a recording split
+router.delete(
+  "/:id/recordings/splits/:splitId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const splitId = parseInt(req.params.splitId);
+      const userId = req.session.userId;
+
+      // Find the split with all necessary relationships
+      const split = await prisma.recordingSplit.findUnique({
+        where: { id: splitId },
+        include: {
+          recording: {
+            include: {
+              setlist: {
+                include: {
+                  band: {
+                    include: {
+                      members: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          link: true,
+        },
+      });
+
+      if (!split) {
+        return res.status(404).json({ error: "Split not found" });
+      }
+
+      // Check authorization (user must be a member of the band)
+      const isMember = split.recording.setlist.band.members.some(
+        (member) => member.userId === userId
+      );
+      if (!isMember && split.recording.setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Check if the split is used as a link
+      if (split.linkId && split.link) {
+        // Delete the link record
+        await prisma.link.delete({
+          where: { id: split.linkId },
+        });
+        console.log(
+          `Deleted link ${split.linkId} associated with split ${splitId}`
+        );
+      }
+
+      // Check if the split file is referenced in AlbumTrack or BandSong
+      // Note: These are string fields, not foreign keys, so we need to check manually
+      const albumTracksWithSplit = await prisma.albumTrack.findMany({
+        where: {
+          audioUrl: {
+            contains: split.filePath,
+          },
+        },
+        include: {
+          album: true,
+          song: true,
+        },
+      });
+
+      const bandSongsWithSplit = await prisma.bandSong.findMany({
+        where: {
+          audio: {
+            contains: split.filePath,
+          },
+        },
+        include: {
+          song: true,
+        },
+      });
+
+      // Build a warning message if there are references
+      let warningMessage = "";
+      if (albumTracksWithSplit.length > 0 || bandSongsWithSplit.length > 0) {
+        warningMessage = "This split is also referenced in:\n";
+        if (albumTracksWithSplit.length > 0) {
+          warningMessage += `• ${albumTracksWithSplit.length} album track(s)\n`;
+        }
+        if (bandSongsWithSplit.length > 0) {
+          warningMessage += `• ${bandSongsWithSplit.length} band song(s)\n`;
+        }
+      }
+
+      // Delete the physical file if it exists
+      if (split.filePath) {
+        const fs = require("fs");
+        const path = require("path");
+        let filePath;
+        if (split.filePath.startsWith("/Users")) {
+          // Absolute path
+          filePath = split.filePath;
+        } else if (split.filePath.startsWith("/")) {
+          // Relative path from public directory
+          filePath = path.join(__dirname, "..", split.filePath.substring(1));
+        } else {
+          // Already relative
+          filePath = path.join(__dirname, "..", split.filePath);
+        }
+
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log(`Deleted file: ${filePath}`);
+          } else {
+            console.log(`File not found: ${filePath}`);
+          }
+        } catch (fileError) {
+          console.error(`Error deleting file: ${fileError.message}`);
+          // Continue with database deletion even if file deletion fails
+        }
+      }
+
+      // Delete the split record
+      await prisma.recordingSplit.delete({
+        where: { id: splitId },
+      });
+
+      console.log(
+        `Deleted recording split ${splitId}${warningMessage ? " (with warnings)" : ""}`
+      );
+
+      res.json({
+        success: true,
+        message: "Split deleted successfully",
+        warning: warningMessage || null,
+      });
+    } catch (error) {
+      logger.logError("Delete split error", error);
+      res.status(500).json({ error: "Failed to delete split" });
     }
   }
 );

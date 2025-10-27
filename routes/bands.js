@@ -252,6 +252,374 @@ router.get(
   }
 );
 
+// GET /bands/:bandId/setlists/:setlistId/player - Player for split recordings (public with share token)
+router.get("/:bandId/setlists/:setlistId/player", async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const setlistId = parseInt(req.params.setlistId);
+    const shareToken = req.query.t;
+
+    // Get setlist with recordings and splits
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      include: {
+        band: true,
+        recordings: {
+          include: {
+            creator: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+            splits: {
+              include: {
+                song: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+    });
+
+    if (!setlist) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    if (setlist.bandId !== bandId) {
+      return res.status(404).send("Setlist not found");
+    }
+
+    // Check authorization - either logged in as band member OR has valid share token
+    const isAuthenticated = req.session.user?.id;
+    let hasAccess = false;
+
+    if (isAuthenticated) {
+      // Check if user is a band member
+      const member = await prisma.bandMember.findFirst({
+        where: {
+          bandId: setlist.bandId,
+          userId: req.session.user.id,
+        },
+      });
+      hasAccess = !!member;
+    }
+
+    // Check share token if not authenticated or not a member
+    if (!hasAccess && shareToken) {
+      const viewType = getViewTypeFromToken(setlist.shareTokens, shareToken);
+      hasAccess = viewType === "player";
+    }
+
+    if (!hasAccess) {
+      return res.status(403).send("Not authorized to view this player");
+    }
+
+    res.render("setlists/recordings-player", {
+      title: `Player - ${setlist.title}`,
+      pageTitle: `Player`,
+      marqueeTitle: setlist.band.name,
+      setlist,
+      recordings: setlist.recordings,
+      hasBandHeader: false, // No band header for public view
+      shareToken, // Pass token to view for generating share links
+    });
+  } catch (error) {
+    logger.logError("Recordings player error", error);
+    res.status(500).send("Error loading player");
+  }
+});
+
+// ALL SUB-ROUTES FOR /recordings/:recordingId must come BEFORE the generic GET route
+// Otherwise Express will match the GET route first and return HTML
+
+// POST /bands/:bandId/setlists/:setlistId/recordings/:recordingId/assign-song - Assign recording to single song
+router.post(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/assign-song",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+      const { songTitle, songId } = req.body;
+
+      // Verify access
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+        include: {
+          setlist: {
+            include: {
+              band: {
+                include: {
+                  members: {
+                    where: { userId },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (
+        !recording ||
+        recording.setlist.bandId !== bandId ||
+        recording.setlist.band.members.length === 0
+      ) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Get or create song
+      let finalSongId = songId ? parseInt(songId) : null;
+      if (!finalSongId && songTitle) {
+        // Create new song in band
+        const newSong = await prisma.song.create({
+          data: {
+            title: songTitle.trim(),
+            bandId: bandId,
+            createdById: userId,
+          },
+        });
+        finalSongId = newSong.id;
+
+        // Add song to setlist
+        const maxOrder = await prisma.setlistSong.findFirst({
+          where: { setlistId },
+          orderBy: { order: "desc" },
+          select: { order: true },
+        });
+
+        await prisma.setlistSong.create({
+          data: {
+            setlistId,
+            songId: newSong.id,
+            order: (maxOrder?.order || 0) + 1,
+            setId: null, // Add to setlist, not a specific set
+          },
+        });
+      }
+
+      if (!finalSongId) {
+        return res.status(400).json({ error: "Song ID or title required" });
+      }
+
+      // Create a single split for the entire recording
+      const split = await prisma.recordingSplit.create({
+        data: {
+          recordingId: recordingId,
+          songId: finalSongId,
+          startTime: 0,
+          endTime: recording.duration || 0,
+          duration: recording.duration || 0,
+          filePath: recording.filePath, // Point to the full recording
+        },
+      });
+
+      // Mark recording as processed
+      await prisma.recording.update({
+        where: { id: recordingId },
+        data: { isProcessed: true },
+      });
+
+      res.json({
+        success: true,
+        message: "Recording assigned to song",
+        splitId: split.id,
+      });
+    } catch (error) {
+      console.error("Assign recording to song error:", error);
+      logger.logError("Assign recording to song error", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to assign recording" });
+    }
+  }
+);
+
+// POST /bands/:bandId/setlists/:setlistId/recordings/:recordingId/delete-source - Delete source file only
+router.post(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/delete-source",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Verify access
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+        include: {
+          setlist: {
+            include: {
+              band: {
+                include: {
+                  members: {
+                    where: { userId },
+                  },
+                },
+              },
+            },
+          },
+          splits: {
+            where: {
+              linkId: { not: null },
+            },
+            include: {
+              link: true,
+            },
+          },
+        },
+      });
+
+      if (
+        !recording ||
+        recording.setlist.bandId !== bandId ||
+        recording.setlist.band.members.length === 0
+      ) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Delete any links first
+      for (const split of recording.splits) {
+        if (split.linkId) {
+          await prisma.link.delete({ where: { id: split.linkId } });
+        }
+      }
+
+      // Delete the audio file from disk
+      const fs = require("fs");
+      const originalFilePath = recording.filePath;
+
+      if (originalFilePath && originalFilePath.trim() !== "") {
+        // Build absolute path - handle both absolute and relative paths
+        let filePath;
+        if (originalFilePath.startsWith("/Users")) {
+          // Already absolute path
+          filePath = originalFilePath;
+        } else if (originalFilePath.startsWith("/")) {
+          // Relative path like /uploads/recordings/file.mp3 - remove leading /
+          filePath = path.join(__dirname, "..", originalFilePath.substring(1));
+        } else {
+          // Already relative without leading /
+          filePath = path.join(__dirname, "..", originalFilePath);
+        }
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+
+      // Clear the filePath in database by setting to empty string
+      await prisma.recording.update({
+        where: { id: recordingId },
+        data: { filePath: "" },
+      });
+
+      res.json({ success: true, message: "Source file deleted" });
+    } catch (error) {
+      console.error("Delete source error:", error);
+      logger.logError("Delete source error", error);
+      res.status(500).json({ error: "Failed to delete source file" });
+    }
+  }
+);
+
+// DELETE /bands/:bandId/setlists/:setlistId/recordings/:recordingId - Delete entire recording
+router.delete(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Verify access
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+        include: {
+          setlist: {
+            include: {
+              band: {
+                include: {
+                  members: {
+                    where: { userId },
+                  },
+                },
+              },
+            },
+          },
+          splits: {
+            where: {
+              linkId: { not: null },
+            },
+            include: {
+              link: true,
+            },
+          },
+        },
+      });
+
+      if (
+        !recording ||
+        recording.setlist.bandId !== bandId ||
+        recording.setlist.band.members.length === 0
+      ) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Delete any links first
+      for (const split of recording.splits) {
+        if (split.linkId) {
+          await prisma.link.delete({ where: { id: split.linkId } });
+        }
+      }
+
+      // Delete audio files from disk
+      const fs = require("fs");
+
+      // Delete main recording file
+      if (recording.filePath) {
+        const mainFilePath = path.join(__dirname, "..", recording.filePath);
+        if (fs.existsSync(mainFilePath)) {
+          fs.unlinkSync(mainFilePath);
+        }
+      }
+
+      // Get all splits to delete their files
+      const allSplits = await prisma.recordingSplit.findMany({
+        where: { recordingId: recordingId },
+      });
+
+      for (const split of allSplits) {
+        if (split.filePath) {
+          const splitFilePath = path.join(__dirname, "..", split.filePath);
+          if (fs.existsSync(splitFilePath)) {
+            fs.unlinkSync(splitFilePath);
+          }
+        }
+      }
+
+      // Delete recording (cascades to splits)
+      await prisma.recording.delete({ where: { id: recordingId } });
+
+      res.json({ success: true, message: "Recording deleted" });
+    } catch (error) {
+      console.error("Delete recording error:", error);
+      logger.logError("Delete recording error", error);
+      res.status(500).json({ error: "Failed to delete recording" });
+    }
+  }
+);
+
 // GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId - View/play a specific recording
 router.get(
   "/:bandId/setlists/:setlistId/recordings/:recordingId",
@@ -326,7 +694,9 @@ router.get(
         setlist,
         recording: {
           ...recording,
-          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
+          filePath: recording.filePath
+            ? `/uploads/recordings/${path.basename(recording.filePath)}`
+            : "",
         },
         hasBandHeader: true,
         band: setlist.band,
@@ -335,6 +705,72 @@ router.get(
       logger.logError("Recording player error", error);
       req.flash("error", "Error loading recording");
       res.redirect("/bands");
+    }
+  }
+);
+
+// GET /bands/:bandId/setlists/:setlistId/api/songs - Get songs for a setlist (API endpoint)
+router.get(
+  "/:bandId/setlists/:setlistId/api/songs",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const setlistId = parseInt(req.params.setlistId);
+      const userId = req.session.user.id;
+
+      // Get setlist with songs
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: {
+                    select: {
+                      id: true,
+                      title: true,
+                    },
+                  },
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist || setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Flatten songs from all sets
+      const songs = [];
+      setlist.sets.forEach((set) => {
+        set.songs.forEach((ss) => {
+          songs.push({
+            id: ss.song.id,
+            title: ss.song.title,
+          });
+        });
+      });
+
+      res.json({ songs });
+    } catch (error) {
+      logger.logError("Get setlist songs API error", error);
+      res.status(500).json({ error: "Failed to load songs" });
     }
   }
 );

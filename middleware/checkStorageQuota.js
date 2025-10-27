@@ -10,20 +10,32 @@ async function checkStorageQuota(req, res, next) {
   try {
     const userId = req.user.id;
     let bandId = req.params.bandId || req.body.bandId;
-    
+
+    console.log("[STORAGE QUOTA] Checking quota");
+    console.log("[STORAGE QUOTA] req.params:", req.params);
+    console.log("[STORAGE QUOTA] req.body:", req.body);
+    console.log(
+      "[STORAGE QUOTA] req.file:",
+      req.file
+        ? { size: req.file.size, originalname: req.file.originalname }
+        : "undefined"
+    );
+
     // For setlist routes, we need to get bandId from the setlist
     if (!bandId && req.params.id) {
       // This is likely a setlist route, get bandId from setlist
       const setlist = await prisma.setlist.findUnique({
         where: { id: parseInt(req.params.id) },
-        select: { bandId: true }
+        select: { bandId: true },
       });
       bandId = setlist?.bandId;
     }
-    
+
+    console.log("[STORAGE QUOTA] bandId:", bandId);
+
     if (!bandId) {
-      return res.status(400).json({ 
-        error: "Band ID is required for storage quota check" 
+      return res.status(400).json({
+        error: "Band ID is required for storage quota check",
       });
     }
 
@@ -31,13 +43,23 @@ async function checkStorageQuota(req, res, next) {
     let fileSize = 0;
     if (req.file) {
       fileSize = req.file.size;
+      console.log("[STORAGE QUOTA] Got fileSize from req.file:", fileSize);
     } else if (req.body.fileSize) {
       fileSize = parseInt(req.body.fileSize);
+      console.log(
+        "[STORAGE QUOTA] Got fileSize from req.body.fileSize:",
+        req.body.fileSize,
+        "parsed to:",
+        fileSize
+      );
     }
 
+    console.log("[STORAGE QUOTA] Final fileSize:", fileSize);
+
     if (!fileSize || fileSize <= 0) {
-      return res.status(400).json({ 
-        error: "File size is required for storage quota check" 
+      console.log("[STORAGE QUOTA] ERROR: Invalid fileSize");
+      return res.status(400).json({
+        error: "File size is required for storage quota check",
       });
     }
 
@@ -68,12 +90,14 @@ async function checkStorageQuota(req, res, next) {
     next();
   } catch (error) {
     console.error("Storage quota check error:", error);
-    
+
     // Return user-friendly error message
     return res.status(500).json({
       error: "Unable to check storage quota",
-      message: "There was a problem checking your storage quota. Please try again or contact support if the issue persists.",
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      message:
+        "There was a problem checking your storage quota. Please try again or contact support if the issue persists.",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 }

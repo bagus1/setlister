@@ -400,7 +400,7 @@ model Link {
   type        enum_links_type
   description String?         @db.VarChar(255)
   url         String          @db.VarChar(255)
-  createdAt   DateTime        @map("created_at") @db.Timestamptz(6)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   song        Song            @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   creator     User?           @relation("LinkCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)

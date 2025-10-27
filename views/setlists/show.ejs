@@ -674,6 +674,15 @@ function getTokenForView(viewType) {
                         </a>
                     </div>
 
+                    <div class="d-flex gap-2 mt-2">
+                        <a href="/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/player?t=<%= getTokenForView('player') || '' %>" class="btn btn-primary flex-fill">
+                            <i class="bi bi-play-circle"></i> Play Recordings
+                        </a>
+                        <button onclick="copyPlayerLink()" class="btn btn-outline-primary" title="Copy player link">
+                            <i class="bi bi-link-45deg"></i> Copy Link
+                        </button>
+                    </div>
+
                     <% const savedUrl = setlist.recordingsUrl; %>
                     <% if (savedUrl) { %>
                     <div class="d-flex gap-2">
@@ -1164,6 +1173,35 @@ function getTokenForView(viewType) {
         } else {
             // Fallback for older browsers
             fallbackCopyTextToClipboard(listenUrl);
+        }
+    }
+
+    function copyPlayerLink() {
+        const token = '<%= getTokenForView("player") || "" %>';
+        const playerUrl = `${window.location.origin}/bands/<%= setlist.bandId %>/setlists/<%= setlist.id %>/player?t=${token}`;
+
+        if (navigator.clipboard && window.isSecureContext) {
+            // Modern approach
+            navigator.clipboard.writeText(playerUrl).then(() => {
+                // Show success feedback
+                const button = event.target.closest('button');
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                button.classList.remove('btn-outline-primary');
+                button.classList.add('btn-primary');
+
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-outline-primary');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                fallbackCopyTextToClipboard(playerUrl);
+            });
+        } else {
+            // Fallback for older browsers
+            fallbackCopyTextToClipboard(playerUrl);
         }
     }
 

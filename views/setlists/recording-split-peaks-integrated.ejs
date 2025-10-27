@@ -165,6 +165,29 @@
             </div>
           </div>
 
+          <hr />
+
+          <!-- Utility Buttons -->
+          <div class="mt-3 d-flex gap-2 justify-content-center flex-wrap">
+            <button
+              id="undoBtn"
+              onclick="undoLastRegion()"
+              class="btn btn-outline-warning"
+              disabled
+            >
+              <i class="bi bi-arrow-counterclockwise"></i> Undo Last Segment
+              <kbd>ESC</kbd>
+            </button>
+            <button id="autoDetectBtn" class="btn btn-outline-info" disabled>
+              <i class="bi bi-magic"></i> Auto-Detect Silence
+            </button>
+            <button id="processSplitsBtn" class="btn btn-success" disabled>
+              <i class="bi bi-scissors"></i> Process Splits
+            </button>
+          </div>
+
+          <hr />
+
           <!-- Instructions -->
           <style>
             kbd {
@@ -213,25 +236,6 @@
               </li>
             </ul>
           </div>
-
-          <!-- Utility Buttons -->
-          <div class="mt-3 d-flex gap-2 justify-content-center flex-wrap">
-            <button
-              id="undoBtn"
-              onclick="undoLastRegion()"
-              class="btn btn-outline-warning"
-              disabled
-            >
-              <i class="bi bi-arrow-counterclockwise"></i> Undo Last Segment
-              <kbd>ESC</kbd>
-            </button>
-            <button id="autoDetectBtn" class="btn btn-outline-info" disabled>
-              <i class="bi bi-magic"></i> Auto-Detect Silence
-            </button>
-            <button id="processSplitsBtn" class="btn btn-success" disabled>
-              <i class="bi bi-scissors"></i> Process Splits
-            </button>
-          </div>
           <div id="processSplitsStatus" class="text-center mt-2">
             <small class="text-muted"
               >Assign songs to segments to enable processing</small
@@ -269,8 +273,8 @@
 
           <!-- Add New Song -->
           <div class="mb-3">
-            <div class="alert alert-light mb-0">
-              <strong><i class="bi bi-music-note"></i> Add new song</strong>
+            <h6>Add New Song:</h6>
+            <div class="p-2 border rounded bg-dark text-light">
               <p class="small mb-2">
                 If you played a song that wasn't in the setlist (encore, jam,
                 etc.), add it here:
@@ -284,7 +288,7 @@
                 />
                 <button
                   onclick="addUnlistedSong()"
-                  class="btn btn-outline-primary"
+                  class="btn btn-outline-light"
                 >
                   <i class="bi bi-plus"></i> Add & Assign
                 </button>
@@ -322,18 +326,12 @@
   document.addEventListener("DOMContentLoaded", function () {
     console.log("=== PEAKS.JS SPLIT PAGE STARTING ===");
 
-    // Add visual debugging instead of console logs
-    const debugDiv = document.createElement("div");
-    debugDiv.style.cssText =
-      "position: fixed; top: 10px; right: 10px; background: #000; color: #fff; padding: 10px; z-index: 9999; font-family: monospace; font-size: 12px; max-width: 300px; max-height: 200px; overflow-y: auto; border: 1px solid #333;";
-    debugDiv.innerHTML = "<div>JavaScript loaded</div>";
-    document.body.appendChild(debugDiv);
+    // Debug panel removed - use browser console for debugging
+    const debugDiv = null;
 
     function addDebugLog(message) {
-      const logDiv = document.createElement("div");
-      logDiv.textContent = new Date().toLocaleTimeString() + ": " + message;
-      debugDiv.appendChild(logDiv);
-      console.log(message); // Still try console
+      // Just log to console, no visual debug panel
+      console.log(message);
     }
 
     let peaks = null;
@@ -440,6 +438,17 @@
       const overviewContainer = document.getElementById("overview-container");
       const zoomviewContainer = document.getElementById("zoomview-container");
 
+      // Animate loading bar
+      const loadingBar = document.getElementById("loadingBar");
+      const loadingStatus = document.getElementById("loadingStatus");
+      let progress = 0;
+      const updateProgress = setInterval(() => {
+        progress += 5;
+        if (loadingBar) {
+          loadingBar.style.width = Math.min(progress, 95) + '%';
+        }
+      }, 100);
+
       //   const options = {
       //     containers: {
       //       overview: overviewContainer,
@@ -530,8 +539,19 @@
         addDebugLog("Peaks.js initialized successfully!");
         peaksInitialized = true; // Mark as initialized to prevent re-initialization
 
+        // Complete loading animation
+        if (loadingBar) {
+          loadingBar.style.width = '100%';
+          clearInterval(updateProgress);
+        }
+        if (loadingStatus) {
+          loadingStatus.textContent = 'Ready!';
+        }
+
         // Hide loading progress and show waveform
-        document.getElementById("loadingProgress").style.display = "none";
+        setTimeout(() => {
+          document.getElementById("loadingProgress").style.display = "none";
+        }, 300);
         overviewContainer.style.display = "block";
         zoomviewContainer.style.display = "block";
 
@@ -935,6 +955,7 @@
           selectedSegment.update({ color: '#ffc107' });
           updateSelectedSegmentInfo();
           updateSegmentList();
+          updateProcessButton();
 
           tempSegment = null;
 
@@ -1170,6 +1191,107 @@
         addDebugLog(`Removed last segment: ${lastSegment.id}`);
       }
 
+      async function autoDetectSilence() {
+        if (!peaks) {
+          alert('Peaks.js is not initialized yet');
+          return;
+        }
+
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const response = await fetch(audioElement.src);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        const channelData = audioBuffer.getChannelData(0);
+        const sampleRate = audioBuffer.sampleRate;
+        const duration = audioBuffer.duration;
+
+        // Parameters for silence detection
+        const silenceThreshold = -40; // dB threshold for silence
+        const minSilenceDuration = 1.0; // Minimum 1 second of silence
+        const windowSize = Math.floor(sampleRate * 0.5); // 0.5 second windows
+
+        const silenceRegions = [];
+        let inSilence = false;
+        let silenceStart = 0;
+
+        // Analyze audio in windows
+        for (let i = 0; i < channelData.length - windowSize; i += windowSize) {
+          let windowSum = 0;
+          let maxValue = 0;
+
+          for (let j = 0; j < windowSize && i + j < channelData.length; j++) {
+            const sample = channelData[i + j];
+            windowSum += sample;
+            const absSample = Math.abs(sample);
+            if (absSample > maxValue) {
+              maxValue = absSample;
+            }
+          }
+
+          // Convert to dB
+          const dbValue = 20 * Math.log10(maxValue + 1e-10);
+          const time = i / sampleRate;
+
+          if (dbValue < silenceThreshold) {
+            if (!inSilence) {
+              inSilence = true;
+              silenceStart = time;
+            }
+          } else {
+            if (inSilence) {
+              const silenceDuration = time - silenceStart;
+              if (silenceDuration >= minSilenceDuration) {
+                silenceRegions.push({ start: silenceStart, end: time });
+              }
+              inSilence = false;
+            }
+          }
+        }
+
+        if (inSilence) {
+          const silenceDuration = duration - silenceStart;
+          if (silenceDuration >= minSilenceDuration) {
+            silenceRegions.push({ start: silenceStart, end: duration });
+          }
+        }
+
+        // Create segments between silence gaps
+        let startTime = 0;
+        for (const silence of silenceRegions) {
+          // Only create a segment if there's at least 0.5 seconds between start and silence
+          if (silence.start - startTime >= 0.5) {
+            peaks.segments.add({
+              startTime: startTime,
+              endTime: silence.start,
+              labelText: '',
+              color: '#007bff',
+              editable: true
+            });
+          }
+          startTime = silence.end;
+        }
+
+        // Create final segment after last silence
+        if (duration - startTime >= 0.5) {
+          peaks.segments.add({
+            startTime: startTime,
+            endTime: duration,
+            labelText: '',
+            color: '#007bff',
+            editable: true
+          });
+        }
+
+        updateSegmentList();
+        updateProcessButton();
+        audioContext.close();
+        addDebugLog(`Auto-detected ${peaks.segments.getSegments().length} segments`);
+      }
+
+      // Make autoDetectSilence globally accessible
+      window.autoDetectSilence = autoDetectSilence;
+
       // Add unlisted song
       async function addUnlistedSong() {
         const titleInput = document.getElementById('unlistedSongTitle');
@@ -1375,7 +1497,7 @@
             const result = await response.json();
             alert(`Successfully split ${splits.length} songs!`);
             window.location.href =
-              "/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings";
+              "/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>";
           } else {
             throw new Error("Failed to process splits");
           }

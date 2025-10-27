@@ -55,6 +55,30 @@
                                     <span class="badge bg-secondary me-3"><%= index + 1 %></span>
                                     <div class="flex-grow-1">
                                         <strong><%= track.song.title %></strong>
+                                        <% if (track.audioUrl) { %>
+                                            <!-- Detect audio source type -->
+                                            <% 
+                                                let audioSource = null;
+                                                if (track.audioUrl.startsWith('/uploads/recordings/splits/')) {
+                                                    // Check if it's a recording split
+                                                    if (track.song.recordingSplits && track.song.recordingSplits.some(s => s.filePath === track.audioUrl)) {
+                                                        audioSource = { type: 'split', icon: 'file-music', label: 'Recording Split' };
+                                                    } else {
+                                                        // It was a split but the recording doesn't exist anymore
+                                                        audioSource = { type: 'file', icon: 'hdd-stack', label: 'Uploaded File' };
+                                                    }
+                                                } else if (track.audioUrl.startsWith('/uploads/albums/')) {
+                                                    audioSource = { type: 'upload', icon: 'cloud-upload', label: 'Uploaded File' };
+                                                } else if (track.song.links && track.song.links.some(l => l.url === track.audioUrl)) {
+                                                    audioSource = { type: 'link', icon: 'link-45deg', label: 'Audio Link' };
+                                                } else {
+                                                    audioSource = { type: 'custom', icon: 'link', label: 'Custom URL' };
+                                                }
+                                            %>
+                                            <br><small class="text-muted" title="<%= track.audioUrl %>">
+                                                <i class="bi bi-<%= audioSource.icon %>"></i> <%= audioSource.label %>
+                                            </small>
+                                        <% } %>
                                         <% if (track.song.artists && track.song.artists.length > 0) { %>
                                             <br><small class="text-muted">
                                                 by <%= track.song.artists.map(sa => sa.artist.name).join(', ') %>
@@ -103,13 +127,14 @@
                                                 <% if (track.song.links && track.song.links.length > 0) { %>
                                                     <li><h6 class="dropdown-header">Audio Links</h6></li>
                                                     <% track.song.links.forEach(link => { %>
+                                                        <% const isSelected = (track.audioUrl && link.url && String(track.audioUrl).trim() === String(link.url).trim()); %>
                                                         <li>
-                                                            <a class="dropdown-item <%= track.audioUrl === link.url ? 'active' : '' %>" 
+                                                            <a class="dropdown-item <%= isSelected ? 'active' : '' %>" 
                                                                href="#"
-                                                               onclick="updateTrackAudioUrl(<%= track.id %>, '<%= link.url %>')">
+                                                               onclick="updateTrackAudioUrl(<%= track.id %>, '<%= link.url.replace(/'/g, "\\'") %>')">
                                                                 <i class="bi bi-link-45deg"></i>
                                                                 <%= link.description || link.url.split('/').pop() || 'Audio Link' %>
-                                                                <% if (track.audioUrl === link.url) { %>
+                                                                <% if (isSelected) { %>
                                                                     <i class="bi bi-check text-success ms-2"></i>
                                                                 <% } %>
                                                             </a>
@@ -292,6 +317,7 @@ async function uploadAudioFile() {
     
     const formData = new FormData();
     formData.append('audioFile', file);
+    formData.append('fileSize', file.size); // Add file size for quota check
     
     const uploadProgress = document.getElementById('uploadProgress');
     const progressBar = uploadProgress.querySelector('.progress-bar');
@@ -312,9 +338,23 @@ async function uploadAudioFile() {
                 const response = JSON.parse(xhr.responseText);
                 updateTrackAudioUrl(currentTrackId, response.audioUrl);
             } else {
-                alert('Upload failed');
+                console.error('Upload failed:', xhr.status, xhr.responseText);
+                let errorMsg = 'Upload failed';
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    errorMsg = errorResponse.error || errorMsg;
+                } catch (e) {
+                    errorMsg = xhr.responseText || errorMsg;
+                }
+                alert(errorMsg);
                 uploadProgress.style.display = 'none';
             }
+        });
+        
+        xhr.addEventListener('error', () => {
+            console.error('Upload network error');
+            alert('Upload failed: Network error');
+            uploadProgress.style.display = 'none';
         });
         
         xhr.open('POST', `/bands/<%= album.bandId %>/albums/<%= album.id %>/tracks/${currentTrackId}/upload`);

@@ -296,6 +296,7 @@ router.get("/:bandId/setlists/:setlistId/player", async (req, res) => {
     // Check authorization - either logged in as band member OR has valid share token
     const isAuthenticated = req.session.user?.id;
     let hasAccess = false;
+    let isBandMember = false;
 
     if (isAuthenticated) {
       // Check if user is a band member
@@ -306,6 +307,7 @@ router.get("/:bandId/setlists/:setlistId/player", async (req, res) => {
         },
       });
       hasAccess = !!member;
+      isBandMember = !!member;
     }
 
     // Check share token if not authenticated or not a member
@@ -326,6 +328,7 @@ router.get("/:bandId/setlists/:setlistId/player", async (req, res) => {
       recordings: setlist.recordings,
       hasBandHeader: false, // No band header for public view
       shareToken, // Pass token to view for generating share links
+      isBandMember, // Pass whether current user is a band member
     });
   } catch (error) {
     logger.logError("Recordings player error", error);
@@ -611,10 +614,11 @@ router.delete(
       // Delete recording (cascades to splits)
       await prisma.recording.delete({ where: { id: recordingId } });
 
-      // Set flash message and redirect
-      req.session.success =
-        "Recording and all associated files deleted successfully.";
-      res.redirect(`/bands/${bandId}/setlists/${setlistId}/recordings`);
+      // Return JSON success - client will handle redirect
+      res.json({
+        success: true,
+        message: "Recording and all associated files deleted successfully.",
+      });
     } catch (error) {
       console.error("Delete recording error:", error);
       logger.logError("Delete recording error", error);

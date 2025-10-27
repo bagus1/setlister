@@ -3371,4 +3371,61 @@ router.delete(
   }
 );
 
+// PUT /setlists/:id/recordings/splits/:splitId/skip - Toggle skip state
+router.put(
+  "/:id/recordings/splits/:splitId/skip",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const splitId = parseInt(req.params.splitId);
+      const userId = req.session.user.id;
+      const { isSkipped } = req.body;
+
+      // Find the split
+      const split = await prisma.recordingSplit.findUnique({
+        where: { id: splitId },
+        include: {
+          recording: {
+            include: {
+              setlist: {
+                include: {
+                  band: {
+                    include: {
+                      members: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!split) {
+        return res.status(404).json({ error: "Split not found" });
+      }
+
+      // Check authorization (user must be a member of the band)
+      const isMember = split.recording.setlist.band.members.some(
+        (member) => member.userId === userId
+      );
+
+      if (!isMember) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Update skip state
+      await prisma.recordingSplit.update({
+        where: { id: splitId },
+        data: { isSkipped },
+      });
+
+      res.json({ success: true, isSkipped });
+    } catch (error) {
+      logger.logError("Toggle skip state error", error);
+      res.status(500).json({ error: "Failed to toggle skip state" });
+    }
+  }
+);
+
 module.exports = router;

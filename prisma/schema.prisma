@@ -888,6 +888,8 @@ model RecordingSplit {
   linkId        Int?      @unique @map("link_id")
   link          Link?     @relation(fields: [linkId], references: [id])
   
+  isSkipped     Boolean   @default(false) @map("is_skipped")  // Skip in player playlist
+  
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   
   @@map("recording_splits")

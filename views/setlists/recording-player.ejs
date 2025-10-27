@@ -664,12 +664,15 @@ async function deleteEntireRecording() {
             method: 'DELETE'
         });
         
-        if (response.ok) {
-            // Server will redirect with flash message
+        // Parse JSON response
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // Show success message and redirect
+            alert(result.message || 'Recording deleted successfully');
             window.location.href = '/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings';
         } else {
-            const error = await response.json();
-            alert('Error: ' + (error.error || 'Failed to delete recording'));
+            alert('Error: ' + (result.error || 'Failed to delete recording'));
         }
     } catch (error) {
         console.error('Delete error:', error);

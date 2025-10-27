@@ -6,12 +6,13 @@
                     <h1><i class="bi bi-play-circle"></i> <%= setlist.title %></h1>
                 </div>
                 <div class="d-flex gap-2">
-                    <% if (shareToken) { %>
+                    <% if (shareToken && (!isBandMember)) { %>
                         <!-- Public view with share token -->
                         <span class="badge bg-info">
                             <i class="bi bi-globe"></i> Public View
                         </span>
-                    <% } else { %>
+                    <% } %>
+                    <% if (typeof isBandMember !== 'undefined' && isBandMember) { %>
                         <!-- Logged-in band member view -->
                         <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Back to Recordings
@@ -72,6 +73,13 @@
                             Your browser does not support the audio element.
                         </audio>
                         
+                        <!-- Currently Playing Title -->
+                        <div class="mt-3">
+                            <p class="mb-0" id="currentSongTitle" style="font-size: 1.1rem; font-weight: 500;">
+                                <i class="bi bi-music-note-beamed"></i> <span id="currentSongName">Select a song to play</span>
+                            </p>
+                        </div>
+                        
                         <div class="mt-3">
                             <button id="prevBtn" class="btn btn-outline-primary me-2" disabled>
                                 <i class="bi bi-skip-backward-fill"></i> Previous
@@ -91,8 +99,10 @@
                                 <% allSplits.forEach((split, index) => { %>
                                     <li class="list-group-item mini-playlist-item py-2" 
                                         data-index="<%= index %>"
+                                        data-split-id="<%= split.id %>"
                                         data-url="<%= split.filePath %>"
-                                        data-title="<%= split.song.title %>">
+                                        data-title="<%= split.song.title %>"
+                                        data-is-skipped="<%= split.isSkipped ? 'true' : 'false' %>">
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-light text-dark me-2" style="width: 30px;">
                                                 <%= index + 1 %>
@@ -100,7 +110,7 @@
                                             <div class="flex-grow-1 song-name-clickable" style="cursor: pointer;" onclick="loadTrackFromElement(this)">
                                                 <small class="song-title"><%= split.song.title %></small>
                                             </div>
-                                            <% if (!shareToken) { %>
+                                            <% if (typeof isBandMember !== 'undefined' && isBandMember) { %>
                                                 <!-- Only show buttons for band members, not public view -->
                                                 <% if (split.linkId) { %>
                                                     <span class="badge bg-success ms-2" title="Promoted to song">
@@ -221,9 +231,33 @@ document.addEventListener('DOMContentLoaded', function() {
         title: item.dataset.title
     }));
     
+    // Load initial skip state from database
+    playlistItems.forEach((item, index) => {
+        const isSkipped = item.dataset.isSkipped === 'true';
+        if (isSkipped) {
+            skippedSongs.add(index);
+            item.style.opacity = '0.5';
+            item.style.textDecoration = 'line-through';
+            const skipBtn = item.querySelector('.skip-btn');
+            if (skipBtn) {
+                skipBtn.classList.remove('btn-outline-secondary');
+                skipBtn.classList.add('btn-danger');
+                skipBtn.innerHTML = '<i class="bi bi-x-circle"></i>';
+                skipBtn.title = 'Un-skip this song';
+            }
+        }
+    });
+    
     if (playlist.length > 0 && audioPlayer) {
         updateButtons();
-        loadTrack(0);
+        // Load first non-skipped track
+        let firstNonSkipped = 0;
+        while (firstNonSkipped < playlist.length && skippedSongs.has(firstNonSkipped)) {
+            firstNonSkipped++;
+        }
+        if (firstNonSkipped < playlist.length) {
+            loadTrack(firstNonSkipped);
+        }
     }
 });
 
@@ -241,6 +275,12 @@ function loadTrack(index) {
     document.querySelectorAll('.mini-playlist-item').forEach((item, i) => {
         item.classList.toggle('active', i === index);
     });
+    
+    // Update current song title display
+    const currentSongNameEl = document.getElementById('currentSongName');
+    if (currentSongNameEl) {
+        currentSongNameEl.textContent = track.title;
+    }
     
     // Update buttons
     updateButtons();
@@ -330,11 +370,14 @@ function loadTrackFromElement(element) {
 }
 
 // Toggle skip song
-function toggleSkipSong(index) {
+async function toggleSkipSong(index) {
     const playlistItem = document.querySelector(`[data-index="${index}"]`);
     const skipBtn = playlistItem.querySelector('.skip-btn');
+    const splitId = playlistItem.dataset.splitId;
+    const isSkipped = skippedSongs.has(index);
     
-    if (skippedSongs.has(index)) {
+    // Update UI immediately
+    if (isSkipped) {
         // Un-skip
         skippedSongs.delete(index);
         playlistItem.style.opacity = '1';
@@ -363,6 +406,19 @@ function toggleSkipSong(index) {
                 loadTrack(nextIndex);
             }
         }
+    }
+    
+    // Save to database
+    try {
+        await fetch(`/setlists/<%= setlist.id %>/recordings/splits/${splitId}/skip`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ isSkipped: !isSkipped })
+        });
+    } catch (error) {
+        console.error('Failed to save skip state:', error);
     }
 }
 

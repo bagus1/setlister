@@ -329,16 +329,24 @@ h1 {
    MARQUEE HEADER STYLES
    ======================================== */
 
-.window-center {
+/* .window-center {
   text-align: center;
-  margin: 0 auto;
+  justify-content: center;
 }
 
-.record-profile-container {
-  position: fixed;
-  right: 30px;
-  top: 30px;
+.nav-record-button {
+  background-color: #94242f;
+  padding: 8px 16px;
+  border-radius: 5px;
 }
+.nav-record-button:hover,
+.nav-record-button:active {
+  background-color: #dc3545;
+}
+.record-profile-container {
+  float: right;
+  margin-right: 30px;
+} */
 
 .marquee-header {
   border-radius: 0;

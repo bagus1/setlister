@@ -68,18 +68,39 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="margin-bottom: -5px;">
-        <div class="container">
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark" style="margin-bottom: -5px;">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="d-flex w-100 align-items-center" style="padding: 0 15px;">
+                    <!-- Item 1: Left spacer (invisible but same structure/size as Item 3) -->
+                    <ul class="navbar-nav d-flex flex-column align-items-end justify-content-center" style="width: 140px; flex-shrink: 0; padding-right: 30px; visibility: hidden;">
+                        <li class="nav-item">
+                            <a class="nav-link btn btn-danger text-white nav-record-button" href="#">
+                                <i class="bi bi-record-circle"></i> Record
+                            </a>
+                        </li>
+                        <% if (user) { %>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button">
+                                    <i class="bi bi-person-circle"></i>
+                                    <%= user.username %>
+                                </a>
+                            </li>
+                        <% } else { %>
+                            <li class="nav-item">
+                                <div class="d-flex flex-column">
+                                    <a class="nav-link" href="#">Login</a>
+                                    <a class="nav-link" href="#">Register</a>
+                                </div>
+                            </li>
+                        <% } %>
+                    </ul>
 
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="d-flex w-100" style="margin: 0 auto;">
-                    <!-- Left spacer -->
-                                     
-                    <!-- Center navigation group -->
-                    <ul class="navbar-nav d-flex align-items-center flex-shrink-0 window-center" >
+                    <!-- Item 2: Center navigation group -->
+                    <ul class="navbar-nav d-flex align-items-center justify-content-center center-main-nav" style="flex: 1;">
                         <% if (user) { %>
                             <li class="nav-item">
                                 <a class="nav-link" href="/bands" style="background-image: url('/images/circle.png'); background-size: contain; background-repeat: no-repeat; background-position: center; padding: 38px 25px; text-align: center; color: white; position: relative; top: 5px;">My Bands</a>
@@ -97,7 +118,7 @@
                                 <i class="bi bi-music-note-list"></i> The Band Plan
                             </a>
                         </li>
-                        <li class="nav-item" style="margin-right: 10px;"">
+                        <li class="nav-item" style="margin-right: 10px;">
                             <a class="nav-link" href="/artists" style="background-image: url('/images/trap.png'); background-size: contain; background-repeat: no-repeat; background-position: center; padding: 40px 60px; transform: rotate(15deg); color: white;">Artists</a>
                         </li>
                         <li class="nav-item">
@@ -107,32 +128,30 @@
                         </li>
                     </ul>
 
-                    <!-- Right spacer -->
-                    <div class="flex-1 d-flex justify-content-end record-profile-container">
-                        <!-- Record Button & Profile dropdown - far right -->
-                        <ul class="navbar-nav d-flex flex-column align-items-end">
+                    <!-- Item 3: Record Button & Profile dropdown - far right -->
+                    <ul class="navbar-nav d-flex flex-column align-items-end justify-content-center" style="width: 140px; flex-shrink: 0; padding-right: 30px;">
                         <% if (user) { %>
-                            <li class="nav-item mb-2">
-                                <a class="nav-link btn btn-danger text-white" href="/quick-record" style="padding: 8px 16px; border-radius: 5px;">
+                            <li class="nav-item">
+                                <a class="nav-link btn btn-danger text-white nav-record-button" href="/quick-record">
                                     <i class="bi bi-record-circle"></i> Record
                                 </a>
                             </li>
                         <% } else { %>
-                            <li class="nav-item mb-2">
-                                <a class="nav-link btn btn-danger text-white" href="/auth/register?intent=record" style="padding: 8px 16px; border-radius: 5px;">
+                            <li class="nav-item">
+                                <a class="nav-link btn btn-danger text-white nav-record-button" href="/auth/register?intent=record">
                                     <i class="bi bi-record-circle"></i> Record
                                 </a>
                             </li>
                         <% } %>
                         
                         <% if (user) { %>
-                            <li class="nav-item">
+                            <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                                    data-bs-toggle="dropdown">
+                                    data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-person-circle"></i>
                                     <%= user.username %>
                                 </a>
-                                <ul class="dropdown-menu">
+                                <ul class="dropdown-menu dropdown-menu-end">
                                     <% if (user && user.id === 1) { %>
                                         <li>
                                             <% 
@@ -189,9 +208,7 @@
                                 </div>
                             </li>
                         <% } %>
-                        </ul>
-                    </div>
-                </div>
+                    </ul>
             </div>
         </div>
     </nav>
@@ -216,10 +233,116 @@
     </div>
     
     <style>
+        /* Let Bootstrap handle hamburger visibility normally */
+        .navbar {
+            position: relative;
+        }
+        
+        /* Record button styling */
+        .nav-record-button {
+            background-color: #94242f !important;
+            color: #aaa !important;
+        }
+        
+        .nav-record-button i {
+            color: white !important;
+        }
+        
+        .nav-record-button:hover,
+        .nav-record-button:active,
+        .nav-record-button:focus {
+            background: linear-gradient(135deg, #dc3545 0%, #bb2d3b 100%) !important;
+        }
+        
         /* Responsive marquee text - smaller on mobile portrait */
         @media (max-width: 576px) {
             .marquee-title {
                 font-size: 1.7rem !important;
+            }
+        }
+        
+        /* Hide text in Record and Profile buttons on narrow screens */
+        @media (max-width: 1144px) {
+            .nav-record-button {
+                color: transparent !important;
+                font-size: 0 !important;
+            }
+            
+            /* Keep icon visible */
+            .nav-record-button i {
+                color: white !important;
+                font-size: 1.2rem !important;
+            }
+            
+            /* Hide Profile username text, keep icon */
+            #navbarDropdown {
+                font-size: 0 !important;
+                color: transparent !important;
+            }
+            
+            #navbarDropdown i {
+                color: white !important;
+                font-size: 1.2rem !important;
+            }
+            
+            /* Add right padding to Record and Profile buttons */
+            .navbar-nav:last-child .nav-item {
+                padding-right: 65px;
+            }
+        }
+        
+        /* Add padding for larger screens */
+        @media (min-width: 1145px) {
+            .navbar-nav:last-child .nav-item:first-child {
+                padding-right: 10px;
+            }
+        }
+        
+        /* Prevent center nav from changing size at breakpoints */
+        .center-main-nav .nav-link {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        /* Shrink nav elements between 750px and 1200px */
+        @media (min-width: 751px) and (max-width: 1200px) {
+            .center-main-nav .nav-link {
+                padding: 20px 15px !important;
+                                font-size: 0.5rem;
+            }
+            
+            /* Reduce icon sizes */
+            .center-main-nav .nav-link i {
+                font-size: 0.5rem;
+            }
+        }
+        
+        /* Ensure hamburger is visible when navbar collapses */
+        @media (max-width: 767px) {
+            .navbar-toggler {
+                display: block !important;
+            }
+        }
+        
+        /* Below 750px - hamburger menu styling */
+        @media (max-width: 750px) {
+            .navbar-nav .nav-link {
+                text-align: left;
+                padding: 10px 15px;
+                border: none !important;
+                background: none !important;
+                background-image: none !important;
+            }
+            
+            .center-main-nav .nav-link {
+                padding: 10px 15px !important;
+                transform: none !important;
+            }
+            
+            /* Remove all background images and shapes */
+            .center-main-nav .nav-link[style*="background-image"] {
+                background-image: none !important;
+                padding: 10px 15px !important;
             }
         }
     </style>

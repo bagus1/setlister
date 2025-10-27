@@ -178,7 +178,12 @@
               <i class="bi bi-arrow-counterclockwise"></i> Undo Last Segment
               <kbd>ESC</kbd>
             </button>
-            <button id="autoDetectBtn" class="btn btn-outline-info" disabled>
+            <button
+              id="autoDetectBtn"
+              class="btn btn-outline-info"
+              disabled
+              onclick="autoDetectSilence()"
+            >
               <i class="bi bi-magic"></i> Auto-Detect Silence
             </button>
             <button id="processSplitsBtn" class="btn btn-success" disabled>
@@ -591,6 +596,9 @@
         }, 100);
 
         addDebugLog("Setup complete!");
+
+        // Enable auto-detect button
+        document.getElementById('autoDetectBtn').disabled = false;
       });
     }
 

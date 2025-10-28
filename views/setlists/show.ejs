@@ -14,7 +14,7 @@ function getTokenForView(viewType) {
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1><%= setlist.title %></h1>
+                <h1 id="setlistTitle" style="cursor: pointer;" title="Click to edit"><%= setlist.title %></h1>
                 <h2 class="h4 text-muted">
                     <%= setlist.band.name %>
                 </h2>
@@ -1842,3 +1842,109 @@ function getTokenForView(viewType) {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const setlistTitle = document.getElementById('setlistTitle');
+    
+    if (!setlistTitle) return;
+    
+    setlistTitle.addEventListener('dblclick', function() {
+        // Check if not finalized
+        const isFinalized = <%= setlist.isFinalized ? 'true' : 'false' %>;
+        if (isFinalized) {
+            return; // Don't allow editing if finalized
+        }
+        
+        const originalTitle = this.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = originalTitle;
+        input.className = 'form-control';
+        input.style.fontSize = '2.5rem';
+        input.style.fontWeight = '700';
+        input.style.height = 'auto';
+        
+        // Replace h1 with input
+        this.parentNode.replaceChild(input, this);
+        input.focus();
+        input.select();
+        
+        // Handle blur/save
+        input.addEventListener('blur', async function() {
+            saveTitle();
+        });
+        
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur();
+            } else if (e.key === 'Escape') {
+                cancelEdit();
+            }
+        });
+        
+        async function saveTitle() {
+            const newTitle = input.value.trim();
+            if (!newTitle || newTitle === originalTitle) {
+                cancelEdit();
+                return;
+            }
+            
+            // Show loading state
+            input.disabled = true;
+            
+            try {
+                const response = await fetch('/setlists/<%= setlist.id %>/auto-save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        field: 'title',
+                        value: newTitle
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        // Update the title
+                        const h1 = document.createElement('h1');
+                        h1.id = 'setlistTitle';
+                        h1.style.cursor = 'pointer';
+                        h1.title = 'Click to edit';
+                        h1.textContent = newTitle;
+                        input.parentNode.replaceChild(h1, input);
+                        
+                        // Re-attach click handler
+                        h1.addEventListener('click', arguments.callee);
+                    } else {
+                        alert('Failed to save title');
+                        cancelEdit();
+                    }
+                } else {
+                    alert('Failed to save title');
+                    cancelEdit();
+                }
+            } catch (error) {
+                console.error('Error saving title:', error);
+                alert('Failed to save title');
+                cancelEdit();
+            }
+        }
+        
+        function cancelEdit() {
+            const h1 = document.createElement('h1');
+            h1.id = 'setlistTitle';
+            h1.style.cursor = 'pointer';
+            h1.title = 'Click to edit';
+            h1.textContent = originalTitle;
+            input.parentNode.replaceChild(h1, input);
+            
+            // Re-attach click handler
+            h1.addEventListener('click', arguments.callee);
+        }
+    });
+});
+</script>

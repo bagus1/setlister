@@ -248,6 +248,12 @@
                 the active selection.
               </li>
               <li>
+                <strong>Resize Segment:</strong> You can resize segments by dragging their edges.
+              </li>
+              <li>
+                <strong>Auto-Detect:</strong> Use the Auto Detect Silence button to automatically select segments for songs.
+              </li>
+              <li>
                 <strong>Assign Song:</strong> With a segment selected (yellow),
                 click a song from the "Available Songs" list on the right.
               </li>
@@ -263,6 +269,9 @@
               <li>
                 <strong>Seek Playhead:</strong> Click anywhere on the waveform
                 to move the playhead to that spot.
+              </li>
+              <li>
+                <strong>Delete Segment:</strong> Press <kbd>Delete</kbd> or <kbd>Backspace</kbd> with a segment selected to delete it, or use the list below to manually delete them.
               </li>
               <li>
                 <strong>Undo:</strong> Press <kbd>ESC</kbd> or click the "Undo"
@@ -333,15 +342,23 @@
             </div>
           </div>
 
-          <!-- Segments List - Moved below songs -->
-          <div class="mb-3">
-            <h6>Segments Assigned:</h6>
-            <div id="segmentsList">
-              <p class="text-muted">
-                No segments created yet. Drag on the waveform to create
-                segments.
-              </p>
-            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Segments Assigned Panel - Below Waveform -->
+  <div class="row">
+    <div class="col-lg-9">
+      <div class="card mt-3">
+        <div class="card-header">
+          <h6 class="mb-0">Segments Assigned:</h6>
+        </div>
+        <div class="card-body">
+          <div id="segmentsList">
+            <p class="text-muted small mb-0">
+              No segments created yet. Drag on the waveform to create segments.
+            </p>
           </div>
         </div>
       </div>

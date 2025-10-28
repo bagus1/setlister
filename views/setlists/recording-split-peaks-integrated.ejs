@@ -688,16 +688,31 @@
           Math.floor(audioElement.duration)
         );
 
-        // CRITICAL: Disable Peaks.js's built-in drag-to-scroll by making ALL canvases non-interactive
-        // We'll handle segment editing through Peaks.js API instead
+        // Enable click-to-seek on the waveform
         setTimeout(() => {
+          // Re-enable pointer events on canvases to allow click-to-seek
           const allCanvases = zoomviewContainer.querySelectorAll('canvas');
           allCanvases.forEach((canvas) => {
-            canvas.style.pointerEvents = 'none';
+            canvas.style.pointerEvents = 'auto';
           });
-          const konvaContainer = zoomviewContainer.querySelector('.konvajs-content');
-          if (konvaContainer) {
-            konvaContainer.style.pointerEvents = 'none';
+          
+          // Add click handler for seeking
+          const zoomview = peaks.views.getView("zoomview");
+          if (zoomview && zoomview.view) {
+            zoomview.view.on('stage:click', (e) => {
+              // Only seek if not clicking on a segment
+              const target = e.evt.target;
+              if (target && target.parent && target.parent.className === 'segment') {
+                return; // Don't seek if clicking on a segment label
+              }
+              
+              const x = e.evt.clientX - e.target.getStage().container().getBoundingClientRect().left;
+              const seekTime = peaks.time.getScaledTime(x);
+              
+              if (seekTime !== null && seekTime !== undefined) {
+                peaks.player.seek(seekTime);
+              }
+            });
           }
         }, 100);
 

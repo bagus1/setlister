@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const path = require("path");
+const logger = require("../utils/logger");
 const { requireAuth } = require("./auth");
 const { requireRole } = require("../middleware/rbac");
 const { prisma } = require("../lib/prisma");
@@ -443,33 +444,131 @@ router.get("/songs", async (req, res) => {
 router.delete("/songs/:id", async (req, res) => {
   try {
     const songId = parseInt(req.params.id);
+    const userId = req.session?.user?.id || null;
+    const ip =
+      req.headers["x-forwarded-for"] || req.ip || req.connection.remoteAddress;
+
+    // Log the action
+    logger.logFormSubmission(`/admin/songs/${songId}`, "deleted", userId, {
+      songId,
+    });
+    console.log(
+      `[ADMIN] Attempting to delete song ${songId} by user ${userId}`
+    );
 
     // Check if song exists
     const song = await prisma.song.findUnique({
       where: { id: songId },
+      include: {
+        links: {
+          include: {
+            recordingSplit: true,
+          },
+        },
+        bandSongs: true,
+        setlistSongs: true,
+        albumTracks: true,
+        recordingSplits: true,
+      },
     });
 
     if (!song) {
+      console.log(`[ADMIN] Song ${songId} not found`);
       return res.status(404).json({
         success: false,
         error: "Song not found",
       });
     }
 
-    // Delete the song (cascading deletes will handle related records)
+    console.log(`[ADMIN] Song found: ${song.title}`);
+    console.log(`[ADMIN] Links: ${song.links?.length || 0}`);
+    console.log(
+      `[ADMIN] Recording splits: ${song.recordingSplits?.length || 0}`
+    );
+    console.log(`[ADMIN] Band songs: ${song.bandSongs?.length || 0}`);
+    console.log(`[ADMIN] Setlist songs: ${song.setlistSongs?.length || 0}`);
+    console.log(`[ADMIN] Album tracks: ${song.albumTracks?.length || 0}`);
+
+    // Delete all associated records manually since onDelete is NoAction
+
+    const fs = require("fs");
+
+    // Delete recording splits and their associated files
+    if (song.recordingSplits && song.recordingSplits.length > 0) {
+      for (const split of song.recordingSplits) {
+        // Delete associated split file
+        if (split.filePath) {
+          const splitPath = path.join(__dirname, "..", split.filePath);
+          if (fs.existsSync(splitPath)) {
+            fs.unlinkSync(splitPath);
+          }
+        }
+        // Delete the recording split
+        await prisma.recordingSplit.delete({
+          where: { id: split.id },
+        });
+      }
+    }
+
+    // Delete all remaining links (those not associated with recording splits)
+    console.log(`[ADMIN] Deleting remaining links...`);
+    await prisma.link.deleteMany({
+      where: { songId: songId },
+    });
+
+    // Delete album tracks
+    if (song.albumTracks && song.albumTracks.length > 0) {
+      console.log(
+        `[ADMIN] Deleting ${song.albumTracks.length} album tracks...`
+      );
+      await prisma.albumTrack.deleteMany({
+        where: { songId: songId },
+      });
+    }
+
+    // Delete band songs
+    if (song.bandSongs && song.bandSongs.length > 0) {
+      console.log(`[ADMIN] Deleting ${song.bandSongs.length} band songs...`);
+      await prisma.bandSong.deleteMany({
+        where: { songId: songId },
+      });
+    }
+
+    // Delete setlist songs
+    if (song.setlistSongs && song.setlistSongs.length > 0) {
+      console.log(
+        `[ADMIN] Deleting ${song.setlistSongs.length} setlist songs...`
+      );
+      await prisma.setlistSong.deleteMany({
+        where: { songId: songId },
+      });
+    }
+
+    // Delete song artists
+    console.log(`[ADMIN] Deleting song artists...`);
+    await prisma.songArtist.deleteMany({
+      where: { songId: songId },
+    });
+
+    // Now delete the song
+    console.log(`[ADMIN] Deleting song...`);
     await prisma.song.delete({
       where: { id: songId },
     });
 
+    console.log(`[ADMIN] Song ${songId} deleted successfully`);
     res.json({
       success: true,
       message: "Song deleted successfully",
     });
   } catch (error) {
-    console.error("Delete song error:", error);
+    console.error("[ADMIN] Delete song error:", error);
+    console.error("[ADMIN] Error details:", error.message);
+    console.error("[ADMIN] Stack:", error.stack);
+    logger.logError("Admin delete song error", error);
     res.status(500).json({
       success: false,
-      error: "Failed to delete song",
+      error: error.message || "Failed to delete song",
     });
   }
 });
@@ -923,6 +1022,15 @@ router.get("/recordings/:id", async (req, res) => {
 router.delete("/recordings/:id", async (req, res) => {
   try {
     const recordingId = parseInt(req.params.id);
+    const userId = req.session?.user?.id || null;
+
+    // Log the action
+    logger.logFormSubmission(
+      `/admin/recordings/${recordingId}`,
+      "deleted",
+      userId,
+      { recordingId }
+    );
 
     const recording = await prisma.recording.findUnique({
       where: { id: recordingId },
@@ -991,6 +1099,15 @@ router.delete("/recordings/:id", async (req, res) => {
 router.delete("/recordings/splits/:id", async (req, res) => {
   try {
     const splitId = parseInt(req.params.id);
+    const userId = req.session?.user?.id || null;
+
+    // Log the action
+    logger.logFormSubmission(
+      `/admin/recordings/splits/${splitId}`,
+      "deleted",
+      userId,
+      { splitId }
+    );
 
     const split = await prisma.recordingSplit.findUnique({
       where: { id: splitId },

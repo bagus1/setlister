@@ -4390,12 +4390,51 @@ router.get("/:id/songs", async (req, res) => {
   }
 });
 
+// GET /bands/:id/songs/find-matches - Find similar songs for smart creation
+router.get("/:id/songs/find-matches", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+    const { title, artist } = req.query;
+
+    // Check band membership
+    const band = await verifyBandAccess(bandId, userId);
+    if (!band) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: "Song title is required" });
+    }
+
+    // Use the existing findSongMatches function
+    const matches = await findSongMatches(
+      title.trim(),
+      artist ? artist.trim() : "",
+      userId
+    );
+
+    // Check subscription for private song creation
+    const { canCreatePrivateSongs } = require("../utils/subscriptionHelper");
+    const privateCheck = await canCreatePrivateSongs(userId);
+
+    res.json({
+      success: true,
+      matches: matches,
+      canMakePrivate: privateCheck.allowed,
+    });
+  } catch (error) {
+    logger.logError("Find song matches error", error);
+    res.status(500).json({ error: "Failed to find song matches" });
+  }
+});
+
 // POST /bands/:id/songs/quick-add - Quick add song with just title (for recording splits)
 router.post("/:id/songs/quick-add", requireAuth, async (req, res) => {
   try {
     const bandId = parseInt(req.params.id);
     const userId = req.session.user.id;
-    const { title } = req.body;
+    const { title, artist, isPrivate } = req.body;
 
     // Check band membership
     const band = await verifyBandAccess(bandId, userId);
@@ -4444,15 +4483,53 @@ router.post("/:id/songs/quick-add", requireAuth, async (req, res) => {
         });
       }
     } else {
+      // Handle artist if provided
+      let artistId = null;
+      if (artist && artist.trim()) {
+        // Find or create artist
+        let existingArtist = await prisma.artist.findFirst({
+          where: {
+            name: {
+              equals: artist.trim(),
+              mode: "insensitive",
+            },
+          },
+        });
+
+        if (!existingArtist) {
+          existingArtist = await prisma.artist.create({
+            data: {
+              name: artist.trim(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
+        artistId = existingArtist.id;
+      }
+
       // Create new song
       song = await prisma.song.create({
         data: {
           title: title.trim(),
           createdById: userId,
+          private: isPrivate === "true" || isPrivate === true,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
+
+      // Add artist if provided
+      if (artistId) {
+        await prisma.songArtist.create({
+          data: {
+            songId: song.id,
+            artistId: artistId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
 
       // Add to band
       await prisma.bandSong.create({

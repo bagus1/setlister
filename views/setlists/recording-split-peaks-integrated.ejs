@@ -314,8 +314,7 @@
             <h6>Add New Song:</h6>
             <div class="p-2 border rounded bg-dark text-light">
               <p class="small mb-2">
-                If you played a song that wasn't in the setlist (encore, jam,
-                etc.), add it here:
+                If you played a song that wasn't in the setlist or repeated a song, add it here:
               </p>
               <div class="input-group input-group-sm">
                 <input
@@ -325,7 +324,7 @@
                   placeholder="Enter song title..."
                 />
                 <button
-                  onclick="addUnlistedSong()"
+                  id="addSongBtn"
                   class="btn btn-outline-light"
                 >
                   <i class="bi bi-plus"></i> Add
@@ -345,6 +344,65 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Song Modal -->
+<div class="modal fade" id="addSongModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Song</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="songMatchResults">
+          <!-- Loading state -->
+          <div id="songMatchLoading" class="text-center py-4">
+            <div class="spinner-border" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Searching for similar songs...</p>
+          </div>
+          
+          <!-- Results will be populated here -->
+          <div id="songMatchContent" style="display: none;">
+            <!-- Option 1: Create New -->
+            <div class="mb-4">
+              <h6><strong>Create New Song</strong></h6>
+              <div class="card new-song-card" style="cursor: pointer;">
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label class="form-label">Song Title</label>
+                    <input type="text" id="newSongTitle" class="form-control" placeholder="Enter song title">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Artist</label>
+                    <input type="text" id="newSongArtist" class="form-control" placeholder="Enter artist name (optional)">
+                  </div>
+                  <div id="privateCheckContainer" class="form-check" style="display: none;">
+                    <input class="form-check-input" type="checkbox" id="newSongPrivate">
+                    <label class="form-check-label" for="newSongPrivate">
+                      <i class="bi bi-lock"></i> Private Song
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Option 2: Use Existing -->
+            <div id="existingMatchesContainer" style="display: none;">
+              <h6><strong>Use Existing Song</strong></h6>
+              <div id="existingMatchesList" class="row g-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="confirmAddSongBtn" class="btn btn-primary" disabled>Add Song</button>
       </div>
     </div>
   </div>
@@ -1398,6 +1456,9 @@
       window.autoDetectSilence = autoDetectSilence;
 
       // Add unlisted song
+      let selectedSongChoice = null; // 'new' or song ID
+      let selectedMatchData = null; // Store full match data when selecting existing song
+
       async function addUnlistedSong() {
         const titleInput = document.getElementById('unlistedSongTitle');
         const songTitle = titleInput.value.trim();
@@ -1412,66 +1473,247 @@
           return;
         }
 
-        try {
-          // Add song to band
-          const response = await fetch('/bands/<%= setlist.band.id %>/songs/quick-add', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ title: songTitle })
-          });
+        // Open modal and search for matches
+        openAddSongModal(songTitle);
+      }
 
+      async function openAddSongModal(title) {
+        const modal = new bootstrap.Modal(document.getElementById('addSongModal'));
+        
+        // Reset state
+        selectedSongChoice = null;
+        selectedMatchData = null;
+        document.getElementById('songMatchLoading').style.display = 'block';
+        document.getElementById('songMatchContent').style.display = 'none';
+        document.getElementById('confirmAddSongBtn').disabled = true;
+        
+        // Clear inputs
+        document.getElementById('newSongTitle').value = title;
+        document.getElementById('newSongArtist').value = '';
+        
+        modal.show();
+        
+        try {
+          // Fetch matches
+          const response = await fetch(`/bands/<%= setlist.band.id %>/songs/find-matches?title=${encodeURIComponent(title)}`);
+          
           if (!response.ok) {
-            throw new Error('Failed to add song');
+            throw new Error('Failed to fetch matches');
+          }
+          
+          const data = await response.json();
+          
+          // Hide loading, show content
+          document.getElementById('songMatchLoading').style.display = 'none';
+          document.getElementById('songMatchContent').style.display = 'block';
+          
+          // Show/hide private checkbox
+          const privateContainer = document.getElementById('privateCheckContainer');
+          if (data.canMakePrivate) {
+            privateContainer.style.display = 'block';
+          } else {
+            privateContainer.style.display = 'none';
+          }
+          
+          // Populate existing matches
+          const existingContainer = document.getElementById('existingMatchesContainer');
+          const existingList = document.getElementById('existingMatchesList');
+          
+          if (data.matches && data.matches.length > 0) {
+            existingContainer.style.display = 'block';
+            existingList.innerHTML = '';
+            
+            data.matches.forEach((match, index) => {
+              const col = document.createElement('div');
+              col.className = 'col-md-6';
+              col.innerHTML = `
+                <div class="card match-card" style="cursor: pointer;" data-song-id="${match.id}" data-match-index="${index}">
+                  <div class="card-body">
+                    <div class="song-title"><strong>${match.title}</strong></div>
+                    ${match.artists && match.artists.length > 0 
+                      ? `<div class="text-muted">by ${match.artists[0].artist.name}</div>` 
+                      : ''}
+                    ${match.vocalist 
+                      ? `<div class="text-muted small">vocals: ${match.vocalist.name}</div>` 
+                      : ''}
+                    <div class="mt-2">
+                      ${match.matchType === 'exact' 
+                        ? '<span class="badge bg-success">Exact Match</span>' 
+                        : `<span class="badge bg-info">Similar (~${Math.round(match.confidence * 100)}%)</span>`}
+                    </div>
+                  </div>
+                </div>
+              `;
+              existingList.appendChild(col);
+            });
+            
+            // Add click handlers
+            document.querySelectorAll('.match-card').forEach(card => {
+              card.addEventListener('click', function() {
+                document.querySelectorAll('.match-card').forEach(c => c.classList.remove('border-primary', 'bg-light'));
+                this.classList.add('border-primary', 'bg-light');
+                selectedSongChoice = this.dataset.songId;
+                // Store the full match data
+                const matchIndex = parseInt(this.dataset.matchIndex);
+                selectedMatchData = data.matches[matchIndex];
+                document.getElementById('confirmAddSongBtn').disabled = false;
+              });
+            });
+          } else {
+            existingContainer.style.display = 'none';
+          }
+          
+          // Default to "new"
+          selectedSongChoice = 'new';
+          const newCard = document.querySelector('.new-song-card');
+          newCard.classList.add('border-primary', 'bg-light');
+          document.getElementById('confirmAddSongBtn').disabled = false;
+          
+          // Add click handler for new song card
+          newCard.addEventListener('click', function() {
+            selectedSongChoice = 'new';
+            document.querySelectorAll('.match-card').forEach(c => c.classList.remove('border-primary', 'bg-light'));
+            this.classList.add('border-primary', 'bg-light');
+            document.getElementById('confirmAddSongBtn').disabled = false;
+          });
+          
+        } catch (error) {
+          console.error('Error fetching matches:', error);
+          alert('Failed to search for similar songs');
+        }
+      }
+
+      async function confirmAddSong() {
+        if (!selectedSongChoice || !selectedSegment) {
+          return;
+        }
+
+        try {
+          let result;
+          
+          if (selectedSongChoice === 'new') {
+            // Create new song
+            const title = document.getElementById('newSongTitle').value.trim();
+            const artist = document.getElementById('newSongArtist').value.trim();
+            const isPrivate = document.getElementById('newSongPrivate').checked;
+            
+            if (!title) {
+              alert('Please enter a song title');
+              return;
+            }
+            
+            const response = await fetch('/bands/<%= setlist.band.id %>/songs/quick-add', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ title, artist, isPrivate })
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to add song');
+            }
+            
+            result = await response.json();
+          } else {
+            // Use existing song
+            result = { songId: parseInt(selectedSongChoice), isExisting: true };
+            
+            // Check if this song is already in realSongs (from the setlist)
+            const existingInRealSongs = realSongs.find(s => s.id === result.songId);
+            
+            // If not in the setlist, we need to add it to realSongs so it can be assigned
+            if (!existingInRealSongs && selectedMatchData) {
+              const artist = selectedMatchData.artists && selectedMatchData.artists.length > 0
+                ? selectedMatchData.artists[0].artist.name
+                : 'Unknown';
+              
+              const newSong = {
+                id: result.songId,
+                title: selectedMatchData.title,
+                artist: artist
+              };
+              realSongs.push(newSong);
+
+              // Add to UI
+              const songIndex = realSongs.length;
+              const div = document.createElement("div");
+              div.className = "song-item mb-2 p-2 border rounded";
+              div.setAttribute("data-song-id", newSong.id);
+              div.setAttribute("data-song-index", songIndex);
+              div.setAttribute("data-song-title", newSong.title);
+              div.style.cssText = "cursor: pointer; transition: background 0.2s;";
+              div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>${songIndex}. ${newSong.title}</strong>
+                    <div class="small text-muted">${newSong.artist}</div>
+                  </div>
+                  <span class="badge bg-secondary" id="song-badge-${newSong.id}" style="display: none;">
+                    Assigned
+                  </span>
+                </div>
+              `;
+              div.onclick = () => {
+                if (selectedSegment) {
+                  assignSongToSegment(selectedSegment.id, newSong.id);
+                }
+              };
+              songsList.appendChild(div);
+            }
           }
 
-          const result = await response.json();
+          // Only add new songs to realSongs (not existing ones that were just added)
+          if (selectedSongChoice === 'new') {
+            const existingInRealSongs = realSongs.find(s => s.id === result.songId);
+            if (!existingInRealSongs) {
+              const newSong = {
+                id: result.songId,
+                title: document.getElementById('newSongTitle').value.trim(),
+                artist: document.getElementById('newSongArtist').value.trim() || 'Unknown'
+              };
+              realSongs.push(newSong);
 
-          // Add to realSongs array
-          const newSong = {
-            id: result.songId,
-            title: songTitle,
-            artist: 'Unknown'
-          };
-          realSongs.push(newSong);
-
-          // Add to UI
-          const songIndex = realSongs.length;
-          const div = document.createElement("div");
-          div.className = "song-item mb-2 p-2 border rounded";
-          div.setAttribute("data-song-id", newSong.id);
-          div.setAttribute("data-song-index", songIndex);
-          div.setAttribute("data-song-title", newSong.title);
-          div.style.cssText = "cursor: pointer; transition: background 0.2s;";
-          div.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <strong>${songIndex}. ${newSong.title}</strong>
-                <div class="small text-muted">${newSong.artist}</div>
-              </div>
-              <span class="badge bg-secondary" id="song-badge-${newSong.id}" style="display: none;">
-                Assigned
-              </span>
-            </div>
-          `;
-          div.onclick = () => {
-            if (selectedSegment) {
-              assignSongToSegment(selectedSegment.id, newSong.id);
+              // Add to UI
+              const songIndex = realSongs.length;
+              const div = document.createElement("div");
+              div.className = "song-item mb-2 p-2 border rounded";
+              div.setAttribute("data-song-id", newSong.id);
+              div.setAttribute("data-song-index", songIndex);
+              div.setAttribute("data-song-title", newSong.title);
+              div.style.cssText = "cursor: pointer; transition: background 0.2s;";
+              div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>${songIndex}. ${newSong.title}</strong>
+                    <div class="small text-muted">${newSong.artist}</div>
+                  </div>
+                  <span class="badge bg-secondary" id="song-badge-${newSong.id}" style="display: none;">
+                    Assigned
+                  </span>
+                </div>
+              `;
+              div.onclick = () => {
+                if (selectedSegment) {
+                  assignSongToSegment(selectedSegment.id, newSong.id);
+                }
+              };
+              songsList.appendChild(div);
             }
-          };
-          songsList.appendChild(div);
+          }
 
           // Assign to the selected segment
           assignSongToSegment(selectedSegment.id, result.songId);
 
+          // Close modal
+          bootstrap.Modal.getInstance(document.getElementById('addSongModal')).hide();
+          
           // Clear input
-          titleInput.value = '';
+          document.getElementById('unlistedSongTitle').value = '';
 
-          addDebugLog(`✓ "${songTitle}" added to band and assigned to segment!`);
-
+          addDebugLog(`✓ Song added and assigned to segment!`);
         } catch (error) {
-          console.error('Error adding unlisted song:', error);
+          console.error('Error adding song:', error);
           alert('Failed to add song. Please try again.');
         }
       }
@@ -1490,23 +1732,6 @@
           return;
         }
 
-        // If this song is already assigned to a different segment, unassign it from the old one.
-        for (const [key, value] of Object.entries(segmentSongMap)) {
-          if (String(value.songId) === String(songId) && key !== segmentId) {
-            const oldSegment = peaks.segments.getSegment(key);
-            if (oldSegment) {
-              oldSegment.update({ labelText: '', color: '#007bff' });
-            }
-            delete segmentSongMap[key];
-
-            // Make the song visible again in the list before re-assigning
-            const oldSongItem = document.querySelector(`[data-song-id="${songId}"]`);
-            if (oldSongItem) {
-              oldSongItem.style.display = 'block';
-            }
-          }
-        }
-
         // Store the new assignment
         segmentSongMap[segmentId] = {
           songId: song.id,
@@ -1521,7 +1746,7 @@
           color: "#28a745", // Green for assigned
         });
 
-        // Visually hide the song from the "Available" list
+        // Hide the song from the "Available Songs" list after assignment
         const songItem = document.querySelector(`[data-song-id="${song.id}"]`);
         if (songItem) {
           songItem.style.display = 'none';
@@ -1659,5 +1884,12 @@
         }
       });
     }
+
+    // Wire up modal buttons
+    document.getElementById('addSongBtn').addEventListener('click', addUnlistedSong);
+    document.getElementById('confirmAddSongBtn').addEventListener('click', confirmAddSong);
+    
+    // Make confirmAddSong accessible
+    window.confirmAddSong = confirmAddSong;
   });
 </script>

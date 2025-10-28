@@ -534,6 +534,85 @@ router.post(
   }
 );
 
+// POST /bands/:bandId/setlists/:setlistId/recordings/:recordingId/delete-all-splits - Delete all splits and reset for re-split
+router.post(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/delete-all-splits",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Verify access
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+        include: {
+          setlist: {
+            include: {
+              band: {
+                include: {
+                  members: {
+                    where: { userId },
+                  },
+                },
+              },
+            },
+          },
+          splits: true,
+        },
+      });
+
+      if (
+        !recording ||
+        recording.setlist.bandId !== bandId ||
+        recording.setlist.band.members.length === 0
+      ) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Delete all splits and their files
+      for (const split of recording.splits) {
+        // Delete the link if it exists
+        if (split.linkId) {
+          await prisma.link.delete({
+            where: { id: split.linkId },
+          });
+        }
+        // Delete the file
+        if (split.filePath) {
+          const fs = require("fs");
+          const splitPath = path.join(__dirname, "..", split.filePath);
+          if (fs.existsSync(splitPath)) {
+            fs.unlinkSync(splitPath);
+          }
+        }
+      }
+
+      // Delete all splits
+      await prisma.recordingSplit.deleteMany({
+        where: { recordingId },
+      });
+
+      // Reset isProcessed flag
+      await prisma.recording.update({
+        where: { id: recordingId },
+        data: { isProcessed: false },
+      });
+
+      res.json({
+        success: true,
+        message: "All splits deleted. Ready to re-split.",
+      });
+    } catch (error) {
+      console.error("Delete all splits error:", error);
+      logger.logError("Delete all splits error", error);
+      res.status(500).json({ error: "Failed to delete all splits" });
+    }
+  }
+);
+
 // DELETE /bands/:bandId/setlists/:setlistId/recordings/:recordingId - Delete entire recording
 router.delete(
   "/:bandId/setlists/:setlistId/recordings/:recordingId",

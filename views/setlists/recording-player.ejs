@@ -137,6 +137,17 @@
                             <% }) %>
                         </ul>
                     </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-end gap-2">
+                            <button class="btn btn-danger btn-sm" onclick="deleteAllAndResplit()">
+                                <i class="bi bi-arrow-clockwise"></i> Delete All and Re-Split
+                            </button>
+                            <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-plus-circle"></i> Add More Splits
+                            </a>
+                        </div>
+                    </div>
                 </div>
             <% } else { %>
                 <!-- Show full recording if not split yet -->
@@ -651,6 +662,40 @@ async function deleteSourceRecording() {
 }
 
 // Delete entire recording and all splits
+async function deleteAllAndResplit() {
+    const splitCount = <%= recording.splits.length %>;
+    
+    let message = `Delete all ${splitCount} split(s) and start over?\n\n`;
+    message += `This will DELETE:\n`;
+    message += `• All split files\n`;
+    message += `• Links to these files on song pages\n`;
+    message += `• All split records\n\n`;
+    message += `The source recording will remain.\n\n`;
+    message += `This cannot be undone!`;
+    
+    if (!confirm(message)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/delete-all-splits', {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // Redirect to split page
+            window.location.href = '/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split';
+        } else {
+            alert('Failed to delete splits: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Delete all splits error:', error);
+        alert('Failed to delete splits');
+    }
+}
+
 async function deleteEntireRecording() {
     const hasLinks = <%= JSON.stringify(recording.splits.some(s => s.linkId)) %>;
     const splitCount = <%= recording.splits.length %>;

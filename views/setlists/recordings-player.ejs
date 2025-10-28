@@ -245,6 +245,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 skipBtn.innerHTML = '<i class="bi bi-x-circle"></i>';
                 skipBtn.title = 'Un-skip this song';
             }
+            // Disable promote button for skipped songs
+            const promoteBtn = item.querySelector('.promote-btn');
+            if (promoteBtn) {
+                promoteBtn.disabled = true;
+                promoteBtn.title = 'Cannot promote skipped song';
+            }
         }
     });
     
@@ -395,6 +401,13 @@ async function toggleSkipSong(index) {
         skipBtn.classList.add('btn-danger');
         skipBtn.innerHTML = '<i class="bi bi-x-circle"></i>';
         skipBtn.title = 'Un-skip this song';
+        
+        // Disable promote button for skipped songs
+        const promoteBtn = playlistItem.querySelector('.promote-btn');
+        if (promoteBtn) {
+            promoteBtn.disabled = true;
+            promoteBtn.title = 'Cannot promote skipped song';
+        }
         
         // If currently playing this song, skip to next
         if (currentTrackIndex === index) {

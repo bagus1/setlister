@@ -3,7 +3,10 @@
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1>Split Recording (Peaks.js)</h1>
+          <h1>
+            Split Recording <%- typeof useWebAudio !== 'undefined' &&
+            useWebAudio ? '(Web Audio)' : '(Peaks.js)' %>
+          </h1>
           <h2 class="h5 text-muted"><%= setlist.title %></h2>
         </div>
         <div class="d-flex gap-2">
@@ -99,6 +102,29 @@
               </small>
             </div>
           </div>
+
+          <!-- MP3 Warning -->
+          <% if (typeof recording !== 'undefined' && recording.filePath && recording.filePath.includes('.mp3')) { %>
+          <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <h6 class="alert-heading">
+              <i class="bi bi-exclamation-triangle-fill"></i> MP3 Timing Notice
+            </h6>
+            <p class="mb-0">
+              <strong>Important:</strong> For MP3 files, the waveform may appear drastically offset from the audio playback.
+            </p>
+            <hr>
+            <p class="mb-2">
+              <strong>Trust the waveform</strong> for marking song boundaries, not the audio playback timing.
+            </p>
+            <p class="mb-2">
+              <strong>Tip:</strong> Use the <i class="bi bi-magic"></i> <strong>Auto-Detect Silence</strong> button below to automatically find song breaks.
+            </p>
+            <p class="mb-0">
+              <strong>For best results:</strong> Upload <strong>.ogg</strong> or <strong>.webm</strong> files - they're still high quality but use 75% less space than .wav files.
+            </p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          <% } %>
 
           <!-- Peaks.js Waveform Containers -->
           <div
@@ -489,6 +515,33 @@
       // Use the working approach from prototype2
       const PeaksLib = window.peaks || window.Peaks;
 
+      // Determine waveform source
+      let waveformSource;
+      <% if (typeof useWebAudio !== 'undefined' && useWebAudio) { %>
+      waveformSource = {
+        webAudio: {
+          audioContext: new (window.AudioContext || window.webkitAudioContext)(),
+          scale: 512,
+          multiChannel: false
+        }
+      };
+      <% } else if (typeof recording !== 'undefined' && recording.waveformPath) { %>
+      waveformSource = {
+        dataUri: {
+          arraybuffer: "<%= recording.waveformPath %>",
+          scale: 512  // Match the -z 512 we use in audiowaveform
+        }
+      };
+      <% } else { %>
+      waveformSource = {
+        webAudio: {
+          audioContext: new (window.AudioContext || window.webkitAudioContext)(),
+          scale: 512,
+          multiChannel: false
+        }
+      };
+      <% } %>
+
       const options = {
         overview: {
           container: overviewContainer,
@@ -509,19 +562,7 @@
           enableSegmentDragging: false
         },
         mediaElement: audioElement,
-        // Use pre-computed waveform data if available
-        <% if (recording.waveformPath) { %>
-        dataUri: {
-          arraybuffer: "<%= recording.waveformPath %>"
-        },
-        <% } else { %>
-        // Fallback to generating waveform in the browser
-        webAudio: {
-          audioContext: new (window.AudioContext || window.webkitAudioContext)(),
-          scale: 512,
-          multiChannel: false
-        },
-        <% } %>
+        ...waveformSource,
         segments: [],
         // Disable default keyboard shortcuts that might interfere
         keyboard: false,
@@ -939,6 +980,16 @@
           // Only create permanent segment if we actually dragged
           const startTime = tempSegment.startTime;
           const endTime = tempSegment.endTime;
+          const segmentDuration = endTime - startTime;
+
+          // Check minimum segment length (10 seconds)
+          if (segmentDuration < 10) {
+            addDebugLog(`Segment too short (${segmentDuration.toFixed(2)}s). Minimum is 10 seconds. Segment not created.`);
+            // Remove the temporary segment
+            peaks.segments.removeById('temp-drag-segment');
+            tempSegment = null;
+            return;
+          }
 
           // Remove the temporary segment
           peaks.segments.removeById('temp-drag-segment');
@@ -1291,16 +1342,20 @@
             // Add buffer: start 2 seconds earlier, end 2 seconds later
             const segmentStart = Math.max(0, startTime - bufferTime);
             const segmentEnd = Math.min(duration, silence.start + bufferTime);
+            const segmentDuration = segmentEnd - segmentStart;
 
-            peaks.segments.add({
-              startTime: segmentStart,
-              endTime: segmentEnd,
-              labelText: '',
-              color: '#007bff',
-              editable: true
-            });
-            segmentsCreated++;
-            addDebugLog(`Created segment: ${segmentStart.toFixed(2)}s - ${segmentEnd.toFixed(2)}s (original: ${startTime.toFixed(2)}s - ${silence.start.toFixed(2)}s)`);
+            // Only create segment if it's at least 10 seconds long
+            if (segmentDuration >= 10) {
+              peaks.segments.add({
+                startTime: segmentStart,
+                endTime: segmentEnd,
+                labelText: '',
+                color: '#007bff',
+                editable: true
+              });
+              segmentsCreated++;
+              addDebugLog(`Created segment: ${segmentStart.toFixed(2)}s - ${segmentEnd.toFixed(2)}s (original: ${startTime.toFixed(2)}s - ${silence.start.toFixed(2)}s)`);
+            }
           }
           startTime = silence.end;
         }
@@ -1309,16 +1364,20 @@
         if (duration - startTime >= 0.5) {
           const segmentStart = Math.max(0, startTime - bufferTime);
           const segmentEnd = Math.min(duration, duration); // No buffer needed at the end
+          const segmentDuration = segmentEnd - segmentStart;
 
-          peaks.segments.add({
-            startTime: segmentStart,
-            endTime: segmentEnd,
-            labelText: '',
-            color: '#007bff',
-            editable: true
-          });
-          segmentsCreated++;
-          addDebugLog(`Created final segment: ${segmentStart.toFixed(2)}s - ${segmentEnd.toFixed(2)}s (original: ${startTime.toFixed(2)}s - ${duration.toFixed(2)}s)`);
+          // Only create segment if it's at least 10 seconds long
+          if (segmentDuration >= 10) {
+            peaks.segments.add({
+              startTime: segmentStart,
+              endTime: segmentEnd,
+              labelText: '',
+              color: '#007bff',
+              editable: true
+            });
+            segmentsCreated++;
+            addDebugLog(`Created final segment: ${segmentStart.toFixed(2)}s - ${segmentEnd.toFixed(2)}s (original: ${startTime.toFixed(2)}s - ${duration.toFixed(2)}s)`);
+          }
         }
 
         updateSegmentList();

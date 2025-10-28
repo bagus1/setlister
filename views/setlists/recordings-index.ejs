@@ -125,7 +125,16 @@ function getTokenForView(viewType) {
                                                 <% } else { %>
                                                     <span class="badge bg-warning ms-2">Not Split</span>
                                                 <% } %>
+                                                <% 
+                                                // Extract filename from filePath
+                                                const filename = recording.filePath.split('/').pop() || 'Unknown';
+                                                const format = filename.split('.').pop() || recording.format || 'webm';
+                                                %>
+                                                <span class="badge bg-secondary ms-2"><%= format.toUpperCase() %></span>
                                             </h6>
+                                            <div class="small text-muted mb-1">
+                                                <i class="bi bi-file-earmark-music"></i> <%= filename %>
+                                            </div>
                                             <div class="small text-muted mb-2">
                                                 <i class="bi bi-calendar"></i> 
                                                 <%= new Date(recording.createdAt).toLocaleString('en-US', { 

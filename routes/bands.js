@@ -1217,10 +1217,12 @@ router.get(
         marqueeTitle: setlist.title,
         setlist,
         totalSongs,
+        useWebAudio: false,
         recording: {
           id: recording.id,
           filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
           duration: recording.duration,
+          waveformPath: recording.waveformPath,
         },
         hasBandHeader: true,
         band: setlist.band,
@@ -1228,6 +1230,116 @@ router.get(
     } catch (error) {
       logger.logError("Peaks.js integrated recording split page error", error);
       req.flash("error", "Error loading Peaks.js integrated split page");
+      res.redirect("/bands");
+    }
+  }
+);
+
+// GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId/split-web-audio - Peaks.js with Web Audio
+router.get(
+  "/:bandId/setlists/:setlistId/recordings/:recordingId/split-web-audio",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const recordingId = parseInt(req.params.recordingId);
+      const userId = req.session.user.id;
+
+      // Get setlist with all songs
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId },
+              },
+            },
+          },
+          sets: {
+            include: {
+              songs: {
+                include: {
+                  song: {
+                    include: {
+                      artists: {
+                        include: {
+                          artist: true,
+                        },
+                      },
+                    },
+                  },
+                },
+                orderBy: {
+                  order: "asc",
+                },
+              },
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        req.flash("error", "Setlist not found");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.bandId !== bandId) {
+        req.flash("error", "Setlist does not belong to this band");
+        return res.redirect("/bands");
+      }
+
+      if (setlist.band.members.length === 0) {
+        req.flash("error", "Not authorized");
+        return res.redirect("/bands");
+      }
+
+      const recording = await prisma.recording.findUnique({
+        where: { id: recordingId },
+      });
+
+      if (!recording) {
+        req.flash("error", "Recording not found");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      if (recording.setlistId !== setlistId) {
+        req.flash("error", "Recording does not belong to this setlist");
+        return res.redirect(
+          `/bands/${bandId}/setlists/${setlistId}/recordings`
+        );
+      }
+
+      // Calculate total songs count
+      const totalSongs = setlist.sets.reduce(
+        (total, set) => total + set.songs.length,
+        0
+      );
+
+      res.render("setlists/recording-split-peaks-integrated", {
+        title: `Split Recording (Web Audio) - ${setlist.title}`,
+        pageTitle: `Split Recording (Web Audio)`,
+        marqueeTitle: setlist.title,
+        setlist,
+        totalSongs,
+        useWebAudio: true,
+        recording: {
+          id: recording.id,
+          filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
+          duration: recording.duration,
+          waveformPath: recording.waveformPath,
+        },
+        user: req.session.user,
+      });
+    } catch (error) {
+      logger.logError("Get recording split page error", error);
+      req.flash("error", "Failed to load split page");
       res.redirect("/bands");
     }
   }

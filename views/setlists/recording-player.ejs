@@ -185,8 +185,12 @@
                                             Trim or split the recording into multiple songs
                                         </p>
                                         <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split" 
-                                           class="btn btn-info btn-lg w-100">
+                                           class="btn btn-info btn-lg w-100 mb-2">
                                             <i class="bi bi-scissors"></i> Split Recording
+                                        </a>
+                                        <a href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/split-web-audio" 
+                                           class="btn btn-outline-secondary btn-sm w-100">
+                                            <i class="bi bi-waveform"></i> Web Audio Waveform
                                         </a>
                                     </div>
                                 </div>
@@ -278,6 +282,13 @@
                     <% if (setlist.date) { %>
                         <p><strong>Gig Date:</strong> <%= new Date(setlist.date).toLocaleDateString() %></p>
                     <% } %>
+                    <% 
+                    // Extract filename and format from filePath
+                    const filename = recording.filePath.split('/').pop() || 'Unknown';
+                    const format = filename.split('.').pop() || recording.format || 'webm';
+                    %>
+                    <p><strong>Filename:</strong> <span class="text-muted"><%= filename %></span></p>
+                    <p><strong>Format:</strong> <span class="badge bg-secondary"><%= format.toUpperCase() %></span></p>
                     <p><strong>Recorded by:</strong> <%= recording.creator.username %></p>
                     <p><strong>Recorded at:</strong> <%= new Date(recording.createdAt).toLocaleString() %></p>
                     <p>

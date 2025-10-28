@@ -2982,8 +2982,9 @@ router.post(
       const datPath = audioPath.replace(/\.(mp3|wav|m4a|ogg)$/, ".dat");
       const waveformPath = `/uploads/recordings/${path.basename(datPath)}`;
 
+      // Generate waveform with higher zoom for better timing accuracy
       exec(
-        `audiowaveform -i "${audioPath}" -o "${datPath}" -b 8`,
+        `audiowaveform -i "${audioPath}" -o "${datPath}" -b 8 -z 512`,
         async (error, stdout, stderr) => {
           if (error) {
             console.error("Waveform generation failed:", stderr);
@@ -3069,14 +3070,18 @@ router.post(
 
       // Process each split with FFmpeg
       const createdSplits = [];
-      // recording.filePath is already an absolute path stored in the database
+      // recording.filePath can be absolute OR web-relative (starting with /uploads/)
       let inputPath;
-      if (recording.filePath.startsWith("/")) {
-        // Absolute path - use as-is
+      if (recording.filePath.startsWith("/uploads/")) {
+        // Web-relative path starting with /uploads/ - build absolute path from project root
+        // Remove leading slash from web path for path.join
+        inputPath = path.join(__dirname, "..", recording.filePath.substring(1));
+      } else if (recording.filePath.startsWith("/")) {
+        // Absolute system path (e.g., /Users/john/...)
         inputPath = recording.filePath;
       } else {
-        // Relative path - build from public directory
-        inputPath = path.join(__dirname, "..", "public", recording.filePath);
+        // Relative path - build from project root
+        inputPath = path.join(__dirname, "..", recording.filePath);
       }
 
       for (const split of splits) {
@@ -3092,8 +3097,34 @@ router.post(
           },
         });
 
+        // Determine output format - preserve original format for best quality/timing
+        let extension = "mp3";
+        let codec = "libmp3lame";
+
+        if (recording.format) {
+          const format = recording.format.toLowerCase();
+          if (format === "webm" || format === "ogg") {
+            // Preserve OGG/Opus - best timing, good compression
+            extension = "ogg";
+            codec = "libopus";
+          } else if (format === "wav") {
+            // Preserve WAV - lossless, perfect timing
+            extension = "wav";
+            codec = "pcm_s16le"; // Uncompressed WAV
+          } else if (format === "flac") {
+            // Preserve FLAC - lossless, good compression
+            extension = "flac";
+            codec = "flac";
+          } else if (format === "m4a" || format === "aac" || format === "mp4") {
+            // Convert M4A/AAC/MP4 to MP3 for better compatibility
+            extension = "mp3";
+            codec = "libmp3lame";
+          }
+          // MP3 stays as MP3
+        }
+
         // Generate output filename
-        const outputFilename = `split-${recordingSplit.id}-${split.songTitle.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.mp3`;
+        const outputFilename = `split-${recordingSplit.id}-${split.songTitle.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.${extension}`;
         const outputPath = path.join(setlistSplitsDir, outputFilename);
         const webPath = `/uploads/recordings/splits/${setlistId}/${outputFilename}`;
 
@@ -3103,7 +3134,7 @@ router.post(
             .setStartTime(split.start)
             .setDuration(split.duration)
             .output(outputPath)
-            .audioCodec("libmp3lame")
+            .audioCodec(codec)
             .audioBitrate("192k")
             .on("end", () => {
               console.log(`Split extracted: ${outputFilename}`);

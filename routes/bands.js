@@ -4929,6 +4929,13 @@ router.delete("/:id/songs/:songId", async (req, res) => {
     const { id: bandId, songId } = req.params;
     const userId = req.session.user.id;
 
+    // Log the action
+    logger.logFormSubmission(
+      `Removed song ${songId} from band ${bandId}`,
+      req,
+      { songId: parseInt(songId) }
+    );
+
     // Check if user is a member
     const membership = await prisma.bandMember.findFirst({
       where: { bandId: parseInt(bandId), userId },
@@ -7442,6 +7449,12 @@ router.delete(
           error: "You don't have permission to delete this document",
         });
       }
+
+      // Before deleting, set all BandSong references to null
+      await prisma.bandSong.updateMany({
+        where: { gigDocumentId: docId },
+        data: { gigDocumentId: null },
+      });
 
       await prisma.gigDocument.delete({
         where: { id: docId },

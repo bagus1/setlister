@@ -687,9 +687,16 @@ Set 4:
                 <% if (bandSongs && bandSongs.length> 0) { %>
                     <div class="row">
                         <% bandSongs.forEach(song => { %>
-                            <div class="col-md-4 mb-3">
-                                <a href="/bands/<%= band.id %>/songs/<%= song.song.id %>" class="text-decoration-none">
-                                    <div class="song-card">
+                            <div class="col-md-4 mb-3" data-song-id="<%= song.song.id %>">
+                                <div class="song-card position-relative">
+                                    <button class="btn btn-link text-danger position-absolute bottom-0 end-0 mb-2 me-2 remove-song-btn" 
+                                            data-song-id="<%= song.song.id %>" 
+                                            data-song-title="<%= song.song.title %>"
+                                            title="Remove from band songs"
+                                            style="padding: 2px 4px; font-size: 8px; text-decoration: none; border: 1px solid #0e4d30;">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                    <a href="/bands/<%= band.id %>/songs/<%= song.song.id %>" class="text-decoration-none">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <h6 class="song-title text-dark mb-0">
                                                 <%= song.song.title %>
@@ -1100,6 +1107,60 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Handle remove song buttons
+    const removeSongButtons = document.querySelectorAll('.remove-song-btn');
+    removeSongButtons.forEach(button => {
+        button.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const songId = this.getAttribute('data-song-id');
+            const songTitle = this.getAttribute('data-song-title');
+            const bandId = '<%= band.id %>';
+            
+            if (!confirm(`Are you sure you want to remove "${songTitle}" from this band's songs?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/bands/${bandId}/songs/${songId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Remove the song card from the DOM - go up to the col-md-4 div
+                        const songCard = this.closest('.col-md-4');
+                        if (songCard) {
+                            songCard.remove();
+                        }
+                        
+                        // Show a success message
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                        alertDiv.innerHTML = `
+                            <i class="bi bi-check-circle"></i> Song removed successfully
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.querySelector('.band-songs').insertBefore(alertDiv, document.querySelector('.band-songs .row'));
+                    } else {
+                        alert('Failed to remove song');
+                    }
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.error || 'Failed to remove song'}`);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to remove song');
+            }
+        });
     });
 });
 </script>

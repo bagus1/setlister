@@ -628,6 +628,88 @@ router.delete(
 );
 
 // GET /bands/:bandId/setlists/:setlistId/recordings/:recordingId - View/play a specific recording
+// GET /bands/:bandId/recordings - All band recordings
+router.get("/:bandId/recordings", requireAuth, async (req, res) => {
+  try {
+    const bandId = parseInt(req.params.bandId);
+    const userId = req.session.user.id;
+
+    // Get band with all recordings from all setlists
+    const band = await prisma.band.findUnique({
+      where: { id: bandId },
+      include: {
+        members: {
+          where: { userId },
+          select: {
+            role: true,
+            userId: true,
+          },
+        },
+        setlists: {
+          include: {
+            recordings: {
+              include: {
+                creator: true,
+                splits: {
+                  where: {
+                    filePath: { not: null },
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: "desc",
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!band) {
+      req.flash("error", "Band not found");
+      return res.redirect("/bands");
+    }
+
+    if (band.members.length === 0) {
+      req.flash("error", "Not authorized");
+      return res.redirect("/bands");
+    }
+
+    // Flatten all recordings with their setlist context
+    const allRecordings = [];
+    band.setlists.forEach((setlist) => {
+      setlist.recordings.forEach((recording) => {
+        allRecordings.push({
+          ...recording,
+          setlist: {
+            id: setlist.id,
+            title: setlist.title,
+            band: {
+              id: band.id,
+            },
+          },
+        });
+      });
+    });
+
+    // Sort by creation date (newest first)
+    allRecordings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.render("bands/recordings-index", {
+      title: `${band.name} - All Recordings`,
+      pageTitle: "All Recordings",
+      marqueeTitle: band.name,
+      band,
+      recordings: allRecordings,
+      user: req.session.user,
+    });
+  } catch (error) {
+    logger.logError("Get all band recordings error", error);
+    req.flash("error", "Failed to load recordings");
+    res.redirect("/bands");
+  }
+});
+
 router.get(
   "/:bandId/setlists/:setlistId/recordings/:recordingId",
   requireAuth,

@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const path = require("path");
 const { requireAuth } = require("./auth");
 const { requireRole } = require("../middleware/rbac");
 const { prisma } = require("../lib/prisma");
@@ -370,7 +371,13 @@ router.get("/songs", async (req, res) => {
       ? {
           OR: [
             { title: { contains: search, mode: "insensitive" } },
-            { artists: { some: { artist: { name: { contains: search, mode: "insensitive" } } } } },
+            {
+              artists: {
+                some: {
+                  artist: { name: { contains: search, mode: "insensitive" } },
+                },
+              },
+            },
             { vocalist: { name: { contains: search, mode: "insensitive" } } },
           ],
         }
@@ -501,8 +508,11 @@ router.get("/whitelist-requests", async (req, res) => {
  */
 router.get("/subscriptions", async (req, res) => {
   try {
-    const { calculateUserStorageUsage, formatBytes } = require("../utils/storageCalculator");
-    
+    const {
+      calculateUserStorageUsage,
+      formatBytes,
+    } = require("../utils/storageCalculator");
+
     // Get all users with their subscriptions
     const users = await prisma.user.findMany({
       include: {
@@ -524,8 +534,8 @@ router.get("/subscriptions", async (req, res) => {
         },
       },
       orderBy: [
-        { subscription: { plan: { storageQuotaGB: 'desc' } } },
-        { createdAt: 'desc' },
+        { subscription: { plan: { storageQuotaGB: "desc" } } },
+        { createdAt: "desc" },
       ],
     });
 
@@ -536,30 +546,45 @@ router.get("/subscriptions", async (req, res) => {
         try {
           storageInfo = await calculateUserStorageUsage(user.id);
         } catch (error) {
-          console.error(`Error calculating storage for user ${user.id}:`, error.message);
+          console.error(
+            `Error calculating storage for user ${user.id}:`,
+            error.message
+          );
         }
 
         return {
           ...user,
           storageInfo,
-          planName: user.subscription?.plan?.name || 'Free',
+          planName: user.subscription?.plan?.name || "Free",
           planPrice: user.subscription?.plan?.priceMonthly || 0,
-          status: user.subscription?.status || 'none',
+          status: user.subscription?.status || "none",
         };
       })
     );
 
     // Calculate system-wide statistics
     const totalUsers = users.length;
-    const activeSubscriptions = users.filter(u => u.subscription?.status === 'active').length;
-    const freeUsers = users.filter(u => !u.subscription || u.subscription.plan.storageQuotaGB === 8).length;
-    const proUsers = users.filter(u => u.subscription?.plan?.storageQuotaGB === 20).length;
-    const premiumUsers = users.filter(u => u.subscription?.plan?.storageQuotaGB === 100).length;
+    const activeSubscriptions = users.filter(
+      (u) => u.subscription?.status === "active"
+    ).length;
+    const freeUsers = users.filter(
+      (u) => !u.subscription || u.subscription.plan.storageQuotaGB === 8
+    ).length;
+    const proUsers = users.filter(
+      (u) => u.subscription?.plan?.storageQuotaGB === 20
+    ).length;
+    const premiumUsers = users.filter(
+      (u) => u.subscription?.plan?.storageQuotaGB === 100
+    ).length;
 
     // Calculate monthly recurring revenue (MRR)
-    const mrr = users
-      .filter(u => u.subscription?.status === 'active')
-      .reduce((sum, u) => sum + (u.subscription?.plan?.priceMonthly || 0), 0) / 100;
+    const mrr =
+      users
+        .filter((u) => u.subscription?.status === "active")
+        .reduce(
+          (sum, u) => sum + (u.subscription?.plan?.priceMonthly || 0),
+          0
+        ) / 100;
 
     // Calculate total storage usage
     const totalStorageBytes = users.reduce((sum, user) => {
@@ -569,7 +594,7 @@ router.get("/subscriptions", async (req, res) => {
     // Get all subscription plans for the dropdown
     const plans = await prisma.subscriptionPlan.findMany({
       where: { isActive: true },
-      orderBy: { displayOrder: 'asc' },
+      orderBy: { displayOrder: "asc" },
     });
 
     res.render("admin/subscriptions", {
@@ -630,7 +655,7 @@ router.post("/subscriptions/:userId/change", async (req, res) => {
         where: { userId },
         data: {
           planId: planIdInt,
-          status: 'active',
+          status: "active",
           updatedAt: new Date(),
         },
       });
@@ -640,7 +665,7 @@ router.post("/subscriptions/:userId/change", async (req, res) => {
         data: {
           userId,
           planId: planIdInt,
-          status: 'active',
+          status: "active",
           currentPeriodStart: new Date(),
           currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
           updatedAt: new Date(),
@@ -677,7 +702,7 @@ router.post("/subscriptions/:userId/cancel", async (req, res) => {
     await prisma.userSubscription.update({
       where: { userId },
       data: {
-        status: 'canceled',
+        status: "canceled",
         canceledAt: new Date(),
         updatedAt: new Date(),
       },
@@ -699,7 +724,7 @@ router.get("/subscription-plans", async (req, res) => {
   try {
     // Get all subscription plans
     const plans = await prisma.subscriptionPlan.findMany({
-      orderBy: { displayOrder: 'asc' },
+      orderBy: { displayOrder: "asc" },
     });
 
     // Calculate active users per plan
@@ -708,7 +733,7 @@ router.get("/subscription-plans", async (req, res) => {
         const activeUsers = await prisma.userSubscription.count({
           where: {
             planId: plan.id,
-            status: 'active',
+            status: "active",
           },
         });
 
@@ -754,13 +779,18 @@ router.post("/subscription-plans/:planId", async (req, res) => {
 
     // Validate required fields
     if (!name || !slug || !storageQuotaGB || !priceMonthly) {
-      req.flash("error", "Name, slug, storage quota, and monthly price are required");
+      req.flash(
+        "error",
+        "Name, slug, storage quota, and monthly price are required"
+      );
       return res.redirect("/admin/subscription-plans");
     }
 
     // Convert prices from dollars to cents
     const priceMonthlyInt = Math.round(parseFloat(priceMonthly) * 100);
-    const priceYearlyInt = priceYearly ? Math.round(parseFloat(priceYearly) * 100) : null;
+    const priceYearlyInt = priceYearly
+      ? Math.round(parseFloat(priceYearly) * 100)
+      : null;
 
     // Update the plan
     await prisma.subscriptionPlan.update({
@@ -771,10 +801,12 @@ router.post("/subscription-plans/:planId", async (req, res) => {
         storageQuotaGB: parseInt(storageQuotaGB),
         bandwidthQuotaGB: parseInt(bandwidthQuotaGB || 0),
         maxBands: maxBands ? parseInt(maxBands) : null,
-        maxPublishedAlbums: maxPublishedAlbums ? parseInt(maxPublishedAlbums) : null,
+        maxPublishedAlbums: maxPublishedAlbums
+          ? parseInt(maxPublishedAlbums)
+          : null,
         priceMonthly: priceMonthlyInt,
         priceYearly: priceYearlyInt,
-        isActive: isActive === 'on',
+        isActive: isActive === "on",
         displayOrder: parseInt(displayOrder || 0),
         updatedAt: new Date(),
       },
@@ -800,9 +832,12 @@ router.post("/subscription-plans/:planId/features", async (req, res) => {
     // Parse features if it's a string
     let featuresJson;
     try {
-      featuresJson = typeof features === 'string' ? JSON.parse(features) : features;
+      featuresJson =
+        typeof features === "string" ? JSON.parse(features) : features;
     } catch (e) {
-      return res.status(400).json({ error: "Invalid JSON format for features" });
+      return res
+        .status(400)
+        .json({ error: "Invalid JSON format for features" });
     }
 
     await prisma.subscriptionPlan.update({
@@ -817,6 +852,282 @@ router.post("/subscription-plans/:planId/features", async (req, res) => {
   } catch (error) {
     console.error("Update plan features error:", error);
     res.status(500).json({ error: "Failed to update features" });
+  }
+});
+
+/**
+ * GET /admin/recordings/:id - View a specific recording (admin view)
+ */
+router.get("/recordings/:id", async (req, res) => {
+  try {
+    const recordingId = parseInt(req.params.id);
+
+    const recording = await prisma.recording.findUnique({
+      where: { id: recordingId },
+      include: {
+        setlist: {
+          include: {
+            band: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        splits: {
+          include: {
+            song: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+          },
+          orderBy: {
+            startTime: "asc",
+          },
+        },
+      },
+    });
+
+    if (!recording) {
+      req.flash("error", "Recording not found");
+      return res.redirect("/admin/recordings");
+    }
+
+    res.render("admin/recording-detail", {
+      title: "Recording Details",
+      marqueeTitle: "Admin Recording",
+      recording,
+      currentUser: req.session.user,
+      success: req.flash("success"),
+      error: req.flash("error"),
+    });
+  } catch (error) {
+    console.error("Admin recording detail error:", error);
+    req.flash("error", "Failed to load recording details");
+    res.redirect("/admin/recordings");
+  }
+});
+
+/**
+ * DELETE /admin/recordings/:id - Delete a recording and all associated files
+ */
+router.delete("/recordings/:id", async (req, res) => {
+  try {
+    const recordingId = parseInt(req.params.id);
+
+    const recording = await prisma.recording.findUnique({
+      where: { id: recordingId },
+      include: {
+        setlist: {
+          include: {
+            band: true,
+          },
+        },
+        splits: true,
+      },
+    });
+
+    if (!recording) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Recording not found" });
+    }
+
+    // Delete all split files
+    for (const split of recording.splits) {
+      if (split.filePath) {
+        const splitPath = path.join(__dirname, "..", split.filePath);
+        if (require("fs").existsSync(splitPath)) {
+          require("fs").unlinkSync(splitPath);
+        }
+      }
+    }
+
+    // Delete source file
+    if (recording.filePath) {
+      const sourcePath = path.join(__dirname, "..", recording.filePath);
+      if (require("fs").existsSync(sourcePath)) {
+        require("fs").unlinkSync(sourcePath);
+      }
+    }
+
+    // Delete waveform file if it exists
+    if (recording.waveformPath) {
+      const waveformPath = path.join(__dirname, "..", recording.waveformPath);
+      if (require("fs").existsSync(waveformPath)) {
+        require("fs").unlinkSync(waveformPath);
+      }
+    }
+
+    // Delete the recording and all related records (cascade)
+    await prisma.recording.delete({
+      where: { id: recordingId },
+    });
+
+    res.json({
+      success: true,
+      message: `Recording deleted successfully`,
+    });
+  } catch (error) {
+    console.error("Delete recording error:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to delete recording" });
+  }
+});
+
+/**
+ * DELETE /admin/recordings/splits/:id - Delete a specific recording split
+ */
+router.delete("/recordings/splits/:id", async (req, res) => {
+  try {
+    const splitId = parseInt(req.params.id);
+
+    const split = await prisma.recordingSplit.findUnique({
+      where: { id: splitId },
+      include: {
+        recording: {
+          select: {
+            id: true,
+          },
+        },
+        link: true,
+      },
+    });
+
+    if (!split) {
+      return res.status(404).json({ success: false, error: "Split not found" });
+    }
+
+    // Delete the link associated with this split if it exists
+    if (split.linkId) {
+      await prisma.link.delete({
+        where: { id: split.linkId },
+      });
+    }
+
+    // Delete the split audio file
+    if (split.filePath) {
+      const splitPath = path.join(__dirname, "..", split.filePath);
+      if (require("fs").existsSync(splitPath)) {
+        require("fs").unlinkSync(splitPath);
+      }
+    }
+
+    // Delete the split record
+    await prisma.recordingSplit.delete({
+      where: { id: splitId },
+    });
+
+    res.json({
+      success: true,
+      message: `Split deleted successfully`,
+    });
+  } catch (error) {
+    console.error("Delete split error:", error);
+    res.status(500).json({ success: false, error: "Failed to delete split" });
+  }
+});
+
+/**
+ * GET /admin/recordings - Manage all recordings across all bands
+ */
+router.get("/recordings", async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 50;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || "";
+
+    // Build search conditions
+    const searchConditions = search
+      ? {
+          OR: [
+            { filePath: { contains: search, mode: "insensitive" } },
+            {
+              setlist: {
+                title: { contains: search, mode: "insensitive" },
+              },
+            },
+            {
+              setlist: {
+                band: {
+                  name: { contains: search, mode: "insensitive" },
+                },
+              },
+            },
+          ],
+        }
+      : {};
+
+    // Get total count for pagination
+    const totalRecordings = await prisma.recording.count({
+      where: searchConditions,
+    });
+
+    // Get recordings with pagination
+    const recordings = await prisma.recording.findMany({
+      where: searchConditions,
+      include: {
+        setlist: {
+          include: {
+            band: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        _count: {
+          select: {
+            splits: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: skip,
+      take: limit,
+    });
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalRecordings / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.render("admin/recordings", {
+      title: "Recordings Management",
+      marqueeTitle: "Admin Recordings",
+      recordings,
+      totalRecordings,
+      currentPage: page,
+      totalPages,
+      hasNextPage,
+      hasPrevPage,
+      search,
+      currentUser: req.session.user,
+      success: req.flash("success"),
+      error: req.flash("error"),
+    });
+  } catch (error) {
+    console.error("Admin recordings error:", error);
+    req.flash("error", "Failed to load recordings management");
+    res.redirect("/admin");
   }
 });
 

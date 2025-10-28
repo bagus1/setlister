@@ -1,0 +1,133 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="bi bi-music-note-list"></i> All Recordings</h1>
+                    <h2 class="h5 text-muted"><%= band.name %></h2>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="/bands/<%= band.id %>" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Band
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column: Recordings List -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-music-note-list"></i> Recordings (<%= recordings.length %>)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <% if (recordings && recordings.length > 0) { %>
+                        <div class="list-group">
+                            <% recordings.forEach((recording) => { %>
+                                <a href="/bands/<%= band.id %>/setlists/<%= recording.setlist.id %>/recordings/<%= recording.id %>" 
+                                   class="list-group-item list-group-item-action text-decoration-none">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1 text-dark">
+                                                <i class="bi bi-<%= recording.isProcessed ? 'check-circle text-success' : 'hourglass-split text-warning' %>"></i>
+                                                <% 
+                                                const filename = recording.filePath.split('/').pop() || 'Unknown';
+                                                const format = filename.split('.').pop() || recording.format || 'webm';
+                                                %>
+                                                <%= filename %>
+                                                <span class="badge bg-secondary ms-2"><%= format.toUpperCase() %></span>
+                                                <% if (recording.isProcessed) { %>
+                                                    <span class="badge bg-success ms-2">Processed</span>
+                                                <% } else { %>
+                                                    <span class="badge bg-warning ms-2">Not Split</span>
+                                                <% } %>
+                                            </h6>
+                                            <div class="small text-muted mb-1">
+                                                <i class="bi bi-music-note-beamed"></i> <%= recording.setlist.title %>
+                                            </div>
+                                            <div class="small text-muted mb-2">
+                                                <i class="bi bi-calendar"></i> 
+                                                <%= new Date(recording.createdAt).toLocaleString('en-US', { 
+                                                    weekday: 'short',
+                                                    year: 'numeric', 
+                                                    month: 'short', 
+                                                    day: 'numeric',
+                                                    hour: 'numeric',
+                                                    minute: '2-digit'
+                                                }) %>
+                                                • 
+                                                <i class="bi bi-person"></i> <%= recording.creator.username %>
+                                                • 
+                                                <i class="bi bi-clock"></i> <%= Math.floor(recording.duration / 60) %>:<%= (recording.duration % 60).toString().padStart(2, '0') %>
+                                                <% if (recording.fileSize) { %>
+                                                    • 
+                                                    <%= (Number(recording.fileSize) / (1024 * 1024)).toFixed(1) %> MB
+                                                <% } %>
+                                            </div>
+                                            <% if (recording.isProcessed && recording.splits.length > 0) { %>
+                                                <div class="small text-muted">
+                                                    <i class="bi bi-scissors text-success"></i> 
+                                                    Split into <%= recording.splits.length %> song<%= recording.splits.length !== 1 ? 's' : '' %>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                        <div class="text-end">
+                                            <i class="bi bi-chevron-right text-muted"></i>
+                                        </div>
+                                    </div>
+                                </a>
+                            <% }) %>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: #6c757d;"></i>
+                            <h4 class="mt-3">No Recordings Yet</h4>
+                            <p class="text-muted">
+                                Recordings must be made from within setlists.
+                            </p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Record Actions -->
+        <div class="col-md-4">
+            <!-- Record Button -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-record-circle"></i> Record Now
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/quick-record/band/<%= band.id %>" class="btn btn-danger">
+                            <i class="bi bi-record-circle"></i> Record a Set
+                        </a>
+                        <a href="/help/recording-instructions" target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-lightbulb"></i> Recording Instructions
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-info-circle"></i> About Recordings
+                    </h6>
+                    <p class="card-text small text-muted">
+                        Recordings must be made from within setlists. Use the record button on any setlist to start recording for that specific gig or rehearsal.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

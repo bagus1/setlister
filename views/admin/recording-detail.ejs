@@ -1,0 +1,239 @@
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="/admin/recordings" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Recordings
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column - Recording Info -->
+        <div class="col-md-8">
+            <div class="card bg-dark text-white mb-4">
+                <div class="card-header bg-secondary">
+                    <h4 class="mb-0">
+                        <i class="bi bi-file-earmark-music"></i> Recording #<%= recording.id %>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <table class="table table-dark">
+                        <tbody>
+                            <tr>
+                                <th style="width: 150px;">Filename:</th>
+                                <td>
+                                    <code><%= recording.filePath.split('/').pop() %></code>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Format:</th>
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        <%= (recording.filePath.split('.').pop() || recording.format || 'webm').toUpperCase() %>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Band:</th>
+                                <td>
+                                    <a href="/bands/<%= recording.setlist.band.id %>" class="text-white">
+                                        <strong><%= recording.setlist.band.name %></strong>
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Setlist:</th>
+                                <td>
+                                    <a href="/bands/<%= recording.setlist.band.id %>/setlists/<%= recording.setlist.id %>" class="text-white">
+                                        <%= recording.setlist.title %>
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Duration:</th>
+                                <td>
+                                    <%= Math.floor(recording.duration / 60) %>:<%= (recording.duration % 60).toString().padStart(2, '0') %>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>File Size:</th>
+                                <td>
+                                    <% if (recording.fileSize) { %>
+                                        <%= (Number(recording.fileSize) / (1024 * 1024)).toFixed(2) %> MB
+                                    <% } else { %>
+                                        <span class="text-muted">—</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Creator:</th>
+                                <td><%= recording.creator.username %></td>
+                            </tr>
+                            <tr>
+                                <th>Created:</th>
+                                <td>
+                                    <%= new Date(recording.createdAt).toLocaleString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit'
+                                    }) %>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    <% if (recording.isProcessed) { %>
+                                        <span class="badge bg-success">Processed (<%= recording.splits.length %> splits)</span>
+                                    <% } else { %>
+                                        <span class="badge bg-warning">Not Split</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Split Songs -->
+            <% if (recording.splits.length > 0) { %>
+                <div class="card bg-dark text-white">
+                    <div class="card-header bg-secondary">
+                        <h5 class="mb-0">Split Songs (<%= recording.splits.length %>)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <% recording.splits.forEach(split => { %>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-secondary text-white h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title mb-2">
+                                                <%= split.song.title %>
+                                            </h6>
+                                            <div class="small text-muted mb-2">
+                                                <i class="bi bi-clock"></i> 
+                                                <%= Math.floor(split.startTime / 60) %>:<%= (split.startTime % 60).toString().padStart(2, '0') %> - 
+                                                <%= Math.floor(split.endTime / 60) %>:<%= (split.endTime % 60).toString().padStart(2, '0') %>
+                                                <br>
+                                                <i class="bi bi-hourglass-split"></i> 
+                                                Duration: <%= Math.floor(split.duration / 60) %>:<%= (split.duration % 60).toString().padStart(2, '0') %>
+                                            </div>
+                                            <% if (split.filePath) { %>
+                                                <audio controls class="w-100 mt-2" style="background-color: #1a1a1a;">
+                                                    <source src="<%= split.filePath %>" type="audio/mpeg">
+                                                    <source src="<%= split.filePath %>" type="audio/webm">
+                                                    <source src="<%= split.filePath %>" type="audio/wav">
+                                                    <source src="<%= split.filePath %>" type="audio/ogg">
+                                                </audio>
+                                            <% } else { %>
+                                                <p class="text-muted small mb-0">No audio file</p>
+                                            <% } %>
+                                            <button class="btn btn-danger btn-sm w-100 mt-2" onclick="deleteSplit(<%= split.id %>, '<%= split.song.title.replace(/'/g, "\\'") %>')">
+                                                <i class="bi bi-trash"></i> Delete Split
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Right Column - Audio Player & Actions -->
+        <div class="col-md-4">
+            <!-- Audio Player -->
+            <% if (recording.filePath) { %>
+                <div class="card bg-dark text-white mb-4">
+                    <div class="card-header bg-secondary">
+                        <h6 class="mb-0">Audio Player</h6>
+                    </div>
+                    <div class="card-body">
+                        <audio controls class="w-100" style="background-color: #1a1a1a;">
+                            <source src="<%= recording.filePath %>" type="audio/mpeg">
+                            <source src="<%= recording.filePath %>" type="audio/webm">
+                            <source src="<%= recording.filePath %>" type="audio/wav">
+                            <source src="<%= recording.filePath %>" type="audio/ogg">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                </div>
+            <% } %>
+
+            <!-- Actions -->
+            <div class="card bg-danger text-white">
+                <div class="card-header bg-dark">
+                    <h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Danger Zone</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-3">
+                        Permanently delete this recording and all associated files. This action cannot be undone.
+                    </p>
+                    <button class="btn btn-light w-100" onclick="deleteRecording(<%= recording.id %>)">
+                        <i class="bi bi-trash"></i> Delete Recording
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function deleteRecording(recordingId) {
+    const confirmed = confirm('Are you sure you want to delete this recording? This will permanently delete:\n- The source audio file\n- All split files\n- All associated links\n- The waveform data\n\nThis action cannot be undone.');
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/admin/recordings/${recordingId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Recording deleted successfully');
+            window.location.href = '/admin/recordings';
+        } else {
+            alert('Failed to delete recording: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('Failed to delete recording');
+    }
+}
+
+async function deleteSplit(splitId, songTitle) {
+    const confirmed = confirm(`Are you sure you want to delete the split for "${songTitle}"?\n\nThis will delete:\n- The split audio file\n- The link to this split on the main song page\n\nThis action cannot be undone.`);
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/admin/recordings/splits/${splitId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Split deleted successfully');
+            // Reload the page to show updated state
+            window.location.reload();
+        } else {
+            alert('Failed to delete split: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Delete split error:', error);
+        alert('Failed to delete split');
+    }
+}
+</script>
+

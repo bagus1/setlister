@@ -306,9 +306,14 @@
                 </small>
                 <% } %>
                 
-                <a href="/pricing" class="btn btn-sm btn-primary w-100">
-                    <i class="bi bi-arrow-up-circle"></i> Upgrade Your Storage
-                </a>
+                <div class="d-grid gap-2">
+                    <a href="/bands/<%= band.id %>/recordings" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-music-note-list"></i> View All Recordings
+                    </a>
+                    <a href="/pricing" class="btn btn-sm btn-primary">
+                        <i class="bi bi-arrow-up-circle"></i> Upgrade Your Storage
+                    </a>
+                </div>
             </div>
         </div>
         <% } %>

@@ -384,7 +384,7 @@ model BandInvitation {
 model SongArtist {
   songId    Int      @map("song_id")
   artistId  Int      @map("artist_id")
-  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   artist    Artist   @relation(fields: [artistId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   song      Song     @relation(fields: [songId], references: [id], onDelete: NoAction, onUpdate: NoAction)

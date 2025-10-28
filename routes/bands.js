@@ -6695,6 +6695,8 @@ router.post("/:id/songs/:songId/update", requireAuth, async (req, res) => {
         data: {
           songId: song.id,
           artistId: artistId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       });
     }

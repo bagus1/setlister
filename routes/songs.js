@@ -453,7 +453,7 @@ router.get("/:songId/links/:linkId", async (req, res) => {
         vocalist: true,
         links: {
           orderBy: {
-            createdAt: 'desc', // Most recent first
+            createdAt: "desc", // Most recent first
           },
         },
       },
@@ -465,8 +465,8 @@ router.get("/:songId/links/:linkId", async (req, res) => {
     }
 
     // Find the specific link being viewed
-    const link = song.links.find(l => l.id === parseInt(linkId));
-    
+    const link = song.links.find((l) => l.id === parseInt(linkId));
+
     if (!link) {
       req.flash("error", "Link not found");
       return res.redirect(`/songs/${songId}`);
@@ -612,7 +612,7 @@ router.get("/:id", async (req, res) => {
             },
           },
           orderBy: {
-            createdAt: 'desc', // Most recent first
+            createdAt: "desc", // Most recent first
           },
         },
         gigDocuments: {
@@ -781,6 +781,7 @@ router.get("/:id/edit", requireAuth, async (req, res) => {
       vocalists,
       canMakePrivate: privateCheck.allowed,
       fromAdmin: req.query.fromAdmin === "true",
+      currentUser: req.session.user,
     });
   } catch (error) {
     logger.logError("Edit song form error", error);
@@ -832,7 +833,9 @@ router.post(
         });
 
         // Check if user can create private songs (subscription-based)
-        const { canCreatePrivateSongs } = require("../utils/subscriptionHelper");
+        const {
+          canCreatePrivateSongs,
+        } = require("../utils/subscriptionHelper");
         const privateCheck = await canCreatePrivateSongs(req.session.user.id);
 
         const artists = await prisma.artist.findMany({

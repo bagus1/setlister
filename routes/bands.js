@@ -873,6 +873,9 @@ router.get("/:bandId/recordings", requireAuth, async (req, res) => {
       recordingsStorageBytes: Number(recordingsStorageBytes),
       splitsStorageBytes: Number(splitsStorageBytes),
       splitsCount,
+      quotaStatus: userStorageInfo
+        ? { isOverQuota: userStorageInfo.usedPercent >= 100 }
+        : { isOverQuota: false },
     });
   } catch (error) {
     logger.logError("Get all band recordings error", error);
@@ -3937,6 +3940,10 @@ router.get("/:id", async (req, res) => {
     const bandStorageInfo = await getBandStorageInfo(parseInt(bandId));
     const userStorageInfo = await calculateUserStorageUsage(userId);
 
+    // Check if user is over quota (to disable buttons)
+    const { isUserOverQuota } = require("../utils/storageCalculator");
+    const quotaStatus = await isUserOverQuota(userId);
+
     // Check if user can create more albums
     const { canPublishAlbum } = require("../utils/subscriptionHelper");
     const albumLimitInfo = await canPublishAlbum(userId, parseInt(bandId));
@@ -3956,6 +3963,7 @@ router.get("/:id", async (req, res) => {
       bandStorageInfo,
       userStorageInfo,
       albumLimitInfo,
+      quotaStatus,
     });
   } catch (error) {
     console.error("Show band error:", error);
@@ -10921,6 +10929,10 @@ router.get("/:bandId/setlists/:setlistId", requireAuth, async (req, res) => {
       return names[type] || type;
     };
 
+    // Check if user is over quota (to disable buttons)
+    const { isUserOverQuota } = require("../utils/storageCalculator");
+    const quotaStatus = await isUserOverQuota(req.session.user.id);
+
     res.render("setlists/show", {
       title: `${setlist.title} - ${setlist.band.name}`,
       setlist,
@@ -10932,6 +10944,7 @@ router.get("/:bandId/setlists/:setlistId", requireAuth, async (req, res) => {
       hasBandHeader: true,
       band: setlist.band,
       getTypeIcon,
+      quotaStatus,
       getTypeDisplayName,
     });
   } catch (error) {

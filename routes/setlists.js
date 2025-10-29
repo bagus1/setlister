@@ -12,7 +12,10 @@ const {
   getViewTypeFromToken,
 } = require("../utils/shareTokens");
 const { checkStorageQuota } = require("../middleware/checkStorageQuota");
-const { updateBandStorageUsage } = require("../utils/storageCalculator");
+const {
+  updateBandStorageUsage,
+  checkUserStorageQuota,
+} = require("../utils/storageCalculator");
 const { exec } = require("child_process");
 
 // Configure multer for audio file uploads
@@ -2672,6 +2675,10 @@ router.get("/:id/recordings", requireAuth, async (req, res) => {
       return res.redirect("/bands");
     }
 
+    // Check if user is over quota (to disable buttons)
+    const { isUserOverQuota } = require("../utils/storageCalculator");
+    const quotaStatus = await isUserOverQuota(userId);
+
     res.render("setlists/recordings-index", {
       title: `Recordings - ${setlist.title}`,
       pageTitle: `Recordings`,
@@ -2680,6 +2687,7 @@ router.get("/:id/recordings", requireAuth, async (req, res) => {
       recordings: setlist.recordings,
       hasBandHeader: true,
       band: setlist.band,
+      quotaStatus,
     });
   } catch (error) {
     logger.logError("Recordings index error", error);
@@ -2693,7 +2701,7 @@ router.post(
   "/:id/recordings",
   requireAuth,
   upload.single("audio"),
-  checkStorageQuota, // Must come after upload.single so req.file is available
+  // Note: Quota check removed - we allow uploads but disable buttons when over limit
   async (req, res) => {
     try {
       const setlistId = parseInt(req.params.id);
@@ -2844,6 +2852,9 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
   try {
     const { originalFileName, originalFileSize, totalChunks } = req.body;
     const setlistId = parseInt(req.params.id);
+    const userId = req.session.user.id;
+
+    // Note: Quota check removed - we allow uploads but disable buttons when over limit
 
     // Reassemble chunks
     const tempDir = path.join(__dirname, "../uploads/temp");
@@ -2950,6 +2961,7 @@ router.post(
   "/:id/recordings/upload",
   requireAuth,
   upload.single("audioFile"),
+  // Note: Quota check removed - we allow uploads but disable buttons when over limit
   async (req, res) => {
     try {
       const setlistId = parseInt(req.params.id);

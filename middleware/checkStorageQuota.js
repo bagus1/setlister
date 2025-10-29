@@ -8,7 +8,7 @@ const { prisma } = require("../lib/prisma");
  */
 async function checkStorageQuota(req, res, next) {
   try {
-    const userId = req.user.id;
+    const userId = req.session.user?.id;
     let bandId = req.params.bandId || req.body.bandId;
 
     console.log("[STORAGE QUOTA] Checking quota");
@@ -64,6 +64,12 @@ async function checkStorageQuota(req, res, next) {
     }
 
     // Check quota
+    if (!userId) {
+      return res.status(401).json({
+        error: "User authentication required",
+      });
+    }
+
     const quotaCheck = await checkUserStorageQuota(userId, bandId, fileSize);
 
     if (!quotaCheck.allowed) {

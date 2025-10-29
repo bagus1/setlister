@@ -567,9 +567,18 @@ function getTokenForView(viewType) {
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
+                    <% if (typeof quotaStatus !== 'undefined' && quotaStatus.isOverQuota) { %>
+                    <button onclick="event.preventDefault(); event.stopPropagation(); alert('Storage quota exceeded. Please delete old files or upgrade your plan.'); return false;" 
+                            class="btn btn-danger" 
+                            style="opacity: 0.65; cursor: not-allowed;"
+                            title="Storage quota exceeded. Please delete old files or upgrade your plan.">
+                        <i class="bi bi-record-circle"></i> Record This Set
+                    </button>
+                    <% } else { %>
                     <button onclick="startRecording('<%= setlist.id %>')" class="btn btn-danger">
                         <i class="bi bi-record-circle"></i> Record This Set
                     </button>
+                    <% } %>
                     <a href="/help/recording-instructions" target="_blank" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-lightbulb"></i> Recording Instructions
                     </a>

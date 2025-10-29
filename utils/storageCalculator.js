@@ -465,6 +465,23 @@ function bytesToRecordingHours(bytes) {
 }
 
 /**
+ * Check if user is currently over their storage quota
+ * @param {number} userId
+ * @returns {Promise<{isOverQuota: boolean, usedGB: number, quotaGB: number, usedPercent: number}>}
+ */
+async function isUserOverQuota(userId) {
+  const userStorage = await calculateUserStorageUsage(userId);
+  const isOverQuota = userStorage.usedGB >= userStorage.totalQuotaGB;
+
+  return {
+    isOverQuota,
+    usedGB: userStorage.usedGB,
+    quotaGB: userStorage.totalQuotaGB,
+    usedPercent: userStorage.usedPercent,
+  };
+}
+
+/**
  * Get band storage info (total available, used, contributing members)
  * @param {number} bandId
  * @returns {Promise<Object>}
@@ -507,6 +524,7 @@ module.exports = {
   calculateBandStorageQuota,
   calculateUserStorageUsage,
   checkUserStorageQuota,
+  isUserOverQuota,
   getBandStorageInfo,
   formatBytes,
   bytesToRecordingHours,

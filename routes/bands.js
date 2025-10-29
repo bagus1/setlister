@@ -2281,6 +2281,87 @@ router.post(
   }
 );
 
+// POST /bands/:bandId/setlists/:setlistId/preferred-gig-document - Update preferred gig document for a song
+router.post(
+  "/:bandId/setlists/:setlistId/preferred-gig-document",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { songId, gigDocumentId } = req.body;
+      const bandId = parseInt(req.params.bandId);
+      const setlistId = parseInt(req.params.setlistId);
+      const parsedSongId = parseInt(songId);
+      const parsedGigDocumentId = gigDocumentId
+        ? parseInt(gigDocumentId)
+        : null;
+      const userId = req.session.user.id;
+
+      // Verify user has access to this setlist
+      const setlist = await prisma.setlist.findUnique({
+        where: { id: setlistId },
+        include: {
+          band: {
+            include: {
+              members: {
+                where: { userId: userId },
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!setlist) {
+        return res.status(404).json({ error: "Setlist not found" });
+      }
+
+      if (setlist.band.members.length === 0) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Verify gig document exists if provided
+      if (parsedGigDocumentId) {
+        const gigDocument = await prisma.gigDocument.findUnique({
+          where: { id: parsedGigDocumentId },
+        });
+        if (!gigDocument) {
+          return res.status(404).json({ error: "Gig document not found" });
+        }
+      }
+
+      // Update or create BandSong preference
+      await prisma.bandSong.upsert({
+        where: {
+          bandId_songId: {
+            bandId: bandId,
+            songId: parsedSongId,
+          },
+        },
+        update: {
+          gigDocumentId: parsedGigDocumentId,
+          updatedAt: new Date(),
+        },
+        create: {
+          bandId: bandId,
+          songId: parsedSongId,
+          gigDocumentId: parsedGigDocumentId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      res.json({ success: true, message: "Preferred gig document updated" });
+    } catch (error) {
+      console.error("Update preferred gig document error:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to update preferred gig document" });
+    }
+  }
+);
+
 // POST /bands/:bandId/setlists/:setlistId/preferred-midi - Update preferred MIDI file for a song
 router.post(
   "/:bandId/setlists/:setlistId/preferred-midi",

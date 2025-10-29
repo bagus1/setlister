@@ -328,26 +328,6 @@
                         </div>
                     <% } %>
                     
-                    <!-- Document Info -->
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">Document Info</h6>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Type:</strong> <%= getTypeDisplayName(gigDocument.type) %></p>
-                            <p><strong>Version:</strong> <%= gigDocument.version %></p>
-                            <p><strong>Created:</strong> <%= new Date(gigDocument.createdAt).toLocaleDateString() %></p>
-                            <p><strong>Updated:</strong> <%= new Date(gigDocument.updatedAt).toLocaleDateString() %></p>
-                            <p><strong>Status:</strong>
-                                <% if (gigDocument.isActive) { %>
-                                    <span class="badge bg-success">Active</span>
-                                <% } else { %>
-                                    <span class="badge bg-secondary">Inactive</span>
-                                <% } %>
-                            </p>
-                        </div>
-                    </div>
-                    
                     <!-- Quick Actions -->
                     <div class="card mb-3">
                         <div class="card-header">
@@ -388,6 +368,26 @@
                                     </a>
                                 <% } %>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Document Info -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Document Info</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Type:</strong> <%= getTypeDisplayName(gigDocument.type) %></p>
+                            <p><strong>Version:</strong> <%= gigDocument.version %></p>
+                            <p><strong>Created:</strong> <%= new Date(gigDocument.createdAt).toLocaleDateString() %></p>
+                            <p><strong>Updated:</strong> <%= new Date(gigDocument.updatedAt).toLocaleDateString() %></p>
+                            <p><strong>Status:</strong>
+                                <% if (gigDocument.isActive) { %>
+                                    <span class="badge bg-success">Active</span>
+                                <% } else { %>
+                                    <span class="badge bg-secondary">Inactive</span>
+                                <% } %>
+                            </p>
                         </div>
                     </div>
                 </div> <!-- Close right sidebar -->

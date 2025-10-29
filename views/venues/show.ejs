@@ -247,16 +247,17 @@
                     %>
                     <% if (mainWebsite && mainWebsite.url) { %>
                                 <% if (user) { %>
-                                    <span class="venue-field-clickable" 
+                                    <i class="bi bi-globe"></i>
+                                    <a href="<%= mainWebsite.url %>" target="_blank" class="text-decoration-none ms-1">
+                                        <%= mainWebsite.url %>
+                                    </a>
+                                    <i class="bi bi-pencil ms-2 small venue-field-clickable" 
                                           onclick="editVenueField('website', '<%= mainWebsite.url %>', <%= venue.id %>)"
                                           title="Click to suggest edit"
-                                          style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s;"
+                                          style="cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s; color: #6c757d;"
                                           onmouseover="this.style.backgroundColor='#f8f9fa'"
                                           onmouseout="this.style.backgroundColor='transparent'">
-                                        <i class="bi bi-globe"></i>
-                                        <span class="ms-1"><%= mainWebsite.url %></span>
-                                        <i class="bi bi-pencil ms-2 small"></i>
-                                    </span>
+                                    </i>
                                 <% } else { %>
                             <i class="bi bi-globe"></i>
                             <a href="<%= mainWebsite.url.startsWith('http') ? mainWebsite.url : 'https://' + mainWebsite.url %>" 

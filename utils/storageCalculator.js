@@ -174,6 +174,12 @@ async function updateBandStorageUsage(bandId) {
  * @returns {Promise<Array>} Array of {userId, quotaGB}
  */
 async function getBandProMembers(bandId) {
+  // Get free plan quota from database to determine what counts as "paid"
+  const freePlan = await prisma.subscriptionPlan.findUnique({
+    where: { slug: "free" },
+  });
+  const freeQuotaGB = freePlan?.storageQuotaGB || 2;
+
   const members = await prisma.bandMember.findMany({
     where: { bandId },
     include: {
@@ -196,7 +202,7 @@ async function getBandProMembers(bandId) {
       member.user.subscription &&
       member.user.subscription.status === "active" &&
       member.user.subscription.plan &&
-      member.user.subscription.plan.storageQuotaGB > 0
+      member.user.subscription.plan.storageQuotaGB > freeQuotaGB // Only count PAID subscriptions (not Free tier)
     ) {
       proMembers.push({
         userId: member.user.id,
@@ -290,21 +296,23 @@ async function calculateUserStorageUsage(userId) {
     const band = membership.band;
     const bandStorageBytes = band.storageUsedBytes || BigInt(0);
 
-    // Get all Pro+ members for this band
+    // Get all Pro+ members for this band (only paid subscriptions)
     const proMembers = await getBandProMembers(band.id);
 
     if (proMembers.length === 0) {
-      // No Pro members, user owns all storage if band uses any
-      const userShare = bandStorageBytes;
-      totalUserShareBytes += userShare;
-
+      // No paid Pro members - Free tier doesn't pool
+      // Each free tier user gets their own 2GB quota, but shares responsibility for band storage
+      // However, we should NOT count the full band storage - free tier is non-pooled
+      // Only count if user is the ONLY member (edge case) or if we're being generous
+      // For now, Free tier users don't count shared band storage against their personal quota
       breakdown.push({
         bandId: band.id,
         bandName: band.name,
         bandTotalGB: Number(bandStorageBytes) / 1024 ** 3,
-        userShareGB: Number(userShare) / 1024 ** 3,
+        userShareGB: 0, // Free tier doesn't pool, so shared storage doesn't count against personal quota
         proMembersCount: 0,
-        isOnlyProMember: true,
+        isOnlyProMember: false,
+        isFreeTier: true,
       });
     } else {
       // Check if user is one of the Pro members

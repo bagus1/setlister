@@ -77,28 +77,30 @@
     <!-- Plan Distribution -->
     <div class="row mb-4">
         <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Plan Distribution</h5>
+            <div class="card bg-dark text-white">
+                <div class="card-header bg-secondary">
+                    <h5 class="mb-0 text-white">Plan Distribution</h5>
+                </div>
+                <div class="card-body bg-dark">
                     <div class="row text-center">
                         <div class="col-md-4">
                             <div class="p-3">
                                 <i class="bi bi-gift fs-1 text-secondary"></i>
-                                <h3 class="mt-2"><%= stats.freeUsers %></h3>
+                                <h3 class="mt-2 text-white"><%= stats.freeUsers %></h3>
                                 <p class="text-muted">Free Users</p>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="p-3">
                                 <i class="bi bi-star fs-1 text-primary"></i>
-                                <h3 class="mt-2"><%= stats.proUsers %></h3>
+                                <h3 class="mt-2 text-white"><%= stats.proUsers %></h3>
                                 <p class="text-muted">Pro Users</p>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="p-3">
                                 <i class="bi bi-gem fs-1 text-warning"></i>
-                                <h3 class="mt-2"><%= stats.premiumUsers %></h3>
+                                <h3 class="mt-2 text-white"><%= stats.premiumUsers %></h3>
                                 <p class="text-muted">Premium Users</p>
                             </div>
                         </div>
@@ -109,13 +111,13 @@
     </div>
 
     <!-- Users Table -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">All Users</h5>
+    <div class="card bg-dark text-white">
+        <div class="card-header bg-secondary">
+            <h5 class="mb-0 text-white">All Users</h5>
         </div>
-        <div class="card-body">
+        <div class="card-body bg-dark">
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover table-dark">
                     <thead>
                         <tr>
                             <th>ID</th>

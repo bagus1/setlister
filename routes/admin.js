@@ -13,6 +13,67 @@ router.use(requireRole("moderator")); // Allow both moderators and admins
 /**
  * GET /admin - Moderator Dashboard
  */
+// POST /admin/recalculate-storage - Recalculate storage for all bands
+router.post("/recalculate-storage", async (req, res) => {
+  try {
+    const {
+      updateBandStorageUsage,
+      formatBytes,
+    } = require("../utils/storageCalculator");
+
+    const bands = await prisma.band.findMany({
+      select: { id: true, name: true },
+    });
+
+    let totalProcessed = 0;
+    let totalBytes = BigInt(0);
+    let errors = 0;
+    const results = [];
+
+    for (const band of bands) {
+      try {
+        const bytes = await updateBandStorageUsage(band.id);
+        const formatted = formatBytes(bytes);
+        results.push({
+          band: band.name,
+          bytes: Number(bytes),
+          formatted,
+          success: true,
+        });
+        totalBytes += bytes;
+        totalProcessed++;
+      } catch (error) {
+        results.push({
+          band: band.name,
+          error: error.message,
+          success: false,
+        });
+        errors++;
+        logger.logError(
+          `Error recalculating storage for band ${band.name}`,
+          error
+        );
+      }
+    }
+
+    logger.logFormSubmission(
+      `Recalculated storage for all bands: ${totalProcessed} processed, ${errors} errors`,
+      req,
+      { totalProcessed, errors, totalBytes: totalBytes.toString() }
+    );
+
+    req.flash(
+      "success",
+      `Recalculated storage for ${totalProcessed} band(s). ${errors > 0 ? `${errors} error(s) occurred.` : ""}`
+    );
+    res.redirect("/admin/recordings");
+  } catch (error) {
+    logger.logError("Admin recalculate all storage error", error);
+    req.flash("error", "Failed to recalculate storage for all bands");
+    res.redirect("/admin/recordings");
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
     // Get stats for dashboard
@@ -1092,10 +1153,24 @@ router.delete("/recordings/:id", async (req, res) => {
       }
     }
 
+    // Get bandId before deleting recording
+    const bandId = recording.setlist.band.id;
+
     // Delete the recording and all related records (cascade)
     await prisma.recording.delete({
       where: { id: recordingId },
     });
+
+    // Recalculate band storage after recording deletion
+    const { updateBandStorageUsage } = require("../utils/storageCalculator");
+    try {
+      await updateBandStorageUsage(bandId);
+    } catch (storageError) {
+      logger.logError(
+        "Failed to recalculate band storage after admin recording deletion",
+        storageError
+      );
+    }
 
     res.json({
       success: true,
@@ -1129,8 +1204,16 @@ router.delete("/recordings/splits/:id", async (req, res) => {
       where: { id: splitId },
       include: {
         recording: {
-          select: {
-            id: true,
+          include: {
+            setlist: {
+              include: {
+                band: {
+                  select: {
+                    id: true,
+                  },
+                },
+              },
+            },
           },
         },
         link: true,
@@ -1140,6 +1223,9 @@ router.delete("/recordings/splits/:id", async (req, res) => {
     if (!split) {
       return res.status(404).json({ success: false, error: "Split not found" });
     }
+
+    // Get bandId before deleting
+    const bandId = split.recording.setlist.band.id;
 
     // Delete the link associated with this split if it exists
     if (split.linkId) {
@@ -1160,6 +1246,17 @@ router.delete("/recordings/splits/:id", async (req, res) => {
     await prisma.recordingSplit.delete({
       where: { id: splitId },
     });
+
+    // Recalculate band storage after split deletion
+    const { updateBandStorageUsage } = require("../utils/storageCalculator");
+    try {
+      await updateBandStorageUsage(bandId);
+    } catch (storageError) {
+      logger.logError(
+        "Failed to recalculate band storage after admin split deletion",
+        storageError
+      );
+    }
 
     res.json({
       success: true,
@@ -1243,6 +1340,110 @@ router.get("/recordings", async (req, res) => {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
+    // Calculate global storage statistics
+    const { formatBytes } = require("../utils/storageCalculator");
+    const bands = await prisma.band.findMany({
+      select: { storageUsedBytes: true },
+    });
+
+    let totalStorageBytes = BigInt(0);
+    let bandsWithStorage = 0;
+    bands.forEach((band) => {
+      if (band.storageUsedBytes) {
+        totalStorageBytes += BigInt(band.storageUsedBytes);
+        bandsWithStorage++;
+      }
+    });
+
+    const totalStorageGB = Number(totalStorageBytes) / 1024 ** 3;
+    const avgStoragePerBand =
+      bandsWithStorage > 0
+        ? Number(totalStorageBytes) / bandsWithStorage / 1024 ** 3
+        : 0;
+
+    // Count total recordings and their total size
+    const allRecordings = await prisma.recording.findMany({
+      where: { filePath: { not: "" }, fileSize: { not: null } },
+      select: { fileSize: true, isProcessed: true },
+    });
+
+    let totalRecordingBytes = BigInt(0);
+    let processedRecordings = 0;
+    allRecordings.forEach((r) => {
+      totalRecordingBytes += BigInt(r.fileSize || 0);
+      if (r.isProcessed) processedRecordings++;
+    });
+    const totalRecordingGB = Number(totalRecordingBytes) / 1024 ** 3;
+
+    // Get split statistics
+    const totalSplits = await prisma.recordingSplit.count({
+      where: { filePath: { not: "" } },
+    });
+
+    const splits = await prisma.recordingSplit.findMany({
+      where: { filePath: { not: "" } },
+      select: {
+        filePath: true,
+        recording: {
+          select: {
+            setlist: {
+              select: {
+                bandId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Count unique bands that have splits
+    const bandsWithSplits = new Set(
+      splits.map((s) => s.recording.setlist.bandId)
+    ).size;
+
+    // Calculate average splits per processed recording
+    const avgSplitsPerRecording =
+      processedRecordings > 0
+        ? (totalSplits / processedRecordings).toFixed(1)
+        : 0;
+
+    // Calculate percentage of recordings that are processed
+    const processedPercentage =
+      allRecordings.length > 0
+        ? ((processedRecordings / allRecordings.length) * 100).toFixed(1)
+        : 0;
+
+    // Calculate total split file sizes from filesystem
+    const fs = require("fs");
+    const path = require("path");
+    let totalSplitBytes = BigInt(0);
+    let splitsWithFiles = 0;
+    let splitsMissingFiles = 0;
+
+    for (const split of splits) {
+      if (split.filePath && split.filePath.startsWith("/uploads/")) {
+        try {
+          // Try public/uploads first (for recordings), then uploads directly (for splits)
+          let filePath = path.join(process.cwd(), "public", split.filePath);
+          if (!fs.existsSync(filePath)) {
+            // Split files are stored in uploads/ directly, not public/uploads/
+            filePath = path.join(process.cwd(), split.filePath.substring(1)); // Remove leading /
+          }
+          const stats = fs.statSync(filePath);
+          totalSplitBytes += BigInt(stats.size);
+          splitsWithFiles++;
+        } catch (err) {
+          // File doesn't exist (likely on different server or deleted)
+          splitsMissingFiles++;
+        }
+      }
+    }
+
+    const totalSplitGB = Number(totalSplitBytes) / 1024 ** 3;
+    const avgSplitSize =
+      splitsWithFiles > 0 ? Number(totalSplitBytes) / splitsWithFiles : 0;
+    const avgSplitSizeMB = avgSplitSize / (1024 * 1024);
+
     res.render("admin/recordings", {
       title: "Recordings Management",
       marqueeTitle: "Admin Recordings",
@@ -1254,6 +1455,26 @@ router.get("/recordings", async (req, res) => {
       hasPrevPage,
       search,
       currentUser: req.session.user,
+      globalStats: {
+        totalBands: bands.length,
+        bandsWithStorage,
+        totalStorageBytes,
+        totalStorageGB: parseFloat(totalStorageGB.toFixed(2)),
+        avgStoragePerBand: parseFloat(avgStoragePerBand.toFixed(2)),
+        totalRecordingGB: parseFloat(totalRecordingGB.toFixed(2)),
+        totalRecordings: allRecordings.length,
+        processedRecordings,
+        processedPercentage: parseFloat(processedPercentage),
+        totalSplits,
+        splitsWithFiles,
+        splitsMissingFiles,
+        bandsWithSplits,
+        avgSplitsPerRecording: parseFloat(avgSplitsPerRecording),
+        totalSplitBytes,
+        totalSplitGB: parseFloat(totalSplitGB.toFixed(2)),
+        avgSplitSizeMB: parseFloat(avgSplitSizeMB.toFixed(1)),
+        formatBytes,
+      },
       success: req.flash("success"),
       error: req.flash("error"),
     });

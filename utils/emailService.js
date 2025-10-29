@@ -17,12 +17,12 @@ const sendEmail = async (to, subject, content, options = {}) => {
     // Disable link tracking for sensitive emails like password resets
     trackingSettings: {
       clickTracking: {
-        enable: options.enableClickTracking !== false ? true : false
+        enable: options.enableClickTracking !== false ? true : false,
       },
       openTracking: {
-        enable: options.enableOpenTracking !== false ? true : false
-      }
-    }
+        enable: options.enableOpenTracking !== false ? true : false,
+      },
+    },
   };
 
   // Add reply-to if provided
@@ -56,6 +56,15 @@ const sendBandInvitation = async (invitation, band, inviterName) => {
     to: invitation.email,
     from: fromEmail,
     subject: `🎵 You're invited to join ${band.name}!`,
+    // Disable click tracking to ensure HTTPS links are preserved
+    trackingSettings: {
+      clickTracking: {
+        enable: false,
+      },
+      openTracking: {
+        enable: false,
+      },
+    },
     html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #333;">🎵 Band Invitation</h2>

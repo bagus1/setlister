@@ -72,8 +72,9 @@ async function calculateBandStorage(bandId) {
   let totalBytes = BigInt(0);
 
   // Sum recording file sizes (already tracked)
+  // Only count recordings where the source file still exists (filePath is not empty)
   recordings.forEach((r) => {
-    if (r.fileSize) {
+    if (r.fileSize && r.filePath && r.filePath !== "") {
       totalBytes += BigInt(r.fileSize);
     }
   });
@@ -82,8 +83,16 @@ async function calculateBandStorage(bandId) {
   for (const split of splits) {
     if (split.filePath && split.filePath.startsWith("/uploads/")) {
       try {
-        const filePath = path.join(process.cwd(), "public", split.filePath);
-        const stats = await fs.stat(filePath);
+        // Try public/uploads first (for recordings), then uploads directly (for splits)
+        let filePath = path.join(process.cwd(), "public", split.filePath);
+        let stats;
+        try {
+          stats = await fs.stat(filePath);
+        } catch (err) {
+          // Split files are stored in uploads/ directly, not public/uploads/
+          filePath = path.join(process.cwd(), split.filePath.substring(1)); // Remove leading /
+          stats = await fs.stat(filePath);
+        }
         totalBytes += BigInt(stats.size);
       } catch (err) {
         // File doesn't exist, skip
@@ -203,7 +212,7 @@ async function getBandProMembers(bandId) {
 
 /**
  * Calculate total storage quota available for a band
- * Free tier does NOT pool - band gets 8GB regardless of free member count
+ * Free tier does NOT pool - band gets 2GB (from Free plan) regardless of free member count
  * Pro/Premium tier quotas DO stack
  * @param {number} bandId
  * @returns {Promise<bigint>} Total bytes available
@@ -211,9 +220,15 @@ async function getBandProMembers(bandId) {
 async function calculateBandStorageQuota(bandId) {
   const proMembers = await getBandProMembers(bandId);
 
+  // Get free plan quota from database to determine what counts as "paid"
+  const freePlan = await prisma.subscriptionPlan.findUnique({
+    where: { slug: "free" },
+  });
+  const freeQuotaGB = freePlan?.storageQuotaGB || 2;
+
   // Only count PAID subscriptions (Pro/Premium)
   // Free tier members don't contribute additional quota
-  const paidMembers = proMembers.filter((m) => m.quotaGB > 8);
+  const paidMembers = proMembers.filter((m) => m.quotaGB > freeQuotaGB);
 
   let totalQuotaBytes = BigInt(0);
 
@@ -222,9 +237,9 @@ async function calculateBandStorageQuota(bandId) {
     totalQuotaBytes += quotaBytes;
   });
 
-  // If no paid members, use free tier default (8GB, non-pooled)
+  // If no paid members, use free tier quota from database (non-pooled)
   if (totalQuotaBytes === BigInt(0)) {
-    totalQuotaBytes = BigInt(8) * BigInt(1024 ** 3);
+    totalQuotaBytes = BigInt(freeQuotaGB) * BigInt(1024 ** 3);
   }
 
   return totalQuotaBytes;
@@ -255,7 +270,16 @@ async function calculateUserStorageUsage(userId) {
   }
 
   // Get user's quota (default to free tier if no subscription)
-  const userQuotaGB = user.subscription?.plan?.storageQuotaGB || 8;
+  let userQuotaGB;
+  if (user.subscription?.plan?.storageQuotaGB) {
+    userQuotaGB = user.subscription.plan.storageQuotaGB;
+  } else {
+    // Look up free plan quota from database
+    const freePlan = await prisma.subscriptionPlan.findUnique({
+      where: { slug: "free" },
+    });
+    userQuotaGB = freePlan?.storageQuotaGB || 2; // Fallback to 2 if free plan not found
+  }
   const totalQuotaBytes = BigInt(userQuotaGB) * BigInt(1024 ** 3);
 
   let totalUserShareBytes = BigInt(0);
@@ -407,36 +431,36 @@ function formatBytes(bytes, decimals = 2) {
  */
 function bytesToRecordingHours(bytes) {
   const totalMB = Number(bytes) / (1024 * 1024);
-  
+
   // Handle negative or zero
   if (totalMB <= 0) {
     return {
       mp3Hours: 0,
       wavHours: 0,
-      description: "Storage limit reached"
+      description: "Storage limit reached",
     };
   }
-  
+
   // MP3/WebM at ~1 MB per minute = 60 MB per hour
   const mp3Hours = Math.floor(totalMB / 60);
-  
+
   // WAV at ~10 MB per minute = 600 MB per hour
   const wavHours = Math.floor(totalMB / 600);
-  
+
   // Handle small amounts (less than 1 hour)
   if (mp3Hours === 0 && wavHours === 0) {
     const mp3Minutes = Math.floor(totalMB);
     return {
       mp3Hours: 0,
       wavHours: 0,
-      description: `~${mp3Minutes}min MP3`
+      description: `~${mp3Minutes}min MP3`,
     };
   }
-  
+
   return {
     mp3Hours,
     wavHours,
-    description: `~${mp3Hours}hrs MP3 or ~${wavHours}hrs WAV`
+    description: `~${mp3Hours}hrs MP3 or ~${wavHours}hrs WAV`,
   };
 }
 

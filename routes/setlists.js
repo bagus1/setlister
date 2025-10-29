@@ -2749,7 +2749,15 @@ router.post(
       });
 
       // Recalculate band storage after successful upload
-      await updateBandStorageUsage(setlist.bandId);
+      try {
+        await updateBandStorageUsage(setlist.bandId);
+      } catch (storageError) {
+        // Log but don't fail the upload if storage calculation fails
+        logger.logError(
+          "Failed to recalculate band storage after upload",
+          storageError
+        );
+      }
 
       res.json({
         success: true,
@@ -2873,6 +2881,9 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
     // Now process the reassembled file as a normal recording
     const stats = fs.statSync(finalPath);
 
+    // Convert absolute path to relative path for consistency with other routes
+    const recordingPath = `/uploads/recordings/${path.basename(finalPath)}`;
+
     // Calculate duration using ffmpeg
     let duration = 0;
     try {
@@ -2896,13 +2907,32 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
     const recording = await prisma.recording.create({
       data: {
         setlistId: setlistId,
-        filePath: finalPath,
+        filePath: recordingPath,
         fileSize: BigInt(stats.size),
         duration: duration,
         format: path.extname(originalFileName).substring(1) || "mp3",
         createdById: req.session.user.id,
       },
     });
+
+    // Get setlist to access bandId
+    const setlist = await prisma.setlist.findUnique({
+      where: { id: setlistId },
+      select: { bandId: true },
+    });
+
+    // Recalculate band storage after successful chunked upload
+    if (setlist) {
+      try {
+        await updateBandStorageUsage(setlist.bandId);
+      } catch (storageError) {
+        // Log but don't fail the upload if storage calculation fails
+        logger.logError(
+          "Failed to recalculate band storage after chunked upload",
+          storageError
+        );
+      }
+    }
 
     res.json({
       success: true,
@@ -2975,7 +3005,15 @@ router.post(
       });
 
       // Recalculate band storage after successful upload
-      await updateBandStorageUsage(setlist.bandId);
+      try {
+        await updateBandStorageUsage(setlist.bandId);
+      } catch (storageError) {
+        // Log but don't fail the upload if storage calculation fails
+        logger.logError(
+          "Failed to recalculate band storage after upload",
+          storageError
+        );
+      }
 
       // --- Waveform Generation ---
       const audioPath = req.file.path;
@@ -3167,6 +3205,17 @@ router.post(
           processedAt: new Date(),
         },
       });
+
+      // Recalculate band storage after splits are created
+      try {
+        await updateBandStorageUsage(setlist.bandId);
+      } catch (storageError) {
+        // Log but don't fail the split processing if storage calculation fails
+        logger.logError(
+          "Failed to recalculate band storage after splits",
+          storageError
+        );
+      }
 
       res.json({
         success: true,
@@ -3385,6 +3434,17 @@ router.delete(
       await prisma.recordingSplit.delete({
         where: { id: splitId },
       });
+
+      // Recalculate band storage after split deletion
+      const bandId = split.recording.setlist.band.id;
+      try {
+        await updateBandStorageUsage(bandId);
+      } catch (storageError) {
+        logger.logError(
+          "Failed to recalculate band storage after split deletion",
+          storageError
+        );
+      }
 
       console.log(
         `Deleted recording split ${splitId}${warningMessage ? " (with warnings)" : ""}`

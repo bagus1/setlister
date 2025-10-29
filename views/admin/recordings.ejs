@@ -31,9 +31,9 @@
         </div>
     </div>
 
-    <!-- Recordings Table -->
+    <!-- Recordings Table and Storage Stats -->
     <div class="row">
-        <div class="col-12">
+        <div class="col-lg-9">
             <div class="card bg-dark text-white">
                 <div class="card-header bg-secondary">
                     <h5 class="mb-0 text-white">Recordings</h5>
@@ -146,6 +146,137 @@
                             </p>
                         </div>
                     <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Storage Stats & Actions -->
+        <div class="col-lg-3">
+            <!-- Global Storage Statistics -->
+            <div class="card bg-dark text-white mb-4">
+                <div class="card-header bg-secondary">
+                    <h6 class="mb-0 text-white">
+                        <i class="bi bi-bar-chart"></i> Global Storage Stats
+                    </h6>
+                </div>
+                <div class="card-body bg-dark">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small">Total Bands:</span>
+                            <strong><%= globalStats.totalBands %></strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small">Bands with Storage:</span>
+                            <strong><%= globalStats.bandsWithStorage %></strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 pt-2 border-top border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold">Total Storage:</span>
+                            <strong><%= globalStats.totalStorageGB.toFixed(2) %> GB</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted">Avg per Band:</span>
+                            <span class="small text-muted"><%= globalStats.avgStoragePerBand.toFixed(2) %> GB</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-top border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold">Recordings Only:</span>
+                            <strong><%= globalStats.totalRecordingGB.toFixed(2) %> GB</strong>
+                        </div>
+                        <div class="small text-muted mt-1">
+                            Source files (excludes splits)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Split Statistics -->
+            <div class="card bg-dark text-white mb-4">
+                <div class="card-header bg-secondary">
+                    <h6 class="mb-0 text-white">
+                        <i class="bi bi-scissors"></i> Split Statistics
+                    </h6>
+                </div>
+                <div class="card-body bg-dark">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small">Total Splits:</span>
+                            <strong><%= globalStats.totalSplits.toLocaleString() %></strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small">Bands with Splits:</span>
+                            <strong><%= globalStats.bandsWithSplits %></strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 pt-2 border-top border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small">Processed Recordings:</span>
+                            <strong><%= globalStats.processedRecordings %> / <%= globalStats.totalRecordings %></strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted">Percentage:</span>
+                            <span class="small text-muted"><%= globalStats.processedPercentage %>%</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 pt-2 border-top border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold">Avg Splits/Recording:</span>
+                            <strong><%= globalStats.avgSplitsPerRecording %></strong>
+                        </div>
+                        <div class="small text-muted mt-1">
+                            For processed recordings
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-top border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold">Total Split Size:</span>
+                            <strong><%= globalStats.totalSplitGB.toFixed(2) %> GB</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted">Splits with Files:</span>
+                            <span class="small text-muted"><%= globalStats.splitsWithFiles.toLocaleString() %></span>
+                        </div>
+                        <% if (globalStats.splitsMissingFiles > 0) { %>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-warning">Missing Files:</span>
+                            <span class="small text-warning"><%= globalStats.splitsMissingFiles.toLocaleString() %></span>
+                        </div>
+                        <% } %>
+                        <% if (globalStats.splitsWithFiles > 0) { %>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted">Avg Size per Split:</span>
+                            <span class="small text-muted"><%= globalStats.avgSplitSizeMB.toFixed(1) %> MB</span>
+                        </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recalculate Storage Button -->
+            <div class="card bg-dark text-white">
+                <div class="card-header bg-secondary">
+                    <h6 class="mb-0 text-white">
+                        <i class="bi bi-tools"></i> Maintenance
+                    </h6>
+                </div>
+                <div class="card-body bg-dark">
+                    <form action="/admin/recalculate-storage" method="POST">
+                        <button type="submit" 
+                                class="btn btn-warning w-100" 
+                                onclick="return confirm('This will recalculate storage for ALL bands. This may take a few moments. Continue?');">
+                            <i class="bi bi-calculator"></i> Recalculate All Band Storage
+                        </button>
+                    </form>
+                    <p class="small text-muted mt-2 mb-0">
+                        Recalculates storage usage for all bands by scanning filesystem and database records.
+                    </p>
                 </div>
             </div>
         </div>

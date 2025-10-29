@@ -525,6 +525,17 @@ router.post(
         data: { filePath: "" },
       });
 
+      // Recalculate band storage after source file deletion
+      const { updateBandStorageUsage } = require("../utils/storageCalculator");
+      try {
+        await updateBandStorageUsage(bandId);
+      } catch (storageError) {
+        logger.logError(
+          "Failed to recalculate band storage after source deletion",
+          storageError
+        );
+      }
+
       res.json({ success: true, message: "Source file deleted" });
     } catch (error) {
       console.error("Delete source error:", error);
@@ -600,6 +611,17 @@ router.post(
         where: { id: recordingId },
         data: { isProcessed: false },
       });
+
+      // Recalculate band storage after deleting all splits
+      const { updateBandStorageUsage } = require("../utils/storageCalculator");
+      try {
+        await updateBandStorageUsage(bandId);
+      } catch (storageError) {
+        logger.logError(
+          "Failed to recalculate band storage after delete-all-splits",
+          storageError
+        );
+      }
 
       res.json({
         success: true,
@@ -693,6 +715,17 @@ router.delete(
       // Delete recording (cascades to splits)
       await prisma.recording.delete({ where: { id: recordingId } });
 
+      // Recalculate band storage after recording deletion
+      const { updateBandStorageUsage } = require("../utils/storageCalculator");
+      try {
+        await updateBandStorageUsage(bandId);
+      } catch (storageError) {
+        logger.logError(
+          "Failed to recalculate band storage after recording deletion",
+          storageError
+        );
+      }
+
       // Return JSON success - client will handle redirect
       res.json({
         success: true,
@@ -774,6 +807,60 @@ router.get("/:bandId/recordings", requireAuth, async (req, res) => {
     // Sort by creation date (newest first)
     allRecordings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+    // Get storage info
+    const {
+      getBandStorageInfo,
+      calculateUserStorageUsage,
+    } = require("../utils/storageCalculator");
+
+    const bandStorageInfo = await getBandStorageInfo(bandId);
+    const userStorageInfo = await calculateUserStorageUsage(userId);
+
+    // Calculate storage breakdown by recording and splits
+    // Only count recordings where the source file still exists (filePath is not empty)
+    let recordingsStorageBytes = BigInt(0);
+    allRecordings.forEach((recording) => {
+      if (
+        recording.fileSize &&
+        recording.filePath &&
+        recording.filePath !== ""
+      ) {
+        recordingsStorageBytes += BigInt(recording.fileSize);
+      }
+    });
+
+    // Calculate split file sizes from filesystem
+    const fs = require("fs");
+    const path = require("path");
+    let splitsStorageBytes = BigInt(0);
+    let splitsCount = 0;
+
+    for (const recording of allRecordings) {
+      if (recording.splits && recording.splits.length > 0) {
+        for (const split of recording.splits) {
+          if (split.filePath && split.filePath.startsWith("/uploads/")) {
+            try {
+              // Try public/uploads first, then uploads directly (for splits)
+              let filePath = path.join(process.cwd(), "public", split.filePath);
+              if (!fs.existsSync(filePath)) {
+                filePath = path.join(
+                  process.cwd(),
+                  split.filePath.substring(1)
+                );
+              }
+              if (fs.existsSync(filePath)) {
+                const stats = fs.statSync(filePath);
+                splitsStorageBytes += BigInt(stats.size);
+                splitsCount++;
+              }
+            } catch (err) {
+              // File doesn't exist, skip
+            }
+          }
+        }
+      }
+    }
+
     res.render("bands/recordings-index", {
       title: `${band.name} - All Recordings`,
       pageTitle: "All Recordings",
@@ -781,6 +868,11 @@ router.get("/:bandId/recordings", requireAuth, async (req, res) => {
       band,
       recordings: allRecordings,
       user: req.session.user,
+      bandStorageInfo,
+      userStorageInfo,
+      recordingsStorageBytes: Number(recordingsStorageBytes),
+      splitsStorageBytes: Number(splitsStorageBytes),
+      splitsCount,
     });
   } catch (error) {
     logger.logError("Get all band recordings error", error);
@@ -3839,6 +3931,7 @@ router.get("/:id", async (req, res) => {
     const {
       getBandStorageInfo,
       calculateUserStorageUsage,
+      updateBandStorageUsage,
     } = require("../utils/storageCalculator");
 
     const bandStorageInfo = await getBandStorageInfo(parseInt(bandId));

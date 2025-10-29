@@ -1031,11 +1031,12 @@
                 
                 // Generate URL using template
                 if (socialType.name === 'Website') {
-                    // For websites, use the full URL if it was provided, otherwise generate from handle
-                    if (handle.trim().startsWith('http')) {
+                    // For websites, use the full URL if it was provided
+                    if (handle.trim().startsWith('http://') || handle.trim().startsWith('https://')) {
                         url = handle.trim();
                     } else {
-                        url = socialType.urlTemplate.replace('{contact}', cleanHandle);
+                        // If no https:// was provided, prepend it
+                        url = 'https://' + handle.trim();
                     }
                 } else {
                     url = socialType.urlTemplate.replace('{contact}', cleanHandle);

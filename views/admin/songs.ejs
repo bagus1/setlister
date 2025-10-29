@@ -100,13 +100,14 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <%= song.artist || 'N/A' %>
                                                 <% if (song.artists && song.artists.length > 0) { %>
-                                                    <br><small class="text-muted">
-                                                        <% song.artists.forEach((songArtist, index) => { %>
-                                                            <%= songArtist.artist.name %><% if (index < song.artists.length - 1) { %>, <% } %>
-                                                        <% }); %>
-                                                    </small>
+                                                    <% song.artists.forEach((songArtist, index) => { %>
+                                                        <%= songArtist.artist.name %><% if (index < song.artists.length - 1) { %>, <% } %>
+                                                    <% }); %>
+                                                <% } else if (song.artist) { %>
+                                                    <%= song.artist %>
+                                                <% } else { %>
+                                                    N/A
                                                 <% } %>
                                             </td>
                                             <td><%= song.vocalist || 'N/A' %></td>

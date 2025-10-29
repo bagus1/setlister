@@ -1467,6 +1467,14 @@ router.get(
         0
       );
 
+      // Check if splitting is allowed (band has free pool space OR recording creator has quota space)
+      const { canSplitRecording } = require("../utils/storageCalculator");
+      const splitCheck = await canSplitRecording(
+        setlist.bandId,
+        recording.createdById,
+        null // No size estimate at this point
+      );
+
       res.render("setlists/recording-split-peaks-integrated", {
         title: `Split Recording (Peaks.js) - ${setlist.title}`,
         pageTitle: `Split Recording (Peaks.js)`,
@@ -1479,7 +1487,11 @@ router.get(
           filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
           duration: recording.duration,
           waveformPath: recording.waveformPath,
+          createdById: recording.createdById,
         },
+        canSplit: splitCheck.allowed,
+        splitCheckMessage: splitCheck.message,
+        splitCheckReason: splitCheck.reason,
         hasBandHeader: true,
         band: setlist.band,
       });
@@ -1578,6 +1590,14 @@ router.get(
         0
       );
 
+      // Check if splitting is allowed (band has free pool space OR recording creator has quota space)
+      const { canSplitRecording } = require("../utils/storageCalculator");
+      const splitCheck = await canSplitRecording(
+        setlist.bandId,
+        recording.createdById,
+        null // No size estimate at this point
+      );
+
       res.render("setlists/recording-split-peaks-integrated", {
         title: `Split Recording (Web Audio) - ${setlist.title}`,
         pageTitle: `Split Recording (Web Audio)`,
@@ -1590,7 +1610,13 @@ router.get(
           filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
           duration: recording.duration,
           waveformPath: recording.waveformPath,
+          createdById: recording.createdById,
         },
+        canSplit: splitCheck.allowed,
+        splitCheckMessage: splitCheck.message,
+        splitCheckReason: splitCheck.reason,
+        hasBandHeader: true,
+        band: setlist.band,
         user: req.session.user,
       });
     } catch (error) {
@@ -10930,8 +10956,38 @@ router.get("/:bandId/setlists/:setlistId", requireAuth, async (req, res) => {
     };
 
     // Check if user is over quota (to disable buttons)
-    const { isUserOverQuota } = require("../utils/storageCalculator");
-    const quotaStatus = await isUserOverQuota(req.session.user.id);
+    const {
+      isUserOverQuota,
+      getBandStorageInfo,
+      findBestMemberForAttribution,
+    } = require("../utils/storageCalculator");
+
+    const userQuotaStatus = await isUserOverQuota(req.session.user.id);
+
+    // Special logic for setlist detail page: if band is over free pool,
+    // check if any Pro/Premium members have space and allow recording via their quota
+    let quotaStatus = userQuotaStatus;
+    let bestMember = null;
+
+    const bandStorageInfo = await getBandStorageInfo(bandId);
+    const BAND_FREE_POOL_GB = 2;
+    const isBandOverFreePool = bandStorageInfo.usedGB >= BAND_FREE_POOL_GB;
+
+    // Only on setlist detail page: if band is over free pool and user is over quota,
+    // check if we can use a member's quota instead
+    if (isBandOverFreePool && userQuotaStatus.isOverQuota) {
+      bestMember = await findBestMemberForAttribution(bandId);
+      if (bestMember && bestMember.remainingGB > 0) {
+        // Allow recording, but it will be attributed to bestMember
+        quotaStatus = {
+          isOverQuota: false,
+          canRecordViaMember: true,
+          bestMemberId: bestMember.userId,
+          bestMemberName: bestMember.username,
+          bestMemberPlan: bestMember.planName,
+        };
+      }
+    }
 
     res.render("setlists/show", {
       title: `${setlist.title} - ${setlist.band.name}`,

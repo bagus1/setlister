@@ -642,6 +642,14 @@ class RecordingManager {
     formData.append("audio", audioBlob, `recording-${Date.now()}.webm`);
     formData.append("duration", duration);
 
+    // Include bestMemberId if stored (for attribution to member with available space)
+    const bestMemberId = localStorage.getItem(`bestMemberId_${setlistId}`);
+    if (bestMemberId) {
+      formData.append("bestMemberId", bestMemberId);
+      // Clear after use
+      localStorage.removeItem(`bestMemberId_${setlistId}`);
+    }
+
     console.log("Uploading recording:", {
       blobSize: audioBlob.size,
       blobType: audioBlob.type,
@@ -1151,11 +1159,14 @@ class RecordingManager {
    */
   async uploadRecordingChunked(audioBlob, setlistId, duration) {
     try {
+      // Get bestMemberId if stored (for attribution to member with available space)
+      const bestMemberId = localStorage.getItem(`bestMemberId_${setlistId}`);
+
       // Create a file-like object for the ChunkedUploader
       const file = new File([audioBlob], `recording-${Date.now()}.webm`, {
         type: "audio/webm",
       });
-      const uploader = new ChunkedUploader(file);
+      const uploader = new ChunkedUploader(file, bestMemberId);
 
       const result = await uploader.uploadChunks(setlistId, (progress) => {
         this.updateProcessingStatus(
@@ -1164,6 +1175,12 @@ class RecordingManager {
       });
 
       console.log("Chunked upload successful:", result);
+
+      // Clear bestMemberId after use
+      if (bestMemberId) {
+        localStorage.removeItem(`bestMemberId_${setlistId}`);
+      }
+
       return result;
     } catch (error) {
       throw new Error(`Chunked upload failed: ${error.message}`);
@@ -1179,9 +1196,13 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // Global functions for button onclick handlers
-function startRecording(setlistId) {
+function startRecording(setlistId, bestMemberId) {
   const setlistTitle =
     document.querySelector("h1")?.textContent || "Untitled Setlist";
+  // Store bestMemberId if provided (for attribution to member with available space)
+  if (bestMemberId) {
+    localStorage.setItem(`bestMemberId_${setlistId}`, bestMemberId);
+  }
   if (recordingManager) {
     recordingManager.startRecording(setlistId, setlistTitle);
   }

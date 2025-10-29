@@ -165,9 +165,14 @@
                                 <td>
                                     <% if (user.storageInfo) { %>
                                         <strong><%= user.storageInfo.usedGB.toFixed(2) %> GB</strong>
-                                        <br><small class="text-muted"><%= user.storageInfo.usedPercent %>%</small>
+                                        <br><small class="text-muted">
+                                            <%= user.storageInfo.usedPercent.toFixed(1) %>%
+                                            <% if (user.storageInfo.breakdown && user.storageInfo.breakdown.length > 0) { %>
+                                                <br><span class="text-secondary">(<%= user.storageInfo.breakdown.length %> band<%= user.storageInfo.breakdown.length !== 1 ? 's' : '' %>)</span>
+                                            <% } %>
+                                        </small>
                                     <% } else { %>
-                                        <span class="text-muted">-</span>
+                                        <span class="text-muted">0 GB</span>
                                     <% } %>
                                 </td>
                                 <td>
@@ -217,7 +222,7 @@
                                                         <div class="alert alert-info">
                                                             <i class="bi bi-info-circle"></i>
                                                             <strong>Current:</strong> <%= user.planName %><br>
-                                                            <strong>Storage Used:</strong> <%= user.storageInfo ? user.storageInfo.usedGB.toFixed(2) : '0' %> GB
+                                                            <strong>Storage Used:</strong> <%= user.storageInfo ? user.storageInfo.usedGB.toFixed(2) : '0.00' %> GB (attributed to user)
                                                         </div>
                                                     </div>
                                                     <div class="modal-footer">

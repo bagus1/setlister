@@ -219,10 +219,26 @@
               </span>
               <i class="bi bi-magic"></i> Auto-Detect Silence
             </button>
-            <button id="processSplitsBtn" class="btn btn-success" disabled>
-              <i class="bi bi-scissors"></i> Process Splits
-            </button>
+            <% if (typeof canSplit !== 'undefined' && !canSplit) { %>
+              <button id="processSplitsBtn" class="btn btn-success" disabled 
+                      style="opacity: 0.65; cursor: not-allowed;"
+                      title="<%= typeof splitCheckMessage !== 'undefined' ? splitCheckMessage : 'Cannot split recording: insufficient storage space' %>">
+                <i class="bi bi-scissors"></i> Process Splits
+              </button>
+            <% } else { %>
+              <button id="processSplitsBtn" class="btn btn-success" disabled>
+                <i class="bi bi-scissors"></i> Process Splits
+              </button>
+            <% } %>
           </div>
+
+          <% if (typeof canSplit !== 'undefined' && !canSplit) { %>
+          <div class="alert alert-warning mt-3 mb-0">
+            <i class="bi bi-exclamation-triangle"></i> 
+            <strong>Cannot Split Recording:</strong> 
+            <%= typeof splitCheckMessage !== 'undefined' ? splitCheckMessage : 'Insufficient storage space available. The band\'s free pool is full and the recording creator has no remaining quota space.' %>
+          </div>
+          <% } %>
 
           <hr />
 
@@ -1861,7 +1877,16 @@
             window.location.href =
               "/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>";
           } else {
-            throw new Error("Failed to process splits");
+            const errorText = await response.text();
+            let errorMessage = "Failed to process splits";
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+              errorMessage = errorText || errorMessage;
+            }
+            alert(errorMessage);
+            throw new Error(errorMessage);
           }
         } catch (error) {
           console.error("Processing error:", error);

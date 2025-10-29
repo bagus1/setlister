@@ -290,7 +290,7 @@
                 </div>
                 
                 <small class="text-muted d-block">
-                    <%= userStorageInfo.usedGB %> GB used across <%= userStorageInfo.breakdown.length %> band<%= userStorageInfo.breakdown.length !== 1 ? 's' : '' %>
+                    <%= userStorageInfo.usedGB.toFixed(2) %> GB attributed to you across <%= userStorageInfo.breakdown.length %> band<%= userStorageInfo.breakdown.length !== 1 ? 's' : '' %>
                 </small>
                 
                 <% if (userStorageInfo.remainingHours && userStorageInfo.remainingHours.description) { %>
@@ -318,7 +318,7 @@
         </div>
         <% } %>
         
-        <!-- Band Storage Widget (Pooled) -->
+        <!-- Band Storage Widget (Free Pool + User Contributions) -->
         <% if (bandStorageInfo) { %>
         <div class="card mb-4">
             <div class="card-body">
@@ -327,7 +327,7 @@
                         <i class="bi bi-hdd"></i> This Band
                     </h6>
                     <span class="badge bg-secondary">
-                        <%= bandStorageInfo.quotaGB %> GB pool
+                        <%= bandStorageInfo.quotaGB %> GB total
                     </span>
                 </div>
                 
@@ -344,19 +344,32 @@
                 </div>
                 
                 <small class="text-muted d-block mb-2">
-                    <%= bandStorageInfo.formatted %> used
+                    <%= bandStorageInfo.usedGB.toFixed(2) %> GB used
                 </small>
                 
-                <% if (bandStorageInfo.proMembers.length > 0) { %>
+                <!-- Free Pool Breakdown -->
+                <div class="mb-2">
                     <small class="text-success d-block">
-                        <i class="bi bi-people-fill"></i> 
-                        <%= bandStorageInfo.proMembers.length %> Pro member<%= bandStorageInfo.proMembers.length !== 1 ? 's' : '' %> pooling <%= bandStorageInfo.quotaGB %>GB
+                        <i class="bi bi-gift"></i> 
+                        <%= bandStorageInfo.freePoolUsedGB.toFixed(2) %> GB / <%= bandStorageInfo.freePoolGB %> GB free pool
+                        <% if (bandStorageInfo.freePoolRemainingGB > 0) { %>
+                            (<%= bandStorageInfo.freePoolRemainingGB.toFixed(2) %> GB remaining)
+                        <% } else { %>
+                            (full)
+                        <% } %>
                     </small>
-                <% } else { %>
-                    <small class="text-muted d-block">
-                        <i class="bi bi-info-circle"></i> Free tier - upgrade to add storage!
+                    <% if (bandStorageInfo.userAttributedGB > 0) { %>
+                    <small class="text-info d-block mt-1">
+                        <i class="bi bi-person"></i> 
+                        <%= bandStorageInfo.userAttributedGB.toFixed(2) %> GB from member uploads
                     </small>
-                <% } %>
+                    <% } %>
+                </div>
+                
+                <small class="text-muted d-block">
+                    <i class="bi bi-info-circle"></i> 
+                    First 2 GB free, then counts against uploader's quota
+                </small>
             </div>
         </div>
         <% } %>

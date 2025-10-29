@@ -2744,6 +2744,13 @@ router.post(
       // Determine format from file extension
       const format = path.extname(req.file.filename).substring(1) || "webm";
 
+      // Use bestMemberId if provided (for attribution to member with available space)
+      // Otherwise use the current user
+      const bestMemberId = req.body.bestMemberId
+        ? parseInt(req.body.bestMemberId)
+        : null;
+      const createdById = bestMemberId || userId;
+
       // Save to database
       const recording = await prisma.recording.create({
         data: {
@@ -2752,7 +2759,7 @@ router.post(
           fileSize: BigInt(fileSize),
           duration,
           format,
-          createdById: userId,
+          createdById: createdById,
         },
       });
 
@@ -2915,6 +2922,13 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
     }
 
     // Create recording record
+    // Use bestMemberId if provided (for attribution to member with available space)
+    // Otherwise use the current user
+    const bestMemberId = req.body.bestMemberId
+      ? parseInt(req.body.bestMemberId)
+      : null;
+    const createdById = bestMemberId || req.session.user.id;
+
     const recording = await prisma.recording.create({
       data: {
         setlistId: setlistId,
@@ -2922,7 +2936,7 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
         fileSize: BigInt(stats.size),
         duration: duration,
         format: path.extname(originalFileName).substring(1) || "mp3",
-        createdById: req.session.user.id,
+        createdById: createdById,
       },
     });
 
@@ -3107,6 +3121,38 @@ router.post(
 
       if (!splits || !Array.isArray(splits) || splits.length === 0) {
         return res.status(400).json({ error: "No splits provided" });
+      }
+
+      // Check if splitting is allowed (band has free pool space OR recording creator has quota space)
+      const { canSplitRecording } = require("../utils/storageCalculator");
+
+      // Estimate split size: assume splits will be roughly proportional to the original recording
+      // For a rough estimate, use duration ratio (most splits are similar format/bitrate to source)
+      let estimatedSplitSizeBytes = BigInt(0);
+      if (recording.fileSize && recording.duration > 0) {
+        const bytesPerSecond = Number(recording.fileSize) / recording.duration;
+        const totalSplitDuration = splits.reduce(
+          (sum, split) => sum + (split.duration || 0),
+          0
+        );
+        // Add 10% buffer for encoding overhead
+        estimatedSplitSizeBytes = BigInt(
+          Math.floor(bytesPerSecond * totalSplitDuration * 1.1)
+        );
+      }
+
+      const splitCheck = await canSplitRecording(
+        setlist.bandId,
+        recording.createdById,
+        estimatedSplitSizeBytes > 0 ? estimatedSplitSizeBytes : null
+      );
+
+      if (!splitCheck.allowed) {
+        return res.status(403).json({
+          error:
+            splitCheck.message ||
+            "Cannot split recording: insufficient storage space available",
+        });
       }
 
       // Create splits directory organized by setlist

@@ -12,8 +12,12 @@ const router = express.Router();
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     const userId = req.session.user.id;
-    const uploadDir = path.join(__dirname, "../uploads/users", userId.toString());
-    
+    const uploadDir = path.join(
+      __dirname,
+      "../uploads/users",
+      userId.toString()
+    );
+
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -34,7 +38,9 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (mimetype && extname) {
@@ -55,7 +61,7 @@ router.get("/", requireAuth, async (req, res) => {
       include: {
         photos: {
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
         bands: {
@@ -63,6 +69,34 @@ router.get("/", requireAuth, async (req, res) => {
             band: true,
           },
         },
+      },
+    });
+
+    // Get all recordings created by this user
+    const recordings = await prisma.recording.findMany({
+      where: {
+        createdById: userId,
+      },
+      include: {
+        setlist: {
+          include: {
+            band: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        splits: {
+          select: {
+            id: true,
+            filePath: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
       },
     });
 
@@ -94,18 +128,75 @@ router.get("/", requireAuth, async (req, res) => {
           slug = `${generateSlug(user.username)}-${counter}`;
         }
       }
-      
+
       await prisma.user.update({
         where: { id: user.id },
         data: { slug },
       });
-      
+
       user.slug = slug; // Update the object for rendering
     }
+
+    // Calculate storage stats for recordings and splits
+    const fs = require("fs");
+    const path = require("path");
+    let recordingsStorageBytes = BigInt(0);
+    let splitsStorageBytes = BigInt(0);
+    let recordingsCount = 0;
+    let splitsCount = 0;
+
+    // Sum recording file sizes (only where filePath exists)
+    recordings.forEach((recording) => {
+      if (
+        recording.fileSize &&
+        recording.filePath &&
+        recording.filePath !== ""
+      ) {
+        recordingsStorageBytes += BigInt(recording.fileSize);
+        recordingsCount++;
+      }
+    });
+
+    // Calculate split file sizes from filesystem
+    for (const recording of recordings) {
+      if (recording.splits && recording.splits.length > 0) {
+        for (const split of recording.splits) {
+          if (split.filePath && split.filePath.startsWith("/uploads/")) {
+            try {
+              // Try public/uploads first, then uploads directly (for splits)
+              let filePath = path.join(process.cwd(), "public", split.filePath);
+              if (!fs.existsSync(filePath)) {
+                filePath = path.join(
+                  process.cwd(),
+                  split.filePath.substring(1)
+                ); // Remove leading /
+              }
+              if (fs.existsSync(filePath)) {
+                const stats = fs.statSync(filePath);
+                splitsStorageBytes += BigInt(stats.size);
+                splitsCount++;
+              }
+            } catch (err) {
+              // File doesn't exist, skip
+            }
+          }
+        }
+      }
+    }
+
+    const recordingsStorageMB = Number(recordingsStorageBytes) / (1024 * 1024);
+    const splitsStorageMB = Number(splitsStorageBytes) / (1024 * 1024);
+    const totalStorageMB = recordingsStorageMB + splitsStorageMB;
 
     res.render("profile/index", {
       title: `${user.username}'s Profile`,
       profile: user,
+      recordings: recordings,
+      recordingsStorageMB: recordingsStorageMB,
+      splitsStorageMB: splitsStorageMB,
+      totalStorageMB: totalStorageMB,
+      recordingsCount: recordingsCount,
+      splitsCount: splitsCount,
     });
   } catch (error) {
     console.error("Profile view error:", error);
@@ -124,7 +215,7 @@ router.get("/edit", requireAuth, async (req, res) => {
       include: {
         photos: {
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
       },
@@ -151,11 +242,17 @@ router.post(
   "/update",
   requireAuth,
   [
-    body("username").trim().isLength({ min: 3 }).withMessage("Username must be at least 3 characters"),
+    body("username")
+      .trim()
+      .isLength({ min: 3 })
+      .withMessage("Username must be at least 3 characters"),
     body("bio").optional().trim(),
     body("location").optional().trim(),
     body("instruments").optional().trim(),
-    body("website").optional().isURL().withMessage("Website must be a valid URL"),
+    body("website")
+      .optional()
+      .isURL()
+      .withMessage("Website must be a valid URL"),
     body("slug").optional().trim(),
   ],
   async (req, res) => {
@@ -166,7 +263,7 @@ router.post(
           where: { id: req.session.user.id },
           include: { photos: true },
         });
-        
+
         return res.render("profile/edit", {
           title: "Edit Profile",
           profile: user,
@@ -181,12 +278,23 @@ router.post(
       }
 
       const userId = req.session.user.id;
-      const { username, bio, location, instruments, website, slug, isPublic, openToOpportunities } = req.body;
+      const {
+        username,
+        bio,
+        location,
+        instruments,
+        website,
+        slug,
+        isPublic,
+        openToOpportunities,
+      } = req.body;
 
       // Check if username is being changed and if it's unique
       if (username) {
-        const currentUser = await prisma.user.findUnique({ where: { id: userId } });
-        
+        const currentUser = await prisma.user.findUnique({
+          where: { id: userId },
+        });
+
         if (username !== currentUser.username) {
           const existingUser = await prisma.user.findFirst({
             where: {
@@ -206,7 +314,7 @@ router.post(
       if (slug) {
         const { validateSlug } = require("../utils/slugify");
         const validation = validateSlug(slug);
-        
+
         if (!validation.valid) {
           req.flash("error", validation.error);
           return res.redirect("/profile/edit");
@@ -235,8 +343,8 @@ router.post(
           instruments: instruments || null,
           website: website || null,
           slug: slug || null,
-          isPublic: isPublic === 'on', // Checkbox value
-          openToOpportunities: openToOpportunities === 'on', // Checkbox value
+          isPublic: isPublic === "on", // Checkbox value
+          openToOpportunities: openToOpportunities === "on", // Checkbox value
         },
       });
 
@@ -256,45 +364,51 @@ router.post(
 );
 
 // POST /profile/photo/upload - Upload profile photo
-router.post("/photo/upload", requireAuth, upload.single("photo"), async (req, res) => {
-  try {
-    if (!req.file) {
-      req.flash("error", "No photo file provided");
-      return res.redirect("/profile/edit");
+router.post(
+  "/photo/upload",
+  requireAuth,
+  upload.single("photo"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        req.flash("error", "No photo file provided");
+        return res.redirect("/profile/edit");
+      }
+
+      const userId = req.session.user.id;
+      const { caption } = req.body;
+
+      // Create relative path for database
+      const filePath =
+        `/uploads/users/${userId}/` + path.basename(req.file.path);
+
+      // Get current photo count for sort order
+      const photoCount = await prisma.userPhoto.count({
+        where: { userId },
+      });
+
+      // If this is the first photo, make it primary
+      const isPrimary = photoCount === 0;
+
+      await prisma.userPhoto.create({
+        data: {
+          userId,
+          filePath,
+          caption: caption || null,
+          isPrimary,
+          sortOrder: photoCount,
+        },
+      });
+
+      req.flash("success", "Photo uploaded successfully");
+      res.redirect("/profile/edit");
+    } catch (error) {
+      console.error("Photo upload error:", error);
+      req.flash("error", "An error occurred uploading the photo");
+      res.redirect("/profile/edit");
     }
-
-    const userId = req.session.user.id;
-    const { caption } = req.body;
-    
-    // Create relative path for database
-    const filePath = `/uploads/users/${userId}/` + path.basename(req.file.path);
-
-    // Get current photo count for sort order
-    const photoCount = await prisma.userPhoto.count({
-      where: { userId },
-    });
-
-    // If this is the first photo, make it primary
-    const isPrimary = photoCount === 0;
-
-    await prisma.userPhoto.create({
-      data: {
-        userId,
-        filePath,
-        caption: caption || null,
-        isPrimary,
-        sortOrder: photoCount,
-      },
-    });
-
-    req.flash("success", "Photo uploaded successfully");
-    res.redirect("/profile/edit");
-  } catch (error) {
-    console.error("Photo upload error:", error);
-    req.flash("error", "An error occurred uploading the photo");
-    res.redirect("/profile/edit");
   }
-});
+);
 
 // POST /profile/photo/:photoId/set-primary - Set photo as primary
 router.post("/photo/:photoId/set-primary", requireAuth, async (req, res) => {
@@ -433,7 +547,7 @@ router.get("/subscription", requireAuth, async (req, res) => {
     // Get all available plans
     const allPlans = await prisma.subscriptionPlan.findMany({
       where: { isActive: true },
-      orderBy: { displayOrder: 'asc' },
+      orderBy: { displayOrder: "asc" },
     });
 
     // Calculate storage usage
@@ -488,7 +602,7 @@ router.post("/subscription/change", requireAuth, async (req, res) => {
         where: { userId },
         data: {
           planId: newPlan.id,
-          status: 'active',
+          status: "active",
           updatedAt: new Date(),
         },
       });
@@ -498,7 +612,7 @@ router.post("/subscription/change", requireAuth, async (req, res) => {
         data: {
           userId,
           planId: newPlan.id,
-          status: 'active',
+          status: "active",
           currentPeriodStart: new Date(),
           currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           updatedAt: new Date(),
@@ -534,13 +648,16 @@ router.post("/subscription/cancel", requireAuth, async (req, res) => {
     await prisma.userSubscription.update({
       where: { userId },
       data: {
-        status: 'canceled',
+        status: "canceled",
         canceledAt: new Date(),
         updatedAt: new Date(),
       },
     });
 
-    req.flash("success", "Subscription canceled. You'll keep access until the end of your billing period.");
+    req.flash(
+      "success",
+      "Subscription canceled. You'll keep access until the end of your billing period."
+    );
     res.redirect("/profile/subscription");
   } catch (error) {
     console.error("Cancel subscription error:", error);
@@ -550,4 +667,3 @@ router.post("/subscription/cancel", requireAuth, async (req, res) => {
 });
 
 module.exports = router;
-

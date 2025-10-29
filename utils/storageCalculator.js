@@ -217,6 +217,63 @@ async function getBandProMembers(bandId) {
 }
 
 /**
+ * Find the band member with the most available storage quota
+ * Only considers members with Pro or Premium plans (storageQuotaGB > 2)
+ * @param {number} bandId
+ * @returns {Promise<{userId: number, username: string, quotaGB: number, planName: string, remainingGB: number} | null>}
+ */
+async function findBestMemberForAttribution(bandId) {
+  const freePlan = await prisma.subscriptionPlan.findUnique({
+    where: { slug: "free" },
+  });
+  const freeQuotaGB = freePlan?.storageQuotaGB || 2;
+
+  const members = await prisma.bandMember.findMany({
+    where: { bandId },
+    include: {
+      user: {
+        include: {
+          subscription: {
+            include: {
+              plan: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  let bestMember = null;
+  let mostRemainingGB = -1;
+
+  for (const member of members) {
+    if (
+      member.user.subscription &&
+      member.user.subscription.status === "active" &&
+      member.user.subscription.plan &&
+      member.user.subscription.plan.storageQuotaGB > freeQuotaGB // Only Pro/Premium plans
+    ) {
+      // Calculate this user's remaining storage
+      const userStorage = await calculateUserStorageUsage(member.user.id);
+      const remainingGB = userStorage.remainingGB;
+
+      if (remainingGB > mostRemainingGB) {
+        mostRemainingGB = remainingGB;
+        bestMember = {
+          userId: member.user.id,
+          username: member.user.username,
+          quotaGB: member.user.subscription.plan.storageQuotaGB,
+          planName: member.user.subscription.plan.name,
+          remainingGB: remainingGB,
+        };
+      }
+    }
+  }
+
+  return bestMember;
+}
+
+/**
  * Calculate total storage quota available for a band
  * Free tier does NOT pool - band gets 2GB (from Free plan) regardless of free member count
  * Pro/Premium tier quotas DO stack
@@ -252,7 +309,8 @@ async function calculateBandStorageQuota(bandId) {
 }
 
 /**
- * Calculate user's share of storage across all their bands
+ * Calculate user's attributed storage across all their bands
+ * NEW SYSTEM: Only counts storage where band >= 2GB AND user created the recording
  * @param {number} userId
  * @returns {Promise<{totalQuotaGB: number, usedGB: number, remainingGB: number, breakdown: Array}>}
  */
@@ -286,80 +344,163 @@ async function calculateUserStorageUsage(userId) {
     });
     userQuotaGB = freePlan?.storageQuotaGB || 2; // Fallback to 2 if free plan not found
   }
-  const totalQuotaBytes = BigInt(userQuotaGB) * BigInt(1024 ** 3);
 
-  let totalUserShareBytes = BigInt(0);
+  const BAND_FREE_POOL_GB = 2;
+  const BAND_FREE_POOL_BYTES = BigInt(BAND_FREE_POOL_GB) * BigInt(1024 ** 3);
+
+  let totalUserAttributedBytes = BigInt(0);
   const breakdown = [];
 
-  // Calculate user's share for each band they're in
+  // Calculate user's attributed storage for each band they're in
   for (const membership of user.bands) {
     const band = membership.band;
     const bandStorageBytes = band.storageUsedBytes || BigInt(0);
+    const bandStorageGB = Number(bandStorageBytes) / 1024 ** 3;
 
-    // Get all Pro+ members for this band (only paid subscriptions)
-    const proMembers = await getBandProMembers(band.id);
-
-    if (proMembers.length === 0) {
-      // No paid Pro members - Free tier doesn't pool
-      // Each free tier user gets their own 2GB quota, but shares responsibility for band storage
-      // However, we should NOT count the full band storage - free tier is non-pooled
-      // Only count if user is the ONLY member (edge case) or if we're being generous
-      // For now, Free tier users don't count shared band storage against their personal quota
+    // If band is under 2GB, all storage is in free pool - user gets 0 attribution
+    if (bandStorageBytes <= BAND_FREE_POOL_BYTES) {
       breakdown.push({
         bandId: band.id,
         bandName: band.name,
-        bandTotalGB: Number(bandStorageBytes) / 1024 ** 3,
-        userShareGB: 0, // Free tier doesn't pool, so shared storage doesn't count against personal quota
-        proMembersCount: 0,
-        isOnlyProMember: false,
-        isFreeTier: true,
+        bandTotalGB: bandStorageGB,
+        userAttributedGB: 0,
+        usesFreePool: true,
+        freePoolUsedGB: bandStorageGB,
+        freePoolRemainingGB: BAND_FREE_POOL_GB - bandStorageGB,
       });
-    } else {
-      // Check if user is one of the Pro members
-      const userIsProMember = proMembers.some((m) => m.userId === userId);
+      continue;
+    }
 
-      if (userIsProMember) {
-        // Calculate total quota from all Pro members
-        const totalBandQuotaGB = proMembers.reduce(
-          (sum, m) => sum + m.quotaGB,
-          0
-        );
-
-        // User's share is proportional to their quota contribution
-        const userProportion = userQuotaGB / totalBandQuotaGB;
-        const userShare = BigInt(
-          Math.floor(Number(bandStorageBytes) * userProportion)
-        );
-
-        totalUserShareBytes += userShare;
-
-        breakdown.push({
+    // Band is over 2GB - get recordings created by this user
+    const userRecordings = await prisma.recording.findMany({
+      where: {
+        setlist: {
           bandId: band.id,
-          bandName: band.name,
-          bandTotalGB: Number(bandStorageBytes) / 1024 ** 3,
-          userShareGB: Number(userShare) / 1024 ** 3,
-          proMembersCount: proMembers.length,
-          proMembers: proMembers.map((m) => ({
-            username: m.username,
-            quotaGB: m.quotaGB,
-          })),
-          isOnlyProMember: proMembers.length === 1,
-        });
-      } else {
-        // User is free tier member, doesn't contribute quota
-        breakdown.push({
-          bandId: band.id,
-          bandName: band.name,
-          bandTotalGB: Number(bandStorageBytes) / 1024 ** 3,
-          userShareGB: 0,
-          proMembersCount: proMembers.length,
-          userIsFree: true,
-        });
+        },
+        createdById: userId,
+      },
+      select: {
+        id: true,
+        filePath: true,
+        fileSize: true,
+      },
+    });
+
+    // Calculate storage from user's recordings
+    let userRecordingBytes = BigInt(0);
+    for (const recording of userRecordings) {
+      if (
+        recording.fileSize &&
+        recording.filePath &&
+        recording.filePath !== ""
+      ) {
+        userRecordingBytes += BigInt(recording.fileSize);
       }
     }
+
+    // Calculate storage from splits of user's recordings
+    let userSplitBytes = BigInt(0);
+    const userRecordingIds = userRecordings.map((r) => r.id);
+    if (userRecordingIds.length > 0) {
+      const userSplits = await prisma.recordingSplit.findMany({
+        where: {
+          recordingId: { in: userRecordingIds },
+        },
+        select: {
+          filePath: true,
+        },
+      });
+
+      // Check filesystem for split file sizes
+      for (const split of userSplits) {
+        if (split.filePath && split.filePath.startsWith("/uploads/")) {
+          try {
+            let filePath = path.join(process.cwd(), "public", split.filePath);
+            let stats;
+            try {
+              stats = await fs.stat(filePath);
+            } catch (err) {
+              filePath = path.join(process.cwd(), split.filePath.substring(1));
+              stats = await fs.stat(filePath);
+            }
+            userSplitBytes += BigInt(stats.size);
+          } catch (err) {
+            // File doesn't exist, skip
+          }
+        }
+      }
+    }
+
+    const userTotalBytes = userRecordingBytes + userSplitBytes;
+    const userTotalGB = Number(userTotalBytes) / 1024 ** 3;
+
+    // When band is over 2GB, calculate user's proportion of storage BEYOND the free pool
+    // First, get total storage from all user recordings (to calculate proportion)
+    const allUserRecordings = await prisma.recording.findMany({
+      where: {
+        setlist: {
+          bandId: band.id,
+        },
+      },
+      select: {
+        id: true,
+        filePath: true,
+        fileSize: true,
+        createdById: true,
+      },
+    });
+
+    // Calculate total storage from all recordings (not splits, just source recordings)
+    let totalRecordingBytes = BigInt(0);
+    allUserRecordings.forEach((r) => {
+      if (r.fileSize && r.filePath && r.filePath !== "") {
+        totalRecordingBytes += BigInt(r.fileSize);
+      }
+    });
+
+    // Calculate storage beyond free pool
+    const storageBeyondFreePool = bandStorageBytes - BAND_FREE_POOL_BYTES;
+
+    // Calculate user's share: proportion of recordings * storage beyond free pool
+    // Note: bandStorageBytes already includes recordings + splits
+    // So we attribute the portion beyond free pool proportionally, and splits are included in that
+    let userAttributedBytes = BigInt(0);
+    if (totalRecordingBytes > 0 && userRecordingBytes > 0) {
+      // User's proportion of source recordings determines their share of storage beyond free pool
+      const userProportion =
+        Number(userRecordingBytes) / Number(totalRecordingBytes);
+      // User gets that proportion of ALL storage beyond free pool (which includes their splits)
+      userAttributedBytes = BigInt(
+        Math.floor(Number(storageBeyondFreePool) * userProportion)
+      );
+    } else if (userTotalBytes > 0) {
+      // Edge case: if no other recordings, user gets their portion based on their total
+      // But we need total band storage (recordings + splits) to calculate proportion properly
+      // For now, if user has recordings, they should get proportional share
+      userAttributedBytes = BigInt(
+        Math.floor(
+          Number(storageBeyondFreePool) *
+            (Number(userRecordingBytes) / Number(bandStorageBytes))
+        )
+      );
+    }
+
+    const userAttributedGB = Number(userAttributedBytes) / 1024 ** 3;
+    totalUserAttributedBytes += userAttributedBytes;
+
+    breakdown.push({
+      bandId: band.id,
+      bandName: band.name,
+      bandTotalGB: bandStorageGB,
+      userAttributedGB: userAttributedGB,
+      usesFreePool: false,
+      freePoolUsedGB: BAND_FREE_POOL_GB,
+      freePoolRemainingGB: 0,
+      recordingsCount: userRecordings.length,
+    });
   }
 
-  const usedGB = Number(totalUserShareBytes) / 1024 ** 3;
+  const usedGB = Number(totalUserAttributedBytes) / 1024 ** 3;
   const remainingGB = userQuotaGB - usedGB;
   const remainingBytes = BigInt(Math.floor(remainingGB * 1024 ** 3));
   const remainingHours = bytesToRecordingHours(remainingBytes);
@@ -377,27 +518,86 @@ async function calculateUserStorageUsage(userId) {
 
 /**
  * Check if user can upload a file for a given band
+ * NEW SYSTEM: Check if upload fits in band's 2GB free pool or user's quota
  * @param {number} userId
  * @param {number} bandId
  * @param {number} fileSize
  * @returns {Promise<{allowed: boolean, message?: string, userQuotaGB?: number, userUsedGB?: number}>}
  */
 async function checkUserStorageQuota(userId, bandId, fileSize) {
+  const BAND_FREE_POOL_GB = 2;
+  const BAND_FREE_POOL_BYTES = BigInt(BAND_FREE_POOL_GB) * BigInt(1024 ** 3);
+  const fileSizeGB = fileSize / 1024 ** 3;
+
+  // Get band's current storage
+  const bandStorageBytes = await calculateBandStorage(bandId);
+  const bandStorageGB = Number(bandStorageBytes) / 1024 ** 3;
+
+  // Get user's current attributed storage
   const userStorage = await calculateUserStorageUsage(userId);
 
-  const fileSizeGB = fileSize / 1024 ** 3;
+  // Case 1: Band is under 2GB - check if upload fits in free pool
+  if (bandStorageBytes < BAND_FREE_POOL_BYTES) {
+    const remainingFreePoolGB = BAND_FREE_POOL_GB - bandStorageGB;
+
+    if (fileSizeGB <= remainingFreePoolGB) {
+      // Upload fits entirely in free pool - no quota check needed
+      return {
+        allowed: true,
+        usesFreePool: true,
+        userQuotaGB: userStorage.totalQuotaGB,
+        userUsedGB: userStorage.usedGB,
+        userRemainingGB: userStorage.remainingGB,
+        freePoolRemainingGB: remainingFreePoolGB - fileSizeGB,
+      };
+    } else {
+      // Part uses free pool, rest counts against user quota
+      const excessGB = fileSizeGB - remainingFreePoolGB;
+      const wouldUseGB = userStorage.usedGB + excessGB;
+
+      if (wouldUseGB > userStorage.totalQuotaGB) {
+        const overGB = wouldUseGB - userStorage.totalQuotaGB;
+        return {
+          allowed: false,
+          message: `This upload would exceed your storage quota by ${overGB.toFixed(
+            2
+          )} GB. ${remainingFreePoolGB.toFixed(
+            2
+          )} GB will use the band's free pool, but ${excessGB.toFixed(
+            2
+          )} GB would count against your ${userStorage.totalQuotaGB} GB quota. You have ${userStorage.remainingGB.toFixed(
+            2
+          )} GB remaining. Please upgrade your plan or delete old files.`,
+          userQuotaGB: userStorage.totalQuotaGB,
+          userUsedGB: userStorage.usedGB,
+          userRemainingGB: userStorage.remainingGB,
+        };
+      }
+
+      return {
+        allowed: true,
+        usesFreePool: true,
+        freePoolGB: remainingFreePoolGB,
+        userQuotaGBUsed: excessGB,
+        userQuotaGB: userStorage.totalQuotaGB,
+        userUsedGB: userStorage.usedGB,
+        userRemainingGB: userStorage.remainingGB - excessGB,
+      };
+    }
+  }
+
+  // Case 2: Band is already over 2GB - all new uploads count against user quota
   const wouldUseGB = userStorage.usedGB + fileSizeGB;
 
   if (wouldUseGB > userStorage.totalQuotaGB) {
     const overGB = wouldUseGB - userStorage.totalQuotaGB;
-
     return {
       allowed: false,
       message: `This upload would exceed your storage quota by ${overGB.toFixed(
         2
-      )} GB. You have ${userStorage.remainingGB.toFixed(
+      )} GB. The band's 2 GB free pool is full, so all new uploads count against your personal quota. You have ${userStorage.remainingGB.toFixed(
         2
-      )} GB remaining across all your bands. Please upgrade your plan or delete old files.`,
+      )} GB remaining. Please upgrade your plan or delete old files.`,
       userQuotaGB: userStorage.totalQuotaGB,
       userUsedGB: userStorage.usedGB,
       userRemainingGB: userStorage.remainingGB,
@@ -406,6 +606,7 @@ async function checkUserStorageQuota(userId, bandId, fileSize) {
 
   return {
     allowed: true,
+    usesFreePool: false,
     userQuotaGB: userStorage.totalQuotaGB,
     userUsedGB: userStorage.usedGB,
     userRemainingGB: userStorage.remainingGB - fileSizeGB,
@@ -473,6 +674,88 @@ function bytesToRecordingHours(bytes) {
 }
 
 /**
+ * Check if a recording can be split into segments
+ * Rule: Any band member can split if band has free pool space OR recording creator has quota space
+ * @param {number} bandId
+ * @param {number} recordingCreatorId - User who created the original recording
+ * @param {number} estimatedSplitSizeBytes - Estimated total size of all splits (optional, for pre-check)
+ * @returns {Promise<{allowed: boolean, message?: string, reason?: string}>}
+ */
+async function canSplitRecording(
+  bandId,
+  recordingCreatorId,
+  estimatedSplitSizeBytes = null
+) {
+  const BAND_FREE_POOL_GB = 2;
+  const BAND_FREE_POOL_BYTES = BigInt(BAND_FREE_POOL_GB) * BigInt(1024 ** 3);
+
+  // Get band's current storage
+  const bandStorageBytes = await calculateBandStorage(bandId);
+  const bandStorageGB = Number(bandStorageBytes) / 1024 ** 3;
+
+  // Check 1: Band has free pool space (under 2GB)
+  if (bandStorageBytes < BAND_FREE_POOL_BYTES) {
+    // Band is under 2GB - can use free pool
+    if (estimatedSplitSizeBytes) {
+      const estimatedSplitSizeGB = Number(estimatedSplitSizeBytes) / 1024 ** 3;
+      const remainingFreePoolGB = BAND_FREE_POOL_GB - bandStorageGB;
+      if (estimatedSplitSizeGB <= remainingFreePoolGB) {
+        return {
+          allowed: true,
+          reason: "band_free_pool",
+          remainingFreePoolGB: remainingFreePoolGB - estimatedSplitSizeGB,
+        };
+      }
+    } else {
+      // No size estimate - assume it will fit (will check again after creation)
+      return {
+        allowed: true,
+        reason: "band_free_pool",
+        remainingFreePoolGB: BAND_FREE_POOL_GB - bandStorageGB,
+      };
+    }
+  }
+
+  // Check 2: Recording creator has available quota space
+  const creatorStorage = await calculateUserStorageUsage(recordingCreatorId);
+  if (estimatedSplitSizeBytes) {
+    const estimatedSplitSizeGB = Number(estimatedSplitSizeBytes) / 1024 ** 3;
+    const wouldUseGB = creatorStorage.usedGB + estimatedSplitSizeGB;
+
+    if (wouldUseGB <= creatorStorage.totalQuotaGB) {
+      return {
+        allowed: true,
+        reason: "creator_quota",
+        creatorRemainingGB: creatorStorage.totalQuotaGB - wouldUseGB,
+      };
+    } else {
+      const overGB = wouldUseGB - creatorStorage.totalQuotaGB;
+      return {
+        allowed: false,
+        message: `Splits would exceed the recording creator's storage quota by ${overGB.toFixed(2)} GB. The creator has ${creatorStorage.remainingGB.toFixed(2)} GB remaining, but the splits would need ${estimatedSplitSizeGB.toFixed(2)} GB.`,
+        reason: "creator_over_quota",
+      };
+    }
+  } else {
+    // No size estimate - check if creator has any remaining space
+    if (creatorStorage.remainingGB > 0) {
+      return {
+        allowed: true,
+        reason: "creator_quota",
+        creatorRemainingGB: creatorStorage.remainingGB,
+      };
+    }
+  }
+
+  // Neither condition met
+  return {
+    allowed: false,
+    message: `Cannot split recording: Band's free pool is full (${bandStorageGB.toFixed(2)} GB / ${BAND_FREE_POOL_GB} GB) and the recording creator has no remaining quota space (${creatorStorage.usedGB.toFixed(2)} GB / ${creatorStorage.totalQuotaGB} GB).`,
+    reason: "no_space_available",
+  };
+}
+
+/**
  * Check if user is currently over their storage quota
  * @param {number} userId
  * @returns {Promise<{isOverQuota: boolean, usedGB: number, quotaGB: number, usedPercent: number}>}
@@ -490,37 +773,80 @@ async function isUserOverQuota(userId) {
 }
 
 /**
- * Get band storage info (total available, used, contributing members)
+ * Get band storage info (total available, used, free pool, user contributions)
+ * NEW SYSTEM: Shows 2GB free pool + user contributions
  * @param {number} bandId
  * @returns {Promise<Object>}
  */
 async function getBandStorageInfo(bandId) {
+  const BAND_FREE_POOL_GB = 2;
+  const BAND_FREE_POOL_BYTES = BigInt(BAND_FREE_POOL_GB) * BigInt(1024 ** 3);
+
   const band = await prisma.band.findUnique({
     where: { id: bandId },
     select: { storageUsedBytes: true },
   });
 
-  const proMembers = await getBandProMembers(bandId);
-  const totalQuotaBytes = await calculateBandStorageQuota(bandId);
-
   const usedBytes = band?.storageUsedBytes || BigInt(0);
   const usedGB = Number(usedBytes) / 1024 ** 3;
-  const quotaGB = Number(totalQuotaBytes) / 1024 ** 3;
-  const usedPercent = quotaGB > 0 ? (usedGB / quotaGB) * 100 : 0;
 
-  const remainingBytes = totalQuotaBytes - usedBytes;
+  // Calculate how much uses free pool vs user attribution
+  const freePoolUsedGB = Math.min(usedGB, BAND_FREE_POOL_GB);
+  const freePoolRemainingGB = Math.max(0, BAND_FREE_POOL_GB - usedGB);
+  const userAttributedGB = Math.max(0, usedGB - BAND_FREE_POOL_GB);
+
+  // Get all members to calculate total available quota
+  const members = await prisma.bandMember.findMany({
+    where: { bandId },
+    include: {
+      user: {
+        include: {
+          subscription: {
+            include: { plan: true },
+          },
+        },
+      },
+    },
+  });
+
+  // Sum all members' personal quotas
+  let totalAvailableQuotaGB = BAND_FREE_POOL_GB; // Start with free pool
+  const freePlan = await prisma.subscriptionPlan.findUnique({
+    where: { slug: "free" },
+  });
+  const freeQuotaGB = freePlan?.storageQuotaGB || 2;
+
+  members.forEach((member) => {
+    if (member.user.subscription?.status === "active") {
+      totalAvailableQuotaGB += member.user.subscription.plan.storageQuotaGB;
+    } else {
+      // Free tier members get their 2GB quota (but it's already counted in free pool)
+      // Don't double-count
+    }
+  });
+
+  // Calculate remaining available (free pool remaining + all members' quotas)
+  const remainingGB = Math.max(0, totalAvailableQuotaGB - usedGB);
+  const remainingBytes = BigInt(Math.floor(remainingGB * 1024 ** 3));
   const remainingHours = bytesToRecordingHours(remainingBytes);
+
+  const usedPercent =
+    totalAvailableQuotaGB > 0 ? (usedGB / totalAvailableQuotaGB) * 100 : 100;
 
   return {
     usedBytes,
     usedGB: parseFloat(usedGB.toFixed(2)),
-    quotaGB: parseFloat(quotaGB.toFixed(0)),
-    quotaBytes: totalQuotaBytes,
+    quotaGB: parseFloat(totalAvailableQuotaGB.toFixed(0)),
+    quotaBytes: BigInt(Math.floor(totalAvailableQuotaGB * 1024 ** 3)),
     usedPercent: parseFloat(usedPercent.toFixed(1)),
-    remainingGB: parseFloat((quotaGB - usedGB).toFixed(2)),
+    remainingGB: parseFloat(remainingGB.toFixed(2)),
     remainingBytes,
     remainingHours,
-    proMembers,
+    // New fields for free pool tracking
+    freePoolGB: BAND_FREE_POOL_GB,
+    freePoolUsedGB: parseFloat(freePoolUsedGB.toFixed(2)),
+    freePoolRemainingGB: parseFloat(freePoolRemainingGB.toFixed(2)),
+    userAttributedGB: parseFloat(userAttributedGB.toFixed(2)),
     formatted: formatBytes(usedBytes),
   };
 }
@@ -529,9 +855,11 @@ module.exports = {
   calculateBandStorage,
   updateBandStorageUsage,
   getBandProMembers,
+  findBestMemberForAttribution,
   calculateBandStorageQuota,
   calculateUserStorageUsage,
   checkUserStorageQuota,
+  canSplitRecording,
   isUserOverQuota,
   getBandStorageInfo,
   formatBytes,

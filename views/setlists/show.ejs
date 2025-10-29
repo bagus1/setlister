@@ -575,9 +575,14 @@ function getTokenForView(viewType) {
                         <i class="bi bi-record-circle"></i> Record This Set
                     </button>
                     <% } else { %>
-                    <button onclick="startRecording('<%= setlist.id %>')" class="btn btn-danger">
+                    <button onclick="startRecording('<%= setlist.id %>', <%= typeof quotaStatus !== 'undefined' && quotaStatus.canRecordViaMember ? quotaStatus.bestMemberId : 'null' %>)" class="btn btn-danger">
                         <i class="bi bi-record-circle"></i> Record This Set
                     </button>
+                    <% if (typeof quotaStatus !== 'undefined' && quotaStatus.canRecordViaMember) { %>
+                    <small class="text-muted text-center mt-1">
+                        <i class="bi bi-info-circle"></i> Recording will be attributed to <%= quotaStatus.bestMemberName %> (<%= quotaStatus.bestMemberPlan %>)
+                    </small>
+                    <% } %>
                     <% } %>
                     <a href="/help/recording-instructions" target="_blank" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-lightbulb"></i> Recording Instructions

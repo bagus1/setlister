@@ -157,6 +157,22 @@
                                 • <%= bandStorageInfo.remainingHours.description %>
                             <% } %>
                         </div>
+                        <!-- Free Pool Breakdown -->
+                        <div class="small mt-2 pt-2 border-top">
+                            <div class="text-success">
+                                <i class="bi bi-gift"></i> 
+                                Free Pool: <%= bandStorageInfo.freePoolUsedGB.toFixed(2) %> / <%= bandStorageInfo.freePoolGB %> GB
+                                <% if (bandStorageInfo.freePoolRemainingGB > 0) { %>
+                                    (<%= bandStorageInfo.freePoolRemainingGB.toFixed(2) %> GB left)
+                                <% } %>
+                            </div>
+                            <% if (bandStorageInfo.userAttributedGB > 0) { %>
+                            <div class="text-info mt-1">
+                                <i class="bi bi-person"></i> 
+                                User uploads: <%= bandStorageInfo.userAttributedGB.toFixed(2) %> GB
+                            </div>
+                            <% } %>
+                        </div>
                     </div>
 
                     <% if (userStorageInfo) { %>
@@ -178,7 +194,7 @@
                             </div>
                         </div>
                         <div class="small text-muted mt-1">
-                            <%= userStorageInfo.usedPercent.toFixed(1) %>% used across all bands
+                            <%= userStorageInfo.usedPercent.toFixed(1) %>% used (your attributed storage)
                         </div>
                     </div>
                     <% } %>

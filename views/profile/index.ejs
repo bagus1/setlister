@@ -135,6 +135,126 @@
                 </div>
             </div>
 
+            <!-- My Recordings -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-music-note-list"></i> My Recordings 
+                        <% if (recordings && recordings.length > 0) { %>
+                            <span class="badge bg-secondary ms-2"><%= recordings.length %></span>
+                        <% } %>
+                    </h5>
+                    <% if (typeof recordingsCount !== 'undefined' && recordingsCount > 0) { %>
+                        <div class="small text-muted mt-2">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <i class="bi bi-hdd"></i> 
+                                    <strong>Recordings:</strong> <%= recordingsCount %> file<%= recordingsCount !== 1 ? 's' : '' %>, 
+                                    <%= recordingsStorageMB.toFixed(1) %> MB
+                                </div>
+                                <% if (splitsCount > 0) { %>
+                                <div>
+                                    <i class="bi bi-scissors"></i> 
+                                    <strong>Splits:</strong> <%= splitsCount %> file<%= splitsCount !== 1 ? 's' : '' %>, 
+                                    <%= splitsStorageMB.toFixed(1) %> MB
+                                </div>
+                                <% } %>
+                                <div class="text-primary fw-bold">
+                                    <i class="bi bi-bar-chart"></i> 
+                                    <strong>Total:</strong> <%= totalStorageMB.toFixed(1) %> MB
+                                    (<%= (totalStorageMB / 1024).toFixed(2) %> GB)
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+                <div class="card-body">
+                    <% if (recordings && recordings.length > 0) { %>
+                        <div class="list-group">
+                            <% recordings.forEach((recording) => { %>
+                                <% if (recording.filePath && recording.filePath !== '' && recording.setlist) { %>
+                                    <a href="/bands/<%= recording.setlist.band.id %>/setlists/<%= recording.setlist.id %>/recordings/<%= recording.id %>" 
+                                       class="list-group-item list-group-item-action text-decoration-none">
+                                <% } else { %>
+                                    <div class="list-group-item">
+                                <% } %>
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1 text-dark">
+                                                <i class="bi bi-<%= recording.isProcessed ? 'check-circle text-success' : 'hourglass-split text-warning' %>"></i>
+                                                <% 
+                                                const filename = recording.filePath && recording.filePath !== '' 
+                                                    ? recording.filePath.split('/').pop() 
+                                                    : 'Deleted file';
+                                                const format = filename !== 'Deleted file' 
+                                                    ? (filename.split('.').pop() || recording.format || 'webm')
+                                                    : 'N/A';
+                                                %>
+                                                <%= filename %>
+                                                <% if (format !== 'N/A') { %>
+                                                    <span class="badge bg-secondary ms-2"><%= format.toUpperCase() %></span>
+                                                <% } %>
+                                                <% if (recording.isProcessed) { %>
+                                                    <span class="badge bg-success ms-2">
+                                                        Processed
+                                                        <% if (recording.splits && recording.splits.length > 0) { %>
+                                                            (<%= recording.splits.length %> split<%= recording.splits.length !== 1 ? 's' : '' %>)
+                                                        <% } %>
+                                                    </span>
+                                                <% } else { %>
+                                                    <span class="badge bg-warning ms-2">Not Split</span>
+                                                <% } %>
+                                            </h6>
+                                            <div class="small text-muted mb-1">
+                                                <i class="bi bi-file-earmark-music"></i> 
+                                                <%= recording.filePath && recording.filePath !== '' ? filename : 'Source file deleted' %>
+                                                <% if (recording.duration) { %>
+                                                    • <%= Math.floor(recording.duration / 60) %>:<%= String(recording.duration % 60).padStart(2, '0') %>
+                                                <% } %>
+                                                <% if (recording.fileSize) { %>
+                                                    <% const sizeMB = (Number(recording.fileSize) / (1024 * 1024)).toFixed(1); %>
+                                                    • <%= sizeMB %> MB
+                                                <% } %>
+                                            </div>
+                                            <div class="small text-muted">
+                                                <i class="bi bi-calendar3"></i> 
+                                                <%= new Date(recording.createdAt).toLocaleDateString() %>
+                                                <% if (recording.setlist) { %>
+                                                    • 
+                                                    <span class="text-decoration-none" onclick="event.stopPropagation(); window.location.href='/bands/<%= recording.setlist.band.id %>/setlists/<%= recording.setlist.id %>';">
+                                                        <i class="bi bi-music-note-list"></i> <%= recording.setlist.title %>
+                                                    </span>
+                                                    <% if (recording.setlist.band) { %>
+                                                        • 
+                                                        <span class="text-decoration-none" onclick="event.stopPropagation(); window.location.href='/bands/<%= recording.setlist.band.id %>';">
+                                                            <i class="bi bi-people"></i> <%= recording.setlist.band.name %>
+                                                        </span>
+                                                    <% } %>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                        <% if (recording.filePath && recording.filePath !== '' && recording.setlist) { %>
+                                            <div class="text-end ms-3">
+                                                <i class="bi bi-chevron-right text-muted"></i>
+                                            </div>
+                                        <% } %>
+                                    </div>
+                                <% if (recording.filePath && recording.filePath !== '' && recording.setlist) { %>
+                                    </a>
+                                <% } else { %>
+                                    </div>
+                                <% } %>
+                            <% }) %>
+                        </div>
+                    <% } else { %>
+                        <p class="text-muted mb-0">
+                            No recordings yet. 
+                            <a href="/bands">Go to a band</a> and start recording!
+                        </p>
+                    <% } %>
+                </div>
+            </div>
+
             <!-- Photo Gallery -->
             <% if (profile.photos && profile.photos.length > 0) { %>
             <div class="card">

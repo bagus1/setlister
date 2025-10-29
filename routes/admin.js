@@ -366,6 +366,8 @@ router.get("/songs", async (req, res) => {
     const limit = 20;
     const skip = (page - 1) * limit;
     const search = req.query.search || "";
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder || "desc";
 
     // Build search conditions
     const searchConditions = search
@@ -389,6 +391,18 @@ router.get("/songs", async (req, res) => {
       where: searchConditions,
     });
 
+    // Build orderBy based on sort parameters
+    let orderBy = {};
+    if (sortBy === "title") {
+      orderBy = { title: sortOrder };
+    } else if (sortBy === "createdAt") {
+      orderBy = { createdAt: sortOrder };
+    } else if (sortBy === "key") {
+      orderBy = { key: sortOrder };
+    } else {
+      orderBy = { createdAt: "desc" };
+    }
+
     // Get songs with pagination
     const songs = await prisma.song.findMany({
       where: searchConditions,
@@ -407,7 +421,7 @@ router.get("/songs", async (req, res) => {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: orderBy,
       skip: skip,
       take: limit,
     });
@@ -427,6 +441,8 @@ router.get("/songs", async (req, res) => {
       hasNextPage,
       hasPrevPage,
       search,
+      sortBy,
+      sortOrder,
       currentUser: req.session.user,
       success: req.flash("success"),
       error: req.flash("error"),

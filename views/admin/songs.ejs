@@ -60,13 +60,34 @@
                             <table class="table table-hover mb-0 table-dark">
                                 <thead>
                                     <tr>
-                                        <th>Title</th>
+                                        <th>
+                                            <a href="?sortBy=title&sortOrder=<%= sortBy === 'title' && sortOrder === 'asc' ? 'desc' : 'asc' %>" class="text-decoration-none text-white">
+                                                Title
+                                                <% if (sortBy === 'title') { %>
+                                                    <i class="bi bi-chevron-<%= sortOrder === 'asc' ? 'up' : 'down' %>"></i>
+                                                <% } %>
+                                            </a>
+                                        </th>
                                         <th>Artist</th>
                                         <th>Vocalist</th>
-                                        <th>Key</th>
+                                        <th>
+                                            <a href="?sortBy=key&sortOrder=<%= sortBy === 'key' && sortOrder === 'asc' ? 'desc' : 'asc' %>" class="text-decoration-none text-white">
+                                                Key
+                                                <% if (sortBy === 'key') { %>
+                                                    <i class="bi bi-chevron-<%= sortOrder === 'asc' ? 'up' : 'down' %>"></i>
+                                                <% } %>
+                                            </a>
+                                        </th>
                                         <th>Creator</th>
                                         <th>Stats</th>
-                                        <th>Created</th>
+                                        <th>
+                                            <a href="?sortBy=createdAt&sortOrder=<%= sortBy === 'createdAt' && sortOrder === 'asc' ? 'desc' : 'asc' %>" class="text-decoration-none text-white">
+                                                Created
+                                                <% if (sortBy === 'createdAt') { %>
+                                                    <i class="bi bi-chevron-<%= sortOrder === 'asc' ? 'up' : 'down' %>"></i>
+                                                <% } %>
+                                            </a>
+                                        </th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -143,7 +164,7 @@
                                     <ul class="pagination pagination-sm justify-content-center mb-0">
                                         <% if (hasPrevPage) { %>
                                             <li class="page-item">
-                                                <a class="page-link" href="/admin/songs?page=<%= currentPage - 1 %><% if (search) { %>&search=<%= encodeURIComponent(search) %><% } %>">
+                                                <a class="page-link" href="/admin/songs?page=<%= currentPage - 1 %><% if (search) { %>&search=<%= encodeURIComponent(search) %><% } %><% if (sortBy) { %>&sortBy=<%= sortBy %>&sortOrder=<%= sortOrder %><% } %>">
                                                     <i class="bi bi-chevron-left"></i> Previous
                                                 </a>
                                             </li>
@@ -151,7 +172,7 @@
 
                                         <% for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) { %>
                                             <li class="page-item <%= i === currentPage ? 'active' : '' %>">
-                                                <a class="page-link" href="/admin/songs?page=<%= i %><% if (search) { %>&search=<%= encodeURIComponent(search) %><% } %>">
+                                                <a class="page-link" href="/admin/songs?page=<%= i %><% if (search) { %>&search=<%= encodeURIComponent(search) %><% } %><% if (sortBy) { %>&sortBy=<%= sortBy %>&sortOrder=<%= sortOrder %><% } %>">
                                                     <%= i %>
                                                 </a>
                                             </li>
@@ -159,7 +180,7 @@
 
                                         <% if (hasNextPage) { %>
                                             <li class="page-item">
-                                                <a class="page-link" href="/admin/songs?page=<%= currentPage + 1 %><% if (search) { %>&search=<%= encodeURIComponent(search) %><% } %>">
+                                                <a class="page-link" href="/admin/songs?page=<%= currentPage + 1 %><% if (search) { %>&search=<%= encodeURIComponent(search) %><% } %><% if (sortBy) { %>&sortBy=<%= sortBy %>&sortOrder=<%= sortOrder %><% } %>">
                                                     Next <i class="bi bi-chevron-right"></i>
                                                 </a>
                                             </li>

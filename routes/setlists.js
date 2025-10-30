@@ -2754,12 +2754,12 @@ router.post(
       // Save to database
       const recording = await prisma.recording.create({
         data: {
-          setlistId,
+          setlist: { connect: { id: setlistId } },
           filePath: recordingPath,
           fileSize: BigInt(fileSize),
           duration,
           format,
-          createdById: createdById,
+          creator: { connect: { id: createdById } },
         },
       });
 
@@ -2967,7 +2967,7 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
         fileSize: BigInt(stats.size),
         duration: Number.isFinite(duration) ? duration : 0,
         format: path.extname(originalFileName).substring(1) || "webm",
-        createdById: createdById,
+        creator: { connect: { id: createdById } },
       },
     });
 
@@ -3052,12 +3052,12 @@ router.post(
       // Save to database
       const recording = await prisma.recording.create({
         data: {
-          setlistId,
+          setlist: { connect: { id: setlistId } },
           filePath: recordingPath,
           fileSize: BigInt(fileSize),
           duration,
           format,
-          createdById: userId,
+          creator: { connect: { id: userId } },
         },
       });
 

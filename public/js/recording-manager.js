@@ -590,13 +590,37 @@ class RecordingManager {
           this.updateProcessingStatus("Uploading to server...");
 
           // Upload to server
-          await this.uploadRecording(
+          const result = await this.uploadRecording(
             audioBlob,
             recordingData.setlistId,
             duration
           );
 
           this.updateProcessingStatus("Upload complete! Redirecting...");
+
+          // Clear IndexedDB chunks
+          await this.clearChunksFromIndexedDB(recordingData.setlistId);
+
+          // Clear backup recording from IndexedDB
+          await this.clearRecordingBackup(recordingData.setlistId);
+
+          // Clear state
+          localStorage.removeItem("activeRecording");
+
+          // Remove beforeunload warning
+          this.isProcessing = false;
+          window.removeEventListener("beforeunload", this.beforeUnloadHandler);
+
+          // Hide processing modal
+          this.hideProcessingModal();
+
+          // Extract bandId from current URL
+          const currentUrl = window.location.href;
+          const bandsMatch = currentUrl.match(/\/bands\/(\d+)\//);
+          const bandId = bandsMatch ? bandsMatch[1] : "1"; // Fallback to 1 if not found
+
+          // Redirect to recording detail page
+          window.location.href = `/bands/${bandId}/setlists/${recordingData.setlistId}/recordings/${result.recordingId}`;
 
           resolve();
         } catch (error) {

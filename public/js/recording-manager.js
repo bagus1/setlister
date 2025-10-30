@@ -623,8 +623,8 @@ class RecordingManager {
    * Upload recording to server (with chunked upload for large files)
    */
   async uploadRecording(audioBlob, setlistId, duration) {
-    // Check if file is large enough to use chunked upload (>100MB)
-    const CHUNK_THRESHOLD = 100 * 1024 * 1024; // 100MB
+    // Check if file is large enough to use chunked upload (>25MB)
+    const CHUNK_THRESHOLD = 25 * 1024 * 1024; // 25MB (temporary for testing)
 
     if (audioBlob.size > CHUNK_THRESHOLD) {
       console.log("Large file detected, using chunked upload...");

@@ -10,12 +10,12 @@
           <h2 class="h5 text-muted"><%= setlist.title %></h2>
         </div>
         <div class="d-flex gap-2">
-          <a
-            href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>"
-            class="btn btn-outline-secondary"
-          >
-            <i class="bi bi-arrow-left"></i> Back to Setlist
-          </a>
+        <a
+          href="/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>"
+          class="btn btn-outline-secondary"
+        >
+          <i class="bi bi-arrow-left"></i> Back to Setlist
+        </a>
           <a
             href="/bands/<%= setlist.band.id %>"
             class="btn btn-outline-primary"
@@ -92,9 +92,15 @@
                 style="width: 0%"
               ></div>
             </div>
-            <div id="loadingStatus" class="mt-1">
-              <small class="text-muted">Preparing waveform...</small>
-            </div>
+          <div id="loadingStatus" class="mt-1">
+            <small class="text-muted">Preparing waveform (a 500&nbsp;MB file may take about a minute to load the waveform)...</small>
+          </div>
+          <!-- Safari unlock button (shown only on Safari) -->
+          <div class="mt-2" id="safariUnlockContainer" style="display: none;">
+            <button id="safariLoadBtn" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-lightning"></i> Click to load waveform
+            </button>
+          </div>
             <div id="loadingNote" class="mt-2" style="display: none">
               <small class="text-info">
                 <i class="bi bi-info-circle"></i>
@@ -217,7 +223,7 @@
                   aria-hidden="true"
                 ></span>
               </span>
-              <i class="bi bi-magic"></i> Auto-Detect Silence
+              <i class="bi bi-magic"></i> Auto-Detect Songs
             </button>
             <% if (typeof canSplit !== 'undefined' && !canSplit) { %>
               <button id="processSplitsBtn" class="btn btn-success" disabled 
@@ -348,21 +354,21 @@
                   class="form-control"
                   placeholder="Enter song title..."
                 />
-                <button
+            <button
                   id="addSongBtn"
                   class="btn btn-outline-light"
-                >
+            >
                   <i class="bi bi-plus"></i> Add
-                </button>
-              </div>
-            </div>
+            </button>
+          </div>
+        </div>
           </div>
 
-        </div>
       </div>
     </div>
   </div>
-  
+</div>
+
   <!-- Segments Assigned Panel - Below Waveform -->
   <div class="row">
     <div class="col-lg-9">
@@ -441,10 +447,14 @@
   </div>
 </div>
 
-<!-- Hidden Audio Element -->
-<audio id="audio" preload="metadata" style="display: none">
-  <!-- Audio source will be set dynamically -->
+<!-- Debug Audio Player (temporarily visible to verify audio loads on Safari) -->
+<div class="mb-2" style="background:#f8f9fa; padding:8px; border-radius:6px;">
+  <small class="text-muted d-block mb-1">Audio Debug Player</small>
+  <audio id="audio" preload="metadata" controls style="width:100%;">
+    <!-- Source set dynamically in script -->
 </audio>
+  <small class="text-muted">If you can hear audio here but no waveform appears, the issue is with waveform init, not audio load.</small>
+</div>
 
 <!-- Peaks.js Dependencies -->
 <script src="/js/konva.min.js"></script>
@@ -452,120 +462,141 @@
 <script src="/js/peaks.min.js"></script>
 
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    console.log("=== PEAKS.JS SPLIT PAGE STARTING ===");
+    document.addEventListener("DOMContentLoaded", function () {
+      console.log("=== PEAKS.JS SPLIT PAGE STARTING ===");
 
     // Debug panel removed - use browser console for debugging
     const debugDiv = null;
 
-    function addDebugLog(message) {
+      function addDebugLog(message) {
       // Just log to console, no visual debug panel
       console.log(message);
     }
 
-    let peaks = null;
-    let selectedSegment = null;
-    const segmentSongMap = {};
-
-    // Real songs from your setlist
-    const realSongs = <%- JSON.stringify(
-      setlist.sets
-        .filter(set => set.name !== 'Maybe')
-        .flatMap(set =>
-          (set.songs || []).map(setlistSong => ({
-            id: setlistSong.song.id,
-            title: setlistSong.song.title,
-            artist: (setlistSong.song.artists && setlistSong.song.artists.length > 0)
-              ? setlistSong.song.artists[0].artist.name
-              : 'Unknown'
-          }))
-        )
-    ) %>;
-
-    // Load the actual recording file
-    const audioElement = document.getElementById("audio");
-    const recordingPath = window.location.origin + "<%= recording.filePath %>";
-
-    audioElement.src = recordingPath;
-
-    // Add audio event listeners for debugging
-    audioElement.addEventListener("error", (e) => {
-      addDebugLog("Audio error: " + e.message);
-    });
-
-    // Populate songs list
-    const songsList = document.getElementById("songsList");
-    let songIndex = 1;
-    realSongs.forEach((song) => {
-      const div = document.createElement("div");
-      div.className = "song-item mb-2 p-2 border rounded";
-      div.setAttribute("data-song-id", song.id);
-      div.setAttribute("data-song-index", songIndex);
-      div.setAttribute("data-song-title", song.title);
-      div.style.cssText = "cursor: pointer; transition: background 0.2s;";
-      div.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <strong>${songIndex}. ${song.title}</strong>
-            <div class="small text-muted">${song.artist}</div>
-          </div>
-          <span class="badge bg-secondary" id="song-badge-${song.id}" style="display: none;">
-            Assigned
-          </span>
-        </div>
-      `;
-      div.onclick = () => {
-        addDebugLog(`Song clicked: ${song.title}. Current selectedSegment ID: ${selectedSegment ? selectedSegment.id : 'null'}`);
-        if (selectedSegment) {
-          assignSongToSegment(selectedSegment.id, song.id);
-        } else {
-          addDebugLog(
-            "Please select a segment first by clicking on it in the waveform."
-          );
-        }
-      };
-      songsList.appendChild(div);
-      songIndex++;
-    });
-
-    // Initialize Peaks.js - fix race condition
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", function () {
-        initPeaks();
-      });
-    } else {
-      // DOM is already ready
-      initPeaks();
-    }
-
-    function initPeaks() {
-      const overviewContainer = document.getElementById("overview-container");
-      const zoomviewContainer = document.getElementById("zoomview-container");
-
-      addDebugLog("Initializing Peaks.js...");
-
-      // Check if audio is already ready, or wait for it
-      if (audioElement.readyState >= 3) {
-        // HAVE_FUTURE_DATA or higher
-        initializePeaksWithAudio();
-      } else {
-        audioElement.addEventListener("canplay", () => {
-          initializePeaksWithAudio();
-        });
-      }
-    }
-
+      let peaks = null;
+      let selectedSegment = null;
+      const segmentSongMap = {};
     let peaksInitialized = false;
+    let didUnlockAudio = false;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-    function initializePeaksWithAudio() {
+      // Real songs from your setlist
+      const realSongs = <%- JSON.stringify(
+        setlist.sets
+          .filter(set => set.name !== 'Maybe')
+          .flatMap(set =>
+            (set.songs || []).map(setlistSong => ({
+              id: setlistSong.song.id,
+              title: setlistSong.song.title,
+              artist: (setlistSong.song.artists && setlistSong.song.artists.length > 0)
+                ? setlistSong.song.artists[0].artist.name
+                : 'Unknown'
+            }))
+          )
+      ) %>;
+
+      // Load the actual recording file
+      const audioElement = document.getElementById("audio");
+      const recordingPath = window.location.origin + "<%= recording.filePath %>";
+
+      audioElement.src = recordingPath;
+
+      // Add audio event listeners for debugging
+      audioElement.addEventListener("error", (e) => {
+        addDebugLog("Audio error: " + e.message);
+      });
+
+      // Populate songs list
+      const songsList = document.getElementById("songsList");
+      let songIndex = 1;
+      realSongs.forEach((song) => {
+        const div = document.createElement("div");
+        div.className = "song-item mb-2 p-2 border rounded";
+        div.setAttribute("data-song-id", song.id);
+        div.setAttribute("data-song-index", songIndex);
+        div.setAttribute("data-song-title", song.title);
+        div.style.cssText = "cursor: pointer; transition: background 0.2s;";
+        div.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center" style="line-height: 1.1;">
+          <div style="font-size: 0.85rem;">
+              <strong>${songIndex}. ${song.title}</strong>
+            </div>
+            <span class="badge bg-secondary" id="song-badge-${song.id}" style="display: none;">
+              Assigned
+            </span>
+          </div>
+        `;
+        div.onclick = () => {
+        addDebugLog(`Song clicked: ${song.title}. Current selectedSegment ID: ${selectedSegment ? selectedSegment.id : 'null'}`);
+          if (selectedSegment) {
+            assignSongToSegment(selectedSegment.id, song.id);
+          } else {
+            addDebugLog(
+            "Please select a segment first by clicking on it in the waveform."
+            );
+          }
+        };
+        songsList.appendChild(div);
+        songIndex++;
+      });
+
+      // Initialize Peaks.js - fix race condition
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          initPeaks();
+        });
+      } else {
+        // DOM is already ready
+        initPeaks();
+      }
+
+      function initPeaks() {
+        const overviewContainer = document.getElementById("overview-container");
+        const zoomviewContainer = document.getElementById("zoomview-container");
+
+        addDebugLog("Initializing Peaks.js...");
+
+      // If Safari, show the explicit unlock button near the loader
+      const safariUnlock = document.getElementById('safariUnlockContainer');
+      const safariLoadBtn = document.getElementById('safariLoadBtn');
+      // Show the unlock button as a universal fallback if waveform isn't ready yet
+      if (safariUnlock && safariLoadBtn) {
+        safariUnlock.style.display = 'block';
+        safariLoadBtn.onclick = async () => {
+          try {
+            await audioElement.play();
+            didUnlockAudio = true;
+            // Hide the unlock UI after success
+            safariUnlock.style.display = 'none';
+            if (!peaksInitialized) {
+              initializePeaksWithAudio();
+            }
+          } catch (e) {
+            addDebugLog('Unlock button failed: ' + e.message);
+          }
+        };
+      }
+
+        // Check if audio is already ready, or wait for it
+        if (audioElement.readyState >= 3) {
+          // HAVE_FUTURE_DATA or higher
+          initializePeaksWithAudio();
+        } else {
+          audioElement.addEventListener("canplay", () => {
+            initializePeaksWithAudio();
+          });
+        }
+      }
+
+      function initializePeaksWithAudio() {
       if (peaksInitialized) {
         addDebugLog("Peaks.js already initialized - skipping re-initialization");
         return;
       }
-      addDebugLog("Starting Peaks.js initialization...");
+        addDebugLog("Starting Peaks.js initialization...");
 
-      const overviewContainer = document.getElementById("overview-container");
-      const zoomviewContainer = document.getElementById("zoomview-container");
+        const overviewContainer = document.getElementById("overview-container");
+        const zoomviewContainer = document.getElementById("zoomview-container");
 
       // Animate loading bar
       const loadingBar = document.getElementById("loadingBar");
@@ -578,33 +609,33 @@
         }
       }, 100);
 
-      //   const options = {
-      //     containers: {
-      //       overview: overviewContainer,
-      //       zoomview: zoomviewContainer,
-      //     },
-      //     mediaElement: audioElement,
-      //     webAudio: {
-      //       audioContext: new (window.AudioContext ||
-      //         window.webkitAudioContext)(),
-      //     },
-      //     segments: [],
-      //   };o
+        //   const options = {
+        //     containers: {
+        //       overview: overviewContainer,
+        //       zoomview: zoomviewContainer,
+        //     },
+        //     mediaElement: audioElement,
+        //     webAudio: {
+        //       audioContext: new (window.AudioContext ||
+        //         window.webkitAudioContext)(),
+        //     },
+        //     segments: [],
+        //   };o
 
-      addDebugLog("Calling Peaks.init()...");
-      //   const PeaksLib = window.peaks || window.Peaks;
-      //   addDebugLog("Using PeaksLib: " + typeof PeaksLib);
+        addDebugLog("Calling Peaks.init()...");
+        //   const PeaksLib = window.peaks || window.Peaks;
+        //   addDebugLog("Using PeaksLib: " + typeof PeaksLib);
 
-      // Fix container dimensions - ensure they have width and are visible
-      overviewContainer.style.width = "100%";
-      overviewContainer.style.minHeight = "100px";
-      overviewContainer.style.display = "block";
-      zoomviewContainer.style.width = "100%";
-      zoomviewContainer.style.minHeight = "200px";
-      zoomviewContainer.style.display = "block";
+        // Fix container dimensions - ensure they have width and are visible
+        overviewContainer.style.width = "100%";
+        overviewContainer.style.minHeight = "100px";
+        overviewContainer.style.display = "block";
+        zoomviewContainer.style.width = "100%";
+        zoomviewContainer.style.minHeight = "200px";
+        zoomviewContainer.style.display = "block";
 
-      // Use the working approach from prototype2
-      const PeaksLib = window.peaks || window.Peaks;
+        // Use the working approach from prototype2
+        const PeaksLib = window.peaks || window.Peaks;
 
       // Determine waveform source
       let waveformSource;
@@ -633,54 +664,54 @@
       };
       <% } %>
 
-      const options = {
-        overview: {
-          container: overviewContainer,
-        },
-        zoomview: {
-          container: zoomviewContainer,
-          // Disable default click-to-seek behavior that resets zoom
-          axisGridlineColor: "#ccc",
-          axisLabelColor: "#000",
-          // Try to prevent auto-scrolling during segment drag
-          playheadColor: "#f00",
-          playheadTextColor: "#000",
-          // Enable scrollbar when zoomed in
-          enableScrollbar: true,
+        const options = {
+          overview: {
+            container: overviewContainer,
+          },
+          zoomview: {
+            container: zoomviewContainer,
+            // Disable default click-to-seek behavior that resets zoom
+            axisGridlineColor: "#ccc",
+            axisLabelColor: "#000",
+            // Try to prevent auto-scrolling during segment drag
+            playheadColor: "#f00",
+            playheadTextColor: "#000",
+            // Enable scrollbar when zoomed in
+            enableScrollbar: true,
           showSegmentLabels: true,
           // CRITICAL: Disable Peaks.js's built-in mouse interactions
           enableMarkerEditing: false,
           enableSegmentDragging: false
-        },
-        mediaElement: audioElement,
+          },
+          mediaElement: audioElement,
         ...waveformSource,
-        segments: [],
-        // Disable default keyboard shortcuts that might interfere
-        keyboard: false,
-        // Disable default point editing
-        pointMarkerColor: "#ff0000",
+          segments: [],
+          // Disable default keyboard shortcuts that might interfere
+          keyboard: false,
+          // Disable default point editing
+          pointMarkerColor: "#ff0000",
         // Disable segment dragging to prevent interference with our custom segment creation
         segmentOptions: {
           markers: false
         },
         // Explicitly disable Peaks.js's built-in click-to-seek and drag-to-scroll
         zoomLevels: [512, 1024, 2048, 4096]
-      };
+        };
 
-      PeaksLib.init(options, (err, p) => {
-        if (err) {
-          console.error("Failed to initialize Peaks.js:", err);
-          addDebugLog("Peaks.js init error: " + err.message);
-          addDebugLog("Full error: " + JSON.stringify(err));
-          addDebugLog("Error stack: " + err.stack);
-          addDebugLog("Options used: " + JSON.stringify(options));
-          showError("Failed to initialize waveform editor: " + err.message);
-          return;
-        }
+        PeaksLib.init(options, (err, p) => {
+          if (err) {
+            console.error("Failed to initialize Peaks.js:", err);
+            addDebugLog("Peaks.js init error: " + err.message);
+            addDebugLog("Full error: " + JSON.stringify(err));
+            addDebugLog("Error stack: " + err.stack);
+            addDebugLog("Options used: " + JSON.stringify(options));
+            showError("Failed to initialize waveform editor: " + err.message);
+            return;
+          }
 
-        peaks = p;
-        console.log("Peaks.js initialized successfully");
-        addDebugLog("Peaks.js initialized successfully!");
+          peaks = p;
+          console.log("Peaks.js initialized successfully");
+          addDebugLog("Peaks.js initialized successfully!");
         peaksInitialized = true; // Mark as initialized to prevent re-initialization
 
         // Complete loading animation
@@ -692,34 +723,34 @@
           loadingStatus.textContent = 'Ready!';
         }
 
-        // Hide loading progress and show waveform
+          // Hide loading progress and show waveform
         setTimeout(() => {
           document.getElementById("loadingProgress").style.display = "none";
         }, 300);
-        overviewContainer.style.display = "block";
-        zoomviewContainer.style.display = "block";
+          overviewContainer.style.display = "block";
+          zoomviewContainer.style.display = "block";
 
-        // Set up controls
-        setupControls();
-        setupSegmentEvents();
+          // Set up controls
+          setupControls();
+          setupSegmentEvents();
 
-        // Initialize process button state
-        updateProcessButton();
+          // Initialize process button state
+          updateProcessButton();
 
-        // Set initial zoom to show whole file
-        const zoomview = peaks.views.getView("zoomview");
-        const scrollbar = peaks.views.getScrollbar();
-        zoomview.setZoom({ seconds: "auto" });
-        document.getElementById("zoom").value = 0; // Slider at left = auto
-        // Hide scrollbar initially (zoomed out)
-        if (scrollbar) {
-          scrollbar.hide();
-        }
+          // Set initial zoom to show whole file
+          const zoomview = peaks.views.getView("zoomview");
+          const scrollbar = peaks.views.getScrollbar();
+          zoomview.setZoom({ seconds: "auto" });
+          document.getElementById("zoom").value = 0; // Slider at left = auto
+          // Hide scrollbar initially (zoomed out)
+          if (scrollbar) {
+            scrollbar.hide();
+          }
 
-        // Update total time
-        document.getElementById("totalTime").textContent = formatTime(
-          Math.floor(audioElement.duration)
-        );
+          // Update total time
+          document.getElementById("totalTime").textContent = formatTime(
+            Math.floor(audioElement.duration)
+          );
 
         // Enable click-to-seek on the waveform
         setTimeout(() => {
@@ -749,210 +780,223 @@
           }
         }, 100);
 
-        addDebugLog("Setup complete!");
+          addDebugLog("Setup complete!");
 
         // Enable auto-detect button
         document.getElementById('autoDetectBtn').disabled = false;
+        });
+      }
+
+      // Handle audio errors
+      audioElement.addEventListener("error", (e) => {
+        console.error("Audio loading error:", e);
+        addDebugLog("Audio error: " + e.message);
+        showError("Failed to load audio file: " + recordingPath);
       });
-    }
 
-    // Handle audio errors
-    audioElement.addEventListener("error", (e) => {
-      console.error("Audio loading error:", e);
-      addDebugLog("Audio error: " + e.message);
-      showError("Failed to load audio file: " + recordingPath);
-    });
+      // Setup UI controls
+      let controlsSetup = false;
+      function setupControls() {
+        if (controlsSetup) {
+          return;
+        }
+        controlsSetup = true;
 
-    // Setup UI controls
-    let controlsSetup = false;
-    function setupControls() {
-      if (controlsSetup) {
-        return;
-      }
-      controlsSetup = true;
+        // Play/Pause button
+        const playBtn = document.getElementById("playPauseBtn");
+        if (playBtn) {
+          let isProcessing = false; // Prevent rapid clicks
+          playBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-      // Play/Pause button
-      const playBtn = document.getElementById("playPauseBtn");
-      if (playBtn) {
-        let isProcessing = false; // Prevent rapid clicks
-        playBtn.addEventListener("click", async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          if (isProcessing) {
-            addDebugLog("Click ignored - already processing");
-            return;
-          }
-
-          isProcessing = true;
-          addDebugLog("Button clicked - paused: " + audioElement.paused);
-
-          try {
-            if (audioElement.paused) {
-              addDebugLog("Calling audioElement.play()");
-              await audioElement.play();
-              playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
-              addDebugLog("Play successful");
-            } else {
-              addDebugLog("Calling audioElement.pause()");
-              audioElement.pause();
-              playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
-              addDebugLog("Pause successful");
+            if (isProcessing) {
+              addDebugLog("Click ignored - already processing");
+              return;
             }
-          } catch (error) {
-            addDebugLog("Play error: " + error.message);
+
+            isProcessing = true;
+            // Safari user-gesture unlock: attempt once on first interaction
+            if (isSafari && !didUnlockAudio) {
+              try {
+                await audioElement.play();
+                didUnlockAudio = true;
+                if (!peaksInitialized) {
+                  addDebugLog("Post-unlock Peaks init");
+                  initializePeaksWithAudio();
+                }
+              } catch (unlockErr) {
+                addDebugLog("Unlock failed: " + unlockErr.message);
+              }
+            }
+            addDebugLog("Button clicked - paused: " + audioElement.paused);
+
+            try {
+              if (audioElement.paused) {
+                addDebugLog("Calling audioElement.play()");
+                await audioElement.play();
+                playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+                addDebugLog("Play successful");
+              } else {
+                addDebugLog("Calling audioElement.pause()");
+                audioElement.pause();
+                playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+                addDebugLog("Pause successful");
+              }
+            } catch (error) {
+              addDebugLog("Play error: " + error.message);
+              playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+            } finally {
+              // Reset processing flag after a short delay
+              setTimeout(() => {
+                isProcessing = false;
+              }, 100);
+            }
+          });
+        }
+
+        // Stop button
+        const stopBtn = document.getElementById("stopBtn");
+        if (stopBtn) {
+          stopBtn.addEventListener("click", () => {
+            audioElement.pause();
+            audioElement.currentTime = 0;
             playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
-          } finally {
-            // Reset processing flag after a short delay
-            setTimeout(() => {
-              isProcessing = false;
-            }, 100);
+          });
+        }
+
+      // Zoom control
+      const zoomSlider = document.getElementById("zoom");
+      if (zoomSlider) {
+        zoomSlider.addEventListener("input", (e) => {
+          const sliderValue = Number(e.target.value);
+          const zoomview = peaks.views.getView("zoomview");
+          const scrollbar = peaks.views.getScrollbar();
+
+          if (sliderValue === 0) {
+            // Slider at left = auto (show whole file)
+            zoomview.setZoom({ seconds: "auto" });
+            // Hide scrollbar when zoomed out
+            scrollbar?.hide();
+          } else {
+            // Slider at right = show fewer seconds (more zoomed in)
+            const totalDuration = audioElement.duration;
+            const secondsToShow =
+              totalDuration - (sliderValue / 100) * (totalDuration - 1);
+            zoomview.setZoom({ seconds: secondsToShow });
+            // Show scrollbar when zoomed in
+            scrollbar?.show();
           }
         });
       }
 
-      // Stop button
-      const stopBtn = document.getElementById("stopBtn");
-      if (stopBtn) {
-        stopBtn.addEventListener("click", () => {
-          audioElement.pause();
-          audioElement.currentTime = 0;
-          playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Play';
-        });
-      }
-
-    // Zoom control
-    const zoomSlider = document.getElementById("zoom");
-    if (zoomSlider) {
-      zoomSlider.addEventListener("input", (e) => {
-        const sliderValue = Number(e.target.value);
+      // Reset zoom
+      document.getElementById("resetZoomBtn").addEventListener("click", () => {
         const zoomview = peaks.views.getView("zoomview");
         const scrollbar = peaks.views.getScrollbar();
-
-        if (sliderValue === 0) {
-          // Slider at left = auto (show whole file)
-          zoomview.setZoom({ seconds: "auto" });
-          // Hide scrollbar when zoomed out
-          scrollbar?.hide();
-        } else {
-          // Slider at right = show fewer seconds (more zoomed in)
-          const totalDuration = audioElement.duration;
-          const secondsToShow =
-            totalDuration - (sliderValue / 100) * (totalDuration - 1);
-          zoomview.setZoom({ seconds: secondsToShow });
-          // Show scrollbar when zoomed in
-          scrollbar?.show();
-        }
+        zoomview.setZoom({ seconds: "auto" });
+        document.getElementById("zoom").value = 0;
+        // Hide scrollbar when resetting to auto zoom
+        scrollbar?.hide();
       });
-    }
-
-    // Reset zoom
-    document.getElementById("resetZoomBtn").addEventListener("click", () => {
-      const zoomview = peaks.views.getView("zoomview");
-      const scrollbar = peaks.views.getScrollbar();
-      zoomview.setZoom({ seconds: "auto" });
-      document.getElementById("zoom").value = 0;
-      // Hide scrollbar when resetting to auto zoom
-      scrollbar?.hide();
-    });
-    }
-
-    // Setup Peaks.js segment events
-    let segmentEventsSetup = false;
-    function setupSegmentEvents() {
-      if (segmentEventsSetup) {
-        return;
       }
-      segmentEventsSetup = true;
 
-      // Enable segment creation by dragging
-      peaks.on("segments.add", (segment) => {
+      // Setup Peaks.js segment events
+      let segmentEventsSetup = false;
+      function setupSegmentEvents() {
+        if (segmentEventsSetup) {
+          return;
+        }
+        segmentEventsSetup = true;
+
+        // Enable segment creation by dragging
+        peaks.on("segments.add", (segment) => {
         // This event is for segments created via the UI, which we have customized.
         // The main logic is now handled manually after creation.
-      });
+        });
 
-      // Update time display using native audio element
-      audioElement.addEventListener("timeupdate", () => {
-        document.getElementById("currentTime").textContent = formatTime(audioElement.currentTime);
-      });
+        // Update time display using native audio element
+        audioElement.addEventListener("timeupdate", () => {
+          document.getElementById("currentTime").textContent = formatTime(audioElement.currentTime);
+        });
 
-      // Don't add play/pause event listeners - button handler updates manually
-      // This prevents duplicate event handling
+        // Don't add play/pause event listeners - button handler updates manually
+        // This prevents duplicate event handling
 
-      // Monitor zoom changes and prevent unwanted resets
-      let zoomCheckInterval = null;
-      const startZoomMonitoring = () => {
-        if (zoomCheckInterval) return;
-        zoomCheckInterval = setInterval(() => {
+        // Monitor zoom changes and prevent unwanted resets
+        let zoomCheckInterval = null;
+        const startZoomMonitoring = () => {
+          if (zoomCheckInterval) return;
+          zoomCheckInterval = setInterval(() => {
+            try {
+              const zoomview = peaks.views.getView("zoomview");
+              const startTime = zoomview.getStartTime();
+              const endTime = zoomview.getEndTime();
+              const visibleDuration = endTime - startTime;
+
+              // If zoom suddenly changes to auto (full duration), restore it
+              if (currentZoomSeconds && visibleDuration >= audioElement.duration * 0.99) {
+                const sliderValue = document.getElementById("zoom").value;
+                if (sliderValue != 0) {
+                  addDebugLog("Detected zoom reset - restoring");
+                  restoreZoomIfNeeded();
+                }
+              }
+            } catch (err) {
+              // Ignore errors - zoom monitoring may fail if Peaks.js not ready
+            }
+          }, 100);
+        };
+
+        // Start monitoring after initial setup
+        setTimeout(() => {
+          startZoomMonitoring();
+        }, 1000);
+
+        // Prevent zoom reset - store current zoom state
+        let currentZoomSeconds = null;
+
+        // Store current zoom before any interaction
+        function storeCurrentZoom() {
           try {
             const zoomview = peaks.views.getView("zoomview");
             const startTime = zoomview.getStartTime();
             const endTime = zoomview.getEndTime();
             const visibleDuration = endTime - startTime;
-
-            // If zoom suddenly changes to auto (full duration), restore it
-            if (currentZoomSeconds && visibleDuration >= audioElement.duration * 0.99) {
-              const sliderValue = document.getElementById("zoom").value;
-              if (sliderValue != 0) {
-                addDebugLog("Detected zoom reset - restoring");
-                restoreZoomIfNeeded();
-              }
-            }
-          } catch (err) {
-            // Ignore errors - zoom monitoring may fail if Peaks.js not ready
-          }
-        }, 100);
-      };
-
-      // Start monitoring after initial setup
-      setTimeout(() => {
-        startZoomMonitoring();
-      }, 1000);
-
-      // Prevent zoom reset - store current zoom state
-      let currentZoomSeconds = null;
-
-      // Store current zoom before any interaction
-      function storeCurrentZoom() {
-        try {
-          const zoomview = peaks.views.getView("zoomview");
-          const startTime = zoomview.getStartTime();
-          const endTime = zoomview.getEndTime();
-          const visibleDuration = endTime - startTime;
-          if (visibleDuration > 0 && visibleDuration < audioElement.duration) {
-            currentZoomSeconds = visibleDuration;
-            addDebugLog("Stored zoom: " + currentZoomSeconds.toFixed(1) + " seconds");
+            if (visibleDuration > 0 && visibleDuration < audioElement.duration) {
+              currentZoomSeconds = visibleDuration;
+              addDebugLog("Stored zoom: " + currentZoomSeconds.toFixed(1) + " seconds");
           } else {
              addDebugLog("Did not store zoom. Visible duration: " + visibleDuration);
-          }
-        } catch (err) {
-          addDebugLog("Error in storeCurrentZoom: " + err.message);
-        }
-      }
-
-      // Restore zoom if it gets reset
-      function restoreZoomIfNeeded() {
-        addDebugLog(`restoreZoomIfNeeded called. Stored zoom is: ${currentZoomSeconds ? currentZoomSeconds.toFixed(1) : 'null'}`);
-        if (currentZoomSeconds && currentZoomSeconds < audioElement.duration) {
-          try {
-            const sliderValue = document.getElementById("zoom").value;
-            if (sliderValue != 0) {
-              // Only restore if zoom slider is not at 0 (auto)
-              const zoomview = peaks.views.getView("zoomview");
-              zoomview.setZoom({ seconds: currentZoomSeconds });
-              addDebugLog("Restored zoom to: " + currentZoomSeconds.toFixed(1) + " seconds");
             }
           } catch (err) {
-            // Ignore errors
+          addDebugLog("Error in storeCurrentZoom: " + err.message);
           }
         }
-      }
 
-      // Enable segment creation by dragging and prevent zoom reset
-      const zoomviewContainer = document.getElementById("zoomview-container");
-      let isDragging = false;
-      let dragStart = null;
-      let dragStartX = null;
+        // Restore zoom if it gets reset
+        function restoreZoomIfNeeded() {
+        addDebugLog(`restoreZoomIfNeeded called. Stored zoom is: ${currentZoomSeconds ? currentZoomSeconds.toFixed(1) : 'null'}`);
+          if (currentZoomSeconds && currentZoomSeconds < audioElement.duration) {
+            try {
+              const sliderValue = document.getElementById("zoom").value;
+              if (sliderValue != 0) {
+                // Only restore if zoom slider is not at 0 (auto)
+                const zoomview = peaks.views.getView("zoomview");
+                zoomview.setZoom({ seconds: currentZoomSeconds });
+                addDebugLog("Restored zoom to: " + currentZoomSeconds.toFixed(1) + " seconds");
+              }
+            } catch (err) {
+              // Ignore errors
+            }
+          }
+        }
+
+        // Enable segment creation by dragging and prevent zoom reset
+        const zoomviewContainer = document.getElementById("zoomview-container");
+        let isDragging = false;
+        let dragStart = null;
+        let dragStartX = null;
       let isPanning = false;
       let panStartX = null;
       let tempSegment = null;
@@ -996,13 +1040,13 @@
         if (isResizing && resizeSegment) {
           // Handle segment resizing
           isDragging = true;
-          const rect = zoomviewContainer.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const zoomview = peaks.views.getView("zoomview");
+            const rect = zoomviewContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const zoomview = peaks.views.getView("zoomview");
 
-          const startTime = zoomview.getStartTime();
-          const endTime = zoomview.getEndTime();
-          const visibleDuration = endTime - startTime;
+              const startTime = zoomview.getStartTime();
+              const endTime = zoomview.getEndTime();
+              const visibleDuration = endTime - startTime;
           const width = zoomviewContainer.offsetWidth;
           const currentTime = startTime + (x / width) * visibleDuration;
 
@@ -1020,26 +1064,26 @@
         } else if (dragStart !== null) {
           // Handle new segment creation
           isDragging = true;
-          const rect = zoomviewContainer.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const zoomview = peaks.views.getView("zoomview");
+            const rect = zoomviewContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const zoomview = peaks.views.getView("zoomview");
 
           // Manual calculation since pointer events are disabled on canvas
-          const startTime = zoomview.getStartTime();
-          const endTime = zoomview.getEndTime();
-          const visibleDuration = endTime - startTime;
+              const startTime = zoomview.getStartTime();
+              const endTime = zoomview.getEndTime();
+              const visibleDuration = endTime - startTime;
           const width = zoomviewContainer.offsetWidth;
           const currentTime = startTime + (x / width) * visibleDuration;
 
-          const segmentStart = Math.min(dragStart, currentTime);
-          const segmentEnd = Math.max(dragStart, currentTime);
+              const segmentStart = Math.min(dragStart, currentTime);
+              const segmentEnd = Math.max(dragStart, currentTime);
 
           if (isPreparingToDrag) {
             isPreparingToDrag = false;
             // Create the temp segment on the first mouse move
             try {
               const result = peaks.segments.add({
-                startTime: segmentStart,
+                  startTime: segmentStart,
                 endTime: segmentEnd,
                 id: 'temp-drag-segment',
                 color: 'rgba(0, 123, 255, 0.3)',
@@ -1061,10 +1105,10 @@
             // Update the existing temp segment
             try {
               tempSegment.update({
-                startTime: segmentStart,
+                    startTime: segmentStart,
                 endTime: segmentEnd
-              });
-            } catch (err) {
+                  });
+                } catch (err) {
               addDebugLog("Error updating temp segment: " + err.message);
             }
           }
@@ -1137,14 +1181,14 @@
         }
 
         // Always clean up temp segment if it exists but wasn't converted
-        if (tempSegment) {
-          try {
+              if (tempSegment) {
+                try {
             peaks.segments.removeById('temp-drag-segment');
             addDebugLog("Cleaned up leftover temp segment");
-          } catch (err) {
+                } catch (err) {
             // Ignore if already removed
-          }
-          tempSegment = null;
+                }
+                tempSegment = null;
         }
 
         // Restore zoom after interaction
@@ -1153,9 +1197,9 @@
         }, 100);
 
         // Reset all drag-related state
-        isDragging = false;
-        dragStart = null;
-        dragStartX = null;
+            isDragging = false;
+            dragStart = null;
+            dragStartX = null;
         isPreparingToDrag = false;
       };
 
@@ -1186,8 +1230,8 @@
       overviewContainer.addEventListener("mousedown", (e) => {
         storeCurrentZoom();
         // Use a timeout to restore the zoom after Peaks.js has finished its default action
-        setTimeout(() => {
-          restoreZoomIfNeeded();
+            setTimeout(() => {
+              restoreZoomIfNeeded();
         }, 50);
       });
 
@@ -1264,65 +1308,65 @@
             window.addEventListener('mousemove', handleDragMove);
             window.addEventListener('mouseup', handleDragEnd);
           }
+          }
+        });
+      }
+
+      // Update the list of segments in the UI
+      function updateSegmentList() {
+        const segmentsList = document.getElementById("segmentsList");
+        const segments = peaks.segments.getSegments();
+
+        if (segments.length === 0) {
+          segmentsList.innerHTML =
+            '<p class="text-muted">No segments created yet. Drag on the waveform to create segments.</p>';
+          return;
         }
-      });
-    }
 
-    // Update the list of segments in the UI
-    function updateSegmentList() {
-      const segmentsList = document.getElementById("segmentsList");
-      const segments = peaks.segments.getSegments();
+        let html = '<div class="list-group">';
+        segments.forEach((segment, index) => {
+          const assignment = segmentSongMap[segment.id];
+          const songTitle = assignment
+            ? assignment.songTitle
+            : "No song assigned";
 
-      if (segments.length === 0) {
-        segmentsList.innerHTML =
-          '<p class="text-muted">No segments created yet. Drag on the waveform to create segments.</p>';
-        return;
-      }
-
-      let html = '<div class="list-group">';
-      segments.forEach((segment, index) => {
-        const assignment = segmentSongMap[segment.id];
-        const songTitle = assignment
-          ? assignment.songTitle
-          : "No song assigned";
-
-        html += `
+          html += `
                   <div class="list-group-item d-flex justify-content-between align-items-center ${selectedSegment && selectedSegment.id === segment.id ? 'active' : ''}">
-                      <div>
-                          <strong>Segment ${index + 1}</strong><br>
-                          <small class="text-muted">${formatTime(segment.startTime)} - ${formatTime(segment.endTime)}</small><br>
-                          <small class="text-info">${songTitle}</small>
-                      </div>
-                      <button class="btn btn-sm btn-outline-danger" onclick="deleteSegment('${segment.id}')">
-                          <i class="bi bi-trash"></i>
-                      </button>
-                  </div>
-              `;
-      });
-      html += "</div>";
+                        <div>
+                            <strong>Segment ${index + 1}</strong><br>
+                            <small class="text-muted">${formatTime(segment.startTime)} - ${formatTime(segment.endTime)}</small><br>
+                            <small class="text-info">${songTitle}</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSegment('${segment.id}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+        });
+        html += "</div>";
 
-      segmentsList.innerHTML = html;
-    }
-
-    // Update info panel for the selected segment
-    function updateSelectedSegmentInfo() {
-      const infoDiv = document.getElementById("selectedSegmentInfo");
-
-      if (!selectedSegment) {
-        infoDiv.innerHTML = '<p class="mb-0">No segment selected</p>';
-        return;
+        segmentsList.innerHTML = html;
       }
 
-      const assignment = segmentSongMap[selectedSegment.id];
+      // Update info panel for the selected segment
+      function updateSelectedSegmentInfo() {
+        const infoDiv = document.getElementById("selectedSegmentInfo");
+
+        if (!selectedSegment) {
+        infoDiv.innerHTML = '<p class="mb-0">No segment selected</p>';
+          return;
+        }
+
+        const assignment = segmentSongMap[selectedSegment.id];
       const songTitle = assignment ? `Assigned: ${assignment.songTitle}` : "No song assigned";
 
-      infoDiv.innerHTML = `
+        infoDiv.innerHTML = `
         <div>
             <div>${formatTime(selectedSegment.startTime)} - ${formatTime(selectedSegment.endTime)}</div>
             <div class="small text-info">${songTitle}</div>
-        </div>
-      `;
-    }
+                </div>
+            `;
+      }
 
     // Helper functions
       function deleteSegment(segmentId) {
@@ -1811,11 +1855,11 @@
         addDebugLog(`Assigned ${song.title} to segment ${segment.id}`);
       }
 
-    // Update process button state
-    function updateProcessButton() {
-      const btn = document.getElementById("processSplitsBtn");
-      const statusText = document.getElementById("processSplitsStatus");
-      const assignedCount = Object.keys(segmentSongMap).length;
+      // Update process button state
+      function updateProcessButton() {
+        const btn = document.getElementById("processSplitsBtn");
+        const statusText = document.getElementById("processSplitsStatus");
+        const assignedCount = Object.keys(segmentSongMap).length;
       const undoBtn = document.getElementById('undoBtn');
 
       if (peaks && peaks.segments.getSegments().length > 0) {
@@ -1824,59 +1868,59 @@
         undoBtn.disabled = true;
       }
 
-      if (assignedCount > 0) {
-        btn.disabled = false;
-        if (statusText) {
-          statusText.textContent = `${assignedCount} song(s) ready to process`;
-        }
-      } else {
-        btn.disabled = true;
-        if (statusText) {
-          statusText.textContent =
-            "Assign songs to segments to enable processing";
+        if (assignedCount > 0) {
+          btn.disabled = false;
+          if (statusText) {
+            statusText.textContent = `${assignedCount} song(s) ready to process`;
+          }
+        } else {
+          btn.disabled = true;
+          if (statusText) {
+            statusText.textContent =
+              "Assign songs to segments to enable processing";
+          }
         }
       }
-    }
 
-    // Process splits button handler
-    document
-      .getElementById("processSplitsBtn")
-      .addEventListener("click", async function () {
-        if (Object.keys(segmentSongMap).length === 0) {
-          alert("Please assign songs to segments first");
-          return;
-        }
+      // Process splits button handler
+      document
+        .getElementById("processSplitsBtn")
+        .addEventListener("click", async function () {
+          if (Object.keys(segmentSongMap).length === 0) {
+            alert("Please assign songs to segments first");
+            return;
+          }
 
-        const splits = Object.values(segmentSongMap).map((assignment) => ({
-          songId: assignment.songId,
-          songTitle: assignment.songTitle,
-          start: Math.floor(assignment.start),
-          end: Math.floor(assignment.end),
-          duration: Math.floor(assignment.end - assignment.start),
-        }));
+          const splits = Object.values(segmentSongMap).map((assignment) => ({
+            songId: assignment.songId,
+            songTitle: assignment.songTitle,
+            start: Math.floor(assignment.start),
+            end: Math.floor(assignment.end),
+            duration: Math.floor(assignment.end - assignment.start),
+          }));
 
-        // Show loading
-        this.disabled = true;
-        this.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+          // Show loading
+          this.disabled = true;
+          this.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
 
-        try {
-          const response = await fetch(
-            "/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/process",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ splits }),
-            }
-          );
+          try {
+            const response = await fetch(
+              "/setlists/<%= setlist.id %>/recordings/<%= recording.id %>/process",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ splits }),
+              }
+            );
 
-          if (response.ok) {
-            const result = await response.json();
-            alert(`Successfully split ${splits.length} songs!`);
-            window.location.href =
+            if (response.ok) {
+              const result = await response.json();
+              alert(`Successfully split ${splits.length} songs!`);
+              window.location.href =
               "/bands/<%= setlist.band.id %>/setlists/<%= setlist.id %>/recordings/<%= recording.id %>";
-          } else {
+            } else {
             const errorText = await response.text();
             let errorMessage = "Failed to process splits";
             try {
@@ -1887,30 +1931,30 @@
             }
             alert(errorMessage);
             throw new Error(errorMessage);
+            }
+          } catch (error) {
+            console.error("Processing error:", error);
+            alert("Failed to process splits. Please try again.");
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-scissors"></i> Process Splits';
           }
-        } catch (error) {
-          console.error("Processing error:", error);
-          alert("Failed to process splits. Please try again.");
-          this.disabled = false;
-          this.innerHTML = '<i class="bi bi-scissors"></i> Process Splits';
-        }
-      });
+        });
 
-    function formatTime(seconds) {
-      if (!seconds || isNaN(seconds)) return "0:00";
-      const minutes = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${minutes}:${secs.toString().padStart(2, "0")}`;
-    }
+      function formatTime(seconds) {
+        if (!seconds || isNaN(seconds)) return "0:00";
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${minutes}:${secs.toString().padStart(2, "0")}`;
+      }
 
-    function showError(message) {
-      const alertDiv = document.createElement("div");
-      alertDiv.className = "alert alert-danger alert-dismissible fade show";
-      alertDiv.innerHTML = `
-              ${message}
-              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          `;
-      document.body.insertBefore(alertDiv, document.body.firstChild);
+      function showError(message) {
+        const alertDiv = document.createElement("div");
+        alertDiv.className = "alert alert-danger alert-dismissible fade show";
+        alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+        document.body.insertBefore(alertDiv, document.body.firstChild);
     }
 
     document.addEventListener('keydown', (e) => {
@@ -1948,5 +1992,5 @@
     
     // Make confirmAddSong accessible
     window.confirmAddSong = confirmAddSong;
-  });
+    });
 </script>

@@ -497,9 +497,19 @@
 
       // Load the actual recording file
       const audioElement = document.getElementById("audio");
-      const recordingPath = window.location.origin + "<%= recording.filePath %>";
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const iosPreferred = isIOS || safari;
+      const baseUrl = window.location.origin;
+      const recordingPath = baseUrl + "<%= recording.filePath %>";
+      const iosPathRel = "<%= typeof iosPlaybackPath !== 'undefined' && iosPlaybackPath ? iosPlaybackPath : '' %>";
+      const iosPath = iosPathRel ? (baseUrl + iosPathRel) : null;
 
-      audioElement.src = recordingPath;
+      if (iosPreferred && iosPath) {
+        audioElement.src = iosPath;
+      } else {
+        audioElement.src = recordingPath;
+      }
 
       // Add audio event listeners for debugging
       audioElement.addEventListener("error", (e) => {

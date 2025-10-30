@@ -1484,6 +1484,23 @@ router.get(
         // ignore
       }
 
+      // Compute iOS-friendly playback path if available
+      let iosPlaybackPath = null;
+      try {
+        if (recording && recording.filePath) {
+          const base = path
+            .basename(recording.filePath)
+            .replace(/\.[^/.]+$/, "");
+          const candidate = `/uploads/recordings/${base}-ios.m4a`;
+          const abs = path.join(__dirname, "..", "public", candidate);
+          if (fs.existsSync(abs)) {
+            iosPlaybackPath = candidate;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
       const fullMode = req.query.full === "1";
 
       // Check if splitting is allowed (band has free pool space OR recording creator has quota space)
@@ -1509,6 +1526,7 @@ router.get(
           createdById: recording.createdById,
         },
         previewWaveformPath,
+        iosPlaybackPath,
         fullMode,
         canSplit: splitCheck.allowed,
         splitCheckMessage: splitCheck.message,

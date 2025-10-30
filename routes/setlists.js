@@ -2763,6 +2763,20 @@ router.post(
         },
       });
 
+      // Fire-and-forget iOS-friendly playback transcode if source is webm/opus
+      try {
+        const srcAbs = path.join(__dirname, "..", "public", recordingPath);
+        const outDir = path.dirname(srcAbs);
+        const baseNoExt = path.basename(srcAbs).replace(/\.[^/.]+$/, "");
+        const outAbs = path.join(outDir, `${baseNoExt}-ios.m4a`);
+        const cmd = `ffmpeg -y -i ${JSON.stringify(srcAbs)} -vn -c:a aac -b:a 160k ${JSON.stringify(outAbs)}`;
+        exec(cmd, (err) => {
+          if (err) console.warn("iOS transcode failed:", err?.message || err);
+        });
+      } catch (e) {
+        console.warn("Could not launch iOS transcode:", e?.message || e);
+      }
+
       // Recalculate band storage after successful upload
       try {
         await updateBandStorageUsage(setlist.bandId);
@@ -2971,6 +2985,20 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
       },
     });
 
+    // Fire-and-forget iOS-friendly playback transcode
+    try {
+      const srcAbs = path.join(__dirname, "..", "public", recordingPath);
+      const outDir = path.dirname(srcAbs);
+      const baseNoExt = path.basename(srcAbs).replace(/\.[^/.]+$/, "");
+      const outAbs = path.join(outDir, `${baseNoExt}-ios.m4a`);
+      const cmd = `ffmpeg -y -i ${JSON.stringify(srcAbs)} -vn -c:a aac -b:a 160k ${JSON.stringify(outAbs)}`;
+      exec(cmd, (err) => {
+        if (err) console.warn("iOS transcode failed:", err?.message || err);
+      });
+    } catch (e) {
+      console.warn("Could not launch iOS transcode:", e?.message || e);
+    }
+
     // Get setlist to access bandId
     const setlist = await prisma.setlist.findUnique({
       where: { id: setlistId },
@@ -3060,6 +3088,20 @@ router.post(
           creator: { connect: { id: userId } },
         },
       });
+
+      // Fire-and-forget iOS-friendly playback transcode
+      try {
+        const srcAbs = path.join(__dirname, "..", "public", recordingPath);
+        const outDir = path.dirname(srcAbs);
+        const baseNoExt = path.basename(srcAbs).replace(/\.[^/.]+$/, "");
+        const outAbs = path.join(outDir, `${baseNoExt}-ios.m4a`);
+        const cmd = `ffmpeg -y -i ${JSON.stringify(srcAbs)} -vn -c:a aac -b:a 160k ${JSON.stringify(outAbs)}`;
+        exec(cmd, (err) => {
+          if (err) console.warn("iOS transcode failed:", err?.message || err);
+        });
+      } catch (e) {
+        console.warn("Could not launch iOS transcode:", e?.message || e);
+      }
 
       // Recalculate band storage after successful upload
       try {

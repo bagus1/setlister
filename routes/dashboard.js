@@ -97,7 +97,7 @@ router.get("/", async (req, res) => {
       });
 
       res.render("dashboard/index", {
-        title: "",
+        title: "Home",
         pageTitle: `Welcome, ${req.session.user.username}`,
         loggedIn: true,
         user: req.session.user,
@@ -144,7 +144,7 @@ router.get("/", async (req, res) => {
       });
 
       res.render("dashboard/index", {
-        title: "The Band Plan",
+        title: "Home",
         pageTitle: "The Band Plan",
         loggedIn: false,
         bands,

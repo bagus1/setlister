@@ -449,7 +449,7 @@ class RecordingManager {
     const source = this.audioContext.createMediaStreamSource(this.stream);
 
     source.connect(this.analyser);
-    this.analyser.fftSize = 256;
+    this.analyser.fftSize = 1024; // higher resolution for denser waveform
 
     const bufferLength = this.analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
@@ -461,7 +461,7 @@ class RecordingManager {
       canvasCtx.fillStyle = "#f8f9fa";
       canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
-      canvasCtx.lineWidth = 2;
+      canvasCtx.lineWidth = 1.25;
       canvasCtx.strokeStyle = "#dc3545";
       canvasCtx.beginPath();
 

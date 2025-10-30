@@ -47,7 +47,7 @@
             <div class="recording-info">
                 <div class="timer" id="recordingTimer">00:00:00</div>
                 <div class="setlist-name">Setlist</div>
-                <canvas id="miniWaveform" width="290" height="40"></canvas>
+                <canvas id="miniWaveform" width="290" height="60"></canvas>
             </div>
             
             <div class="widget-controls">
@@ -261,42 +261,7 @@
             }
         }
         
-        /* Hide text in Record and Profile buttons on narrow screens */
-        @media (max-width: 1144px) {
-            .nav-record-button {
-                color: transparent !important;
-                font-size: 0 !important;
-            }
-            
-            /* Keep icon visible */
-            .nav-record-button i {
-                color: white !important;
-                font-size: 1.2rem !important;
-            }
-            
-            /* Hide Profile username text, keep icon */
-            #navbarDropdown {
-                font-size: 0 !important;
-                color: transparent !important;
-            }
-            
-            #navbarDropdown i {
-                color: white !important;
-                font-size: 1.2rem !important;
-            }
-            
-            /* Add right padding to Record and Profile buttons */
-            .navbar-nav:last-child .nav-item {
-                padding-right: 65px;
-            }
-        }
-        
-        /* Add padding for larger screens */
-        @media (min-width: 1145px) {
-            .navbar-nav:last-child .nav-item:first-child {
-                padding-right: 10px;
-            }
-        }
+        /* Removed 1144px text-hiding breakpoint. Adjust sizes instead at ~1200px. */
         
         /* Prevent center nav from changing size at breakpoints */
         .center-main-nav .nav-link {
@@ -304,7 +269,7 @@
             flex-shrink: 0;
         }
         
-        /* Shrink nav elements between 750px and 1200px */
+        /* Shrink nav elements between 750px and 1200px (keep text visible) */
         @media (min-width: 751px) and (max-width: 1200px) {
             .center-main-nav .nav-link {
                 padding: 25px 20px !important;
@@ -314,6 +279,37 @@
             /* Reduce icon sizes */
             .center-main-nav .nav-link i {
                 font-size: 0.75rem;
+            }
+
+            /* Make Record and Profile buttons proportionally smaller but keep text */
+            .nav-record-button {
+                padding: 3px 8px !important; /* 25% smaller */
+                font-size: 0.64rem !important; /* ~25% smaller than 0.85rem */
+            }
+
+            .nav-record-button i {
+                font-size: 0.71rem !important; /* ~25% smaller than 0.95rem */
+            }
+
+            /* Profile dropdown trigger */
+            #navbarDropdown {
+                font-size: 0.64rem !important; /* match record button text */
+                padding: 3px 8px !important; /* 25% smaller */
+            }
+            #navbarDropdown i {
+                font-size: 0.71rem !important; /* match record button icon */
+            }
+
+            /* Recording button li spacing in condensed layout */
+            .navbar-nav:last-child .nav-item:first-child {
+                margin-right: 7px !important;
+            }
+        }
+
+        /* Recording button li spacing in full layout */
+        @media (min-width: 1201px) {
+            .navbar-nav:last-child .nav-item:first-child {
+                margin-right: 10px !important;
             }
         }
         

@@ -41,6 +41,10 @@
                 <div class="card-body bg-dark">
                     <% if (recordings && recordings.length > 0) { %>
                         <div class="table-responsive">
+                            <style>
+                                .row-link { cursor: pointer; }
+                                .row-link:hover { background-color: rgba(255,255,255,0.05) !important; }
+                            </style>
                             <table class="table table-hover table-dark">
                                 <thead>
                                     <tr>
@@ -62,7 +66,7 @@
                                         const filename = recording.filePath.split('/').pop() || 'Unknown';
                                         const format = filename.split('.').pop() || recording.format || 'webm';
                                         %>
-                                        <tr>
+                                        <tr class="row-link" onclick="window.location='/admin/recordings/<%= recording.id %>'">
                                             <td><%= recording.id %></td>
                                             <td>
                                                 <code><%= filename.substring(0, 30) %><%= filename.length > 30 ? '...' : '' %></code>

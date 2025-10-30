@@ -95,7 +95,7 @@
           <div id="loadingStatus" class="mt-1">
             <small class="text-muted">Preparing waveform (a 500&nbsp;MB file may take about a minute to load the waveform)...</small>
           </div>
-          <!-- Safari unlock button (shown only on Safari) -->
+          <!-- Unlock button (shown for all as a fallback) -->
           <div class="mt-2" id="safariUnlockContainer" style="display: none;">
             <button id="safariLoadBtn" class="btn btn-sm btn-outline-primary">
               <i class="bi bi-lightning"></i> Click to load waveform
@@ -639,6 +639,8 @@
 
       // Determine waveform source
       let waveformSource;
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const forceFullDetail = <%= typeof fullMode !== 'undefined' && fullMode ? 'true' : 'false' %>;
       <% if (typeof useWebAudio !== 'undefined' && useWebAudio) { %>
       waveformSource = {
         webAudio: {
@@ -648,12 +650,30 @@
         }
       };
       <% } else if (typeof recording !== 'undefined' && recording.waveformPath) { %>
+      <% if (typeof previewWaveformPath !== 'undefined' && previewWaveformPath) { %>
+      if (isMobile && !forceFullDetail) {
+        waveformSource = {
+          dataUri: {
+            arraybuffer: "<%= previewWaveformPath %>",
+            scale: 128
+          }
+        };
+      } else {
+        waveformSource = {
+          dataUri: {
+            arraybuffer: "<%= recording.waveformPath %>",
+            scale: 512
+          }
+        };
+      }
+      <% } else { %>
       waveformSource = {
         dataUri: {
           arraybuffer: "<%= recording.waveformPath %>",
-          scale: 512  // Match the -z 512 we use in audiowaveform
+          scale: 512
         }
       };
+      <% } %>
       <% } else { %>
       waveformSource = {
         webAudio: {

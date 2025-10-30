@@ -2921,6 +2921,37 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
       duration = 0;
     }
 
+    // Generate a lightweight preview waveform for mobile
+    try {
+      const { exec } = require("child_process");
+      const waveformsDir = path.join(
+        __dirname,
+        "..",
+        "public",
+        "uploads",
+        "waveforms"
+      );
+      if (!fs.existsSync(waveformsDir)) {
+        fs.mkdirSync(waveformsDir, { recursive: true });
+      }
+      const base = path.basename(finalPath).replace(/\.[^/.]+$/, "");
+      const previewOut = path.join(waveformsDir, `preview-${base}.dat`);
+      const cmd = `audiowaveform -i ${JSON.stringify(finalPath)} -o ${JSON.stringify(previewOut)} -z 128`;
+      exec(cmd, (err) => {
+        if (err) {
+          console.warn(
+            "Preview waveform generation failed:",
+            err?.message || err
+          );
+        }
+      });
+    } catch (e) {
+      console.warn(
+        "Could not launch preview waveform generation:",
+        e?.message || e
+      );
+    }
+
     // Create recording record
     // Use bestMemberId if provided (for attribution to member with available space)
     // Otherwise use the current user
@@ -2931,11 +2962,11 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
 
     const recording = await prisma.recording.create({
       data: {
-        setlistId: setlistId,
+        setlist: { connect: { id: setlistId } },
         filePath: recordingPath,
         fileSize: BigInt(stats.size),
-        duration: duration,
-        format: path.extname(originalFileName).substring(1) || "mp3",
+        duration: Number.isFinite(duration) ? duration : 0,
+        format: path.extname(originalFileName).substring(1) || "webm",
         createdById: createdById,
       },
     });

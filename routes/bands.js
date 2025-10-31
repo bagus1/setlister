@@ -1475,8 +1475,8 @@ router.get(
             .basename(recording.filePath)
             .replace(/\.[^/.]+$/, "");
 
-          // Check for each zoom level (1=128, 2=256, 3=512 samples/pixel)
-          for (let level = 1; level <= 3; level++) {
+          // Check for each zoom level (1=64, 2=128, 3=256, 4=512 samples/pixel)
+          for (let level = 1; level <= 4; level++) {
             const candidate = `/uploads/waveforms/zoom${level}-${base}.dat`;
             const abs = path.join(__dirname, "..", "public", candidate);
             if (fs.existsSync(abs)) {

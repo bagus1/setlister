@@ -681,10 +681,12 @@
         dataUri: {
           <% if (zoomLevels[1]) { %>1: baseUrl + "<%= zoomLevels[1] %>",<% } %>
           <% if (zoomLevels[2]) { %>2: baseUrl + "<%= zoomLevels[2] %>",<% } %>
-          <% if (zoomLevels[3]) { %>3: baseUrl + "<%= zoomLevels[3] %>"<% } %>
+          <% if (zoomLevels[3]) { %>3: baseUrl + "<%= zoomLevels[3] %>",<% } %>
+          <% if (zoomLevels[4]) { %>4: baseUrl + "<%= zoomLevels[4] %>"<% } %>
         }
       };
       addDebugLog("Using progressive zoom levels: " + <%- JSON.stringify(Object.keys(zoomLevels)) %>);
+      addDebugLog("Mobile device detected: " + isMobile + ", starting with lowest resolution");
       <% } else if (recording.waveformPath) { %>
       // Fallback to single waveform file
       waveformSource = {

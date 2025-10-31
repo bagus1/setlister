@@ -2950,22 +2950,27 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
       }
       const base = path.basename(finalPath).replace(/\.[^/.]+$/, "");
 
-      // Generate 3 zoom levels progressively
+      // Generate 4 zoom levels progressively (lower resolution for mobile)
       const zoomLevels = [
         {
           level: 1,
-          samples: 128,
+          samples: 64,
           file: path.join(waveformsDir, `zoom1-${base}.dat`),
         },
         {
           level: 2,
-          samples: 256,
+          samples: 128,
           file: path.join(waveformsDir, `zoom2-${base}.dat`),
         },
         {
           level: 3,
-          samples: 512,
+          samples: 256,
           file: path.join(waveformsDir, `zoom3-${base}.dat`),
+        },
+        {
+          level: 4,
+          samples: 512,
+          file: path.join(waveformsDir, `zoom4-${base}.dat`),
         },
       ];
 
@@ -3178,22 +3183,27 @@ router.post(
         }
         const base = path.basename(audioPath).replace(/\.[^/.]+$/, "");
 
-        // Generate 3 zoom levels progressively
+        // Generate 4 zoom levels progressively (lower resolution for mobile)
         const zoomLevels = [
           {
             level: 1,
-            samples: 128,
+            samples: 64,
             file: path.join(waveformsDir, `zoom1-${base}.dat`),
           },
           {
             level: 2,
-            samples: 256,
+            samples: 128,
             file: path.join(waveformsDir, `zoom2-${base}.dat`),
           },
           {
             level: 3,
-            samples: 512,
+            samples: 256,
             file: path.join(waveformsDir, `zoom3-${base}.dat`),
+          },
+          {
+            level: 4,
+            samples: 512,
+            file: path.join(waveformsDir, `zoom4-${base}.dat`),
           },
         ];
 

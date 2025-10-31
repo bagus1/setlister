@@ -157,6 +157,65 @@ app.use("/quick-record", quickRecordRoutes);
 app.use("/pricing", pricingRoutes);
 app.use("/admin", require("./routes/admin"));
 
+// Public Albums List Route - MUST BE BEFORE /:bandSlug/:albumSlug
+app.get("/albums", async (req, res) => {
+  try {
+    const { prisma } = require("./lib/prisma");
+
+    // Get all published albums from public bands
+    const albums = await prisma.album.findMany({
+      where: {
+        isPublished: true,
+        band: {
+          isPublic: true,
+        },
+      },
+      include: {
+        band: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        tracks: {
+          select: {
+            id: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          releaseDate: "desc",
+        },
+        {
+          createdAt: "desc",
+        },
+      ],
+    });
+
+    // Filter out albums that haven't been released yet
+    const now = new Date();
+    const releasedAlbums = albums.filter((album) => {
+      if (!album.releaseDate) return true; // No release date = available
+      return new Date(album.releaseDate) <= now;
+    });
+
+    res.render("albums/index", {
+      title: "Albums - The Band Plan",
+      pageTitle: "Albums",
+      albums: releasedAlbums,
+      layout: "layout",
+    });
+  } catch (error) {
+    console.error("Public albums list error:", error);
+    res.status(500).render("error", {
+      title: "Error",
+      message: "An error occurred loading albums.",
+    });
+  }
+});
+
 // Public Album Page Route - Check for /:bandSlug/:albumSlug pattern
 app.get("/:bandSlug/:albumSlug", async (req, res) => {
   try {
@@ -178,7 +237,7 @@ app.get("/:bandSlug/:albumSlug", async (req, res) => {
           include: {
             photos: {
               orderBy: {
-                sortOrder: 'asc',
+                sortOrder: "asc",
               },
             },
             socialLinks: true,
@@ -197,7 +256,7 @@ app.get("/:bandSlug/:albumSlug", async (req, res) => {
             },
           },
           orderBy: {
-            order: 'asc',
+            order: "asc",
           },
         },
       },
@@ -211,8 +270,10 @@ app.get("/:bandSlug/:albumSlug", async (req, res) => {
         if (releaseDate > now) {
           const timeDiff = releaseDate - now;
           const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-          const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          
+          const hours = Math.floor(
+            (timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+          );
+
           return res.status(403).send(`
             <html>
               <head>
@@ -227,11 +288,11 @@ app.get("/:bandSlug/:albumSlug", async (req, res) => {
                   <p class="lead">${album.title} by ${album.band.name}</p>
                   <p class="text-muted">
                     This album will be released on<br>
-                    <strong>${releaseDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} 
-                    at ${releaseDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</strong>
+                    <strong>${releaseDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} 
+                    at ${releaseDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</strong>
                   </p>
                   <p class="text-info">
-                    ${days > 0 ? `${days} day${days !== 1 ? 's' : ''}, ` : ''}${hours} hour${hours !== 1 ? 's' : ''} remaining
+                    ${days > 0 ? `${days} day${days !== 1 ? "s" : ""}, ` : ""}${hours} hour${hours !== 1 ? "s" : ""} remaining
                   </p>
                   <a href="/${album.band.slug}" class="btn btn-primary mt-3">Back to Band Page</a>
                 </div>
@@ -240,13 +301,13 @@ app.get("/:bandSlug/:albumSlug", async (req, res) => {
           `);
         }
       }
-      
+
       // Found an album and it's released - render the player
       return res.render("albums/player", {
         title: `${album.title} - ${album.band.name}`,
         marqueeTitle: album.band.name,
         album,
-        layout: 'layout',
+        layout: "layout",
       });
     }
 
@@ -271,7 +332,7 @@ app.get("/:slug", async (req, res) => {
     const { prisma } = require("./lib/prisma");
 
     const band = await prisma.band.findFirst({
-      where: { 
+      where: {
         slug,
         isPublic: true, // Only show if band made it public
       },
@@ -296,37 +357,37 @@ app.get("/:slug", async (req, res) => {
             },
           },
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
         photos: {
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
         videos: {
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
         audioSamples: {
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
         logos: {
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
         pressQuotes: {
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
         socialLinks: {
           orderBy: {
-            sortOrder: 'asc',
+            sortOrder: "asc",
           },
         },
         albums: {
@@ -341,12 +402,12 @@ app.get("/:slug", async (req, res) => {
             },
           },
           orderBy: {
-            releaseDate: 'desc',
+            releaseDate: "desc",
           },
         },
         gigs: {
           where: {
-            status: 'CONFIRMED',
+            status: "CONFIRMED",
             gigDate: {
               gte: new Date(), // Future gigs only
             },
@@ -355,7 +416,7 @@ app.get("/:slug", async (req, res) => {
             venue: true,
           },
           orderBy: {
-            gigDate: 'asc',
+            gigDate: "asc",
           },
           take: 10,
         },
@@ -373,14 +434,14 @@ app.get("/:slug", async (req, res) => {
     // Check if current user is a member of this band
     let isBandMember = false;
     if (req.session.user) {
-      isBandMember = band.members.some(m => m.userId === req.session.user.id);
+      isBandMember = band.members.some((m) => m.userId === req.session.user.id);
     }
 
     res.render("bands/public-page", {
       title: band.name,
       band,
       hasBandHeader: true,
-      layout: 'layout',
+      layout: "layout",
       isBandMember,
       loggedIn: !!req.session.user,
     });

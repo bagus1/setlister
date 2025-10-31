@@ -131,12 +131,11 @@
                         <div class="tab-pane fade show active" id="tracks" role="tabpanel">
                             <div class="list-group list-group-flush">
                                 <% album.tracks.forEach((track, index) => { %>
-                                    <div class="list-group-item track-list-item" 
+                                    <div class="list-group-item track-list-item<%= track.audioUrl ? ' track-clickable' : '' %>" 
                                          data-index="<%= index %>"
                                          data-url="<%= track.audioUrl || '' %>"
                                          data-title="<%= track.song.title %>"
-                                         data-artist="<%= track.song.artists && track.song.artists.length > 0 ? track.song.artists.map(sa => sa.artist.name).join(', ') : '' %>"
-                                         <%= track.audioUrl ? 'style="cursor: pointer;" onclick="loadTrackFromElement(this)"' : '' %>>
+                                         data-artist="<%= track.song.artists && track.song.artists.length > 0 ? track.song.artists.map(sa => sa.artist.name).join(', ') : '' %>">
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-light text-dark me-3" style="width: 35px;">
                                                 <%= index + 1 %>
@@ -304,15 +303,22 @@
     transition: background 0.2s, color 0.2s;
 }
 
+.track-clickable {
+    cursor: pointer;
+}
+
+.track-clickable:hover,
 .track-list-item[style*="cursor: pointer"]:hover {
     background: #343a40 !important;
     color: white !important;
 }
 
+.track-clickable:hover .song-title,
 .track-list-item:hover .song-title {
     color: white !important;
 }
 
+.track-clickable:hover .badge,
 .track-list-item:hover .badge {
     background: #495057 !important;
     color: white !important;
@@ -352,6 +358,13 @@ document.addEventListener('DOMContentLoaded', function() {
             title: item.dataset.title,
             artist: item.dataset.artist
         }));
+    
+    // Add click listeners to all clickable tracks
+    document.querySelectorAll('.track-clickable').forEach(item => {
+        item.addEventListener('click', function() {
+            loadTrackFromElement(this);
+        });
+    });
     
     if (playlist.length > 0 && audioPlayer) {
         updateButtons();
@@ -436,10 +449,28 @@ if (audioPlayer) {
 
 // Click on track to play
 function loadTrackFromElement(element) {
-    const trackItems = Array.from(document.querySelectorAll('.track-list-item[data-url]')).filter(i => i.dataset.url);
-    const index = trackItems.indexOf(element);
-    if (index >= 0) {
-        loadTrack(index);
+    // Get the track URL from data attribute
+    const trackUrl = element.getAttribute('data-url');
+    if (!trackUrl || !trackUrl.trim()) {
+        console.warn('No audio URL for this track');
+        return; // No audio URL, can't play
+    }
+    
+    // Find the corresponding index in the playlist (normalize URLs for comparison)
+    const normalizedTrackUrl = trackUrl.trim();
+    const playlistIndex = playlist.findIndex(p => {
+        const normalizedPlaylistUrl = p.url.trim();
+        return normalizedPlaylistUrl === normalizedTrackUrl || 
+               normalizedPlaylistUrl === trackUrl || 
+               p.url === normalizedTrackUrl ||
+               p.url === trackUrl;
+    });
+    
+    if (playlistIndex >= 0) {
+        loadTrack(playlistIndex);
+    } else {
+        console.warn('Track URL not found in playlist:', trackUrl);
+        console.warn('Available playlist URLs:', playlist.map(p => p.url));
     }
 }
 

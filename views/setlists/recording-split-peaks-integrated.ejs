@@ -92,7 +92,7 @@
                 style="width: 0%"
               ></div>
             </div>
-          <div id="loadingStatus" class="mt-1">
+            <div id="loadingStatus" class="mt-1">
             <small class="text-muted">Preparing waveform (a 500&nbsp;MB file may take about a minute to load the waveform)...</small>
           </div>
           <!-- Unlock button (shown for all as a fallback) -->
@@ -100,7 +100,7 @@
             <button id="safariLoadBtn" class="btn btn-sm btn-outline-primary">
               <i class="bi bi-lightning"></i> Click to load waveform
             </button>
-          </div>
+            </div>
             <div id="loadingNote" class="mt-2" style="display: none">
               <small class="text-info">
                 <i class="bi bi-info-circle"></i>
@@ -504,16 +504,25 @@
       const recordingPath = baseUrl + "<%= recording.filePath %>";
       const iosPathRel = "<%= typeof iosPlaybackPath !== 'undefined' && iosPlaybackPath ? iosPlaybackPath : '' %>";
       const iosPath = iosPathRel ? (baseUrl + iosPathRel) : null;
+      let triedIosPath = false;
 
+      // Try iOS path first if available, fallback to original WebM
       if (iosPreferred && iosPath) {
         audioElement.src = iosPath;
+        triedIosPath = true;
       } else {
-        audioElement.src = recordingPath;
+      audioElement.src = recordingPath;
       }
 
-      // Add audio event listeners for debugging
+      // Add audio event listeners for debugging and fallback
       audioElement.addEventListener("error", (e) => {
         addDebugLog("Audio error: " + e.message);
+        // If iOS path failed, try the original WebM
+        if (triedIosPath && audioElement.src === iosPath) {
+          addDebugLog("iOS path failed, falling back to original WebM");
+          audioElement.src = recordingPath;
+          triedIosPath = false; // Prevent infinite loop
+        }
       });
 
       // Populate songs list
@@ -660,29 +669,31 @@
         }
       };
       <% } else if (typeof recording !== 'undefined' && recording.waveformPath) { %>
-      <% if (typeof previewWaveformPath !== 'undefined' && previewWaveformPath) { %>
-      if (isMobile && !forceFullDetail) {
-        waveformSource = {
-          dataUri: {
-            arraybuffer: "<%= previewWaveformPath %>",
-            scale: 128
-          }
-        };
-      } else {
-        waveformSource = {
-          dataUri: {
-            arraybuffer: "<%= recording.waveformPath %>",
-            scale: 512
-          }
-        };
-      }
-      <% } else { %>
+      // Check for progressive zoom levels
+      <% 
+      const zoomLevels = typeof waveformZoomLevels !== 'undefined' && waveformZoomLevels ? waveformZoomLevels : {};
+      const hasProgressiveZoom = zoomLevels && Object.keys(zoomLevels).length >= 2;
+      %>
+      <% if (hasProgressiveZoom) { %>
+      // Use progressive zoom levels (loads lowest first, higher on zoom)
+      const baseUrl = window.location.origin;
+      waveformSource = {
+        dataUri: {
+          <% if (zoomLevels[1]) { %>1: baseUrl + "<%= zoomLevels[1] %>",<% } %>
+          <% if (zoomLevels[2]) { %>2: baseUrl + "<%= zoomLevels[2] %>",<% } %>
+          <% if (zoomLevels[3]) { %>3: baseUrl + "<%= zoomLevels[3] %>"<% } %>
+        }
+      };
+      addDebugLog("Using progressive zoom levels: " + <%- JSON.stringify(Object.keys(zoomLevels)) %>);
+      <% } else if (recording.waveformPath) { %>
+      // Fallback to single waveform file
       waveformSource = {
         dataUri: {
           arraybuffer: "<%= recording.waveformPath %>",
           scale: 512
         }
       };
+      addDebugLog("Using single waveform file: <%= recording.waveformPath %>");
       <% } %>
       <% } else { %>
       waveformSource = {

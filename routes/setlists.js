@@ -2935,7 +2935,7 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
       duration = 0;
     }
 
-    // Generate a lightweight preview waveform for mobile
+    // Generate progressive zoom levels for waveform (128, 256, 512 samples/pixel)
     try {
       const { exec } = require("child_process");
       const waveformsDir = path.join(
@@ -2949,19 +2949,41 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
         fs.mkdirSync(waveformsDir, { recursive: true });
       }
       const base = path.basename(finalPath).replace(/\.[^/.]+$/, "");
-      const previewOut = path.join(waveformsDir, `preview-${base}.dat`);
-      const cmd = `audiowaveform -i ${JSON.stringify(finalPath)} -o ${JSON.stringify(previewOut)} -z 128`;
-      exec(cmd, (err) => {
-        if (err) {
-          console.warn(
-            "Preview waveform generation failed:",
-            err?.message || err
-          );
-        }
+
+      // Generate 3 zoom levels progressively
+      const zoomLevels = [
+        {
+          level: 1,
+          samples: 128,
+          file: path.join(waveformsDir, `zoom1-${base}.dat`),
+        },
+        {
+          level: 2,
+          samples: 256,
+          file: path.join(waveformsDir, `zoom2-${base}.dat`),
+        },
+        {
+          level: 3,
+          samples: 512,
+          file: path.join(waveformsDir, `zoom3-${base}.dat`),
+        },
+      ];
+
+      // Generate each level
+      zoomLevels.forEach(({ level, samples, file }) => {
+        const cmd = `audiowaveform -i ${JSON.stringify(finalPath)} -o ${JSON.stringify(file)} -b 8 -z ${samples}`;
+        exec(cmd, (err) => {
+          if (err) {
+            console.warn(
+              `Waveform zoom level ${level} (${samples} samples) generation failed:`,
+              err?.message || err
+            );
+          }
+        });
       });
     } catch (e) {
       console.warn(
-        "Could not launch preview waveform generation:",
+        "Could not launch progressive waveform generation:",
         e?.message || e
       );
     }
@@ -3119,7 +3141,7 @@ router.post(
       const datPath = audioPath.replace(/\.(mp3|wav|m4a|ogg)$/, ".dat");
       const waveformPath = `/uploads/recordings/${path.basename(datPath)}`;
 
-      // Generate waveform with higher zoom for better timing accuracy
+      // Generate waveform with higher zoom for better timing accuracy (keep for backwards compatibility)
       exec(
         `audiowaveform -i "${audioPath}" -o "${datPath}" -b 8 -z 512`,
         async (error, stdout, stderr) => {
@@ -3141,6 +3163,58 @@ router.post(
           }
         }
       );
+
+      // Generate progressive zoom levels for mobile/memory efficiency
+      try {
+        const waveformsDir = path.join(
+          __dirname,
+          "..",
+          "public",
+          "uploads",
+          "waveforms"
+        );
+        if (!fs.existsSync(waveformsDir)) {
+          fs.mkdirSync(waveformsDir, { recursive: true });
+        }
+        const base = path.basename(audioPath).replace(/\.[^/.]+$/, "");
+
+        // Generate 3 zoom levels progressively
+        const zoomLevels = [
+          {
+            level: 1,
+            samples: 128,
+            file: path.join(waveformsDir, `zoom1-${base}.dat`),
+          },
+          {
+            level: 2,
+            samples: 256,
+            file: path.join(waveformsDir, `zoom2-${base}.dat`),
+          },
+          {
+            level: 3,
+            samples: 512,
+            file: path.join(waveformsDir, `zoom3-${base}.dat`),
+          },
+        ];
+
+        // Generate each level
+        zoomLevels.forEach(({ level, samples, file }) => {
+          const cmd = `audiowaveform -i "${audioPath}" -o "${file}" -b 8 -z ${samples}`;
+          exec(cmd, (err) => {
+            if (err) {
+              console.warn(
+                `Waveform zoom level ${level} (${samples} samples) generation failed:`,
+                err?.message || err
+              );
+            }
+          });
+        });
+      } catch (e) {
+        console.warn(
+          "Could not launch progressive waveform generation:",
+          e?.message || e
+        );
+      }
 
       res.json({
         success: true,

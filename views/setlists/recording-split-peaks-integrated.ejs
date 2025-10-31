@@ -1075,6 +1075,17 @@
         return null;
       }
 
+      // Helper function to get clientX from mouse or touch events
+      const getClientX = (e) => {
+        if (e.touches && e.touches.length > 0) {
+          return e.touches[0].clientX;
+        }
+        if (e.changedTouches && e.changedTouches.length > 0) {
+          return e.changedTouches[0].clientX;
+        }
+        return e.clientX;
+      };
+
       // Define drag handlers before they're referenced
       const handleDragMove = (e) => {
         e.preventDefault();
@@ -1084,7 +1095,7 @@
           // Handle segment resizing
           isDragging = true;
             const rect = zoomviewContainer.getBoundingClientRect();
-            const x = e.clientX - rect.left;
+            const x = getClientX(e) - rect.left;
             const zoomview = peaks.views.getView("zoomview");
 
               const startTime = zoomview.getStartTime();
@@ -1108,7 +1119,7 @@
           // Handle new segment creation
           isDragging = true;
             const rect = zoomviewContainer.getBoundingClientRect();
-            const x = e.clientX - rect.left;
+            const x = getClientX(e) - rect.left;
             const zoomview = peaks.views.getView("zoomview");
 
           // Manual calculation since pointer events are disabled on canvas
@@ -1161,6 +1172,8 @@
       const handleDragEnd = (e) => {
         window.removeEventListener('mousemove', handleDragMove);
         window.removeEventListener('mouseup', handleDragEnd);
+        window.removeEventListener('touchmove', handleDragMove);
+        window.removeEventListener('touchend', handleDragEnd);
 
         if (isResizing && resizeSegment) {
           // Resize complete
@@ -1248,13 +1261,14 @@
 
       const handlePanMove = (e) => {
         if (!isPanning) return;
-        const dx = e.clientX - panStartX;
+        const clientX = getClientX(e);
+        const dx = clientX - panStartX;
         const zoomview = peaks.views.getView("zoomview");
         const duration = zoomview.getEndTime() - zoomview.getStartTime();
         const pixelsPerSecond = zoomviewContainer.offsetWidth / duration;
         const timeOffset = dx / pixelsPerSecond;
         zoomview.setStartTime(zoomview.getStartTime() - timeOffset);
-        panStartX = e.clientX;
+        panStartX = clientX;
         e.preventDefault();
       };
 
@@ -1264,29 +1278,35 @@
           zoomviewContainer.style.cursor = "default";
           window.removeEventListener("mousemove", handlePanMove);
           window.removeEventListener("mouseup", handlePanEnd);
+          window.removeEventListener("touchmove", handlePanMove);
+          window.removeEventListener("touchend", handlePanEnd);
           e.preventDefault();
         }
       };
 
       // Prevent overview clicks from resetting zoom
       const overviewContainer = document.getElementById("overview-container");
-      overviewContainer.addEventListener("mousedown", (e) => {
+      const handleOverviewDown = (e) => {
         storeCurrentZoom();
         // Use a timeout to restore the zoom after Peaks.js has finished its default action
-            setTimeout(() => {
-              restoreZoomIfNeeded();
+        setTimeout(() => {
+          restoreZoomIfNeeded();
         }, 50);
-      });
+      };
+      overviewContainer.addEventListener("mousedown", handleOverviewDown);
+      overviewContainer.addEventListener("touchstart", handleOverviewDown);
 
-      // Use event capturing (true parameter) to intercept BEFORE Peaks.js handlers
-      zoomviewContainer.addEventListener("mousedown", (e) => {
-        // Check for pan mode (Option/Alt key)
+      // Helper function to handle touch/mouse down events
+      const handlePointerDown = (e) => {
+        // Check for pan mode (Option/Alt key - desktop only)
         if (e.altKey) {
           isPanning = true;
-          panStartX = e.clientX;
+          panStartX = getClientX(e);
           zoomviewContainer.style.cursor = "grabbing";
           window.addEventListener("mousemove", handlePanMove);
           window.addEventListener("mouseup", handlePanEnd);
+          window.addEventListener("touchmove", handlePanMove);
+          window.addEventListener("touchend", handlePanEnd);
           e.stopPropagation();
           e.preventDefault();
           return;
@@ -1300,9 +1320,9 @@
         // Store current zoom before interaction
         storeCurrentZoom();
 
-        // Calculate click position and time
+        // Calculate click/touch position and time
         const rect = zoomviewContainer.getBoundingClientRect();
-        const x = e.clientX - rect.left;
+        const x = getClientX(e) - rect.left;
         const zoomview = peaks.views.getView("zoomview");
 
         // Convert pixel position to time
@@ -1325,6 +1345,8 @@
           zoomviewContainer.style.cursor = 'ew-resize';
           window.addEventListener('mousemove', handleDragMove);
           window.addEventListener('mouseup', handleDragEnd);
+          window.addEventListener('touchmove', handleDragMove);
+          window.addEventListener('touchend', handleDragEnd);
         } else {
           // Check if clicking inside a segment (for selection)
           const clickedSegment = findSegmentAtTime(time);
@@ -1350,9 +1372,16 @@
             dragStartX = x;
             window.addEventListener('mousemove', handleDragMove);
             window.addEventListener('mouseup', handleDragEnd);
+            window.addEventListener('touchmove', handleDragMove);
+            window.addEventListener('touchend', handleDragEnd);
           }
           }
-        });
+      };
+
+      // Use event capturing to intercept BEFORE Peaks.js handlers
+      // Support both mouse and touch events
+      zoomviewContainer.addEventListener("mousedown", handlePointerDown);
+      zoomviewContainer.addEventListener("touchstart", handlePointerDown, { passive: false });
       }
 
       // Update the list of segments in the UI

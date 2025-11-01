@@ -572,7 +572,24 @@
         safari: safari,
         isIOS: isIOS,
         memoryUsed: performance.memory ? performance.memory.usedJSHeapSize : null,
-        memoryLimit: performance.memory ? performance.memory.jsHeapSizeLimit : null
+        memoryLimit: performance.memory ? performance.memory.jsHeapSizeLimit : null,
+        pageLoadTime: Date.now()
+      });
+      
+      // Also log periodically to track if page is still alive
+      let heartbeatCount = 0;
+      const heartbeatInterval = setInterval(() => {
+        heartbeatCount++;
+        sendLogToServer('info', 'Page heartbeat', {
+          heartbeatCount: heartbeatCount,
+          timeSinceLoad: Date.now() - pageLoadTime,
+          memoryUsed: performance.memory ? performance.memory.usedJSHeapSize : null
+        });
+      }, 3000); // Every 3 seconds
+      
+      // Clear interval when page unloads (if beforeunload fires)
+      window.addEventListener('beforeunload', () => {
+        clearInterval(heartbeatInterval);
       });
 
       // Prevent Safari from killing the page - keep a reference to prevent garbage collection

@@ -12125,7 +12125,7 @@ router.post("/api/client-log", express.json(), async (req, res) => {
   try {
     // Handle both JSON body and Blob (from sendBeacon)
     let logPayload;
-    if (typeof req.body === 'string') {
+    if (typeof req.body === "string") {
       // sendBeacon sends as Blob/text
       try {
         logPayload = JSON.parse(req.body);
@@ -12135,7 +12135,7 @@ router.post("/api/client-log", express.json(), async (req, res) => {
     } else {
       logPayload = req.body;
     }
-    
+
     const { level, message, data, url, timestamp, userAgent } = logPayload;
     const userId = req.session?.user?.id || null;
 

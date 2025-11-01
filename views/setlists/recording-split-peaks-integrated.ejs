@@ -820,15 +820,14 @@
       const hasProgressiveZoom = zoomLevels && Object.keys(zoomLevels).length >= 2;
       const hasSingleZoom = zoomLevels && Object.keys(zoomLevels).length === 1;
       
-      // Debug logging for template
-      console.log('[TEMPLATE] waveformZoomLevels:', <%- JSON.stringify(waveformZoomLevels) %>);
-      console.log('[TEMPLATE] zoomLevels:', <%- JSON.stringify(zoomLevels) %>);
-      console.log('[TEMPLATE] hasProgressiveZoom:', hasProgressiveZoom);
-      console.log('[TEMPLATE] hasSingleZoom:', hasSingleZoom);
-      console.log('[TEMPLATE] zoomLevels[1]:', <%- JSON.stringify(zoomLevels[1]) %>);
-      
       // Note: Safari detection happens client-side below, not in EJS
       %>
+      // Debug logging (client-side)
+      addDebugLog('[TEMPLATE] waveformZoomLevels: ' + <%- JSON.stringify(waveformZoomLevels) %>);
+      addDebugLog('[TEMPLATE] zoomLevels: ' + <%- JSON.stringify(zoomLevels) %>);
+      addDebugLog('[TEMPLATE] hasProgressiveZoom: ' + <%- JSON.stringify(hasProgressiveZoom) %>);
+      addDebugLog('[TEMPLATE] hasSingleZoom: ' + <%- JSON.stringify(hasSingleZoom) %>);
+      addDebugLog('[TEMPLATE] zoomLevels[1]: ' + <%- JSON.stringify(zoomLevels[1]) %>);
       <% if (hasProgressiveZoom) { %>
       // Use progressive zoom levels (loads lowest first, higher on zoom)
       const baseUrl = window.location.origin;
@@ -871,6 +870,7 @@
       // No waveform files available - using Web Audio as fallback
       addDebugLog("WARNING: No .dat files or waveformPath available, falling back to Web Audio");
       addDebugLog("waveformZoomLevels was: " + <%- JSON.stringify(waveformZoomLevels) %>);
+      <% } %>
       <% } %>
       <% } else { %>
       waveformSource = {

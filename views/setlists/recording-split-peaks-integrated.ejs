@@ -809,7 +809,7 @@
       waveformSource = {
         webAudio: {
           audioContext: new (window.AudioContext || window.webkitAudioContext)(),
-          scale: 512,
+          scale: 2048,
           multiChannel: false
         }
       };
@@ -864,7 +864,7 @@
       waveformSource = {
         dataUri: {
           arraybuffer: "<%= recording.waveformPath %>",
-          scale: 512
+          scale: 2048
         }
       };
       addDebugLog("Using single waveform file: <%= recording.waveformPath %>");
@@ -873,19 +873,22 @@
       // No waveform files available - using Web Audio as fallback (inside waveformZoomLevels block)
       addDebugLog("WARNING: No .dat files or waveformPath available, falling back to Web Audio");
       addDebugLog("waveformZoomLevels was: " + <%- JSON.stringify(waveformZoomLevels) %>);
+      // Use higher scale (2048) to meet Peaks.js minimum requirement
       waveformSource = {
         webAudio: {
           audioContext: new (window.AudioContext || window.webkitAudioContext)(),
-          scale: 512,
+          scale: 2048,
           multiChannel: false
         }
       };
       <% } %>
-      <% } else { %>
+      <% } %>
+      <% if (typeof waveformZoomLevels === 'undefined' || !waveformZoomLevels || Object.keys(waveformZoomLevels).length === 0) { %>
+      // No waveformZoomLevels at all - use Web Audio fallback
       waveformSource = {
         webAudio: {
           audioContext: new (window.AudioContext || window.webkitAudioContext)(),
-          scale: 512,
+          scale: 2048,
           multiChannel: false
         }
       };

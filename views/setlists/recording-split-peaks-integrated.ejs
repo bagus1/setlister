@@ -603,12 +603,27 @@
       const iosPath = iosPathRel ? (baseUrl + iosPathRel) : null;
       let triedIosPath = false;
 
-      // Try iOS path first if available, fallback to original WebM
-      if (iosPreferred && iosPath) {
-        audioElement.src = iosPath;
-        triedIosPath = true;
+      // For Safari on large files, defer audio loading until Peaks.js is ready
+      // This prevents Safari from trying to load a 90+ MB file immediately on page load
+      const fileSizeMB = <%= recording.fileSize ? (Number(recording.fileSize) / (1024 * 1024)).toFixed(2) : 0 %>;
+      const isLargeFileSafari = safari && fileSizeMB > 50;
+      
+      if (isLargeFileSafari) {
+        // DON'T set src yet - wait until Peaks.js initializes
+        // This prevents Safari from crashing while loading the huge audio file
+        sendLogToServer('info', 'Deferring audio load for Safari large file', {
+          fileSizeMB: fileSizeMB,
+          reason: 'Prevent immediate memory spike from loading large audio file'
+        });
+        // Will set src later when Peaks.js is ready
       } else {
-      audioElement.src = recordingPath;
+        // Normal loading for small files or non-Safari browsers
+        if (iosPreferred && iosPath) {
+          audioElement.src = iosPath;
+          triedIosPath = true;
+        } else {
+          audioElement.src = recordingPath;
+        }
       }
 
       // Add audio event listeners for debugging and fallback
@@ -680,26 +695,59 @@
         safariUnlock.style.display = 'block';
         safariLoadBtn.onclick = async () => {
           try {
-            await audioElement.play();
-            didUnlockAudio = true;
-            // Hide the unlock UI after success
-            safariUnlock.style.display = 'none';
-            if (!peaksInitialized) {
-              initializePeaksWithAudio();
+            // For Safari on large files, audio src is NOT set yet - don't try to play
+            if (isLargeFileSafari && !audioElement.src) {
+              addDebugLog('Large file Safari - setting audio src and initializing Peaks.js');
+              sendLogToServer('info', 'Safari button clicked - loading audio now', {
+                fileSizeMB: fileSizeMB
+              });
+              // NOW set the src and initialize
+              if (iosPreferred && iosPath) {
+                audioElement.src = iosPath;
+                triedIosPath = true;
+              } else {
+                audioElement.src = recordingPath;
+              }
+              // Wait a bit for src to be set, then initialize
+              setTimeout(() => {
+                if (!peaksInitialized) {
+                  initializePeaksWithAudio();
+                }
+              }, 100);
+            } else {
+              // Normal flow - audio already has src
+              await audioElement.play();
+              didUnlockAudio = true;
+              // Hide the unlock UI after success
+              safariUnlock.style.display = 'none';
+              if (!peaksInitialized) {
+                initializePeaksWithAudio();
+              }
             }
           } catch (e) {
             addDebugLog('Unlock button failed: ' + e.message);
+            sendLogToServer('error', 'Safari button click failed', { error: e.message });
           }
         };
       }
 
         // Check if audio is already ready, or wait for it
+        // BUT: For Safari large files, audio src is NOT set, so skip this
+        if (!isLargeFileSafari) {
         if (audioElement.readyState >= 3) {
           // HAVE_FUTURE_DATA or higher
           initializePeaksWithAudio();
         } else {
           audioElement.addEventListener("canplay", () => {
             initializePeaksWithAudio();
+            });
+          }
+        } else {
+          // Safari large file - wait for button click to set src
+          addDebugLog('Safari large file - waiting for user to click button to load audio');
+          sendLogToServer('info', 'Safari large file - deferred audio loading', {
+            fileSizeMB: fileSizeMB,
+            reason: 'Waiting for user interaction to load large audio file'
           });
         }
       }
@@ -765,12 +813,19 @@
           multiChannel: false
         }
       };
-      <% } else if (typeof recording !== 'undefined' && recording.waveformPath) { %>
-      // Check for progressive zoom levels
+      <% } else if (typeof waveformZoomLevels !== 'undefined' && waveformZoomLevels && Object.keys(waveformZoomLevels).length > 0) { %>
+      // Check for progressive zoom levels (using waveformZoomLevels)
       <% 
       const zoomLevels = typeof waveformZoomLevels !== 'undefined' && waveformZoomLevels ? waveformZoomLevels : {};
       const hasProgressiveZoom = zoomLevels && Object.keys(zoomLevels).length >= 2;
       const hasSingleZoom = zoomLevels && Object.keys(zoomLevels).length === 1;
+      
+      // Debug logging for template
+      console.log('[TEMPLATE] waveformZoomLevels:', <%- JSON.stringify(waveformZoomLevels) %>);
+      console.log('[TEMPLATE] zoomLevels:', <%- JSON.stringify(zoomLevels) %>);
+      console.log('[TEMPLATE] hasProgressiveZoom:', hasProgressiveZoom);
+      console.log('[TEMPLATE] hasSingleZoom:', hasSingleZoom);
+      console.log('[TEMPLATE] zoomLevels[1]:', <%- JSON.stringify(zoomLevels[1]) %>);
       
       // Note: Safari detection happens client-side below, not in EJS
       %>
@@ -802,7 +857,8 @@
         }
       };
       addDebugLog("Using single zoom level: " + <%- JSON.stringify(Object.keys(zoomLevels)) %> + " (scale: <%= singleZoomScale %> samples/pixel)");
-      <% } else if (recording.waveformPath) { %>
+      addDebugLog("Single zoom URL: " + baseUrl + "<%= zoomLevels[1] %>");
+      <% } else if (typeof recording !== 'undefined' && recording.waveformPath) { %>
       // Fallback to single waveform file
       waveformSource = {
         dataUri: {
@@ -811,6 +867,10 @@
         }
       };
       addDebugLog("Using single waveform file: <%= recording.waveformPath %>");
+      <% } else { %>
+      // No waveform files available - using Web Audio as fallback
+      addDebugLog("WARNING: No .dat files or waveformPath available, falling back to Web Audio");
+      addDebugLog("waveformZoomLevels was: " + <%- JSON.stringify(waveformZoomLevels) %>);
       <% } %>
       <% } else { %>
       waveformSource = {
@@ -911,6 +971,20 @@
           console.log("Peaks.js initialized successfully");
           addDebugLog("Peaks.js initialized successfully!");
           sendLogToServer('info', 'Peaks.js initialized successfully', {});
+          
+          // NOW load the audio file (if we deferred it for Safari large files)
+          if (isLargeFileSafari && !audioElement.src) {
+            sendLogToServer('info', 'Loading audio file now (after Peaks.js init)', {
+              fileSizeMB: fileSizeMB
+            });
+            if (iosPreferred && iosPath) {
+              audioElement.src = iosPath;
+              triedIosPath = true;
+            } else {
+              audioElement.src = recordingPath;
+            }
+          }
+          
         peaksInitialized = true; // Mark as initialized to prevent re-initialization
 
         // Complete loading animation

@@ -916,6 +916,8 @@
         addDebugLog("Using Peaks.js with Web Audio API (generates waveform on-the-fly)");
       }
 
+        // Don't set zoomLevels when using .dat files - the scale is determined by the data itself
+        // Only set zoomLevels for Web Audio mode
         const options = {
           overview: {
             container: overviewContainer,
@@ -945,10 +947,13 @@
         // Disable segment dragging to prevent interference with our custom segment creation
         segmentOptions: {
           markers: false
-        },
-        // Explicitly disable Peaks.js's built-in click-to-seek and drag-to-scroll
-        zoomLevels: [512, 1024, 2048, 4096]
+        }
         };
+        
+        // Only set zoomLevels for Web Audio mode (not for .dat files)
+        if (waveformSource && waveformSource.webAudio) {
+          options.zoomLevels = [2048, 4096, 8192, 16384];
+        }
 
         sendLogToServer('info', 'Starting Peaks.js initialization', {
           waveformSourceType: waveformSource.dataUri ? 'dat' : (waveformSource.webAudio ? 'webAudio' : 'unknown'),

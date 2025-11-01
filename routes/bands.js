@@ -1924,8 +1924,12 @@ router.get(
                   }
                 }
               });
-              // Include it in the response even though it's generating (will be available on refresh)
-              waveformZoomLevels[level] = candidate;
+              // DO NOT include in waveformZoomLevels if still generating - let client fall back to Web Audio
+              // The file will be available on next page load/refresh
+              logger.logInfo(
+                `[SPLIT PAGE]   - File is being generated asynchronously - NOT adding to waveformZoomLevels yet (will be available on refresh)`,
+                userId
+              );
             } else if (!sharedInputFile) {
               logger.logWarn(
                 `[SPLIT PAGE]   - SKIPPED: Audio file transcoding failed or file not found: ${audioAbsPath}`,

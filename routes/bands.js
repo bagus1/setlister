@@ -1700,12 +1700,13 @@ router.get(
             `[SPLIT PAGE] Total zoom levels to check/generate: ${zoomLevels.length}`
           );
 
-          // audiowaveform doesn't support WebM - transcode once if needed and reuse for all zoom levels
+          // audiowaveform doesn't support WebM and some OGG formats - transcode once if needed and reuse for all zoom levels
           let sharedInputFile = audioAbsPath;
           let sharedTempWavPath = null;
           const isWebM = audioAbsPath.toLowerCase().endsWith(".webm");
+          const isOGG = audioAbsPath.toLowerCase().endsWith(".ogg") || audioAbsPath.toLowerCase().endsWith(".oga");
 
-          if (isWebM && fs.existsSync(audioAbsPath)) {
+          if ((isWebM || isOGG) && fs.existsSync(audioAbsPath)) {
             // Check if any waveforms need to be generated
             const needsGeneration = zoomLevels.some(({ file }) => {
               return !fs.existsSync(file);
@@ -1719,7 +1720,7 @@ router.get(
                 userId
               );
 
-              // Transcode WebM to WAV using FFmpeg
+              // Transcode WebM/OGG to WAV using FFmpeg
               const transcodeCmd = `ffmpeg -y -i ${JSON.stringify(audioAbsPath)} -vn -c:a pcm_s16le -ar 44100 ${JSON.stringify(sharedTempWavPath)}`;
               logger.logInfo(
                 `[SPLIT PAGE]   - Transcode command: ${transcodeCmd}`,

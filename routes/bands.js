@@ -1667,55 +1667,87 @@ router.get(
               waveformZoomLevels[level] = candidate;
             } else if (fs.existsSync(audioAbsPath)) {
               // Generate waveform on-demand
-              console.log(
-                `[SPLIT PAGE]   - Status: GENERATING (does not exist yet)`
+              logger.logInfo(
+                `[SPLIT PAGE]   - Status: GENERATING (does not exist yet)`,
+                userId
               );
-              const cmd = `audiowaveform -i ${JSON.stringify(audioAbsPath)} -o ${JSON.stringify(file)} -b 8 -z ${samples}`;
-              console.log(`[SPLIT PAGE]   - Command: ${cmd}`);
-              console.log(
-                `[SPLIT PAGE]   - Input file exists: ${fs.existsSync(audioAbsPath)}`
+              // Use local audiowaveform binary if available, fallback to system
+              const audiowaveformPath = process.env.HOME
+                ? `${process.env.HOME}/local/bin/audiowaveform`
+                : "audiowaveform";
+              const audiowaveformCmd = fs.existsSync(audiowaveformPath)
+                ? audiowaveformPath
+                : "audiowaveform";
+              const cmd = `${audiowaveformCmd} -i ${JSON.stringify(audioAbsPath)} -o ${JSON.stringify(file)} -b 8 -z ${samples}`;
+              logger.logInfo(`[SPLIT PAGE]   - Command: ${cmd}`, userId);
+              logger.logInfo(
+                `[SPLIT PAGE]   - Input file exists: ${fs.existsSync(audioAbsPath)}`,
+                userId
               );
-              console.log(
-                `[SPLIT PAGE]   - Output directory exists: ${fs.existsSync(path.dirname(file))}`
+              logger.logInfo(
+                `[SPLIT PAGE]   - Output directory exists: ${fs.existsSync(path.dirname(file))}`,
+                userId
               );
 
-              exec(cmd, (err, stdout, stderr) => {
+              // Set LD_LIBRARY_PATH so audiowaveform can find local libraries
+              const env = {
+                ...process.env,
+                LD_LIBRARY_PATH: process.env.HOME
+                  ? `${process.env.HOME}/local/lib:${process.env.HOME}/local/lib64:${process.env.LD_LIBRARY_PATH || ""}`
+                  : process.env.LD_LIBRARY_PATH,
+                PATH: process.env.HOME
+                  ? `${process.env.HOME}/local/bin:${process.env.PATH}`
+                  : process.env.PATH,
+              };
+
+              exec(cmd, { env }, (err, stdout, stderr) => {
                 if (err) {
-                  console.error(
-                    `[SPLIT PAGE]   - ERROR: Zoom level ${level} (${samples} samples) generation failed`
+                  logger.logError(
+                    `[SPLIT PAGE]   - ERROR: Zoom level ${level} (${samples} samples) generation failed`,
+                    err?.message || err,
+                    userId
                   );
-                  console.error(
-                    `[SPLIT PAGE]   - Error message: ${err?.message || err}`
+                  logger.logError(
+                    `[SPLIT PAGE]   - stderr: ${stderr || "(none)"}`,
+                    null,
+                    userId
                   );
-                  console.error(
-                    `[SPLIT PAGE]   - stderr: ${stderr || "(none)"}`
-                  );
-                  console.error(
-                    `[SPLIT PAGE]   - stdout: ${stdout || "(none)"}`
+                  logger.logError(
+                    `[SPLIT PAGE]   - stdout: ${stdout || "(none)"}`,
+                    null,
+                    userId
                   );
                 } else {
                   // Check if file was created
                   const existsNow = fs.existsSync(file);
-                  console.log(
-                    `[SPLIT PAGE]   - SUCCESS: Zoom level ${level} (${samples} samples) generated`
+                  logger.logInfo(
+                    `[SPLIT PAGE]   - SUCCESS: Zoom level ${level} (${samples} samples) generated`,
+                    userId
                   );
-                  console.log(
-                    `[SPLIT PAGE]   - File exists after generation: ${existsNow}`
+                  logger.logInfo(
+                    `[SPLIT PAGE]   - File exists after generation: ${existsNow}`,
+                    userId
                   );
 
                   if (existsNow) {
                     const stats = fs.statSync(file);
                     const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-                    console.log(`[SPLIT PAGE]   - Generated file: ${fileName}`);
-                    console.log(
-                      `[SPLIT PAGE]   - Generated size: ${stats.size} bytes (${fileSizeMB} MB)`
+                    logger.logInfo(
+                      `[SPLIT PAGE]   - Generated file: ${fileName}`,
+                      userId
                     );
-                    console.log(
-                      `[SPLIT PAGE]   - Generated at: ${new Date().toISOString()}`
+                    logger.logInfo(
+                      `[SPLIT PAGE]   - Generated size: ${stats.size} bytes (${fileSizeMB} MB)`,
+                      userId
+                    );
+                    logger.logInfo(
+                      `[SPLIT PAGE]   - Generated at: ${new Date().toISOString()}`,
+                      userId
                     );
                   } else {
-                    console.error(
-                      `[SPLIT PAGE]   - WARNING: Command succeeded but file does not exist at: ${file}`
+                    logger.logWarn(
+                      `[SPLIT PAGE]   - WARNING: Command succeeded but file does not exist at: ${file}`,
+                      userId
                     );
                   }
                 }

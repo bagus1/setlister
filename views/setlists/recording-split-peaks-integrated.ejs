@@ -1128,7 +1128,7 @@
 
         } else if (dragStart !== null) {
           // Handle new segment creation
-          isDragging = true;
+              isDragging = true;
             const rect = zoomviewContainer.getBoundingClientRect();
             const x = getClientX(e) - rect.left;
             const zoomview = peaks.views.getView("zoomview");
@@ -1300,8 +1300,8 @@
       const handleOverviewDown = (e) => {
         storeCurrentZoom();
         // Use a timeout to restore the zoom after Peaks.js has finished its default action
-        setTimeout(() => {
-          restoreZoomIfNeeded();
+            setTimeout(() => {
+              restoreZoomIfNeeded();
         }, 50);
       };
       overviewContainer.addEventListener("mousedown", handleOverviewDown);

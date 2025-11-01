@@ -548,6 +548,11 @@
         });
       });
 
+      // Define Safari/iOS detection variables BEFORE using them
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const iosPreferred = isIOS || safari;
+
       // Log immediately when page loads
       sendLogToServer('info', 'Split page loaded', {
         recordingId: <%= recording.id %>,
@@ -564,10 +569,6 @@
         audioElement: audioElement,
         timestamp: Date.now()
       };
-
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      const safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      const iosPreferred = isIOS || safari;
       const baseUrl = window.location.origin;
       const recordingPath = baseUrl + "<%= recording.filePath %>";
       const iosPathRel = "<%= typeof iosPlaybackPath !== 'undefined' && iosPlaybackPath ? iosPlaybackPath : '' %>";

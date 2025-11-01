@@ -841,7 +841,8 @@
       };
       addDebugLog("Using progressive zoom levels: " + <%- JSON.stringify(Object.keys(zoomLevels)) %>);
       addDebugLog("Mobile device detected: " + isMobile + ", starting with lowest resolution");
-      <% } else if (hasSingleZoom && zoomLevels[1]) { %>
+      <% } %>
+      <% if (!hasProgressiveZoom && hasSingleZoom && zoomLevels[1]) { %>
       // Use single zoom level (mobile or Safari on large files)
       const baseUrl = window.location.origin;
       <% 
@@ -857,7 +858,8 @@
       };
       addDebugLog("Using single zoom level: " + <%- JSON.stringify(Object.keys(zoomLevels)) %> + " (scale: <%= singleZoomScale %> samples/pixel)");
       addDebugLog("Single zoom URL: " + baseUrl + "<%= zoomLevels[1] %>");
-      <% } else if (typeof recording !== 'undefined' && recording.waveformPath) { %>
+      <% } %>
+      <% if (!hasProgressiveZoom && !hasSingleZoom && typeof recording !== 'undefined' && recording.waveformPath) { %>
       // Fallback to single waveform file
       waveformSource = {
         dataUri: {
@@ -866,11 +868,18 @@
         }
       };
       addDebugLog("Using single waveform file: <%= recording.waveformPath %>");
-      <% } else { %>
-      // No waveform files available - using Web Audio as fallback
+      <% } %>
+      <% if (!hasProgressiveZoom && !hasSingleZoom && (typeof recording === 'undefined' || !recording.waveformPath)) { %>
+      // No waveform files available - using Web Audio as fallback (inside waveformZoomLevels block)
       addDebugLog("WARNING: No .dat files or waveformPath available, falling back to Web Audio");
       addDebugLog("waveformZoomLevels was: " + <%- JSON.stringify(waveformZoomLevels) %>);
-      <% } %>
+      waveformSource = {
+        webAudio: {
+          audioContext: new (window.AudioContext || window.webkitAudioContext)(),
+          scale: 512,
+          multiChannel: false
+        }
+      };
       <% } %>
       <% } else { %>
       waveformSource = {

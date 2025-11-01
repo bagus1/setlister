@@ -1689,6 +1689,10 @@ router.get(
             }
           }
 
+          // Track active waveform generation processes to know when to clean up shared WAV
+          let activeProcesses = 0;
+          const pendingProcesses = new Set();
+
           for (const { level, samples, file } of zoomLevels) {
             const candidate = `/uploads/waveforms/zoom${level}-${base}.dat`;
             const abs = path.join(__dirname, "..", "public", candidate);
@@ -1712,6 +1716,10 @@ router.get(
               console.log(`[SPLIT PAGE]   - Created: ${stats.birthtime}`);
               waveformZoomLevels[level] = candidate;
             } else if (sharedInputFile && fs.existsSync(sharedInputFile)) {
+              // Track this process
+              activeProcesses++;
+              const processId = `${level}-${samples}`;
+              pendingProcesses.add(processId);
               // Generate waveform on-demand
               logger.logInfo(
                 `[SPLIT PAGE]   - Status: GENERATING (does not exist yet)`,
@@ -1751,6 +1759,10 @@ router.get(
               };
 
               exec(cmd, { env }, (err, stdout, stderr) => {
+                // Mark this process as complete
+                pendingProcesses.delete(processId);
+                activeProcesses--;
+
                 if (err) {
                   logger.logError(
                     `[SPLIT PAGE]   - ERROR: Zoom level ${level} (${samples} samples) generation failed`,
@@ -1801,6 +1813,26 @@ router.get(
                     );
                   }
                 }
+
+                // Clean up shared WAV file only when all processes are done
+                if (
+                  activeProcesses === 0 &&
+                  sharedTempWavPath &&
+                  fs.existsSync(sharedTempWavPath)
+                ) {
+                  try {
+                    fs.unlinkSync(sharedTempWavPath);
+                    logger.logInfo(
+                      `[SPLIT PAGE]   - Cleaned up shared temporary WAV file (all processes complete)`,
+                      userId
+                    );
+                  } catch (cleanupErr) {
+                    logger.logWarn(
+                      `[SPLIT PAGE]   - Failed to clean up shared temp WAV: ${cleanupErr?.message}`,
+                      userId
+                    );
+                  }
+                }
               });
               // Include it in the response even though it's generating (will be available on refresh)
               waveformZoomLevels[level] = candidate;
@@ -1812,12 +1844,16 @@ router.get(
             }
           }
 
-          // Clean up shared temporary WAV file after all zoom levels are processed
-          if (sharedTempWavPath && fs.existsSync(sharedTempWavPath)) {
+          // If no processes were started (all waveforms already exist), clean up immediately
+          if (
+            activeProcesses === 0 &&
+            sharedTempWavPath &&
+            fs.existsSync(sharedTempWavPath)
+          ) {
             try {
               fs.unlinkSync(sharedTempWavPath);
               logger.logInfo(
-                `[SPLIT PAGE]   - Cleaned up shared temporary WAV file`,
+                `[SPLIT PAGE]   - Cleaned up shared temporary WAV file (no processes needed)`,
                 userId
               );
             } catch (cleanupErr) {
@@ -1827,6 +1863,7 @@ router.get(
               );
             }
           }
+          // Otherwise, cleanup will happen in the exec callbacks when all processes complete
 
           console.log(
             `[SPLIT PAGE] Waveform zoom levels available for client: ${Object.keys(waveformZoomLevels).length}`

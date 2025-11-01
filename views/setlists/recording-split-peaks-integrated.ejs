@@ -719,15 +719,20 @@
       addDebugLog("Using progressive zoom levels: " + <%- JSON.stringify(Object.keys(zoomLevels)) %>);
       addDebugLog("Mobile device detected: " + isMobile + ", starting with lowest resolution");
       <% } else if (hasSingleZoom && zoomLevels[1]) { %>
-      // Use single zoom level (mobile)
+      // Use single zoom level (mobile or Safari on large files)
       const baseUrl = window.location.origin;
+      <% 
+      // Determine scale based on whether this is Safari large file (8192) or mobile (1024)
+      const isSafariLarge = typeof isSafariLargeFile !== 'undefined' && isSafariLargeFile;
+      const singleZoomScale = isSafariLarge ? 8192 : 1024;
+      %>
       waveformSource = {
         dataUri: {
           arraybuffer: baseUrl + "<%= zoomLevels[1] %>",
-          scale: 1024
+          scale: <%= singleZoomScale %>
         }
       };
-      addDebugLog("Using single zoom level (mobile): " + <%- JSON.stringify(Object.keys(zoomLevels)) %>);
+      addDebugLog("Using single zoom level: " + <%- JSON.stringify(Object.keys(zoomLevels)) %> + " (scale: <%= singleZoomScale %> samples/pixel)");
       <% } else if (recording.waveformPath) { %>
       // Fallback to single waveform file
       waveformSource = {

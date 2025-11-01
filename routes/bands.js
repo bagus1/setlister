@@ -1623,22 +1623,18 @@ router.get(
               },
             ];
           } else if (isSafariLargeFile) {
-            // Safari on large files: use VERY high samples/pixel (2048-4096) to minimize memory
+            // Safari on large files: use SINGLE VERY high samples/pixel (8192) to minimize memory
+            // Only ONE zoom level - Safari can't handle loading multiple waveform files
             // This is much lower resolution but prevents Safari memory crashes
             logger.logInfo(
-              `[SPLIT PAGE] Safari + Large file detected (${fileSizeMB.toFixed(2)} MB) - using VERY low resolution (2048-4096 samples/pixel) to prevent memory crashes`,
+              `[SPLIT PAGE] Safari + Large file detected (${fileSizeMB.toFixed(2)} MB) - using SINGLE VERY low resolution (8192 samples/pixel) to prevent memory crashes`,
               userId
             );
             zoomLevels = [
               {
                 level: 1,
-                samples: 2048,
+                samples: 8192,
                 file: path.join(waveformsDir, `zoom1-${base}.dat`),
-              },
-              {
-                level: 2,
-                samples: 4096,
-                file: path.join(waveformsDir, `zoom2-${base}.dat`),
               },
             ];
           } else if (isLargeFile) {
@@ -2005,6 +2001,7 @@ router.get(
           createdById: recording.createdById,
         },
         waveformZoomLevels,
+        isSafariLargeFile, // Pass flag to template so it knows to use single zoom
         iosPlaybackPath,
         fullMode,
         canSplit: splitCheck.allowed,

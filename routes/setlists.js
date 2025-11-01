@@ -2935,63 +2935,7 @@ router.post("/:id/recordings/reassemble", requireAuth, async (req, res) => {
       duration = 0;
     }
 
-    // Generate progressive zoom levels for waveform (128, 256, 512 samples/pixel)
-    try {
-      const { exec } = require("child_process");
-      const waveformsDir = path.join(
-        __dirname,
-        "..",
-        "public",
-        "uploads",
-        "waveforms"
-      );
-      if (!fs.existsSync(waveformsDir)) {
-        fs.mkdirSync(waveformsDir, { recursive: true });
-      }
-      const base = path.basename(finalPath).replace(/\.[^/.]+$/, "");
-
-      // Generate 4 zoom levels progressively (lower resolution for mobile)
-      const zoomLevels = [
-        {
-          level: 1,
-          samples: 64,
-          file: path.join(waveformsDir, `zoom1-${base}.dat`),
-        },
-        {
-          level: 2,
-          samples: 128,
-          file: path.join(waveformsDir, `zoom2-${base}.dat`),
-        },
-        {
-          level: 3,
-          samples: 256,
-          file: path.join(waveformsDir, `zoom3-${base}.dat`),
-        },
-        {
-          level: 4,
-          samples: 512,
-          file: path.join(waveformsDir, `zoom4-${base}.dat`),
-        },
-      ];
-
-      // Generate each level
-      zoomLevels.forEach(({ level, samples, file }) => {
-        const cmd = `audiowaveform -i ${JSON.stringify(finalPath)} -o ${JSON.stringify(file)} -b 8 -z ${samples}`;
-        exec(cmd, (err) => {
-          if (err) {
-            console.warn(
-              `Waveform zoom level ${level} (${samples} samples) generation failed:`,
-              err?.message || err
-            );
-          }
-        });
-      });
-    } catch (e) {
-      console.warn(
-        "Could not launch progressive waveform generation:",
-        e?.message || e
-      );
-    }
+    // Waveforms are now generated on-demand when visiting the split page
 
     // Create recording record
     // Use bestMemberId if provided (for attribution to member with available space)
@@ -3141,90 +3085,7 @@ router.post(
         );
       }
 
-      // --- Waveform Generation ---
-      const audioPath = req.file.path;
-      const datPath = audioPath.replace(/\.(mp3|wav|m4a|ogg)$/, ".dat");
-      const waveformPath = `/uploads/recordings/${path.basename(datPath)}`;
-
-      // Generate waveform with higher zoom for better timing accuracy (keep for backwards compatibility)
-      exec(
-        `audiowaveform -i "${audioPath}" -o "${datPath}" -b 8 -z 512`,
-        async (error, stdout, stderr) => {
-          if (error) {
-            console.error("Waveform generation failed:", stderr);
-            await prisma.recording.update({
-              where: { id: recording.id },
-              data: { waveformStatus: "failed" },
-            });
-          } else {
-            console.log("Waveform data generated successfully");
-            await prisma.recording.update({
-              where: { id: recording.id },
-              data: {
-                waveformStatus: "completed",
-                waveformPath: waveformPath,
-              },
-            });
-          }
-        }
-      );
-
-      // Generate progressive zoom levels for mobile/memory efficiency
-      try {
-        const waveformsDir = path.join(
-          __dirname,
-          "..",
-          "public",
-          "uploads",
-          "waveforms"
-        );
-        if (!fs.existsSync(waveformsDir)) {
-          fs.mkdirSync(waveformsDir, { recursive: true });
-        }
-        const base = path.basename(audioPath).replace(/\.[^/.]+$/, "");
-
-        // Generate 4 zoom levels progressively (lower resolution for mobile)
-        const zoomLevels = [
-          {
-            level: 1,
-            samples: 64,
-            file: path.join(waveformsDir, `zoom1-${base}.dat`),
-          },
-          {
-            level: 2,
-            samples: 128,
-            file: path.join(waveformsDir, `zoom2-${base}.dat`),
-          },
-          {
-            level: 3,
-            samples: 256,
-            file: path.join(waveformsDir, `zoom3-${base}.dat`),
-          },
-          {
-            level: 4,
-            samples: 512,
-            file: path.join(waveformsDir, `zoom4-${base}.dat`),
-          },
-        ];
-
-        // Generate each level
-        zoomLevels.forEach(({ level, samples, file }) => {
-          const cmd = `audiowaveform -i "${audioPath}" -o "${file}" -b 8 -z ${samples}`;
-          exec(cmd, (err) => {
-            if (err) {
-              console.warn(
-                `Waveform zoom level ${level} (${samples} samples) generation failed:`,
-                err?.message || err
-              );
-            }
-          });
-        });
-      } catch (e) {
-        console.warn(
-          "Could not launch progressive waveform generation:",
-          e?.message || e
-        );
-      }
+      // Waveforms are now generated on-demand when visiting the split page
 
       res.json({
         success: true,

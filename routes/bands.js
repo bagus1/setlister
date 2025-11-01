@@ -2,6 +2,7 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const { prisma } = require("../lib/prisma");
 const path = require("path");
+const fs = require("fs");
 const {
   sendBandInvitation,
   sendBandInvitationNotification,
@@ -1467,7 +1468,7 @@ router.get(
         0
       );
 
-      // Compute progressive zoom level waveform paths
+      // Generate waveforms on-demand if they don't exist
       const waveformZoomLevels = {};
       try {
         if (recording && recording.filePath) {
@@ -1475,17 +1476,125 @@ router.get(
             .basename(recording.filePath)
             .replace(/\.[^/.]+$/, "");
 
-          // Check for each zoom level (1=64, 2=128, 3=256, 4=512 samples/pixel)
-          for (let level = 1; level <= 4; level++) {
+          // Get absolute path to audio file
+          // recording.filePath may be relative (/uploads/...) or just a filename
+          let audioAbsPath;
+          if (recording.filePath.startsWith("/")) {
+            // Remove leading slash and join with public
+            audioAbsPath = path.join(
+              __dirname,
+              "..",
+              "public",
+              recording.filePath.substring(1)
+            );
+          } else {
+            // Assume it's just a filename in uploads/recordings
+            audioAbsPath = path.join(
+              __dirname,
+              "..",
+              "public",
+              "uploads",
+              "recordings",
+              recording.filePath
+            );
+          }
+
+          // Detect mobile device from user-agent
+          const userAgent = req.headers["user-agent"] || "";
+          const isMobile =
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+              userAgent
+            );
+
+          // Get file size if available (from DB or filesystem)
+          const fileSizeBytes = recording.fileSize
+            ? Number(recording.fileSize)
+            : fs.existsSync(audioAbsPath)
+              ? fs.statSync(audioAbsPath).size
+              : 0;
+
+          // Set up waveforms directory
+          const waveformsDir = path.join(
+            __dirname,
+            "..",
+            "public",
+            "uploads",
+            "waveforms"
+          );
+          if (!fs.existsSync(waveformsDir)) {
+            fs.mkdirSync(waveformsDir, { recursive: true });
+          }
+
+          // Determine zoom levels based on device type
+          let zoomLevels;
+          if (isMobile) {
+            // Mobile: use 1024 samples/pixel for lower memory usage
+            zoomLevels = [
+              {
+                level: 1,
+                samples: 1024,
+                file: path.join(waveformsDir, `zoom1-${base}.dat`),
+              },
+            ];
+          } else {
+            // Desktop: progressive zoom levels (64, 128, 256, 512)
+            zoomLevels = [
+              {
+                level: 1,
+                samples: 64,
+                file: path.join(waveformsDir, `zoom1-${base}.dat`),
+              },
+              {
+                level: 2,
+                samples: 128,
+                file: path.join(waveformsDir, `zoom2-${base}.dat`),
+              },
+              {
+                level: 3,
+                samples: 256,
+                file: path.join(waveformsDir, `zoom3-${base}.dat`),
+              },
+              {
+                level: 4,
+                samples: 512,
+                file: path.join(waveformsDir, `zoom4-${base}.dat`),
+              },
+            ];
+          }
+
+          // Check which waveforms already exist, generate missing ones
+          const { exec } = require("child_process");
+
+          for (const { level, samples, file } of zoomLevels) {
             const candidate = `/uploads/waveforms/zoom${level}-${base}.dat`;
             const abs = path.join(__dirname, "..", "public", candidate);
+
             if (fs.existsSync(abs)) {
+              // Waveform already exists
+              waveformZoomLevels[level] = candidate;
+            } else if (fs.existsSync(audioAbsPath)) {
+              // Generate waveform on-demand
+              const cmd = `audiowaveform -i ${JSON.stringify(audioAbsPath)} -o ${JSON.stringify(file)} -b 8 -z ${samples}`;
+              exec(cmd, (err) => {
+                if (err) {
+                  console.warn(
+                    `Waveform zoom level ${level} (${samples} samples) generation failed:`,
+                    err?.message || err
+                  );
+                } else {
+                  console.log(
+                    `Waveform zoom level ${level} (${samples} samples) generated for ${base}`
+                  );
+                }
+              });
+              // Include it in the response even though it's generating (will be available on refresh)
               waveformZoomLevels[level] = candidate;
             }
           }
         }
       } catch (e) {
-        // ignore
+        console.error("Error generating waveforms:", e?.message || e);
+        // Continue without waveforms - client will use Web Audio fallback
       }
 
       // Compute iOS-friendly playback path if available

@@ -830,6 +830,9 @@
       addDebugLog('[TEMPLATE] zoomLevels[1]: ' + <%- JSON.stringify(zoomLevels[1]) %>);
       <% if (hasProgressiveZoom) { %>
       // Use progressive zoom levels (loads lowest first, higher on zoom)
+      // For desktop: levels 64, 128, 256, 512 samples/pixel
+      // Note: Even though level 4 is 512, we'll let Peaks.js handle it
+      // but we need to ensure zoomLevels option prevents resampling to 512
       const baseUrl = window.location.origin;
       waveformSource = {
         dataUri: {
@@ -841,6 +844,7 @@
       };
       addDebugLog("Using progressive zoom levels: " + <%- JSON.stringify(Object.keys(zoomLevels)) %>);
       addDebugLog("Mobile device detected: " + isMobile + ", starting with lowest resolution");
+      // Note: For progressive zoom, we'll set zoomLevels in options to prevent resampling below 2048
       <% } %>
       <% if (!hasProgressiveZoom && hasSingleZoom && zoomLevels[1]) { %>
       // Use single zoom level (mobile or Safari on large files)
@@ -916,8 +920,8 @@
         addDebugLog("Using Peaks.js with Web Audio API (generates waveform on-the-fly)");
       }
 
-        // Don't set zoomLevels when using .dat files - the scale is determined by the data itself
-        // Only set zoomLevels for Web Audio mode
+        // For .dat files, we need to set zoomLevels to prevent Peaks.js from trying to resample
+        // at invalid zoom levels (below 2048). The zoom levels should match the actual data scales.
         const options = {
           overview: {
             container: overviewContainer,
@@ -950,9 +954,50 @@
         }
         };
         
-        // Only set zoomLevels for Web Audio mode (not for .dat files)
+        // Set zoomLevels based on the waveform source type
         if (waveformSource && waveformSource.webAudio) {
+          // Web Audio mode - all levels must be >= 2048
           options.zoomLevels = [2048, 4096, 8192, 16384];
+        } else if (waveformSource && waveformSource.dataUri) {
+          // For .dat files, set zoomLevels to match the actual data scales
+          // This prevents Peaks.js from trying to resample at invalid levels
+          if (waveformSource.dataUri.scale) {
+            // Single zoom level - set explicit zoom levels to prevent Peaks.js from resampling below 2048
+            const scale = waveformSource.dataUri.scale;
+            addDebugLog("Single zoom level detected with scale: " + scale);
+            if (scale >= 8192) {
+              // Safari large file - use the actual scale and higher, but ensure all >= 2048
+              options.zoomLevels = [2048, 4096, 8192];
+            } else if (scale >= 4096) {
+              options.zoomLevels = [2048, 4096, 8192];
+            } else if (scale >= 2048) {
+              options.zoomLevels = [2048, 4096, 8192];
+            } else {
+              // Scale is too low (e.g., 1024 for mobile) - force minimum valid levels
+              // Peaks.js will use the data but won't try to resample below 2048
+              options.zoomLevels = [2048, 4096, 8192];
+            }
+            addDebugLog("Setting zoomLevels for single zoom: " + JSON.stringify(options.zoomLevels) + " (data scale: " + scale + ")");
+          } else if (Object.keys(waveformSource.dataUri).filter(k => k !== 'arraybuffer' && k !== 'scale').length > 0) {
+            // Progressive zoom levels (desktop: levels 1=64, 2=128, 3=256, 4=512 samples/pixel)
+            // Peaks.js minimum is 2048, so we need to prevent it from resampling to lower levels
+            // Set explicit zoom levels that are all >= 2048
+            // Even though the data has 512, we'll prevent Peaks.js from using it directly
+            const availableLevels = Object.keys(waveformSource.dataUri).filter(k => k !== 'arraybuffer' && k !== 'scale');
+            addDebugLog("Progressive zoom levels available: " + availableLevels.join(', '));
+            // Force Peaks.js to use only valid zoom levels (>= 2048)
+            // This prevents it from trying to resample at 512 or other invalid levels
+            options.zoomLevels = [2048, 4096, 8192];
+            addDebugLog("Setting zoomLevels to prevent resampling below 2048: " + JSON.stringify(options.zoomLevels));
+          } else {
+            // Fallback - no recognized dataUri structure, set safe zoom levels
+            options.zoomLevels = [2048, 4096, 8192];
+            addDebugLog("Fallback: Setting zoomLevels to prevent resampling below 2048: " + JSON.stringify(options.zoomLevels));
+          }
+        } else {
+          // No waveform source - set safe defaults
+          options.zoomLevels = [2048, 4096, 8192];
+          addDebugLog("No waveform source - setting safe zoomLevels: " + JSON.stringify(options.zoomLevels));
         }
 
         sendLogToServer('info', 'Starting Peaks.js initialization', {

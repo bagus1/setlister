@@ -511,12 +511,52 @@
         e.preventDefault(); // Prevent default error handling
       });
 
+      // Send client-side logs to server for debugging Safari reloads
+      function sendLogToServer(level, message, data) {
+        try {
+          fetch('/bands/api/client-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              level: level,
+              message: message,
+              data: data,
+              url: window.location.pathname,
+              timestamp: new Date().toISOString(),
+              userAgent: navigator.userAgent
+            }),
+            keepalive: true // Important: allows request to complete even if page is unloading
+          }).catch(() => {}); // Ignore errors - page might be unloading
+        } catch (e) {
+          // Ignore - page might be unloading
+        }
+      }
+
       // Detect page reloads to help diagnose
       let pageLoadTime = Date.now();
+      let unloadReported = false;
       window.addEventListener('beforeunload', (e) => {
+        if (unloadReported) return;
+        unloadReported = true;
         const timeOnPage = Date.now() - pageLoadTime;
         console.error('Page unloading after', timeOnPage, 'ms');
         addDebugLog('Page unloading after ' + timeOnPage + 'ms - this may be Safari killing the page due to memory');
+        sendLogToServer('warn', 'Page unloading', {
+          timeOnPage: timeOnPage,
+          memoryUsed: performance.memory ? performance.memory.usedJSHeapSize : null,
+          memoryLimit: performance.memory ? performance.memory.jsHeapSizeLimit : null
+        });
+      });
+
+      // Log immediately when page loads
+      sendLogToServer('info', 'Split page loaded', {
+        recordingId: <%= recording.id %>,
+        fileSize: <%= recording.fileSize || 0 %>,
+        fileSizeMB: <%= recording.fileSize ? (Number(recording.fileSize) / (1024 * 1024)).toFixed(2) : 0 %>,
+        safari: safari,
+        isIOS: isIOS,
+        memoryUsed: performance.memory ? performance.memory.usedJSHeapSize : null,
+        memoryLimit: performance.memory ? performance.memory.jsHeapSizeLimit : null
       });
 
       // Prevent Safari from killing the page - keep a reference to prevent garbage collection

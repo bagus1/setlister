@@ -12120,4 +12120,38 @@ router.delete("/:id", requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/client-log - Receive client-side logs (for debugging Safari reloads)
+router.post("/api/client-log", async (req, res) => {
+  try {
+    const { level, message, data, url, timestamp, userAgent } = req.body;
+    const userId = req.session?.user?.id || null;
+
+    const logMessage = `[CLIENT LOG ${level.toUpperCase()}] ${message}`;
+    const logData = {
+      url,
+      timestamp,
+      userAgent,
+      data,
+      userId,
+    };
+
+    if (level === "error") {
+      logger.logError(logMessage, JSON.stringify(logData), userId);
+    } else if (level === "warn") {
+      logger.logWarn(logMessage, userId);
+      logger.logInfo(`  Details: ${JSON.stringify(logData)}`, userId);
+    } else {
+      logger.logInfo(logMessage, userId);
+      if (data) {
+        logger.logInfo(`  Details: ${JSON.stringify(logData)}`, userId);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.logError("Error receiving client log", error);
+    res.status(500).json({ error: "Failed to log" });
+  }
+});
+
 module.exports = router;

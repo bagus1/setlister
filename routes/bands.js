@@ -1386,13 +1386,14 @@ router.get(
   requireAuth,
   async (req, res) => {
     try {
-      console.log(`[SPLIT PAGE] Route handler called`);
       const bandId = parseInt(req.params.bandId);
       const setlistId = parseInt(req.params.setlistId);
       const recordingId = parseInt(req.params.recordingId);
       const userId = req.session.user.id;
-      console.log(
-        `[SPLIT PAGE] Parsed IDs - Band: ${bandId}, Setlist: ${setlistId}, Recording: ${recordingId}, User: ${userId}`
+      logger.logInfo(`[SPLIT PAGE] Route handler called`, userId);
+      logger.logInfo(
+        `[SPLIT PAGE] Parsed IDs - Band: ${bandId}, Setlist: ${setlistId}, Recording: ${recordingId}`,
+        userId
       );
 
       // Get setlist with all songs
@@ -1473,32 +1474,36 @@ router.get(
       );
 
       // Generate waveforms on-demand if they don't exist
-      console.log(`[SPLIT PAGE] Starting waveform generation logic`);
-      console.log(
-        `[SPLIT PAGE] Recording object:`,
-        recording ? "exists" : "null"
+      logger.logInfo(`[SPLIT PAGE] Starting waveform generation logic`, userId);
+      logger.logInfo(
+        `[SPLIT PAGE] Recording object: ${recording ? "exists" : "null"}`,
+        userId
       );
-      console.log(
-        `[SPLIT PAGE] Recording filePath:`,
-        recording?.filePath || "empty/null"
+      logger.logInfo(
+        `[SPLIT PAGE] Recording filePath: ${recording?.filePath || "empty/null"}`,
+        userId
       );
       const waveformZoomLevels = {};
       try {
         if (recording && recording.filePath) {
-          console.log(`[SPLIT PAGE] Entering waveform generation block`);
+          logger.logInfo(
+            `[SPLIT PAGE] Entering waveform generation block`,
+            userId
+          );
           const base = path
             .basename(recording.filePath)
             .replace(/\.[^/.]+$/, "");
 
           // Get absolute path to audio file
           // recording.filePath may be relative (/uploads/...) or just a filename
+          // Files are stored in uploads/recordings/ at project root, not public/uploads/recordings/
           let audioAbsPath;
           if (recording.filePath.startsWith("/")) {
-            // Remove leading slash and join with public
+            // Remove leading slash and join with project root (not public)
+            // /uploads/recordings/file.webm -> uploads/recordings/file.webm
             audioAbsPath = path.join(
               __dirname,
               "..",
-              "public",
               recording.filePath.substring(1)
             );
           } else {
@@ -1506,7 +1511,6 @@ router.get(
             audioAbsPath = path.join(
               __dirname,
               "..",
-              "public",
               "uploads",
               "recordings",
               recording.filePath
@@ -1514,25 +1518,40 @@ router.get(
           }
 
           // Log audio file information
-          console.log(`[SPLIT PAGE] Recording ID: ${recording.id}`);
-          console.log(`[SPLIT PAGE] Audio file path: ${recording.filePath}`);
-          console.log(`[SPLIT PAGE] Audio file absolute path: ${audioAbsPath}`);
-          console.log(`[SPLIT PAGE] Base filename (for waveforms): ${base}`);
+          logger.logInfo(`[SPLIT PAGE] Recording ID: ${recording.id}`, userId);
+          logger.logInfo(
+            `[SPLIT PAGE] Audio file path: ${recording.filePath}`,
+            userId
+          );
+          logger.logInfo(
+            `[SPLIT PAGE] Audio file absolute path: ${audioAbsPath}`,
+            userId
+          );
+          logger.logInfo(
+            `[SPLIT PAGE] Base filename (for waveforms): ${base}`,
+            userId
+          );
 
           const audioFileExists = fs.existsSync(audioAbsPath);
-          console.log(`[SPLIT PAGE] Audio file exists: ${audioFileExists}`);
+          logger.logInfo(
+            `[SPLIT PAGE] Audio file exists: ${audioFileExists}`,
+            userId
+          );
 
           if (audioFileExists) {
             const audioStats = fs.statSync(audioAbsPath);
             const audioSizeMB = (audioStats.size / (1024 * 1024)).toFixed(2);
-            console.log(
-              `[SPLIT PAGE] Audio file size: ${audioStats.size} bytes (${audioSizeMB} MB)`
+            logger.logInfo(
+              `[SPLIT PAGE] Audio file size: ${audioStats.size} bytes (${audioSizeMB} MB)`,
+              userId
             );
-            console.log(
-              `[SPLIT PAGE] Audio file format: ${recording.format || "unknown"}`
+            logger.logInfo(
+              `[SPLIT PAGE] Audio file format: ${recording.format || "unknown"}`,
+              userId
             );
-            console.log(
-              `[SPLIT PAGE] Audio file duration: ${recording.duration || 0} seconds`
+            logger.logInfo(
+              `[SPLIT PAGE] Audio file duration: ${recording.duration || 0} seconds`,
+              userId
             );
           }
 
@@ -1542,8 +1561,11 @@ router.get(
             /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
               userAgent
             );
-          console.log(`[SPLIT PAGE] User agent: ${userAgent}`);
-          console.log(`[SPLIT PAGE] Detected as mobile: ${isMobile}`);
+          logger.logInfo(`[SPLIT PAGE] User agent: ${userAgent}`, userId);
+          logger.logInfo(
+            `[SPLIT PAGE] Detected as mobile: ${isMobile}`,
+            userId
+          );
 
           // Get file size if available (from DB or filesystem)
           const fileSizeBytes = recording.fileSize

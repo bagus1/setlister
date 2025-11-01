@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 const { prisma } = require("../lib/prisma");
 const path = require("path");
 const fs = require("fs");
+const { exec, execSync } = require("child_process");
 const {
   sendBandInvitation,
   sendBandInvitationNotification,
@@ -1637,7 +1638,6 @@ router.get(
           }
 
           // Check which waveforms already exist, generate missing ones
-          const { exec } = require("child_process");
 
           console.log(
             `[SPLIT PAGE] Total zoom levels to check/generate: ${zoomLevels.length}`
@@ -1671,6 +1671,48 @@ router.get(
                 `[SPLIT PAGE]   - Status: GENERATING (does not exist yet)`,
                 userId
               );
+
+              // audiowaveform doesn't support WebM - transcode to WAV first if needed
+              let inputFile = audioAbsPath;
+              const isWebM = audioAbsPath.toLowerCase().endsWith(".webm");
+              let tempWavPath = null;
+
+              if (isWebM) {
+                // Create temporary WAV file for waveform generation
+                tempWavPath = path.join(
+                  path.dirname(file),
+                  `temp-${path.basename(file, ".dat")}.wav`
+                );
+                logger.logInfo(
+                  `[SPLIT PAGE]   - Transcoding WebM to WAV for waveform generation: ${tempWavPath}`,
+                  userId
+                );
+
+                // Transcode WebM to WAV using FFmpeg
+                const transcodeCmd = `ffmpeg -y -i ${JSON.stringify(audioAbsPath)} -vn -c:a pcm_s16le -ar 44100 ${JSON.stringify(tempWavPath)}`;
+                logger.logInfo(
+                  `[SPLIT PAGE]   - Transcode command: ${transcodeCmd}`,
+                  userId
+                );
+
+                // Do transcoding synchronously (waveform generation needs the file)
+                try {
+                  execSync(transcodeCmd, { stdio: "pipe" });
+                  inputFile = tempWavPath;
+                  logger.logInfo(
+                    `[SPLIT PAGE]   - Transcode successful, using WAV for waveform`,
+                    userId
+                  );
+                } catch (transcodeErr) {
+                  logger.logError(
+                    `[SPLIT PAGE]   - Transcode failed, cannot generate waveform`,
+                    transcodeErr?.message || transcodeErr,
+                    userId
+                  );
+                  continue; // Skip this zoom level
+                }
+              }
+
               // Use local audiowaveform binary if available, fallback to system
               const audiowaveformPath = process.env.HOME
                 ? `${process.env.HOME}/local/bin/audiowaveform`
@@ -1678,10 +1720,10 @@ router.get(
               const audiowaveformCmd = fs.existsSync(audiowaveformPath)
                 ? audiowaveformPath
                 : "audiowaveform";
-              const cmd = `${audiowaveformCmd} -i ${JSON.stringify(audioAbsPath)} -o ${JSON.stringify(file)} -b 8 -z ${samples}`;
+              const cmd = `${audiowaveformCmd} -i ${JSON.stringify(inputFile)} -o ${JSON.stringify(file)} -b 8 -z ${samples}`;
               logger.logInfo(`[SPLIT PAGE]   - Command: ${cmd}`, userId);
               logger.logInfo(
-                `[SPLIT PAGE]   - Input file exists: ${fs.existsSync(audioAbsPath)}`,
+                `[SPLIT PAGE]   - Input file exists: ${fs.existsSync(inputFile)}`,
                 userId
               );
               logger.logInfo(
@@ -1701,6 +1743,24 @@ router.get(
               };
 
               exec(cmd, { env }, (err, stdout, stderr) => {
+                // Clean up temporary WAV file if it was created (in both success and error cases)
+                const cleanupTempFile = () => {
+                  if (tempWavPath && fs.existsSync(tempWavPath)) {
+                    try {
+                      fs.unlinkSync(tempWavPath);
+                      logger.logInfo(
+                        `[SPLIT PAGE]   - Cleaned up temporary WAV file`,
+                        userId
+                      );
+                    } catch (cleanupErr) {
+                      logger.logWarn(
+                        `[SPLIT PAGE]   - Failed to clean up temp WAV: ${cleanupErr?.message}`,
+                        userId
+                      );
+                    }
+                  }
+                };
+
                 if (err) {
                   logger.logError(
                     `[SPLIT PAGE]   - ERROR: Zoom level ${level} (${samples} samples) generation failed`,
@@ -1717,6 +1777,7 @@ router.get(
                     null,
                     userId
                   );
+                  cleanupTempFile();
                 } else {
                   // Check if file was created
                   const existsNow = fs.existsSync(file);
@@ -1750,6 +1811,8 @@ router.get(
                       userId
                     );
                   }
+
+                  cleanupTempFile();
                 }
               });
               // Include it in the response even though it's generating (will be available on refresh)

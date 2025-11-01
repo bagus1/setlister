@@ -703,22 +703,9 @@
       const hasProgressiveZoom = zoomLevels && Object.keys(zoomLevels).length >= 2;
       const hasSingleZoom = zoomLevels && Object.keys(zoomLevels).length === 1;
       
-      // For Safari on large files, prefer Web Audio to avoid memory crashes
-      // Web Audio generates waveform on-the-fly and uses less memory than loading large .dat files
-      const isLargeFile = typeof recording !== 'undefined' && recording.fileSize && Number(recording.fileSize) > 50 * 1024 * 1024;
-      const forceWebAudioForSafari = isLargeFile && safari && typeof useWebAudio === 'undefined';
+      // Note: Safari detection happens client-side below, not in EJS
       %>
-      <% if (forceWebAudioForSafari) { %>
-      // Force Web Audio for Safari on large files to prevent memory crashes
-      addDebugLog("Large file detected with Safari - forcing Web Audio API instead of .dat files to prevent memory issues");
-      waveformSource = {
-        webAudio: {
-          audioContext: new (window.AudioContext || window.webkitAudioContext)(),
-          scale: 512,
-          multiChannel: false
-        }
-      };
-      <% } else if (hasProgressiveZoom) { %>
+      <% if (hasProgressiveZoom) { %>
       // Use progressive zoom levels (loads lowest first, higher on zoom)
       const baseUrl = window.location.origin;
       waveformSource = {
@@ -760,6 +747,28 @@
         }
       };
       <% } %>
+
+      // Log memory usage and waveform configuration
+      if (typeof performance !== 'undefined' && performance.memory) {
+        const memoryMB = (performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(2);
+        const limitMB = (performance.memory.jsHeapSizeLimit / (1024 * 1024)).toFixed(2);
+        addDebugLog("Browser memory usage: " + memoryMB + " MB / " + limitMB + " MB limit");
+      }
+      if (typeof navigator !== 'undefined' && navigator.deviceMemory) {
+        addDebugLog("Device memory: " + navigator.deviceMemory + " GB");
+      }
+      
+      // Log waveform source configuration
+      if (waveformSource && waveformSource.dataUri) {
+        const levels = waveformSource.dataUri;
+        const levelKeys = Object.keys(levels).filter(k => k !== 'arraybuffer' && k !== 'scale');
+        addDebugLog("Using Peaks.js with .dat files - zoom levels: " + (levelKeys.length > 0 ? levelKeys.join(', ') : 'single level'));
+        if (levels.scale) {
+          addDebugLog("Single zoom level scale: " + levels.scale + " samples/pixel");
+        }
+      } else if (waveformSource && waveformSource.webAudio) {
+        addDebugLog("Using Peaks.js with Web Audio API (generates waveform on-the-fly)");
+      }
 
         const options = {
           overview: {

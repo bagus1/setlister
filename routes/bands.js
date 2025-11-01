@@ -1600,14 +1600,21 @@ router.get(
               ? fs.statSync(audioAbsPath).size
               : 0;
 
-          // Determine zoom levels based on device type and file size
-          // For very large files (>50MB), use fewer/higher zoom levels to reduce memory usage
+          // Determine zoom levels based on device type, browser, and file size
+          // Higher samples/pixel = less detail = less memory usage
+          // For Safari on large files, use VERY high samples/pixel to minimize memory
           const fileSizeMB = fileSizeBytes / (1024 * 1024);
           const isLargeFile = fileSizeMB > 50;
+          const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+          const isSafariLargeFile = isSafari && isLargeFile;
 
           let zoomLevels;
           if (isMobile) {
             // Mobile: use 1024 samples/pixel for lower memory usage
+            logger.logInfo(
+              `[SPLIT PAGE] Mobile device detected - using 1024 samples/pixel (low memory)`,
+              userId
+            );
             zoomLevels = [
               {
                 level: 1,
@@ -1615,11 +1622,29 @@ router.get(
                 file: path.join(waveformsDir, `zoom1-${base}.dat`),
               },
             ];
-          } else if (isLargeFile) {
-            // Large files: use fewer zoom levels (skip zoom1 which creates very large files)
-            // Start with 256 samples/pixel instead of 64
+          } else if (isSafariLargeFile) {
+            // Safari on large files: use VERY high samples/pixel (2048-4096) to minimize memory
+            // This is much lower resolution but prevents Safari memory crashes
             logger.logInfo(
-              `[SPLIT PAGE] Large file detected (${fileSizeMB.toFixed(2)} MB), using reduced zoom levels to prevent memory issues`,
+              `[SPLIT PAGE] Safari + Large file detected (${fileSizeMB.toFixed(2)} MB) - using VERY low resolution (2048-4096 samples/pixel) to prevent memory crashes`,
+              userId
+            );
+            zoomLevels = [
+              {
+                level: 1,
+                samples: 2048,
+                file: path.join(waveformsDir, `zoom1-${base}.dat`),
+              },
+              {
+                level: 2,
+                samples: 4096,
+                file: path.join(waveformsDir, `zoom2-${base}.dat`),
+              },
+            ];
+          } else if (isLargeFile) {
+            // Large files on other browsers: use fewer/higher zoom levels
+            logger.logInfo(
+              `[SPLIT PAGE] Large file detected (${fileSizeMB.toFixed(2)} MB) - using reduced zoom levels (256-512 samples/pixel)`,
               userId
             );
             zoomLevels = [
@@ -1636,6 +1661,10 @@ router.get(
             ];
           } else {
             // Desktop: progressive zoom levels (64, 128, 256, 512)
+            logger.logInfo(
+              `[SPLIT PAGE] Normal desktop file - using progressive zoom levels (64-512 samples/pixel)`,
+              userId
+            );
             zoomLevels = [
               {
                 level: 1,
@@ -1659,6 +1688,15 @@ router.get(
               },
             ];
           }
+
+          // Log the actual zoom levels that will be used
+          const zoomSummary = zoomLevels
+            .map((z) => `level ${z.level}: ${z.samples} samples/pixel`)
+            .join(", ");
+          logger.logInfo(
+            `[SPLIT PAGE] Zoom levels configured: ${zoomSummary}`,
+            userId
+          );
 
           // Check which waveforms already exist, generate missing ones
 
@@ -1732,11 +1770,19 @@ router.get(
               // Waveform already exists
               const stats = fs.statSync(abs);
               const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-              console.log(`[SPLIT PAGE]   - Status: EXISTS`);
-              console.log(
-                `[SPLIT PAGE]   - Size: ${stats.size} bytes (${fileSizeMB} MB)`
+              logger.logInfo(`[SPLIT PAGE]   - Status: EXISTS`, userId);
+              logger.logInfo(
+                `[SPLIT PAGE]   - Size: ${stats.size} bytes (${fileSizeMB} MB)`,
+                userId
               );
-              console.log(`[SPLIT PAGE]   - Created: ${stats.birthtime}`);
+              logger.logInfo(
+                `[SPLIT PAGE]   - Samples per pixel: ${samples}`,
+                userId
+              );
+              logger.logInfo(
+                `[SPLIT PAGE]   - Created: ${stats.birthtime}`,
+                userId
+              );
               waveformZoomLevels[level] = candidate;
             } else if (sharedInputFile && fs.existsSync(sharedInputFile)) {
               // Track this process
@@ -1823,6 +1869,10 @@ router.get(
                     );
                     logger.logInfo(
                       `[SPLIT PAGE]   - Generated size: ${stats.size} bytes (${fileSizeMB} MB)`,
+                      userId
+                    );
+                    logger.logInfo(
+                      `[SPLIT PAGE]   - Samples per pixel: ${samples}`,
                       userId
                     );
                     logger.logInfo(

@@ -673,6 +673,7 @@
       <% 
       const zoomLevels = typeof waveformZoomLevels !== 'undefined' && waveformZoomLevels ? waveformZoomLevels : {};
       const hasProgressiveZoom = zoomLevels && Object.keys(zoomLevels).length >= 2;
+      const hasSingleZoom = zoomLevels && Object.keys(zoomLevels).length === 1;
       %>
       <% if (hasProgressiveZoom) { %>
       // Use progressive zoom levels (loads lowest first, higher on zoom)
@@ -687,6 +688,16 @@
       };
       addDebugLog("Using progressive zoom levels: " + <%- JSON.stringify(Object.keys(zoomLevels)) %>);
       addDebugLog("Mobile device detected: " + isMobile + ", starting with lowest resolution");
+      <% } else if (hasSingleZoom && zoomLevels[1]) { %>
+      // Use single zoom level (mobile)
+      const baseUrl = window.location.origin;
+      waveformSource = {
+        dataUri: {
+          arraybuffer: baseUrl + "<%= zoomLevels[1] %>",
+          scale: 1024
+        }
+      };
+      addDebugLog("Using single zoom level (mobile): " + <%- JSON.stringify(Object.keys(zoomLevels)) %>);
       <% } else if (recording.waveformPath) { %>
       // Fallback to single waveform file
       waveformSource = {

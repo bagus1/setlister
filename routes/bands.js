@@ -1499,12 +1499,37 @@ router.get(
             );
           }
 
+          // Log audio file information
+          console.log(`[SPLIT PAGE] Recording ID: ${recording.id}`);
+          console.log(`[SPLIT PAGE] Audio file path: ${recording.filePath}`);
+          console.log(`[SPLIT PAGE] Audio file absolute path: ${audioAbsPath}`);
+          console.log(`[SPLIT PAGE] Base filename (for waveforms): ${base}`);
+
+          const audioFileExists = fs.existsSync(audioAbsPath);
+          console.log(`[SPLIT PAGE] Audio file exists: ${audioFileExists}`);
+
+          if (audioFileExists) {
+            const audioStats = fs.statSync(audioAbsPath);
+            const audioSizeMB = (audioStats.size / (1024 * 1024)).toFixed(2);
+            console.log(
+              `[SPLIT PAGE] Audio file size: ${audioStats.size} bytes (${audioSizeMB} MB)`
+            );
+            console.log(
+              `[SPLIT PAGE] Audio file format: ${recording.format || "unknown"}`
+            );
+            console.log(
+              `[SPLIT PAGE] Audio file duration: ${recording.duration || 0} seconds`
+            );
+          }
+
           // Detect mobile device from user-agent
           const userAgent = req.headers["user-agent"] || "";
           const isMobile =
             /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
               userAgent
             );
+          console.log(`[SPLIT PAGE] User agent: ${userAgent}`);
+          console.log(`[SPLIT PAGE] Detected as mobile: ${isMobile}`);
 
           // Get file size if available (from DB or filesystem)
           const fileSizeBytes = recording.fileSize
@@ -1522,7 +1547,20 @@ router.get(
             "waveforms"
           );
           if (!fs.existsSync(waveformsDir)) {
-            fs.mkdirSync(waveformsDir, { recursive: true });
+            fs.mkdirSync(waveformsDir, { recursive: true, mode: 0o755 });
+            console.log(
+              `[WAVEFORM] Created waveforms directory: ${waveformsDir}`
+            );
+          }
+          // Verify directory is writable
+          try {
+            fs.accessSync(waveformsDir, fs.constants.W_OK);
+            console.log(`[WAVEFORM] Directory is writable: ${waveformsDir}`);
+          } catch (e) {
+            console.error(
+              `[WAVEFORM] Directory is NOT writable: ${waveformsDir}`,
+              e.message
+            );
           }
 
           // Determine zoom levels based on device type
@@ -1565,32 +1603,102 @@ router.get(
           // Check which waveforms already exist, generate missing ones
           const { exec } = require("child_process");
 
+          console.log(
+            `[SPLIT PAGE] Total zoom levels to check/generate: ${zoomLevels.length}`
+          );
+
           for (const { level, samples, file } of zoomLevels) {
             const candidate = `/uploads/waveforms/zoom${level}-${base}.dat`;
             const abs = path.join(__dirname, "..", "public", candidate);
+            const fileName = path.basename(file);
+
+            console.log(
+              `[SPLIT PAGE] Checking zoom level ${level} (${samples} samples/pixel):`
+            );
+            console.log(`[SPLIT PAGE]   - Output file: ${fileName}`);
+            console.log(`[SPLIT PAGE]   - Full path: ${file}`);
+            console.log(`[SPLIT PAGE]   - Web path: ${candidate}`);
 
             if (fs.existsSync(abs)) {
               // Waveform already exists
+              const stats = fs.statSync(abs);
+              const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+              console.log(`[SPLIT PAGE]   - Status: EXISTS`);
+              console.log(
+                `[SPLIT PAGE]   - Size: ${stats.size} bytes (${fileSizeMB} MB)`
+              );
+              console.log(`[SPLIT PAGE]   - Created: ${stats.birthtime}`);
               waveformZoomLevels[level] = candidate;
             } else if (fs.existsSync(audioAbsPath)) {
               // Generate waveform on-demand
+              console.log(
+                `[SPLIT PAGE]   - Status: GENERATING (does not exist yet)`
+              );
               const cmd = `audiowaveform -i ${JSON.stringify(audioAbsPath)} -o ${JSON.stringify(file)} -b 8 -z ${samples}`;
-              exec(cmd, (err) => {
+              console.log(`[SPLIT PAGE]   - Command: ${cmd}`);
+              console.log(
+                `[SPLIT PAGE]   - Input file exists: ${fs.existsSync(audioAbsPath)}`
+              );
+              console.log(
+                `[SPLIT PAGE]   - Output directory exists: ${fs.existsSync(path.dirname(file))}`
+              );
+
+              exec(cmd, (err, stdout, stderr) => {
                 if (err) {
-                  console.warn(
-                    `Waveform zoom level ${level} (${samples} samples) generation failed:`,
-                    err?.message || err
+                  console.error(
+                    `[SPLIT PAGE]   - ERROR: Zoom level ${level} (${samples} samples) generation failed`
+                  );
+                  console.error(
+                    `[SPLIT PAGE]   - Error message: ${err?.message || err}`
+                  );
+                  console.error(
+                    `[SPLIT PAGE]   - stderr: ${stderr || "(none)"}`
+                  );
+                  console.error(
+                    `[SPLIT PAGE]   - stdout: ${stdout || "(none)"}`
                   );
                 } else {
+                  // Check if file was created
+                  const existsNow = fs.existsSync(file);
                   console.log(
-                    `Waveform zoom level ${level} (${samples} samples) generated for ${base}`
+                    `[SPLIT PAGE]   - SUCCESS: Zoom level ${level} (${samples} samples) generated`
                   );
+                  console.log(
+                    `[SPLIT PAGE]   - File exists after generation: ${existsNow}`
+                  );
+
+                  if (existsNow) {
+                    const stats = fs.statSync(file);
+                    const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+                    console.log(`[SPLIT PAGE]   - Generated file: ${fileName}`);
+                    console.log(
+                      `[SPLIT PAGE]   - Generated size: ${stats.size} bytes (${fileSizeMB} MB)`
+                    );
+                    console.log(
+                      `[SPLIT PAGE]   - Generated at: ${new Date().toISOString()}`
+                    );
+                  } else {
+                    console.error(
+                      `[SPLIT PAGE]   - WARNING: Command succeeded but file does not exist at: ${file}`
+                    );
+                  }
                 }
               });
               // Include it in the response even though it's generating (will be available on refresh)
               waveformZoomLevels[level] = candidate;
+            } else {
+              console.warn(
+                `[SPLIT PAGE]   - SKIPPED: Audio file not found: ${audioAbsPath}`
+              );
             }
           }
+
+          console.log(
+            `[SPLIT PAGE] Waveform zoom levels available for client: ${Object.keys(waveformZoomLevels).length}`
+          );
+          console.log(
+            `[SPLIT PAGE] Waveform levels: ${JSON.stringify(Object.keys(waveformZoomLevels))}`
+          );
         }
       } catch (e) {
         console.error("Error generating waveforms:", e?.message || e);

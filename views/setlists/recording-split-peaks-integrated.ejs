@@ -962,19 +962,25 @@
           // For .dat files, set zoomLevels to match the actual data scales
           // This prevents Peaks.js from trying to resample at invalid levels
           if (waveformSource.dataUri.scale) {
-            // Single zoom level - set explicit zoom levels to prevent Peaks.js from resampling below 2048
+            // Single zoom level - set explicit zoom levels that match or exceed the data scale
+            // Peaks.js requires all zoom levels to be >= the data's scale when using resampling
             const scale = waveformSource.dataUri.scale;
             addDebugLog("Single zoom level detected with scale: " + scale);
             if (scale >= 8192) {
-              // Safari large file - use the actual scale and higher, but ensure all >= 2048
-              options.zoomLevels = [2048, 4096, 8192];
+              // Safari large file at 8192 - only allow zoom levels >= 8192
+              // Can't downscale, but can allow upscaling
+              options.zoomLevels = [8192];
             } else if (scale >= 4096) {
-              options.zoomLevels = [2048, 4096, 8192];
+              // Scale 4096 - allow this and higher levels
+              options.zoomLevels = [4096, 8192];
             } else if (scale >= 2048) {
+              // Scale 2048 - allow this and higher levels
               options.zoomLevels = [2048, 4096, 8192];
             } else {
-              // Scale is too low (e.g., 1024 for mobile) - force minimum valid levels
-              // Peaks.js will use the data but won't try to resample below 2048
+              // Scale is too low (e.g., 1024 for mobile) - but we have the data
+              // Force minimum valid levels - Peaks.js might reject this, so fallback to Web Audio
+              // Actually, if scale < 2048, we shouldn't be here (should use Web Audio)
+              // But just in case, set to minimum
               options.zoomLevels = [2048, 4096, 8192];
             }
             addDebugLog("Setting zoomLevels for single zoom: " + JSON.stringify(options.zoomLevels) + " (data scale: " + scale + ")");

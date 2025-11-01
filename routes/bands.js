@@ -1954,6 +1954,18 @@ router.get(
         `[SPLIT PAGE] After waveform generation, waveformZoomLevels count: ${Object.keys(waveformZoomLevels).length}`
       );
 
+      // Recalculate isSafariLargeFile for template (in case waveform generation block wasn't entered)
+      const userAgentForTemplate = req.headers["user-agent"] || "";
+      const fileSizeBytesForTemplate = recording.fileSize
+        ? Number(recording.fileSize)
+        : 0;
+      const fileSizeMBForTemplate = fileSizeBytesForTemplate / (1024 * 1024);
+      const isLargeFileForTemplate = fileSizeMBForTemplate > 50;
+      const isSafariForTemplate = /^((?!chrome|android).)*safari/i.test(
+        userAgentForTemplate
+      );
+      const isSafariLargeFile = isSafariForTemplate && isLargeFileForTemplate;
+
       // Compute iOS-friendly playback path if available
       let iosPlaybackPath = null;
       try {

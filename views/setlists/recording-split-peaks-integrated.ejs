@@ -497,6 +497,20 @@
 
       // Load the actual recording file
       const audioElement = document.getElementById("audio");
+      // Prevent page reloads from unhandled errors
+      window.addEventListener('error', (e) => {
+        console.error('Global error caught:', e.error, e.message, e.filename, e.lineno);
+        addDebugLog('Global error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+        e.preventDefault(); // Prevent default error handling that might cause reload
+        return true; // Prevent error from propagating
+      });
+
+      window.addEventListener('unhandledrejection', (e) => {
+        console.error('Unhandled promise rejection:', e.reason);
+        addDebugLog('Unhandled promise rejection: ' + e.reason);
+        e.preventDefault(); // Prevent default error handling
+      });
+
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
       const iosPreferred = isIOS || safari;
@@ -757,9 +771,17 @@
             console.error("Failed to initialize Peaks.js:", err);
             addDebugLog("Peaks.js init error: " + err.message);
             addDebugLog("Full error: " + JSON.stringify(err));
-            addDebugLog("Error stack: " + err.stack);
+            addDebugLog("Error stack: " + (err.stack || 'No stack'));
             addDebugLog("Options used: " + JSON.stringify(options));
-            showError("Failed to initialize waveform editor: " + err.message);
+            
+            // Don't reload - show error and allow fallback
+            showError("Failed to initialize waveform editor: " + err.message + ". The page will not reload. Please try refreshing manually if needed.");
+            
+            // Try to prevent any automatic reload attempts
+            if (typeof window.stop === 'function') {
+              window.stop();
+            }
+            
             return;
           }
 

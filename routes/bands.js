@@ -1568,13 +1568,6 @@ router.get(
             userId
           );
 
-          // Get file size if available (from DB or filesystem)
-          const fileSizeBytes = recording.fileSize
-            ? Number(recording.fileSize)
-            : fs.existsSync(audioAbsPath)
-              ? fs.statSync(audioAbsPath).size
-              : 0;
-
           // Set up waveforms directory
           const waveformsDir = path.join(
             __dirname,
@@ -1600,7 +1593,18 @@ router.get(
             );
           }
 
-          // Determine zoom levels based on device type
+          // Get file size if available (from DB or filesystem)
+          const fileSizeBytes = recording.fileSize
+            ? Number(recording.fileSize)
+            : fs.existsSync(audioAbsPath)
+              ? fs.statSync(audioAbsPath).size
+              : 0;
+
+          // Determine zoom levels based on device type and file size
+          // For very large files (>50MB), use fewer/higher zoom levels to reduce memory usage
+          const fileSizeMB = fileSizeBytes / (1024 * 1024);
+          const isLargeFile = fileSizeMB > 50;
+
           let zoomLevels;
           if (isMobile) {
             // Mobile: use 1024 samples/pixel for lower memory usage
@@ -1609,6 +1613,25 @@ router.get(
                 level: 1,
                 samples: 1024,
                 file: path.join(waveformsDir, `zoom1-${base}.dat`),
+              },
+            ];
+          } else if (isLargeFile) {
+            // Large files: use fewer zoom levels (skip zoom1 which creates very large files)
+            // Start with 256 samples/pixel instead of 64
+            logger.logInfo(
+              `[SPLIT PAGE] Large file detected (${fileSizeMB.toFixed(2)} MB), using reduced zoom levels to prevent memory issues`,
+              userId
+            );
+            zoomLevels = [
+              {
+                level: 2,
+                samples: 256,
+                file: path.join(waveformsDir, `zoom2-${base}.dat`),
+              },
+              {
+                level: 3,
+                samples: 512,
+                file: path.join(waveformsDir, `zoom3-${base}.dat`),
               },
             ];
           } else {

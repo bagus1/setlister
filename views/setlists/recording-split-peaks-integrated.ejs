@@ -514,17 +514,28 @@
       // Send client-side logs to server for debugging Safari reloads
       function sendLogToServer(level, message, data) {
         try {
+          const logData = JSON.stringify({
+            level: level,
+            message: message,
+            data: data,
+            url: window.location.pathname,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent
+          });
+          
+          // Use sendBeacon for unload events - more reliable than fetch
+          if (level === 'warn' && message === 'Page unloading') {
+            if (navigator.sendBeacon) {
+              const blob = new Blob([logData], { type: 'application/json' });
+              navigator.sendBeacon('/bands/api/client-log', blob);
+              return;
+            }
+          }
+          
           fetch('/bands/api/client-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              level: level,
-              message: message,
-              data: data,
-              url: window.location.pathname,
-              timestamp: new Date().toISOString(),
-              userAgent: navigator.userAgent
-            }),
+            body: logData,
             keepalive: true // Important: allows request to complete even if page is unloading
           }).catch(() => {}); // Ignore errors - page might be unloading
         } catch (e) {
@@ -850,6 +861,11 @@
         zoomLevels: [512, 1024, 2048, 4096]
         };
 
+        sendLogToServer('info', 'Starting Peaks.js initialization', {
+          waveformSourceType: waveformSource.dataUri ? 'dat' : (waveformSource.webAudio ? 'webAudio' : 'unknown'),
+          hasProgressiveZoom: waveformSource.dataUri && Object.keys(waveformSource.dataUri).length > 1
+        });
+
         PeaksLib.init(options, (err, p) => {
           if (err) {
             console.error("Failed to initialize Peaks.js:", err);
@@ -857,6 +873,11 @@
             addDebugLog("Full error: " + JSON.stringify(err));
             addDebugLog("Error stack: " + (err.stack || 'No stack'));
             addDebugLog("Options used: " + JSON.stringify(options));
+            
+            sendLogToServer('error', 'Peaks.js initialization failed', {
+              error: err.message,
+              stack: err.stack
+            });
             
             // Don't reload - show error and allow fallback
             showError("Failed to initialize waveform editor: " + err.message + ". The page will not reload. Please try refreshing manually if needed.");
@@ -872,6 +893,7 @@
           peaks = p;
           console.log("Peaks.js initialized successfully");
           addDebugLog("Peaks.js initialized successfully!");
+          sendLogToServer('info', 'Peaks.js initialized successfully', {});
         peaksInitialized = true; // Mark as initialized to prevent re-initialization
 
         // Complete loading animation

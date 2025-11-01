@@ -12121,9 +12121,22 @@ router.delete("/:id", requireAuth, async (req, res) => {
 });
 
 // POST /api/client-log - Receive client-side logs (for debugging Safari reloads)
-router.post("/api/client-log", async (req, res) => {
+router.post("/api/client-log", express.json(), async (req, res) => {
   try {
-    const { level, message, data, url, timestamp, userAgent } = req.body;
+    // Handle both JSON body and Blob (from sendBeacon)
+    let logPayload;
+    if (typeof req.body === 'string') {
+      // sendBeacon sends as Blob/text
+      try {
+        logPayload = JSON.parse(req.body);
+      } catch (e) {
+        logPayload = req.body;
+      }
+    } else {
+      logPayload = req.body;
+    }
+    
+    const { level, message, data, url, timestamp, userAgent } = logPayload;
     const userId = req.session?.user?.id || null;
 
     const logMessage = `[CLIENT LOG ${level.toUpperCase()}] ${message}`;

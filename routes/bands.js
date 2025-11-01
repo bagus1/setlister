@@ -1690,7 +1690,11 @@ router.get(
             .map((z) => `level ${z.level}: ${z.samples} samples/pixel`)
             .join(", ");
           logger.logInfo(
-            `[SPLIT PAGE] Zoom levels configured: ${zoomSummary}`,
+            `[SPLIT PAGE] Zoom levels configured for ${isSafariLargeFile ? 'Safari large file' : isLargeFile ? 'Chrome/Firefox large file' : isMobile ? 'mobile' : 'desktop'}: ${zoomSummary}`,
+            userId
+          );
+          logger.logInfo(
+            `[SPLIT PAGE] User agent: ${userAgent}`,
             userId
           );
 
@@ -1767,7 +1771,11 @@ router.get(
               // Waveform already exists
               const stats = fs.statSync(abs);
               const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-              logger.logInfo(`[SPLIT PAGE]   - Status: EXISTS`, userId);
+              logger.logInfo(`[SPLIT PAGE]   - Status: EXISTS (will use existing file)`, userId);
+              logger.logInfo(
+                `[SPLIT PAGE]   - File: ${fileName}`,
+                userId
+              );
               logger.logInfo(
                 `[SPLIT PAGE]   - Size: ${stats.size} bytes (${fileSizeMB} MB)`,
                 userId
@@ -1781,6 +1789,10 @@ router.get(
                 userId
               );
               waveformZoomLevels[level] = candidate;
+              logger.logInfo(
+                `[SPLIT PAGE]   - Added to waveformZoomLevels[${level}]: ${candidate}`,
+                userId
+              );
             } else if (sharedInputFile && fs.existsSync(sharedInputFile)) {
               // Track this process
               activeProcesses++;
@@ -1788,7 +1800,15 @@ router.get(
               pendingProcesses.add(processId);
               // Generate waveform on-demand
               logger.logInfo(
-                `[SPLIT PAGE]   - Status: GENERATING (does not exist yet)`,
+                `[SPLIT PAGE]   - Status: GENERATING (file does not exist, will create)`,
+                userId
+              );
+              logger.logInfo(
+                `[SPLIT PAGE]   - File: ${fileName}`,
+                userId
+              );
+              logger.logInfo(
+                `[SPLIT PAGE]   - Target samples per pixel: ${samples}`,
                 userId
               );
 
@@ -1994,6 +2014,17 @@ router.get(
         null // No size estimate at this point
       );
 
+      const waveformLevelsSummary = Object.keys(waveformZoomLevels)
+        .map(level => `level ${level}: ${waveformZoomLevels[level]}`)
+        .join(", ");
+      logger.logInfo(
+        `[SPLIT PAGE] About to render page - waveformZoomLevels being passed to template: ${waveformLevelsSummary || '(none - will fallback to Web Audio)'}`,
+        userId
+      );
+      logger.logInfo(
+        `[SPLIT PAGE] Total zoom levels available for client: ${Object.keys(waveformZoomLevels).length}`,
+        userId
+      );
       console.log(
         `[SPLIT PAGE] About to render page, waveformZoomLevels:`,
         Object.keys(waveformZoomLevels)

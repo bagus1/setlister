@@ -1643,6 +1643,52 @@ router.get(
             `[SPLIT PAGE] Total zoom levels to check/generate: ${zoomLevels.length}`
           );
 
+          // audiowaveform doesn't support WebM - transcode once if needed and reuse for all zoom levels
+          let sharedInputFile = audioAbsPath;
+          let sharedTempWavPath = null;
+          const isWebM = audioAbsPath.toLowerCase().endsWith(".webm");
+
+          if (isWebM && fs.existsSync(audioAbsPath)) {
+            // Check if any waveforms need to be generated
+            const needsGeneration = zoomLevels.some(({ file }) => {
+              return !fs.existsSync(file);
+            });
+
+            if (needsGeneration) {
+              // Create a shared temporary WAV file for all zoom levels
+              sharedTempWavPath = path.join(waveformsDir, `temp-${base}.wav`);
+              logger.logInfo(
+                `[SPLIT PAGE]   - Transcoding WebM to WAV once for all waveform generation: ${sharedTempWavPath}`,
+                userId
+              );
+
+              // Transcode WebM to WAV using FFmpeg
+              const transcodeCmd = `ffmpeg -y -i ${JSON.stringify(audioAbsPath)} -vn -c:a pcm_s16le -ar 44100 ${JSON.stringify(sharedTempWavPath)}`;
+              logger.logInfo(
+                `[SPLIT PAGE]   - Transcode command: ${transcodeCmd}`,
+                userId
+              );
+
+              // Do transcoding synchronously (waveform generation needs the file)
+              try {
+                execSync(transcodeCmd, { stdio: "pipe" });
+                sharedInputFile = sharedTempWavPath;
+                logger.logInfo(
+                  `[SPLIT PAGE]   - Transcode successful, using shared WAV for all waveforms`,
+                  userId
+                );
+              } catch (transcodeErr) {
+                logger.logError(
+                  `[SPLIT PAGE]   - Transcode failed, cannot generate waveforms`,
+                  transcodeErr?.message || transcodeErr,
+                  userId
+                );
+                // Continue without waveforms - client will use Web Audio fallback
+                sharedInputFile = null;
+              }
+            }
+          }
+
           for (const { level, samples, file } of zoomLevels) {
             const candidate = `/uploads/waveforms/zoom${level}-${base}.dat`;
             const abs = path.join(__dirname, "..", "public", candidate);
@@ -1665,53 +1711,15 @@ router.get(
               );
               console.log(`[SPLIT PAGE]   - Created: ${stats.birthtime}`);
               waveformZoomLevels[level] = candidate;
-            } else if (fs.existsSync(audioAbsPath)) {
+            } else if (sharedInputFile && fs.existsSync(sharedInputFile)) {
               // Generate waveform on-demand
               logger.logInfo(
                 `[SPLIT PAGE]   - Status: GENERATING (does not exist yet)`,
                 userId
               );
 
-              // audiowaveform doesn't support WebM - transcode to WAV first if needed
-              let inputFile = audioAbsPath;
-              const isWebM = audioAbsPath.toLowerCase().endsWith(".webm");
-              let tempWavPath = null;
-
-              if (isWebM) {
-                // Create temporary WAV file for waveform generation
-                tempWavPath = path.join(
-                  path.dirname(file),
-                  `temp-${path.basename(file, ".dat")}.wav`
-                );
-                logger.logInfo(
-                  `[SPLIT PAGE]   - Transcoding WebM to WAV for waveform generation: ${tempWavPath}`,
-                  userId
-                );
-
-                // Transcode WebM to WAV using FFmpeg
-                const transcodeCmd = `ffmpeg -y -i ${JSON.stringify(audioAbsPath)} -vn -c:a pcm_s16le -ar 44100 ${JSON.stringify(tempWavPath)}`;
-                logger.logInfo(
-                  `[SPLIT PAGE]   - Transcode command: ${transcodeCmd}`,
-                  userId
-                );
-
-                // Do transcoding synchronously (waveform generation needs the file)
-                try {
-                  execSync(transcodeCmd, { stdio: "pipe" });
-                  inputFile = tempWavPath;
-                  logger.logInfo(
-                    `[SPLIT PAGE]   - Transcode successful, using WAV for waveform`,
-                    userId
-                  );
-                } catch (transcodeErr) {
-                  logger.logError(
-                    `[SPLIT PAGE]   - Transcode failed, cannot generate waveform`,
-                    transcodeErr?.message || transcodeErr,
-                    userId
-                  );
-                  continue; // Skip this zoom level
-                }
-              }
+              // Use the shared input file (either original or transcoded WAV)
+              const inputFile = sharedInputFile;
 
               // Use local audiowaveform binary if available, fallback to system
               const audiowaveformPath = process.env.HOME
@@ -1743,24 +1751,6 @@ router.get(
               };
 
               exec(cmd, { env }, (err, stdout, stderr) => {
-                // Clean up temporary WAV file if it was created (in both success and error cases)
-                const cleanupTempFile = () => {
-                  if (tempWavPath && fs.existsSync(tempWavPath)) {
-                    try {
-                      fs.unlinkSync(tempWavPath);
-                      logger.logInfo(
-                        `[SPLIT PAGE]   - Cleaned up temporary WAV file`,
-                        userId
-                      );
-                    } catch (cleanupErr) {
-                      logger.logWarn(
-                        `[SPLIT PAGE]   - Failed to clean up temp WAV: ${cleanupErr?.message}`,
-                        userId
-                      );
-                    }
-                  }
-                };
-
                 if (err) {
                   logger.logError(
                     `[SPLIT PAGE]   - ERROR: Zoom level ${level} (${samples} samples) generation failed`,
@@ -1777,7 +1767,6 @@ router.get(
                     null,
                     userId
                   );
-                  cleanupTempFile();
                 } else {
                   // Check if file was created
                   const existsNow = fs.existsSync(file);
@@ -1811,15 +1800,30 @@ router.get(
                       userId
                     );
                   }
-
-                  cleanupTempFile();
                 }
               });
               // Include it in the response even though it's generating (will be available on refresh)
               waveformZoomLevels[level] = candidate;
-            } else {
-              console.warn(
-                `[SPLIT PAGE]   - SKIPPED: Audio file not found: ${audioAbsPath}`
+            } else if (!sharedInputFile) {
+              logger.logWarn(
+                `[SPLIT PAGE]   - SKIPPED: Audio file transcoding failed or file not found: ${audioAbsPath}`,
+                userId
+              );
+            }
+          }
+
+          // Clean up shared temporary WAV file after all zoom levels are processed
+          if (sharedTempWavPath && fs.existsSync(sharedTempWavPath)) {
+            try {
+              fs.unlinkSync(sharedTempWavPath);
+              logger.logInfo(
+                `[SPLIT PAGE]   - Cleaned up shared temporary WAV file`,
+                userId
+              );
+            } catch (cleanupErr) {
+              logger.logWarn(
+                `[SPLIT PAGE]   - Failed to clean up shared temp WAV: ${cleanupErr?.message}`,
+                userId
               );
             }
           }

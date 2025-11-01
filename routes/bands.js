@@ -1950,6 +1950,7 @@ router.get(
           id: recording.id,
           filePath: `/uploads/recordings/${path.basename(recording.filePath)}`,
           duration: recording.duration,
+          fileSize: recording.fileSize,
           waveformPath: recording.waveformPath,
           createdById: recording.createdById,
         },

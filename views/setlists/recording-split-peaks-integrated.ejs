@@ -511,6 +511,20 @@
         e.preventDefault(); // Prevent default error handling
       });
 
+      // Detect page reloads to help diagnose
+      let pageLoadTime = Date.now();
+      window.addEventListener('beforeunload', (e) => {
+        const timeOnPage = Date.now() - pageLoadTime;
+        console.error('Page unloading after', timeOnPage, 'ms');
+        addDebugLog('Page unloading after ' + timeOnPage + 'ms - this may be Safari killing the page due to memory');
+      });
+
+      // Prevent Safari from killing the page - keep a reference to prevent garbage collection
+      window._keepAlive = {
+        audioElement: audioElement,
+        timestamp: Date.now()
+      };
+
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
       const iosPreferred = isIOS || safari;
@@ -688,8 +702,23 @@
       const zoomLevels = typeof waveformZoomLevels !== 'undefined' && waveformZoomLevels ? waveformZoomLevels : {};
       const hasProgressiveZoom = zoomLevels && Object.keys(zoomLevels).length >= 2;
       const hasSingleZoom = zoomLevels && Object.keys(zoomLevels).length === 1;
+      
+      // For Safari on large files, prefer Web Audio to avoid memory crashes
+      // Web Audio generates waveform on-the-fly and uses less memory than loading large .dat files
+      const isLargeFile = typeof recording !== 'undefined' && recording.fileSize && Number(recording.fileSize) > 50 * 1024 * 1024;
+      const forceWebAudioForSafari = isLargeFile && safari && typeof useWebAudio === 'undefined';
       %>
-      <% if (hasProgressiveZoom) { %>
+      <% if (forceWebAudioForSafari) { %>
+      // Force Web Audio for Safari on large files to prevent memory crashes
+      addDebugLog("Large file detected with Safari - forcing Web Audio API instead of .dat files to prevent memory issues");
+      waveformSource = {
+        webAudio: {
+          audioContext: new (window.AudioContext || window.webkitAudioContext)(),
+          scale: 512,
+          multiChannel: false
+        }
+      };
+      <% } else if (hasProgressiveZoom) { %>
       // Use progressive zoom levels (loads lowest first, higher on zoom)
       const baseUrl = window.location.origin;
       waveformSource = {

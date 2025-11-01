@@ -1386,10 +1386,14 @@ router.get(
   requireAuth,
   async (req, res) => {
     try {
+      console.log(`[SPLIT PAGE] Route handler called`);
       const bandId = parseInt(req.params.bandId);
       const setlistId = parseInt(req.params.setlistId);
       const recordingId = parseInt(req.params.recordingId);
       const userId = req.session.user.id;
+      console.log(
+        `[SPLIT PAGE] Parsed IDs - Band: ${bandId}, Setlist: ${setlistId}, Recording: ${recordingId}, User: ${userId}`
+      );
 
       // Get setlist with all songs
       const setlist = await prisma.setlist.findUnique({
@@ -1469,9 +1473,19 @@ router.get(
       );
 
       // Generate waveforms on-demand if they don't exist
+      console.log(`[SPLIT PAGE] Starting waveform generation logic`);
+      console.log(
+        `[SPLIT PAGE] Recording object:`,
+        recording ? "exists" : "null"
+      );
+      console.log(
+        `[SPLIT PAGE] Recording filePath:`,
+        recording?.filePath || "empty/null"
+      );
       const waveformZoomLevels = {};
       try {
         if (recording && recording.filePath) {
+          console.log(`[SPLIT PAGE] Entering waveform generation block`);
           const base = path
             .basename(recording.filePath)
             .replace(/\.[^/.]+$/, "");
@@ -1701,9 +1715,17 @@ router.get(
           );
         }
       } catch (e) {
-        console.error("Error generating waveforms:", e?.message || e);
+        console.error(
+          "[SPLIT PAGE] Error in waveform generation block:",
+          e?.message || e
+        );
+        console.error("[SPLIT PAGE] Error stack:", e?.stack);
         // Continue without waveforms - client will use Web Audio fallback
       }
+
+      console.log(
+        `[SPLIT PAGE] After waveform generation, waveformZoomLevels count: ${Object.keys(waveformZoomLevels).length}`
+      );
 
       // Compute iOS-friendly playback path if available
       let iosPlaybackPath = null;
@@ -1732,6 +1754,10 @@ router.get(
         null // No size estimate at this point
       );
 
+      console.log(
+        `[SPLIT PAGE] About to render page, waveformZoomLevels:`,
+        Object.keys(waveformZoomLevels)
+      );
       res.render("setlists/recording-split-peaks-integrated", {
         title: `Split Recording (Peaks.js) - ${setlist.title}`,
         pageTitle: `Split Recording (Peaks.js)`,
@@ -1756,6 +1782,11 @@ router.get(
         band: setlist.band,
       });
     } catch (error) {
+      console.error(
+        `[SPLIT PAGE] ERROR in route handler:`,
+        error?.message || error
+      );
+      console.error(`[SPLIT PAGE] ERROR stack:`, error?.stack);
       logger.logError("Peaks.js integrated recording split page error", error);
       req.flash("error", "Error loading Peaks.js integrated split page");
       res.redirect("/bands");
